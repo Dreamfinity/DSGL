@@ -1,0 +1,10 @@
+.gradle/
+libs/
+dep*/
+raw/
+run/
+idea/
+.idea/
+.kotlin
+build
+!shop/libs
