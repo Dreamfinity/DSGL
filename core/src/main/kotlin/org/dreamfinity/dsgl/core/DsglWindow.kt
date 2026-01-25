@@ -11,11 +11,11 @@ abstract class DsglWindow {
     private var openedAtInstant: Instant = Instant.now()
     private var openedZoneId: ZoneId = ZoneId.systemDefault()
 
-    internal fun attachHost(host: org.dreamfinity.dsgl.core.host.DsglWindowHost) {
+    fun attachHost(host: org.dreamfinity.dsgl.core.host.DsglWindowHost) {
         invalidator = { host.requestRebuild("state") }
     }
 
-    internal fun markOpened(instant: Instant, zoneId: ZoneId) {
+    fun markOpened(instant: Instant, zoneId: ZoneId) {
         openedAtInstant = instant
         openedZoneId = zoneId
     }

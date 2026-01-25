@@ -9,8 +9,8 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 class ItemStackNode(
     var stack: ItemStackRef,
     var size: Int = 18,
-    var rotYDeg: Double? = null,
-    var rotXDeg: Double? = null,
+    var rotYDeg: Double = 160.0,
+    var rotXDeg: Double = -11.0,
     key: Any? = null
 ) : DOMNode(key) {
     override fun measure(ctx: UiMeasureContext): Size {
