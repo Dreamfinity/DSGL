@@ -2,15 +2,21 @@ package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 
+/**
+ * Tracks and restores focused nodes between rebuilds.
+ */
 object FocusManager {
     private var focused: DOMNode? = null
     private var focusedKey: Any? = null
     private var focusedPath: IntArray? = null
 
+    /** Current focused node, if any. */
     fun focusedNode(): DOMNode? = focused
 
+    /** Returns true if the given node is focused. */
     fun isFocused(node: DOMNode): Boolean = focused === node
 
+    /** Requests focus for a node, or clears it when null. */
     fun requestFocus(node: DOMNode?) {
         focused = node
         if (node == null) {
@@ -22,12 +28,14 @@ object FocusManager {
         }
     }
 
+    /** Clears current focus. */
     fun clearFocus() {
         focused = null
         focusedKey = null
         focusedPath = null
     }
 
+    /** Walks up to find a focusable ancestor. */
     fun resolveFocusable(start: DOMNode?): DOMNode? {
         var current = start
         while (current != null) {
@@ -37,6 +45,7 @@ object FocusManager {
         return null
     }
 
+    /** Updates focus from an event target. */
     fun updateFocusFromTarget(target: DOMNode?) {
         val focusable = resolveFocusable(target)
         if (focusable != null) {
@@ -46,6 +55,9 @@ object FocusManager {
         }
     }
 
+    /**
+     * Retains focus across rebuilds using node key or path.
+     */
     fun retainFocus(root: DOMNode) {
         val currentKey = focusedKey
         val currentPath = focusedPath

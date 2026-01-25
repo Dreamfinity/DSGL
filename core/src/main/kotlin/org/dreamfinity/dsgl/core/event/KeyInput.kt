@@ -1,6 +1,10 @@
 package org.dreamfinity.dsgl.core.event
 
+/**
+ * Keyboard input helpers.
+ */
 object KeyInput {
+    /** Applies shift modifier to a character. */
     fun applyShift(ch: Char, shiftDown: Boolean): Char {
         if (!shiftDown) return ch
         if (ch in 'a'..'z') return ch.uppercaseChar()

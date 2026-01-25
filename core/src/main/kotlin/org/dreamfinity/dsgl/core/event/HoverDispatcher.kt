@@ -4,6 +4,9 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 
 private const val HOVER_DEBUG = false
 
+/**
+ * Returns the hover chain from root to the deepest hovered node.
+ */
 fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
     val out = ArrayList<DOMNode>(8)
     collectHoverChain(root, mouseX, mouseY, out)
@@ -25,6 +28,9 @@ internal fun collectHoverChain(
     return true
 }
 
+/**
+ * Emits enter/leave/over events based on cursor movement.
+ */
 fun updateHover(
     root: DOMNode,
     prevHoverChain: MutableList<DOMNode>,

@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.event
 
+/**
+ * Mouse move event with previous coordinates.
+ */
 class MouseMoveEvent(
     mouseX: Int,
     mouseY: Int,

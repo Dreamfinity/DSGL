@@ -10,6 +10,9 @@ import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Clickable button node with centered text.
+ */
 class ButtonNode(
     var text: String,
     var textColor: Int = DsglColors.TEXT,
@@ -42,6 +45,7 @@ class ButtonNode(
         out.add(RenderCommand.DrawText(text, textX, textY, textColor))
     }
 
+    /** Registers a click handler for this button. */
     fun onClick(handler: (MouseClickEvent) -> Unit) {
         onClickHandler = handler
         EventBus.run {

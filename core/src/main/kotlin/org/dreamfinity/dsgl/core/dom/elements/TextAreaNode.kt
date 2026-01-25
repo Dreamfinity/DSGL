@@ -14,6 +14,9 @@ import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Multiline text area node.
+ */
 class TextAreaNode(
     var text: String = "",
     var placeholder: String = "",

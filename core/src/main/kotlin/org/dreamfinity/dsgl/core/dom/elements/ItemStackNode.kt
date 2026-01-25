@@ -6,6 +6,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Node that draws a platform-specific item stack.
+ */
 class ItemStackNode(
     var stack: ItemStackRef,
     var size: Int = 18,

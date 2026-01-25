@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.event
 
+/**
+ * Event types used by the event system.
+ */
 enum class Events {
     MOUSEDOWN,
     MOUSEUP,

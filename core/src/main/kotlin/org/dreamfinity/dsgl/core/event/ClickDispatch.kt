@@ -2,6 +2,9 @@ package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 
+/**
+ * Dispatches a click through the DOM tree; returns true if handled.
+ */
 fun dispatchClick(root: DOMNode, event: MouseClickEvent): Boolean {
     return dispatchClickInternal(root, event)
 }

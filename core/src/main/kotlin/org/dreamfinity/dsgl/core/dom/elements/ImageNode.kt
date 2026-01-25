@@ -5,6 +5,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Image node that draws a resource, file, or URL (host-dependent).
+ */
 class ImageNode(
     var url: String,
     var imageWidth: Int,

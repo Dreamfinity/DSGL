@@ -6,6 +6,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Static text node.
+ */
 class TextNode(
     var text: String,
     var color: Int = DsglColors.TEXT,

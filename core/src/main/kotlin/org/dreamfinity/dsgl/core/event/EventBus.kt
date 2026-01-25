@@ -6,6 +6,9 @@ import java.util.WeakHashMap
 
 typealias EventCallback = (Event) -> Unit
 
+/**
+ * Central event router for UI nodes. Supports bubbling for most events.
+ */
 object EventBus {
     private val listeners: MutableMap<Events, MutableMap<DOMNode, ArrayList<EventCallback>>> =
         EnumMap(Events::class.java)
@@ -19,14 +22,17 @@ object EventBus {
         return listeners.getOrPut(eventType) { WeakHashMap() }
     }
 
+    /** Adds a listener for a typed event on this node. */
     fun <E : Event> DOMNode.addEventListener(eventType: Events, callback: (E) -> Unit) {
         getEventMap(eventType).getOrPut(this) { arrayListOf() }.add(callback as EventCallback)
     }
 
+    /** Adds a listener by string event name. */
     fun <E : Event> DOMNode.addEventListener(eventType: String, callback: (E) -> Unit) {
         addEventListener(Events.valueOf(eventType.uppercase()), callback)
     }
 
+    /** Removes a listener for a typed event on this node. */
     fun <E : Event> DOMNode.removeEventListener(eventType: Events, callback: ((E) -> Unit)? = null) {
         val eventTypeListeners = listeners[eventType] ?: return
         val eventListeners = eventTypeListeners[this] ?: return
@@ -37,10 +43,12 @@ object EventBus {
         eventListeners.remove(callback)
     }
 
+    /** Removes a listener by string event name. */
     fun <E : Event> DOMNode.removeEventListener(eventType: String, callback: ((E) -> Unit)? = null) {
         removeEventListener(Events.valueOf(eventType.uppercase()), callback)
     }
 
+    /** Clears listeners for this node and its direct children. */
     fun DOMNode.clearListeners() {
         this.children.forEach { child ->
             listeners.values.forEach { it.remove(child) }
@@ -48,11 +56,13 @@ object EventBus {
         listeners.values.forEach { it.remove(this) }
     }
 
+    /** Clears listeners for this node and its entire subtree. */
     fun DOMNode.clearListenersDeep() {
         this.children.forEach { child -> child.clearListenersDeep() }
         clearListeners()
     }
 
+    /** Posts an event to all listeners, respecting bubbling and cancellation. */
     fun post(event: Event) {
         val allListeners = listeners[event.type] ?: return
         if (event.cancelled) return
