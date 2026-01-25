@@ -10,9 +10,17 @@ import org.dreamfinity.dsgl.core.event.*
 import java.time.Instant
 import java.time.ZoneId
 
+/**
+ * Marks the DSGL UI DSL to keep nested scopes safe.
+ */
 @DslMarker
 annotation class DsglDsl
 
+/**
+ * Builds a retained DOM tree using the DSGL UI DSL.
+ *
+ * Call this from [DsglWindow.render] to define the UI hierarchy.
+ */
 fun ui(block: UiScope.() -> Unit): DomTree {
     val root = ContainerNode(layout = LayoutDirection.Stack)
     val scope = UiScope(root)
@@ -20,6 +28,11 @@ fun ui(block: UiScope.() -> Unit): DomTree {
     return DomTree(root)
 }
 
+/**
+ * Common visual and interaction props shared by most components.
+ *
+ * Event callbacks are wired into [org.dreamfinity.dsgl.core.event.EventBus].
+ */
 open class ComponentProps(
     var color: Int = DsglColors.TEXT,
     var padding: Int = 0,
@@ -44,11 +57,17 @@ open class ComponentProps(
     var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null
 )
 
+/** Static text props. */
 open class TextProps(var value: String = "") : ComponentProps()
+/** Dynamic text computed on each rebuild. */
 open class DynamicTextProps(var valueProvider: () -> String, var placeholder: String = "") : TextProps()
+/** Multiline text area props. */
 open class TextAreaProps(var placeholder: String = "") : TextProps()
+/** Input node props, driven by [InputType]. */
 open class InputProps(val type: InputType) : TextProps()
+/** Image node props; accepts resource id, file://, or http(s) URLs in MC host. */
 open class ImageProps(var url: String) : ComponentProps()
+/** Item stack node props for platform-specific stacks. */
 open class ItemStackProps(
     var stack: ItemStackRef,
     var size: Int = 18,
@@ -56,10 +75,15 @@ open class ItemStackProps(
     var rotXDeg: Double = -11.0
 ) : ComponentProps()
 
+/** Button node props. */
 open class ButtonProps(var text: String) : TextProps()
 
 @DsglDsl
+/**
+ * Root DSL scope used by [ui] to add layout and component nodes.
+ */
 class UiScope internal constructor(private val parent: ContainerNode) {
+    /** Vertical layout container. */
     fun column(
         props: ComponentProps = ComponentProps(),
         block: UiScope.() -> Unit = {}
@@ -79,6 +103,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Horizontal layout container. */
     fun row(
         props: ComponentProps = ComponentProps(),
         block: UiScope.() -> Unit = {}
@@ -98,6 +123,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Shorthand for a column container. */
     fun div(
         props: ComponentProps = ComponentProps(),
         block: UiScope.() -> Unit = {}
@@ -117,6 +143,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Static text node. */
     fun text(props: TextProps) = TextNode(
         props.value,
         props.color,
@@ -129,6 +156,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         add(this)
     }
 
+    /** Dynamic text node built from a provider. */
     fun dynamicText(props: DynamicTextProps) = DynamicTextNode(
         props.valueProvider,
         props.color,
@@ -142,6 +170,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Button node with optional extra button scope. */
     fun button(
         props: ButtonProps,
         block: ButtonScope.() -> Unit = {}
@@ -162,6 +191,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Image node from resource, file, or URL (host-dependent). */
     fun img(props: ImageProps) = ImageNode(
         props.url,
         props.width ?: 0,
@@ -173,6 +203,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         add(this)
     }
 
+    /** Item stack node for platform-specific stack types. */
     fun itemStack(props: ItemStackProps) = ItemStackNode(
         props.stack,
         props.size,
@@ -187,6 +218,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         add(this)
     }
 
+    /** Input node backed by an [InputType]. */
     fun input(props: InputProps) = when (props.type) {
         is InputType.Text -> TextInputNode(
             text = props.type.value,
@@ -250,6 +282,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
+    /** Multiline text input area. */
     fun textarea(props: TextAreaProps) = TextAreaNode(
         props.value,
         props.placeholder,
@@ -276,6 +309,9 @@ class UiScope internal constructor(private val parent: ContainerNode) {
 }
 
 @DsglDsl
+/**
+ * Styling DSL attached to a [DOMNode].
+ */
 class StyleScope internal constructor(private val node: DOMNode) {
     fun margin(all: Int) {
         node.margin = Insets.all(all)
@@ -319,6 +355,9 @@ class StyleScope internal constructor(private val node: DOMNode) {
 }
 
 @DsglDsl
+/**
+ * Button-specific DSL scope.
+ */
 class ButtonScope internal constructor(private val node: ButtonNode) {
     fun onClick(handler: (MouseClickEvent) -> Unit) {
         node.onClick(handler)

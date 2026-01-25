@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
+/**
+ * Password input node with masking.
+ */
 class PasswordInputNode(
     text: String = "",
     placeholder: String = "",

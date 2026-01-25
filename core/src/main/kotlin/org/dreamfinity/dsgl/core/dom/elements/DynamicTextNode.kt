@@ -6,6 +6,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Text node whose value is computed on each rebuild.
+ */
 class DynamicTextNode(
     private val textProvider: () -> String,
     var color: Int = DsglColors.TEXT,

@@ -6,6 +6,11 @@ import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Base class for all DOM nodes in the retained UI tree.
+ *
+ * Nodes are measured, laid out, and then converted into [RenderCommand]s by the host.
+ */
 abstract class DOMNode(
     var key: Any? = null
 ) {
@@ -145,6 +150,7 @@ abstract class DOMNode(
             }
         }
 
+    /** Measures the node's desired size. */
     open fun measure(ctx: UiMeasureContext): Size {
         val contentWidth = width ?: 0
         val contentHeight = height ?: 0
@@ -153,6 +159,7 @@ abstract class DOMNode(
         return Size(totalWidth, totalHeight)
     }
 
+    /** Lays out this node and its children for the given bounds. */
     open fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
         val contentX = x + border.left + padding.left
@@ -165,20 +172,25 @@ abstract class DOMNode(
         }
     }
 
+    /** Appends render commands for this node and its children. */
     open fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         children.forEach { it.buildRenderCommands(ctx, out) }
     }
 
+    /** Handles a click; return true when consumed. */
     open fun handleClick(event: MouseClickEvent): Boolean = false
 
+    /** Dispatches a click through this node and its subtree. */
     fun dispatchClick(event: MouseClickEvent): Boolean {
         return dispatchClickInternal(this, event)
     }
 
+    /** Returns true if the mouse event is within current bounds. */
     fun hovered(event: MouseEvent): Boolean {
         return bounds.contains(event.mouseX, event.mouseY)
     }
 
+    /** Applies event handlers from [ComponentProps] to this node. */
     fun applyHandlers(props: ComponentProps) {
         if (props.onMouseEnter != null) this.onMouseEnter = props.onMouseEnter
         if (props.onMouseLeave != null) this.onMouseLeave = props.onMouseLeave
@@ -195,6 +207,7 @@ abstract class DOMNode(
         if (props.onKeyReleased != null) this.onKeyReleased = props.onKeyReleased
     }
 
+    /** Applies [StyleScope] DSL to this node. */
     fun applyStyle(style: StyleScope.() -> Unit) {
         StyleScope(this).style()
     }
@@ -209,6 +222,7 @@ abstract class DOMNode(
     protected fun contentHeight(): Int =
         (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
 
+    /** Adds border render commands when a border is present. */
     protected fun addBorderCommands(out: MutableList<RenderCommand>) {
         if (border.top <= 0 && border.right <= 0 && border.bottom <= 0 && border.left <= 0) return
 
@@ -232,6 +246,9 @@ abstract class DOMNode(
     }
 }
 
+/**
+ * Attaches this node to [parent] and returns itself for fluent creation.
+ */
 fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     parent?.let {
         this.parent = parent

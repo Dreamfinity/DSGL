@@ -19,21 +19,25 @@ import javax.imageio.ImageIO
 /**
  * Minecraft 1.7.10 adapter that turns DSGL render commands into Minecraft calls.
  */
-class Mc1710UiAdapter(private val mc: Minecraft) : UiMeasureContext {
+class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : UiMeasureContext {
     companion object {
         private val imageCache: MutableMap<String, ResourceLocation> = HashMap()
         private val dynamicTexturesCache: MutableMap<String, DynamicTexture> = HashMap()
     }
+
     private val itemRenderer: RenderItem = RenderItem()
 
     override fun measureText(text: String): Int = mc.fontRendererObj.getStringWidth(text)
     override val fontHeight: Int
         get() = mc.fontRendererObj.FONT_HEIGHT
 
+    /** Returns the scaled resolution for the current Minecraft window. */
     fun scaledResolution(): ScaledResolution =
         ScaledResolution(mc, mc.displayWidth, mc.displayHeight)
 
+    /** Executes DSGL render commands using Minecraft rendering APIs. */
     override fun paint(commands: List<RenderCommand>) {
+        paintsCount++
         for (command in commands) {
             when (command) {
                 is RenderCommand.DrawRect -> {

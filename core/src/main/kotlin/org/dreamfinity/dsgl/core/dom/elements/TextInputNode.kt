@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
+/**
+ * Text input node.
+ */
 class TextInputNode(
     text: String = "",
     placeholder: String = "",

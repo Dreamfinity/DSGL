@@ -3,6 +3,9 @@ package org.dreamfinity.dsgl.mc1710
 import net.minecraft.client.renderer.RenderHelper
 import org.lwjgl.opengl.GL11
 
+/**
+ * Executes a block with an OpenGL matrix/attribute stack push/pop.
+ */
 inline fun withStack(
     attributes: List<Int> = emptyList(),
     block: () -> Unit
@@ -26,6 +29,9 @@ inline fun withStack(
     }
 }
 
+/**
+ * Enables and disables GL capabilities for the duration of [block].
+ */
 inline fun withAttributes(
     enable: List<Int> = emptyList(),
     disable: List<Int> = emptyList(),
@@ -49,6 +55,9 @@ inline fun withAttributes(
     }
 }
 
+/**
+ * Runs [block] with standard item lighting enabled.
+ */
 inline fun withItemGuiLightning(block: () -> Unit) {
     RenderHelper.enableGUIStandardItemLighting()
     try {

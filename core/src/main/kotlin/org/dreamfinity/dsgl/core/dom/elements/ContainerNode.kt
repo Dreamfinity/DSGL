@@ -8,6 +8,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Layout container node for column, row, or stack layouts.
+ */
 class ContainerNode(
     var layout: LayoutDirection = LayoutDirection.Column,
     padding: Int = 0,

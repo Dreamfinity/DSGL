@@ -10,6 +10,9 @@ import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Checkbox group input node.
+ */
 class CheckboxGroupNode(
     var variants: List<InputOption>,
     selected: Set<String> = emptySet(),

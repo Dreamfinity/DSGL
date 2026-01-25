@@ -3,8 +3,8 @@ package org.dreamfinity.dsgl.mc1710
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.gui.GuiScreen
-import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
@@ -16,10 +16,14 @@ import java.time.ZoneId
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
+ *
+ * Subclass or instantiate with a [DsglWindow] and open it via
+ * `Minecraft.getMinecraft().displayGuiScreen(...)`.
  */
 @SideOnly(Side.CLIENT)
 abstract class DsglScreenHost(
-    private val windowFactory: () -> DsglWindow
+    private val windowFactory: () -> DsglWindow,
+    var rendersCount: Long = 0
 ) : GuiScreen(), DsglWindowHost {
     constructor(window: DsglWindow) : this({ window })
 
@@ -78,6 +82,7 @@ abstract class DsglScreenHost(
         adapter.paint(commands)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
+        println("Re-renders: ${rendersCount}, re-paints: ${adapter.paintsCount}")
     }
 
     override fun keyTyped(typedChar: Char, keyCode: Int) {
@@ -126,6 +131,7 @@ abstract class DsglScreenHost(
 
     private fun rebuildIfNeeded() {
         if (needsRender || domTree == null) {
+            rendersCount++
             domTree?.root?.let { root -> pendingCleanupRoot = root }
             domTree = window.render()
             needsRender = false

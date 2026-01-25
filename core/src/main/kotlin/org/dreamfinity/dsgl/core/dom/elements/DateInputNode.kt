@@ -6,6 +6,9 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * Date/time input node rendered as formatted text.
+ */
 class DateInputNode(
     value: Instant,
     zoneId: ZoneId,

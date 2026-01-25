@@ -10,6 +10,9 @@ import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Radio group input node.
+ */
 class RadioGroupNode(
     var variants: List<InputOption>,
     var selectedId: String? = null,

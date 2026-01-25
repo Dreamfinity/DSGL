@@ -5,6 +5,9 @@ import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseWheelEvent
 
+/**
+ * Numeric input node.
+ */
 class NumberInputNode(
     value: Long = 0L,
     placeholder: String = "",

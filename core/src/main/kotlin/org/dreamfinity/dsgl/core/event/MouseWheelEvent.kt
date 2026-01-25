@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.event
 
+/**
+ * Mouse wheel event with scroll delta.
+ */
 data class MouseWheelEvent(
     override var mouseX: Int,
     override var mouseY: Int,

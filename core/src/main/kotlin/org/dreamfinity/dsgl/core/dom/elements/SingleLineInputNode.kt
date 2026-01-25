@@ -14,6 +14,9 @@ import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+/**
+ * Base class for single-line text inputs.
+ */
 open class SingleLineInputNode(
     text: String = "",
     var placeholder: String = "",

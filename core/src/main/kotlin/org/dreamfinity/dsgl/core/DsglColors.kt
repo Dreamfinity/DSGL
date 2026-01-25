@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core
 
+/**
+ * Default UI palette colors (ARGB).
+ */
 object DsglColors {
     const val WHITE: Int = 0xFFFFFFFF.toInt()
     const val BLACK: Int = 0xFF000000.toInt()

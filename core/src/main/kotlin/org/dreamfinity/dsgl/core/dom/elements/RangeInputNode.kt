@@ -14,6 +14,9 @@ import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.math.roundToLong
 
+/**
+ * Range slider input node.
+ */
 class RangeInputNode(
     value: Long = 0L,
     var min: Long = 0L,

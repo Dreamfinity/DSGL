@@ -1,5 +1,8 @@
 package org.dreamfinity.dsgl.core.event
 
+/**
+ * Mouse click event.
+ */
 data class MouseClickEvent(
     override var mouseX: Int,
     override var mouseY: Int,

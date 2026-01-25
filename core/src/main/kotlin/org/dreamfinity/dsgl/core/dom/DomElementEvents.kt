@@ -14,50 +14,63 @@ import org.dreamfinity.dsgl.core.event.MouseOverEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.event.MouseWheelEvent
 
+/** Registers a mouse enter handler for this node. */
 fun DOMNode.onMouseEnter(handler: (MouseEnterEvent) -> Unit) {
     EventBus.run { this@onMouseEnter.addEventListener(Events.MOUSEENTER, handler) }
 }
 
+/** Registers a mouse leave handler for this node. */
 fun DOMNode.onMouseLeave(handler: (MouseLeaveEvent) -> Unit) {
     EventBus.run { this@onMouseLeave.addEventListener(Events.MOUSELEAVE, handler) }
 }
 
+/** Registers a mouse over handler for this node. */
 fun DOMNode.onMouseOver(handler: (MouseOverEvent) -> Unit) {
     EventBus.run { this@onMouseOver.addEventListener(Events.MOUSEOVER, handler) }
 }
 
+/** Registers a mouse move handler for this node. */
 fun DOMNode.onMouseMove(handler: (MouseMoveEvent) -> Unit) {
     EventBus.run { this@onMouseMove.addEventListener(Events.MOUSEMOVE, handler) }
 }
 
+/** Registers a mouse down handler for this node. */
 fun DOMNode.onMouseDown(handler: (MouseDownEvent) -> Unit) {
     EventBus.run { this@onMouseDown.addEventListener(Events.MOUSEDOWN, handler) }
 }
 
+/** Registers a mouse up handler for this node. */
 fun DOMNode.onMouseUp(handler: (MouseUpEvent) -> Unit) {
     EventBus.run { this@onMouseUp.addEventListener(Events.MOUSEUP, handler) }
 }
 
+/** Registers a mouse click handler for this node. */
 fun DOMNode.onMouseClick(handler: (MouseClickEvent) -> Unit) {
     EventBus.run { this@onMouseClick.addEventListener(Events.CLICK, handler) }
 }
 
+/** Registers a mouse drag handler for this node. */
 fun DOMNode.onMouseDrag(handler: (MouseDragEvent) -> Unit) {
     EventBus.run { this@onMouseDrag.addEventListener(Events.DRAG, handler) }
 }
 
+/** Registers a mouse wheel handler for this node. */
 fun DOMNode.onMouseWheel(handler: (MouseWheelEvent) -> Unit) {
     EventBus.run { this@onMouseWheel.addEventListener(Events.WHEEL, handler) }
 }
 
+/** Registers a key down handler for this node. */
 fun DOMNode.onKeyDown(handler: (KeyboardKeyDownEvent) -> Unit) {
     EventBus.run { this@onKeyDown.addEventListener(Events.KEYDOWN, handler) }
 }
 
+/** Registers a key up handler for this node. */
 fun DOMNode.onKeyUp(handler: (KeyboardKeyUpEvent) -> Unit) {
     EventBus.run { this@onKeyUp.addEventListener(Events.KEYUP, handler) }
 }
 
+/** Alias for [onKeyDown]. */
 fun DOMNode.onKeyPressed(handler: (KeyboardKeyDownEvent) -> Unit) = onKeyDown(handler)
 
+/** Alias for [onKeyUp]. */
 fun DOMNode.onKeyReleased(handler: (KeyboardKeyUpEvent) -> Unit) = onKeyUp(handler)
