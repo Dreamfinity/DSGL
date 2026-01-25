@@ -13,4 +13,5 @@ plugins {
 dependencies {
     implementation("com.anatawa12.forge:ForgeGradle:1.2-1.1.+")
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20")
+    implementation("org.jetbrains.dokka:org.jetbrains.dokka.gradle.plugin:2.1.0")
 }
