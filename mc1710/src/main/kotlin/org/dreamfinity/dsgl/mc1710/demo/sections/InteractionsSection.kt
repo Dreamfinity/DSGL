@@ -34,12 +34,16 @@ fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int,
                 padding = 4,
                 backgroundColor = DEMO_SURFACE_ALT,
                 onMouseEnter = { event ->
-                    window.mouseEnterCount += 1
-                    window.logHook("onMouseEnter", event)
+                    if (window.markInteractionZoneEntered()) {
+                        window.mouseEnterCount += 1
+                        window.logHook("onMouseEnter", event)
+                    }
                 },
                 onMouseLeave = { event ->
-                    window.mouseLeaveCount += 1
-                    window.logHook("onMouseLeave", event)
+                    if (window.markInteractionZoneLeft()) {
+                        window.mouseLeaveCount += 1
+                        window.logHook("onMouseLeave", event)
+                    }
                 },
                 onMouseOver = { event ->
                     window.mouseOverCount += 1
@@ -184,4 +188,3 @@ fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int,
         }
     }
 }
-
