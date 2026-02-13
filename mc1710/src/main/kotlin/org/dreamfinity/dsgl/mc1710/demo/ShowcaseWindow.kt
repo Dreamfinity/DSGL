@@ -87,6 +87,7 @@ class ShowcaseWindow : DsglWindow() {
     internal var cancellationChildHits by state(0)
     private var mouseOverSamples: Int = 0
     private var mouseMoveSamples: Int = 0
+    private var interactionZoneInside: Boolean = false
 
     internal var focusStableValue by state("")
     internal var focusUnstableValue by state("")
@@ -304,6 +305,18 @@ class ShowcaseWindow : DsglWindow() {
         return mouseMoveSamples % 6 == 0
     }
 
+    internal fun markInteractionZoneEntered(): Boolean {
+        if (interactionZoneInside) return false
+        interactionZoneInside = true
+        return true
+    }
+
+    internal fun markInteractionZoneLeft(): Boolean {
+        if (!interactionZoneInside) return false
+        interactionZoneInside = false
+        return true
+    }
+
     internal fun adjustItemRotation(deltaY: Double = 0.0, deltaX: Double = 0.0) {
         itemRotY = normalizeAngle(itemRotY + deltaY)
         itemRotX = (itemRotX + deltaX).coerceIn(-89.0, 89.0)
@@ -324,6 +337,7 @@ class ShowcaseWindow : DsglWindow() {
     private fun selectSection(section: DemoSection) {
         if (selectedSection == section) return
         selectedSection = section
+        interactionZoneInside = false
         appendInfo("Section: ${section.title}")
     }
 
