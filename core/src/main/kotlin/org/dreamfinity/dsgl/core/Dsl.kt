@@ -60,7 +60,7 @@ open class ComponentProps(
 /** Static text props. */
 open class TextProps(var value: String = "") : ComponentProps()
 /** Dynamic text computed on each rebuild. */
-open class DynamicTextProps(var valueProvider: () -> String, var placeholder: String = "") : TextProps()
+open class DynamicTextProps(var placeholder: String = "", var valueProvider: () -> String) : TextProps()
 /** Multiline text area props. */
 open class TextAreaProps(var placeholder: String = "") : TextProps()
 /** Input node props, driven by [InputType]. */
