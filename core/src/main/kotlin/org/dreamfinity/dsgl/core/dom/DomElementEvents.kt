@@ -2,6 +2,10 @@ package org.dreamfinity.dsgl.core.dom
 
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.ValueChangedEvent
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
@@ -74,3 +78,23 @@ fun DOMNode.onKeyPressed(handler: (KeyboardKeyDownEvent) -> Unit) = onKeyDown(ha
 
 /** Alias for [onKeyUp]. */
 fun DOMNode.onKeyReleased(handler: (KeyboardKeyUpEvent) -> Unit) = onKeyUp(handler)
+
+/** Registers a focus handler for this node. */
+fun DOMNode.onFocus(handler: (FocusGainEvent) -> Unit) {
+    EventBus.run { this@onFocus.addEventListener(Events.FOCUS, handler) }
+}
+
+/** Registers a blur handler for this node. */
+fun DOMNode.onBlur(handler: (FocusLoseEvent) -> Unit) {
+    EventBus.run { this@onBlur.addEventListener(Events.BLUR, handler) }
+}
+
+/** Registers an input handler for this node. */
+fun DOMNode.onInput(handler: (InputEvent) -> Unit) {
+    EventBus.run { this@onInput.addEventListener(Events.INPUT, handler) }
+}
+
+/** Registers a change handler for this node. */
+fun DOMNode.onChange(handler: (ValueChangedEvent) -> Unit) {
+    EventBus.run { this@onChange.addEventListener(Events.CHANGE, handler) }
+}
