@@ -11,6 +11,8 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseDragEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
+import org.dreamfinity.dsgl.core.event.postChange
+import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.math.roundToLong
 
@@ -24,32 +26,69 @@ class RangeInputNode(
     var step: Long? = null,
     key: Any? = null
 ) : DOMNode(key) {
-    var value: Long = value
+    companion object {
+        private var activeDragIdentity: Any? = null
+        private var activeDragStartValue: Long? = null
+
+        fun clearActiveDrag() {
+            activeDragIdentity = null
+            activeDragStartValue = null
+        }
+    }
+
+    override val focusable: Boolean = true
+    private val initialValue: Long = value
+    var value: Long = initialValue
         private set
     var trackColor: Int = 0xFF4A4A52.toInt()
     var knobColor: Int = DsglColors.TEXT
-    private var dragging: Boolean = false
     private var trackRect: Rect = Rect(0, 0, 0, 0)
     private var knobSize: Int = 8
     private var trackHeight: Int = 4
 
     init {
-        setValue(value)
+        setValue(initialValue)
         EventBus.run {
             this@RangeInputNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
-                dragging = true
+                activeDragIdentity = dragIdentity()
+                activeDragStartValue = this@RangeInputNode.value
+                val before = this@RangeInputNode.value
                 updateFromMouse(event.mouseX)
+                if (this@RangeInputNode.value != before) {
+                    postInput(
+                        this@RangeInputNode,
+                        this@RangeInputNode.value.toString(),
+                        this@RangeInputNode.value
+                    )
+                }
             }
             this@RangeInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
-                dragging = false
+                if (!isActiveDragTarget()) return@addEventListener
+                val start = activeDragStartValue ?: this@RangeInputNode.value
+                if (this@RangeInputNode.value != start) {
+                    postChange(
+                        this@RangeInputNode,
+                        this@RangeInputNode.value.toString(),
+                        this@RangeInputNode.value
+                    )
+                }
+                clearActiveDrag()
             }
             this@RangeInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
-                if (!dragging) return@addEventListener
+                if (!isActiveDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
+                val before = this@RangeInputNode.value
                 updateFromMouse(currentX)
+                if (this@RangeInputNode.value != before) {
+                    postInput(
+                        this@RangeInputNode,
+                        this@RangeInputNode.value.toString(),
+                        this@RangeInputNode.value
+                    )
+                }
             }
         }
     }
@@ -110,5 +149,14 @@ class RangeInputNode(
         if (clamped < min) clamped = min
         if (clamped > max) clamped = max
         value = clamped
+    }
+
+    private fun dragIdentity(): Any {
+        return key ?: this
+    }
+
+    private fun isActiveDragTarget(): Boolean {
+        val active = activeDragIdentity ?: return false
+        return active == dragIdentity()
     }
 }

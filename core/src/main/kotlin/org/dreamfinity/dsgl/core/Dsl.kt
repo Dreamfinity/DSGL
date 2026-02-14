@@ -54,7 +54,11 @@ open class ComponentProps(
     var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)? = null,
     var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)? = null,
     var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)? = null,
-    var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null
+    var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null,
+    var onFocusGain: ((FocusGainEvent) -> Unit)? = null,
+    var onFocusLose: ((FocusLoseEvent) -> Unit)? = null,
+    var onInput: ((InputEvent) -> Unit)? = null,
+    var onValueChange: ((ValueChangedEvent) -> Unit)? = null
 )
 
 /** Static text props. */

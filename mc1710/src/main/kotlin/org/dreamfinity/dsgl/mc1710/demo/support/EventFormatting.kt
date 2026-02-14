@@ -1,6 +1,10 @@
 package org.dreamfinity.dsgl.mc1710.demo.support
 
 import org.dreamfinity.dsgl.core.event.Event
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.ValueChangedEvent
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
@@ -29,6 +33,10 @@ fun formatEventLine(
         is MouseWheelEvent -> "wheel=${event.dWheel}"
         is KeyboardKeyDownEvent -> "key=${event.keyCode} char=${safeChar(event.keyChar)}"
         is KeyboardKeyUpEvent -> "key=${event.keyCode} char=${safeChar(event.keyChar)}"
+        is FocusGainEvent -> "prev=${event.previousTargetKey ?: "none"}"
+        is FocusLoseEvent -> "next=${event.nextTargetKey ?: "none"}"
+        is InputEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
+        is ValueChangedEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
         else -> ""
     }
     val notePart = if (note.isNullOrBlank()) "" else " note=$note"
@@ -50,4 +58,3 @@ private fun safeChar(ch: Char): String {
     if (ch.code < 32) return "\\u%04x".format(ch.code)
     return ch.toString()
 }
-
