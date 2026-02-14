@@ -90,6 +90,9 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
         }
 
         text(TextProps("Rotation controls (drag sliders or use step buttons)"))
+        text(TextProps("Drag outside slider bounds: value should keep updating until mouse up.").apply {
+            color = DEMO_MUTED
+        })
         input(
             InputProps(
                 InputType.Range(
@@ -101,12 +104,25 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
             ).apply {
                 key = "mc.rotation.slider.yaw"
                 width = contentWidth - 10
-                onMouseDrag = { event ->
-                    window.setItemRotationFromSlider(isY = true, deltaPixels = event.dx)
-                    window.logHook("mc.rotY.onMouseDrag", event, "rotY=${window.itemRotYLong()}")
+                onMouseDown = { event ->
+                    window.logHook("mc.rotY.onMouseDown", event, "capture-start")
+                }
+                onMouseUp = { event ->
+                    window.logHook("mc.rotY.onMouseUp", event, "capture-end rotY=${window.itemRotYLong()}")
+                }
+                onInput = { event ->
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotYLong()
+                    window.itemRotY = next.toDouble()
+                    window.logHook("mc.rotY.onInput", event, "rotY=${window.itemRotYLong()}")
+                }
+                onValueChange = { event ->
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotYLong()
+                    window.itemRotY = next.toDouble()
+                    window.logHook("mc.rotY.onChange", event, "rotY=${window.itemRotYLong()}")
                 }
             }
         )
+
         input(
             InputProps(
                 InputType.Range(
@@ -118,9 +134,21 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
             ).apply {
                 key = "mc.rotation.slider.pitch"
                 width = contentWidth - 10
-                onMouseDrag = { event ->
-                    window.setItemRotationFromSlider(isY = false, deltaPixels = event.dx)
-                    window.logHook("mc.rotX.onMouseDrag", event, "rotX=${window.itemRotXLong()}")
+                onMouseDown = { event ->
+                    window.logHook("mc.rotX.onMouseDown", event, "capture-start")
+                }
+                onMouseUp = { event ->
+                    window.logHook("mc.rotX.onMouseUp", event, "capture-end rotX=${window.itemRotXLong()}")
+                }
+                onInput = { event ->
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotXLong()
+                    window.itemRotX = next.toDouble()
+                    window.logHook("mc.rotX.onInput", event, "rotX=${window.itemRotXLong()}")
+                }
+                onValueChange = { event ->
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotXLong()
+                    window.itemRotX = next.toDouble()
+                    window.logHook("mc.rotX.onChange", event, "rotX=${window.itemRotXLong()}")
                 }
             }
         )

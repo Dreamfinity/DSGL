@@ -44,6 +44,10 @@ enum class CapabilityId(
     HOOK_KEY_UP("hook: onKeyUp", CapabilityGroup.EVENT_HOOKS),
     HOOK_KEY_PRESSED("hook: onKeyPressed", CapabilityGroup.EVENT_HOOKS),
     HOOK_KEY_RELEASED("hook: onKeyReleased", CapabilityGroup.EVENT_HOOKS),
+    HOOK_FOCUS("hook: onFocus", CapabilityGroup.EVENT_HOOKS),
+    HOOK_BLUR("hook: onBlur", CapabilityGroup.EVENT_HOOKS),
+    HOOK_INPUT("hook: onInput", CapabilityGroup.EVENT_HOOKS),
+    HOOK_CHANGE("hook: onChange", CapabilityGroup.EVENT_HOOKS),
 
     EVENT_INSPECTOR("Event Inspector panel", CapabilityGroup.SHOWCASE_FEATURES),
     CAPABILITY_CHECKLIST("Capability Checklist panel", CapabilityGroup.SHOWCASE_FEATURES),
@@ -97,6 +101,15 @@ object CapabilityChecklistCatalog {
             CapabilityId.INPUT_DATE
         )
 
+        DemoSection.INPUT_EVENTS -> setOf(
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_TEXTAREA,
+            CapabilityId.HOOK_FOCUS,
+            CapabilityId.HOOK_BLUR,
+            CapabilityId.HOOK_INPUT,
+            CapabilityId.HOOK_CHANGE
+        )
+
         DemoSection.INTERACTIONS -> setOf(
             CapabilityId.HOOK_MOUSE_ENTER,
             CapabilityId.HOOK_MOUSE_LEAVE,
@@ -139,4 +152,3 @@ object CapabilityChecklistCatalog {
             .toSet()
     }
 }
-

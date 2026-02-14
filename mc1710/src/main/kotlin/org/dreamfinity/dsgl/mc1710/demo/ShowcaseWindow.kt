@@ -21,6 +21,7 @@ import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderFocusRebuildSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputsGallerySection
+import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputEventsSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderInteractionsSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderLayoutStyleSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderMcFeaturesSection
@@ -39,6 +40,8 @@ import org.dreamfinity.dsgl.mc1710.demo.support.renderChecklistPanel
 import org.dreamfinity.dsgl.mc1710.demo.support.renderEventInspectorPanel
 import java.awt.image.BufferedImage
 import java.io.File
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.imageio.ImageIO
 import kotlin.math.roundToLong
 
@@ -113,6 +116,15 @@ class ShowcaseWindow : DsglWindow() {
         InputOption("center", "Center"),
         InputOption("south", "South")
     )
+    internal var inputEventTextValue by state("")
+    internal var inputEventTextareaValue by state("Multiline event sample")
+    internal var inputEventCheckboxValue by state(setOf("alpha"))
+    internal var inputEventRadioValue by state<String?>("center")
+    internal var inputEventRangeValue by state(35L)
+    internal var inputEventLogEntries by state(emptyList<String>())
+    private val inputEventLogLimit = 8
+    private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+    internal var sharedRangeValue by state(35L)
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
@@ -195,6 +207,7 @@ class ShowcaseWindow : DsglWindow() {
                             DemoSection.OVERVIEW -> renderOverviewSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUTS -> renderInputsGallerySection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
+                            DemoSection.INPUT_EVENTS -> renderInputEventsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INTERACTIONS -> renderInteractionsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.MC_FEATURES -> renderMcFeaturesSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
@@ -333,6 +346,37 @@ class ShowcaseWindow : DsglWindow() {
     internal fun itemRotYLong(): Long = itemRotY.roundToLong().coerceIn(0L, 360L)
 
     internal fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
+
+    internal fun recordInputEvent(control: String, phase: String, value: String, event: Event) {
+        val time = LocalTime.now().format(inputEventTimeFormatter)
+        val line = "$time $control.$phase value=$value"
+        inputEventLogEntries = (listOf(line) + inputEventLogEntries).take(inputEventLogLimit)
+        logHook("inputEvents.$control.$phase", event, "value=$value")
+    }
+
+    internal fun clearInputEventLog() {
+        inputEventLogEntries = emptyList()
+    }
+
+    internal fun parseCheckboxSelection(parsedValue: Any?): Set<String> {
+        val parsedSet = parsedValue as? Set<*>
+        if (parsedSet != null) {
+            return parsedSet.mapNotNull { it as? String }.toSet()
+        }
+        val parsedString = parsedValue as? String
+        if (!parsedString.isNullOrBlank()) {
+            return parsedString
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }
+        return emptySet()
+    }
+
+    internal fun checkboxValueString(): String {
+        return inputEventCheckboxValue.toList().sorted().joinToString(",")
+    }
 
     private fun selectSection(section: DemoSection) {
         if (selectedSection == section) return

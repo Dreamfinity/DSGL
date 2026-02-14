@@ -1,11 +1,6 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextAreaProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -73,11 +68,26 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     }
                 )
 
-                text(TextProps("Range (step 5)"))
+                text(TextProps("Number 0..100 wired with slider below"))
+                input(
+                    InputProps(
+                        InputType.Number(
+                            value = window.sharedRangeValue,
+                            placeholder = "0..100",
+                            min = 0,
+                            max = 100
+                        )
+                    ).apply {
+                        key = "input.number"
+                        width = inputWidth
+                    }
+                )
+
+                dynamicText(DynamicTextProps { "Range (step 5, value=${window.sharedRangeValue})" })
                 input(
                     InputProps(
                         InputType.Range(
-                            value = 35,
+                            value = window.sharedRangeValue,
                             min = 0,
                             max = 100,
                             step = 5
@@ -85,6 +95,8 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     ).apply {
                         key = "input.range"
                         width = inputWidth
+                        onInput = { window.sharedRangeValue = it.parsedValue as? Long ?: Long.MIN_VALUE }
+                        onValueChange = { window.sharedRangeValue = it.value.toLongOrNull() ?: Long.MIN_VALUE }
                     }
                 )
             }
