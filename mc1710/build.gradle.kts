@@ -59,6 +59,22 @@ val generateModMetadata by tasks.registering {
     }
 }
 
+tasks {
+    runClient {
+        if (project.hasProperty("clientRunArgs")) {
+            println("clientRunArgs: ${project.property("clientRunArgs")}")
+            args(project.property("clientRunArgs"))
+        }
+    }
+
+    runServer {
+        if (project.hasProperty("serverRunArgs")) {
+            println("serverRunArgs: ${project.property("serverRunArgs")}")
+            args(project.property("serverRunArgs"))
+        }
+    }
+}
+
 kotlin {
     sourceSets.getByName("main").kotlin.srcDir(generatedModMetadataDir)
 }

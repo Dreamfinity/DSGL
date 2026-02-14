@@ -9,7 +9,3 @@ repositories {
     maven(url = "https://cloudrep.veritaris.me/repos/")
     mavenCentral()
 }
-
-dependencies {
-    api(":mc1710")
-}
