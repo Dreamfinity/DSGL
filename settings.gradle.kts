@@ -15,4 +15,7 @@ pluginManagement {
 
 rootProject.name = "dsgl"
 
-include(":core", ":mc1710")
+include(
+    ":core",
+    ":mc1710",
+)
