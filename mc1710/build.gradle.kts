@@ -1,4 +1,5 @@
 import java.io.File
+import org.gradle.api.GradleException
 
 plugins {
     id("dsgl-mc1710.conventions")
@@ -14,11 +15,10 @@ val modCredits: String by project
 val modIcon: String by project
 val gameVersion: String by project
 
-val modMetadataTokens = mapOf(
+val baseModMetadataTokens = mapOf(
     "modId" to modId,
     "modGroup" to modGroup,
     "modName" to modName,
-    "modVersion" to modVersion,
     "modAuthor" to modAuthor,
     "modDescription" to modDescription,
     "modCredits" to modCredits,
@@ -26,12 +26,24 @@ val modMetadataTokens = mapOf(
     "gameVersion" to gameVersion
 )
 
-val generatedModMetadataDir = layout.buildDirectory.dir("generated/sources/modMetadata/kotlin")
+fun currentModVersion(): String {
+    val dynamic = (findProperty("modVersion") as? String)?.trim()
+    if (!dynamic.isNullOrEmpty()) return dynamic
+    if (modVersion.isNotBlank()) return modVersion
+    throw GradleException("Missing required property 'modVersion' for mc1710 module.")
+}
+
+fun currentModMetadataTokens(): Map<String, String> {
+    return baseModMetadataTokens + ("modVersion" to currentModVersion())
+}
+
+val generatedModMetadataDir: Provider<Directory> = layout.buildDirectory.dir("generated/sources/modMetadata/kotlin")
 
 val generateModMetadata by tasks.registering {
     outputs.dir(generatedModMetadataDir)
 
     doLast {
+        val tokens = currentModMetadataTokens()
         val outputDir = generatedModMetadataDir.get().asFile
         val packagePath = File(outputDir, "org/dreamfinity/dsgl/mc1710")
         packagePath.mkdirs()
@@ -45,14 +57,14 @@ val generateModMetadata by tasks.registering {
              * Generated from Gradle properties to keep @Mod metadata consistent.
              */
             object DsglMc1710GeneratedMetadata {
-                const val MOD_ID: String = "$modId"
-                const val MOD_NAME: String = "$modName"
-                const val MOD_VERSION: String = "$modVersion"
-                const val MC_VERSION_RANGE: String = "[$gameVersion]"
-                const val MOD_AUTHOR: String = "$modAuthor"
-                const val MOD_DESCRIPTION: String = "$modDescription"
-                const val MOD_CREDITS: String = "$modCredits"
-                const val MOD_ICON: String = "$modIcon"
+                const val MOD_ID: String = "${tokens["modId"]}"
+                const val MOD_NAME: String = "${tokens["modName"]}"
+                const val MOD_VERSION: String = "${tokens["modVersion"]}"
+                const val MC_VERSION_RANGE: String = "[${tokens["gameVersion"]}]"
+                const val MOD_AUTHOR: String = "${tokens["modAuthor"]}"
+                const val MOD_DESCRIPTION: String = "${tokens["modDescription"]}"
+                const val MOD_CREDITS: String = "${tokens["modCredits"]}"
+                const val MOD_ICON: String = "${tokens["modIcon"]}"
             }
             """.trimIndent()
         )
@@ -96,10 +108,11 @@ tasks.named("dokkaGeneratePublicationHtml") {
 }
 
 tasks.named<ProcessResources>("processResources") {
-    inputs.properties(modMetadataTokens)
+    inputs.properties(baseModMetadataTokens)
+    inputs.property("modVersion", providers.provider { currentModVersion() })
 
     filesMatching(listOf("mcmod.info", "META-INF/MANIFEST.MF")) {
-        expand(modMetadataTokens)
+        expand(currentModMetadataTokens())
     }
 }
 
