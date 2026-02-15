@@ -38,6 +38,10 @@ abstract class DOMNode(
     private var onMouseEnterHandler: ((MouseEnterEvent) -> Unit)? = null
     private var onMouseLeaveHandler: ((MouseLeaveEvent) -> Unit)? = null
     private var onMouseOverHandler: ((MouseOverEvent) -> Unit)? = null
+    private var onFocusGainHandler: ((FocusGainEvent) -> Unit)? = null
+    private var onFocusLoseHandler: ((FocusLoseEvent) -> Unit)? = null
+    private var onInputHandler: ((InputEvent) -> Unit)? = null
+    private var onValueChangeHandler: ((ValueChangedEvent) -> Unit)? = null
 
     var onMouseDown: ((MouseDownEvent) -> Unit)?
         get() = onMouseDownHandler
@@ -150,6 +154,42 @@ abstract class DOMNode(
             }
         }
 
+    var onFocusGain: ((FocusGainEvent) -> Unit)?
+        get() = onFocusGainHandler
+        set(value) {
+            onFocusGainHandler = value
+            value?.let { handler ->
+                EventBus.run { this@DOMNode.addEventListener(Events.FOCUS, handler) }
+            }
+        }
+
+    var onFocusLose: ((FocusLoseEvent) -> Unit)?
+        get() = onFocusLoseHandler
+        set(value) {
+            onFocusLoseHandler = value
+            value?.let { handler ->
+                EventBus.run { this@DOMNode.addEventListener(Events.BLUR, handler) }
+            }
+        }
+
+    var onInput: ((InputEvent) -> Unit)?
+        get() = onInputHandler
+        set(value) {
+            onInputHandler = value
+            value?.let { handler ->
+                EventBus.run { this@DOMNode.addEventListener(Events.INPUT, handler) }
+            }
+        }
+
+    var onValueChange: ((ValueChangedEvent) -> Unit)?
+        get() = onValueChangeHandler
+        set(value) {
+            onValueChangeHandler = value
+            value?.let { handler ->
+                EventBus.run { this@DOMNode.addEventListener(Events.CHANGE, handler) }
+            }
+        }
+
     /** Measures the node's desired size. */
     open fun measure(ctx: UiMeasureContext): Size {
         val contentWidth = width ?: 0
@@ -205,6 +245,10 @@ abstract class DOMNode(
         if (props.onKeyUp != null) this.onKeyUp = props.onKeyUp
         if (props.onKeyPressed != null) this.onKeyPressed = props.onKeyPressed
         if (props.onKeyReleased != null) this.onKeyReleased = props.onKeyReleased
+        if (props.onFocusGain != null) this.onFocusGain = props.onFocusGain
+        if (props.onFocusLose != null) this.onFocusLose = props.onFocusLose
+        if (props.onInput != null) this.onInput = props.onInput
+        if (props.onValueChange != null) this.onValueChange = props.onValueChange
     }
 
     /** Applies [StyleScope] DSL to this node. */

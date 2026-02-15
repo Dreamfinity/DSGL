@@ -15,14 +15,16 @@ class DateInputNode(
     placeholder: String = "dd.MM.yyyy HH:mm",
     key: Any? = null
 ) : SingleLineInputNode("", placeholder, key) {
+    private val initialValue: Instant = value
+    private val initialZoneId: ZoneId = zoneId
     private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-    var value: Instant = value
+    var value: Instant = initialValue
         private set
-    var zoneId: ZoneId = zoneId
+    var zoneId: ZoneId = initialZoneId
         private set
 
     init {
-        text = formatInstant(value)
+        text = formatInstant(this.value)
         maxLength = 16
         allowedChars = "0123456789. :"
     }
@@ -46,19 +48,24 @@ class DateInputNode(
     }
 
     override fun handleKey(event: org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent) {
-        if (event.keyCode == KeyCodes.ENTER) return
+        if (event.keyCode == KeyCodes.ENTER) {
+            commitCurrentValueChange()
+            return
+        }
         super.handleKey(event)
     }
 
+    override fun currentParsedValue(): Any? = parseInstant(text)
+
     private fun formatInstant(instant: Instant): String {
-        val dateTime = LocalDateTime.ofInstant(instant, zoneId)
+        val dateTime = LocalDateTime.ofInstant(instant, this.zoneId)
         return formatter.format(dateTime)
     }
 
     private fun parseInstant(text: String): Instant? {
         return try {
             val dateTime = LocalDateTime.parse(text, formatter)
-            dateTime.atZone(zoneId).toInstant()
+            dateTime.atZone(this.zoneId).toInstant()
         } catch (ex: Exception) {
             null
         }

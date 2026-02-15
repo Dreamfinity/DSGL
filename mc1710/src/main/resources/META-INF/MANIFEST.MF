@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Specification-Title: ${modName}
+Specification-Version: ${modVersion}
+Specification-Vendor: ${modAuthor}
+Implementation-Title: ${modId}
+Implementation-Version: ${modVersion}
+Implementation-Vendor: ${modAuthor}
+Implementation-Vendor-Id: ${modGroup}
+Built-For-MC: ${gameVersion}

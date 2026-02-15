@@ -54,13 +54,17 @@ open class ComponentProps(
     var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)? = null,
     var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)? = null,
     var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)? = null,
-    var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null
+    var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null,
+    var onFocusGain: ((FocusGainEvent) -> Unit)? = null,
+    var onFocusLose: ((FocusLoseEvent) -> Unit)? = null,
+    var onInput: ((InputEvent) -> Unit)? = null,
+    var onValueChange: ((ValueChangedEvent) -> Unit)? = null
 )
 
 /** Static text props. */
 open class TextProps(var value: String = "") : ComponentProps()
 /** Dynamic text computed on each rebuild. */
-open class DynamicTextProps(var valueProvider: () -> String, var placeholder: String = "") : TextProps()
+open class DynamicTextProps(var placeholder: String = "", var valueProvider: () -> String) : TextProps()
 /** Multiline text area props. */
 open class TextAreaProps(var placeholder: String = "") : TextProps()
 /** Input node props, driven by [InputType]. */

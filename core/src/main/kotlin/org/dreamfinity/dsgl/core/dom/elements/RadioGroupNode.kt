@@ -8,6 +8,8 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
+import org.dreamfinity.dsgl.core.event.postChange
+import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -18,6 +20,7 @@ class RadioGroupNode(
     var selectedId: String? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    override val focusable: Boolean = true
     var textColor: Int = DsglColors.TEXT
     var boxColor: Int = 0xFF3A3A40.toInt()
     var dotColor: Int = DsglColors.TEXT
@@ -29,7 +32,13 @@ class RadioGroupNode(
             this@RadioGroupNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
                 val index = hitIndex(event.mouseX, event.mouseY)
                 if (index != null) {
+                    val before = selectedId
                     selectedId = variants[index].id
+                    if (selectedId != before) {
+                        val value = selectedId.orEmpty()
+                        postInput(this@RadioGroupNode, value, selectedId)
+                        postChange(this@RadioGroupNode, value, selectedId)
+                    }
                 }
             }
         }

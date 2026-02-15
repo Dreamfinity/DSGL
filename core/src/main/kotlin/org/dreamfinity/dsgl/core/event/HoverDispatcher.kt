@@ -44,7 +44,10 @@ fun updateHover(
 
     val minSize = minOf(prevHoverChain.size, currHoverChain.size)
     var commonPrefixLen = 0
-    while (commonPrefixLen < minSize && prevHoverChain[commonPrefixLen] === currHoverChain[commonPrefixLen]) {
+    while (
+        commonPrefixLen < minSize &&
+        sameHoverNode(prevHoverChain[commonPrefixLen], currHoverChain[commonPrefixLen])
+    ) {
         commonPrefixLen++
     }
 
@@ -63,6 +66,32 @@ fun updateHover(
 
     prevHoverChain.clear()
     prevHoverChain.addAll(currHoverChain)
+}
+
+/**
+ * Treats logically stable nodes as equal across rebuilds.
+ *
+ * Rebuilds create fresh DOM instances, so identity (`===`) alone makes hover diffing
+ * emit synthetic leave/enter events while the cursor is stationary.
+ */
+private fun sameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
+    if (prev === curr) return true
+
+    val prevKey = prev.key
+    val currKey = curr.key
+    if (prevKey != null || currKey != null) {
+        return prevKey != null &&
+            currKey != null &&
+            prevKey == currKey &&
+            prev.javaClass == curr.javaClass
+    }
+
+    // Root is recreated on every rebuild but is conceptually the same hover scope.
+    if (prev.parent == null && curr.parent == null) {
+        return prev.javaClass == curr.javaClass
+    }
+
+    return false
 }
 
 private fun postEnter(target: DOMNode, mouseX: Int, mouseY: Int) {

@@ -18,6 +18,13 @@ object FocusManager {
 
     /** Requests focus for a node, or clears it when null. */
     fun requestFocus(node: DOMNode?) {
+        val previous = focused
+        if (previous === node) return
+
+        if (previous != null) {
+            postBlur(previous, node?.key)
+        }
+
         focused = node
         if (node == null) {
             focusedKey = null
@@ -25,14 +32,13 @@ object FocusManager {
         } else {
             focusedKey = node.key
             focusedPath = buildPath(node)
+            postFocus(node, previous?.key)
         }
     }
 
     /** Clears current focus. */
     fun clearFocus() {
-        focused = null
-        focusedKey = null
-        focusedPath = null
+        requestFocus(null)
     }
 
     /** Walks up to find a focusable ancestor. */

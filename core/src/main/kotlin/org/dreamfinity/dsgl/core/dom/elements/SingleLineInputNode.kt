@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
@@ -12,6 +13,9 @@ import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.postChange
+import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -22,8 +26,10 @@ open class SingleLineInputNode(
     var placeholder: String = "",
     key: Any? = null
 ) : DOMNode(key) {
+    private val initialText: String = text
+
     override val focusable: Boolean = true
-    var text: String = text
+    var text: String = initialText
     var allowedChars: String? = null
     var minLength: Int? = null
     var maxLength: Int? = null
@@ -32,6 +38,8 @@ open class SingleLineInputNode(
     var backgroundColor: Int = 0xFF2E2E33.toInt()
     var focusedBackgroundColor: Int = 0xFF3A3A40.toInt()
     var minContentWidth: Int = 80
+    private var valueAtFocusStart: String = this.text
+    private var dirtySinceFocus: Boolean = false
 
     init {
         EventBus.run {
@@ -42,16 +50,30 @@ open class SingleLineInputNode(
                 if (!FocusManager.isFocused(this@SingleLineInputNode)) return@addEventListener
                 handleKey(event)
             }
+            this@SingleLineInputNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
+                valueAtFocusStart = currentEventValue()
+                dirtySinceFocus = false
+            }
+            this@SingleLineInputNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
+                commitCurrentValueChange()
+            }
         }
     }
 
-    protected open fun displayText(): String = text
+    protected open fun displayText(): String = this.text
+    protected open fun currentEventValue(): String = this.text
+    protected open fun currentParsedValue(): Any? = this.text
 
     protected open fun handleKey(event: KeyboardKeyDownEvent) {
         when (event.keyCode) {
+            KeyCodes.ENTER -> {
+                commitCurrentValueChange()
+            }
             KeyCodes.BACKSPACE -> {
                 if (text.isNotEmpty()) {
+                    val previous = currentEventValue()
                     applyText(text.dropLast(1))
+                    notifyUserValueChanged(previous)
                 }
             }
             else -> {
@@ -61,7 +83,9 @@ open class SingleLineInputNode(
                 if (allowedChars != null && !allowedChars!!.contains(ch)) return
                 val next = text + ch
                 if (!canAcceptText(next)) return
+                val previous = currentEventValue()
                 applyText(next)
+                notifyUserValueChanged(previous)
             }
         }
     }
@@ -77,6 +101,25 @@ open class SingleLineInputNode(
 
     protected open fun applyText(next: String) {
         text = next
+    }
+
+    protected fun commitCurrentValueChange() {
+        val current = currentEventValue()
+        if (!dirtySinceFocus) return
+        if (current == valueAtFocusStart) {
+            dirtySinceFocus = false
+            return
+        }
+        postChange(this, current, currentParsedValue())
+        valueAtFocusStart = current
+        dirtySinceFocus = false
+    }
+
+    protected fun notifyUserValueChanged(previousValue: String) {
+        val current = currentEventValue()
+        if (current == previousValue) return
+        dirtySinceFocus = true
+        postInput(this, current, currentParsedValue())
     }
 
     override fun measure(ctx: UiMeasureContext): Size {

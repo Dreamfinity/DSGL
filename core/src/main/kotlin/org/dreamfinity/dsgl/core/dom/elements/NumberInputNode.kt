@@ -15,7 +15,8 @@ class NumberInputNode(
     var max: Long? = null,
     key: Any? = null
 ) : SingleLineInputNode(value.toString(), placeholder, key) {
-    var value: Long = value
+    private val initialValue: Long = value
+    var value: Long = initialValue
         private set
 
     init {
@@ -23,7 +24,9 @@ class NumberInputNode(
             this@NumberInputNode.addEventListener(Events.WHEEL) { event: MouseWheelEvent ->
                 if (!FocusManager.isFocused(this@NumberInputNode)) return@addEventListener
                 val delta = if (event.dWheel > 0) 1L else -1L
+                val previous = text
                 setValue(this@NumberInputNode.value + delta)
+                notifyUserValueChanged(previous)
             }
         }
     }
@@ -42,11 +45,13 @@ class NumberInputNode(
         }
     }
 
+    override fun currentParsedValue(): Any? = text.toLongOrNull()
+
     private fun setValue(next: Long) {
         var clamped = next
         if (min != null && clamped < min!!) clamped = min!!
         if (max != null && clamped > max!!) clamped = max!!
-        value = clamped
-        text = value.toString()
+        this.value = clamped
+        text = this.value.toString()
     }
 }

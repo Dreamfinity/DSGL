@@ -35,8 +35,10 @@ abstract class DsglWindow {
 
     /**
      * Creates observable state that triggers [invalidate] on change.
+     * TODO(Veritaris): think how to avoid making it private; maybe rework state to be kept
+     * TODO: between re-renders and rebuild inside closure
      */
-    protected fun <T> state(initial: T): MutableState<T> {
+    fun <T> state(initial: T): MutableState<T> {
         return mutableStateOf(initial) { invalidate() }
     }
 

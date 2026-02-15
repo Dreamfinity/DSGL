@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
@@ -12,6 +13,9 @@ import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.postChange
+import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -29,6 +33,8 @@ class TextAreaNode(
     var focusedBackgroundColor: Int = 0xFF3A3A40.toInt()
     var minContentWidth: Int = 200
     var minContentHeight: Int = 60
+    private var valueAtFocusStart: String = text
+    private var dirtySinceFocus: Boolean = false
 
     init {
         EventBus.run {
@@ -39,10 +45,18 @@ class TextAreaNode(
                 if (!FocusManager.isFocused(this@TextAreaNode)) return@addEventListener
                 handleKey(event)
             }
+            this@TextAreaNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
+                valueAtFocusStart = text
+                dirtySinceFocus = false
+            }
+            this@TextAreaNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
+                commitCurrentValueChange()
+            }
         }
     }
 
     private fun handleKey(event: KeyboardKeyDownEvent) {
+        val previous = text
         when (event.keyCode) {
             KeyCodes.BACKSPACE -> {
                 if (text.isNotEmpty()) {
@@ -59,6 +73,21 @@ class TextAreaNode(
                 text += ch
             }
         }
+        if (text != previous) {
+            dirtySinceFocus = true
+            postInput(this, text, text)
+        }
+    }
+
+    private fun commitCurrentValueChange() {
+        if (!dirtySinceFocus) return
+        if (text == valueAtFocusStart) {
+            dirtySinceFocus = false
+            return
+        }
+        postChange(this, text, text)
+        valueAtFocusStart = text
+        dirtySinceFocus = false
     }
 
     private fun isPrintable(ch: Char): Boolean {
