@@ -87,6 +87,14 @@ tasks.named("sourcesJar") {
     dependsOn(generateModMetadata)
 }
 
+tasks.named("devSourcesJar") {
+    dependsOn(generateModMetadata)
+}
+
+tasks.named("dokkaGeneratePublicationHtml") {
+    dependsOn(generateModMetadata)
+}
+
 tasks.named<ProcessResources>("processResources") {
     inputs.properties(modMetadataTokens)
 
