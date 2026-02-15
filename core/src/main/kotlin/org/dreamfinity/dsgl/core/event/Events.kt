@@ -17,5 +17,10 @@ enum class Events {
     KEYDOWN,
     KEYUP,
 
-    DRAG
+    DRAG,
+
+    FOCUS,
+    BLUR,
+    INPUT,
+    CHANGE
 }

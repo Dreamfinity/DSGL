@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
@@ -43,6 +44,10 @@ abstract class DsglScreenHost(
     private val pressedKeys: MutableSet<Int> = HashSet()
     private val hoverChain: MutableList<DOMNode> = mutableListOf()
     private var hoverTarget: DOMNode? = null
+    private var dragCaptureTarget: DOMNode? = null
+    private var dragCaptureKey: Any? = null
+    private var dragCaptureClass: Class<out DOMNode>? = null
+    private var dragCaptureFocusKey: Any? = null
     private var pendingCleanupRoot: DOMNode? = null
 
     override fun initGui() {
@@ -72,9 +77,12 @@ abstract class DsglScreenHost(
         val dy = mouseY - prevY
         updateHover(tree.root, hoverChain, mouseX, mouseY, dx, dy)
         hoverTarget = hoverChain.lastOrNull()
+        if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
+            releaseDragCapture()
+        }
         if (dx != 0 || dy != 0) {
             val moveEvent = MouseMoveEvent(mouseX, mouseY, prevX, prevY)
-            moveEvent.target = hoverTarget
+            moveEvent.target = dragCaptureTarget ?: hoverTarget
             EventBus.post(moveEvent)
         }
         lastMoveX = mouseX
@@ -82,7 +90,6 @@ abstract class DsglScreenHost(
         adapter.paint(commands)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
-        println("Re-renders: ${rendersCount}, re-paints: ${adapter.paintsCount}")
     }
 
     override fun keyTyped(typedChar: Char, keyCode: Int) {
@@ -91,13 +98,14 @@ abstract class DsglScreenHost(
     }
 
     override fun onGuiClosed() {
+        FocusManager.clearFocus()
         flushPendingCleanup()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }
         hoverChain.clear()
         hoverTarget = null
-        FocusManager.clearFocus()
+        releaseDragCapture()
         window.onClose()
         super.onGuiClosed()
     }
@@ -136,7 +144,10 @@ abstract class DsglScreenHost(
             domTree = window.render()
             needsRender = false
             needsLayout = true
-            domTree?.root?.let { root -> FocusManager.retainFocus(root) }
+            domTree?.root?.let { root ->
+                FocusManager.retainFocus(root)
+                restoreDragCapture(root)
+            }
         }
     }
 
@@ -158,31 +169,55 @@ abstract class DsglScreenHost(
     }
 
     override fun handleMouseInput() {
+        updateSize(force = false)
+        rebuildIfNeeded()
+        domTree?.let { tree ->
+            if (needsLayout) {
+                tree.render(adapter, lastWidth, lastHeight)
+                needsLayout = false
+            }
+        }
+
         val mouseX = Mouse.getEventX() * width / mc.displayWidth
         val mouseY = height - Mouse.getEventY() * height / mc.displayHeight - 1
         val dWheel = Mouse.getDWheel()
         val mouseButton = Mouse.getEventButton()
+
+        refreshHoverTarget(mouseX, mouseY)
 
         if (mouseButton > 2) return
 
         if (Mouse.getEventButtonState()) {
             eventButton = mouseButton
             lastMouseEvent = net.minecraft.client.Minecraft.getSystemTime()
-            mapButton(mouseButton)?.let {
-                val event = MouseDownEvent(mouseX, mouseY, it)
+            mapButton(mouseButton)?.let { mappedButton ->
+                val event = MouseDownEvent(mouseX, mouseY, mappedButton)
                 event.target = hoverTarget
                 EventBus.post(event)
+                if (mappedButton == MouseButton.LEFT) {
+                    val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget)
+                    if (captureTarget != null) {
+                        setDragCapture(captureTarget)
+                    } else if (dragCaptureTarget != null) {
+                        releaseDragCapture()
+                    }
+                }
             }
         } else if (mouseButton != -1) {
+            val releaseTarget = dragCaptureTarget ?: hoverTarget
+            val hadDragCapture = dragCaptureTarget != null
             eventButton = -1
             mapButton(mouseButton)?.let {
                 val upEvent = MouseUpEvent(mouseX, mouseY, it)
-                upEvent.target = hoverTarget
+                upEvent.target = releaseTarget
                 EventBus.post(upEvent)
-                val clickEvent = MouseClickEvent(mouseX, mouseY, it)
-                clickEvent.target = hoverTarget
-                EventBus.post(clickEvent)
+                if (!hadDragCapture) {
+                    val clickEvent = MouseClickEvent(mouseX, mouseY, it)
+                    clickEvent.target = hoverTarget
+                    EventBus.post(clickEvent)
+                }
             }
+            releaseDragCapture()
         } else if (eventButton != -1 && lastMouseEvent > 0L) {
             mapButton(eventButton)?.let {
                 val dx = mouseX - lastMouseX
@@ -195,7 +230,7 @@ abstract class DsglScreenHost(
                         dy,
                         it
                     )
-                    dragEvent.target = hoverTarget
+                    dragEvent.target = dragCaptureTarget ?: hoverTarget
                     EventBus.post(dragEvent)
                 }
             }
@@ -225,5 +260,75 @@ abstract class DsglScreenHost(
             EventBus.run { root.clearListenersDeep() }
             pendingCleanupRoot = null
         }
+    }
+
+    private fun setDragCapture(target: DOMNode) {
+        dragCaptureTarget = target
+        dragCaptureKey = target.key
+        dragCaptureClass = target.javaClass
+        dragCaptureFocusKey = FocusManager.focusedNode()?.key
+    }
+
+    private fun releaseDragCapture() {
+        RangeInputNode.clearActiveDrag()
+        dragCaptureTarget = null
+        dragCaptureKey = null
+        dragCaptureClass = null
+        dragCaptureFocusKey = null
+    }
+
+    private fun resolveDragCaptureTarget(start: DOMNode?): DOMNode? {
+        var current = start
+        while (current != null) {
+            if (current is RangeInputNode) return current
+            current = current.parent
+        }
+        return null
+    }
+
+    private fun restoreDragCapture(root: DOMNode) {
+        if (dragCaptureTarget == null) return
+        val key = dragCaptureKey
+        val cls = dragCaptureClass
+        if (key == null || cls == null) {
+            releaseDragCapture()
+            return
+        }
+
+        val restored = findByKeyAndClass(root, key, cls)
+        if (restored != null) {
+            dragCaptureTarget = restored
+        } else {
+            releaseDragCapture()
+        }
+    }
+
+    private fun findByKeyAndClass(
+        node: DOMNode,
+        key: Any,
+        cls: Class<out DOMNode>
+    ): DOMNode? {
+        if (node.key == key && node.javaClass == cls) return node
+        node.children.forEach { child ->
+            val found = findByKeyAndClass(child, key, cls)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun hasFocusChangedSinceCapture(): Boolean {
+        if (dragCaptureFocusKey == null) return false
+        val currentFocusKey = FocusManager.focusedNode()?.key
+        return currentFocusKey != dragCaptureFocusKey
+    }
+
+    private fun refreshHoverTarget(mouseX: Int, mouseY: Int) {
+        val tree = domTree ?: return
+        if (needsLayout) {
+            tree.render(adapter, lastWidth, lastHeight)
+            needsLayout = false
+        }
+        val chain = collectHoverChain(tree.root, mouseX, mouseY)
+        hoverTarget = chain.lastOrNull()
     }
 }

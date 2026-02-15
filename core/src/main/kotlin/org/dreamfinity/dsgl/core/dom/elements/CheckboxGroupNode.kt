@@ -8,6 +8,8 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
+import org.dreamfinity.dsgl.core.event.postChange
+import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -20,6 +22,7 @@ class CheckboxGroupNode(
     var maxSelected: Int? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    override val focusable: Boolean = true
     private val selectedIds: MutableSet<String> = selected.toMutableSet()
     var textColor: Int = DsglColors.TEXT
     var boxColor: Int = 0xFF3A3A40.toInt()
@@ -32,7 +35,14 @@ class CheckboxGroupNode(
             this@CheckboxGroupNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
                 val index = hitIndex(event.mouseX, event.mouseY)
                 if (index != null) {
+                    val before = valueString()
                     toggle(variants[index].id)
+                    val after = valueString()
+                    if (after != before) {
+                        val parsed = selected()
+                        postInput(this@CheckboxGroupNode, after, parsed)
+                        postChange(this@CheckboxGroupNode, after, parsed)
+                    }
                 }
             }
         }
@@ -98,5 +108,9 @@ class CheckboxGroupNode(
             if (max != null && selectedIds.size >= max) return
             selectedIds.add(id)
         }
+    }
+
+    private fun valueString(): String {
+        return selectedIds.toList().sorted().joinToString(",")
     }
 }

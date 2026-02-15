@@ -15,7 +15,9 @@ object EventBus {
     private val nonBubblingEvents: Set<Events> = setOf(
         Events.MOUSEENTER,
         Events.MOUSELEAVE,
-        Events.MOUSEOVER
+        Events.MOUSEOVER,
+        Events.FOCUS,
+        Events.BLUR
     )
 
     private fun getEventMap(eventType: Events): MutableMap<DOMNode, ArrayList<EventCallback>> {
@@ -107,6 +109,7 @@ object EventBus {
             Events.MOUSEMOVE -> allListeners
             Events.DRAG -> allListeners
             Events.MOUSEENTER -> allListeners
+            Events.FOCUS, Events.BLUR, Events.INPUT, Events.CHANGE -> allListeners
         }
 
         validListeners.forEach { (_, callbacks) ->
