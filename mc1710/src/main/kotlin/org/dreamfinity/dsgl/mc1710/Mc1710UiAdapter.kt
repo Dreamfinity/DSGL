@@ -159,7 +159,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             path = path.substring(1)
         }
         path = path.replace("..", "_")
-        val baseDir = File(mc.mcDataDir, "dsgl_cache")
+        val baseDir = File(mc.mcDataDir, "dsgl/cache/downloads")
         return File(baseDir, host + File.separator + path)
     }
 

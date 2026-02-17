@@ -406,7 +406,7 @@ class ShowcaseWindow : DsglWindow() {
                 0xFFF7B25B.toInt()
             )
             writeDemoImage(
-                File(dataDir, "dsgl_cache/demo.local/assets/showcase_http.png"),
+                File(dataDir, "dsgl/cache/downloads/demo.local/assets/showcase_http.png"),
                 0xFF2D8757.toInt(),
                 0xFFC8E66B.toInt()
             )
