@@ -6,7 +6,7 @@ import java.util.*
 object ScissorContext {
     val instance = ScissorContext
     val stack: Deque<ScissorsArea> = ArrayDeque()
-    var scissorsEnabledByContext = false;
+    var scissorsEnabledByContext = false
 
     fun push(x: Number, y: Number, width: Number, height: Number): ScissorsArea {
         if (stack.isEmpty()) {
@@ -21,19 +21,22 @@ object ScissorContext {
     }
 
     fun pop(): ScissorsArea? {
-        return if (!stack.isEmpty()) {
-            val previousScissorsArea = stack.pop()
-            GL11.glScissor(
-                previousScissorsArea.x,
-                previousScissorsArea.y,
-                previousScissorsArea.width,
-                previousScissorsArea.height
-            )
-            previousScissorsArea
+        if (stack.isEmpty()) return null
+
+        val removed = stack.pop()
+        val current = stack.peekFirst()
+        if (current != null) {
+            GL11.glScissor(current.x, current.y, current.width, current.height)
         } else {
             if (scissorsEnabledByContext) GL11.glDisable(GL11.GL_SCISSOR_TEST)
             scissorsEnabledByContext = false
-            null
+        }
+        return removed
+    }
+
+    fun clear() {
+        while (stack.isNotEmpty()) {
+            pop()
         }
     }
 }
