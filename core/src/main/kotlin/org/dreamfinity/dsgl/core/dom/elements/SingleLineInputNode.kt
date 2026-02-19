@@ -5,17 +5,29 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.MouseDownEvent
+import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.event.postChange
 import org.dreamfinity.dsgl.core.event.postInput
+import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.dom.elements.support.KeyedStateStore
+import org.dreamfinity.dsgl.core.dom.elements.support.TextChangeTracker
+import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
+import org.dreamfinity.dsgl.core.dom.elements.support.TextEditShortcutDispatcher
+import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutAction
+import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutCallbacks
+import org.dreamfinity.dsgl.core.dom.elements.support.UndoRedoHistory
+import org.dreamfinity.dsgl.core.dom.elements.support.WordUndoGrouping
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -26,6 +38,30 @@ open class SingleLineInputNode(
     var placeholder: String = "",
     key: Any? = null
 ) : DOMNode(key) {
+    companion object {
+        private data class UndoSnapshot(
+            val text: String,
+            val caretIndex: Int,
+            val selectionAnchor: Int?
+        )
+
+        private data class PersistedState(
+            val caretIndex: Int,
+            val selectionAnchor: Int?,
+            val undoHistory: List<UndoSnapshot>,
+            val redoHistory: List<UndoSnapshot>
+        )
+
+        private val persistedByKey: KeyedStateStore<PersistedState> = KeyedStateStore()
+        private var activeSelectionDragIdentity: Any? = null
+
+        fun clearActiveDrag() {
+            activeSelectionDragIdentity = null
+
+        }
+    }
+
+    override val styleType: String = "input"
     private val initialText: String = text
 
     override val focusable: Boolean = true
@@ -38,24 +74,56 @@ open class SingleLineInputNode(
     var backgroundColor: Int = 0xFF2E2E33.toInt()
     var focusedBackgroundColor: Int = 0xFF3A3A40.toInt()
     var minContentWidth: Int = 80
-    private var valueAtFocusStart: String = this.text
-    private var dirtySinceFocus: Boolean = false
+    var selectionColor: Int = 0x664A90E2
+    var caretBlinkPeriodMs: Long = 500L
+
+    private val editState: TextEditState = TextEditState(caretIndex = this.text.length)
+    private val undoLimit: Int = 32
+    private val history: UndoRedoHistory<UndoSnapshot> = UndoRedoHistory(undoLimit)
+    private val typingUndoGrouping: WordUndoGrouping = WordUndoGrouping()
+    private val changeTracker: TextChangeTracker = TextChangeTracker(this.text)
+    private var lastMeasureText: ((String) -> Int)? = null
+
+    init {
+        restorePersistedState()
+    }
 
     init {
         EventBus.run {
-            this@SingleLineInputNode.addEventListener(Events.CLICK) { _: MouseClickEvent ->
-                FocusManager.requestFocus(this@SingleLineInputNode)
+            this@SingleLineInputNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
+                if (this@SingleLineInputNode.styleDisabled) return@addEventListener
+                if (event.mouseButton != MouseButton.LEFT) return@addEventListener
+                if (!this@SingleLineInputNode.bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
+                handlePointerDown(event.mouseX)
+            }
+            this@SingleLineInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
+                if (this@SingleLineInputNode.styleDisabled) return@addEventListener
+                if (!isActiveSelectionDragTarget()) return@addEventListener
+                val currentX = event.lastMouseX + event.dx
+                updateSelectionFromPointerDrag(currentX)
+            }
+            this@SingleLineInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                if (event.mouseButton != MouseButton.LEFT) return@addEventListener
+                if (!isActiveSelectionDragTarget()) return@addEventListener
+                clearActiveDrag()
+                if (!editState.hasSelection()) {
+                    editState.clearSelection()
+                }
+                editState.resetBlinkClock()
+                persistState()
             }
             this@SingleLineInputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 if (!FocusManager.isFocused(this@SingleLineInputNode)) return@addEventListener
                 handleKey(event)
             }
             this@SingleLineInputNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
-                valueAtFocusStart = currentEventValue()
-                dirtySinceFocus = false
+                changeTracker.onFocus(currentEventValue())
+                editState.resetBlinkClock()
             }
             this@SingleLineInputNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
                 commitCurrentValueChange()
+                persistState()
             }
         }
     }
@@ -63,35 +131,44 @@ open class SingleLineInputNode(
     protected open fun displayText(): String = this.text
     protected open fun currentEventValue(): String = this.text
     protected open fun currentParsedValue(): Any? = this.text
+    protected open fun allowClipboardCopy(): Boolean = true
+    protected open fun allowClipboardCut(): Boolean = true
+    protected open fun allowClipboardPaste(): Boolean = true
+
+    protected open fun sanitizePastedText(raw: String): String {
+        return raw.replace("\r", "").replace("\n", "")
+    }
 
     protected open fun handleKey(event: KeyboardKeyDownEvent) {
+        editState.clampToLength(text.length)
+        if (handleClipboardShortcut(event)) return
+
         when (event.keyCode) {
             KeyCodes.ENTER -> {
                 commitCurrentValueChange()
+                editState.resetBlinkClock()
+                persistState()
             }
-            KeyCodes.BACKSPACE -> {
-                if (text.isNotEmpty()) {
-                    val previous = currentEventValue()
-                    applyText(text.dropLast(1))
-                    notifyUserValueChanged(previous)
-                }
-            }
+
+            KeyCodes.LEFT -> moveCaretLeft(KeyModifiers.shiftDown)
+            KeyCodes.RIGHT -> moveCaretRight(KeyModifiers.shiftDown)
+            KeyCodes.HOME -> moveCaretToBoundary(start = true, extend = KeyModifiers.shiftDown)
+            KeyCodes.END -> moveCaretToBoundary(start = false, extend = KeyModifiers.shiftDown)
+            KeyCodes.BACKSPACE -> deleteBeforeCaret()
+            KeyCodes.DELETE -> deleteAfterCaret()
             else -> {
                 var ch = event.keyChar
                 if (!isPrintable(ch)) return
                 ch = KeyInput.applyShift(ch, KeyModifiers.shiftDown)
                 if (allowedChars != null && !allowedChars!!.contains(ch)) return
-                val next = text + ch
-                if (!canAcceptText(next)) return
-                val previous = currentEventValue()
-                applyText(next)
-                notifyUserValueChanged(previous)
+                val recordUndo = shouldRecordTypingUndo(ch)
+                replaceSelectionWith(ch.toString(), recordUndo = recordUndo)
             }
         }
     }
 
     protected fun isPrintable(ch: Char): Boolean {
-        return ch >= ' ' && ch.code != 127
+        return TextEditOps.isPrintable(ch)
     }
 
     protected open fun canAcceptText(next: String): Boolean {
@@ -105,24 +182,19 @@ open class SingleLineInputNode(
 
     protected fun commitCurrentValueChange() {
         val current = currentEventValue()
-        if (!dirtySinceFocus) return
-        if (current == valueAtFocusStart) {
-            dirtySinceFocus = false
-            return
+        changeTracker.commitIfNeeded(current) {
+            postChange(this, current, currentParsedValue())
         }
-        postChange(this, current, currentParsedValue())
-        valueAtFocusStart = current
-        dirtySinceFocus = false
     }
 
     protected fun notifyUserValueChanged(previousValue: String) {
         val current = currentEventValue()
-        if (current == previousValue) return
-        dirtySinceFocus = true
+        if (!changeTracker.markInputChange(previousValue, current)) return
         postInput(this, current, currentParsedValue())
     }
 
     override fun measure(ctx: UiMeasureContext): Size {
+        lastMeasureText = { value -> ctx.measureText(value) }
         val display = if (text.isNotEmpty()) displayText() else placeholder
         val contentWidth = width ?: maxOf(ctx.measureText(display), minContentWidth)
         val contentHeight = height ?: ctx.fontHeight
@@ -133,19 +205,306 @@ open class SingleLineInputNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val focused = FocusManager.isFocused(this)
-        val bg = if (focused) focusedBackgroundColor else backgroundColor
+        val bg = if (focused && !styleDisabled) focusedBackgroundColor else backgroundColor
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, bg))
+        addBackgroundImageCommand(out)
         addBorderCommands(out)
 
         val showPlaceholder = text.isEmpty() && !focused && placeholder.isNotEmpty()
         val drawText = if (showPlaceholder) placeholder else displayText()
-        if (drawText.isNotEmpty()) {
-            val contentWidth = contentWidth()
-            val contentHeight = contentHeight()
-            val textX = contentX()
-            val textY = contentY() + (contentHeight - ctx.fontHeight) / 2
-            val color = if (showPlaceholder) placeholderColor else textColor
-            out.add(RenderCommand.DrawText(drawText, textX, textY, color))
+        val innerX = contentX()
+        val innerY = contentY()
+        val innerWidth = contentWidth()
+        val innerHeight = contentHeight()
+        val textY = innerY + (innerHeight - ctx.fontHeight) / 2
+        lastMeasureText = { value -> ctx.measureText(value) }
+        editState.clampToLength(text.length)
+
+        if (innerWidth > 0 && innerHeight > 0) {
+            out.add(RenderCommand.PushClip(innerX, innerY, innerWidth, innerHeight))
         }
+
+        if (!showPlaceholder && focused && editState.hasSelection()) {
+            val start = editState.selectionStart().coerceIn(0, drawText.length)
+            val end = editState.selectionEnd().coerceIn(0, drawText.length)
+            if (end > start) {
+                val startX = innerX + ctx.measureText(drawText.substring(0, start))
+                val endX = innerX + ctx.measureText(drawText.substring(0, end))
+                val width = (endX - startX).coerceAtLeast(1)
+                out.add(RenderCommand.DrawRect(startX, textY, width, ctx.fontHeight, selectionColor))
+            }
+        }
+
+        if (drawText.isNotEmpty()) {
+            val color = if (showPlaceholder) placeholderColor else textColor
+            out.add(RenderCommand.DrawText(drawText, innerX, textY, color))
+        }
+
+        if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {
+            val caretBaseText = drawText.substring(0, editState.caretIndex.coerceIn(0, drawText.length))
+            val caretX = innerX + ctx.measureText(caretBaseText)
+            out.add(RenderCommand.DrawRect(caretX, textY, 1, ctx.fontHeight, textColor))
+        }
+
+        if (innerWidth > 0 && innerHeight > 0) {
+            out.add(RenderCommand.PopClip)
+        }
+
+    }
+
+    fun shouldCaptureTextSelectionDrag(mouseX: Int, mouseY: Int): Boolean {
+        if (styleDisabled) return false
+        return bounds.contains(mouseX, mouseY)
+    }
+
+    private fun handlePointerDown(mouseX: Int) {
+        resetTypingUndoGroup()
+        val target = caretIndexFromMouseX(mouseX)
+        editState.selectionAnchor = target
+        editState.caretIndex = target
+        editState.clampToLength(text.length)
+        editState.resetBlinkClock()
+        FocusManager.requestFocus(this)
+        activeSelectionDragIdentity = dragIdentity()
+        persistState()
+    }
+
+    private fun updateSelectionFromPointerDrag(mouseX: Int) {
+        resetTypingUndoGroup()
+        if (editState.selectionAnchor == null) {
+            editState.selectionAnchor = editState.caretIndex
+        }
+        editState.caretIndex = caretIndexFromMouseX(mouseX)
+        editState.clampToLength(text.length)
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    private fun moveCaretLeft(extend: Boolean) {
+        resetTypingUndoGroup()
+        if (!extend && editState.hasSelection()) {
+            editState.caretIndex = editState.selectionStart()
+            editState.clearSelection()
+        } else {
+            val next = (editState.caretIndex - 1).coerceAtLeast(0)
+            moveCaret(next, extend)
+        }
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    private fun moveCaretRight(extend: Boolean) {
+        resetTypingUndoGroup()
+        if (!extend && editState.hasSelection()) {
+            editState.caretIndex = editState.selectionEnd()
+            editState.clearSelection()
+        } else {
+            val next = (editState.caretIndex + 1).coerceAtMost(text.length)
+            moveCaret(next, extend)
+        }
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    private fun moveCaretToBoundary(start: Boolean, extend: Boolean) {
+        resetTypingUndoGroup()
+        val next = if (start) 0 else text.length
+        moveCaret(next, extend)
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    private fun moveCaret(next: Int, extend: Boolean) {
+        TextEditOps.moveCaretWithSelection(editState, next, text.length, extend)
+    }
+
+    private fun deleteBeforeCaret() {
+        resetTypingUndoGroup()
+        if (replaceSelectionWith("", recordUndo = true)) return
+        if (editState.caretIndex <= 0 || text.isEmpty()) return
+        val start = (editState.caretIndex - 1).coerceAtLeast(0)
+        val end = editState.caretIndex.coerceIn(0, text.length)
+        replaceRange(start, end, "", recordUndo = true)
+    }
+
+    private fun deleteAfterCaret() {
+        resetTypingUndoGroup()
+        if (replaceSelectionWith("", recordUndo = true)) return
+        if (editState.caretIndex >= text.length || text.isEmpty()) return
+        val start = editState.caretIndex.coerceIn(0, text.length)
+        val end = (start + 1).coerceAtMost(text.length)
+        replaceRange(start, end, "", recordUndo = true)
+    }
+
+    private fun replaceSelectionWith(insert: String, recordUndo: Boolean = false): Boolean {
+        val (start, end) = TextEditOps.selectionOrCaretBounds(editState)
+        if (start == end && insert.isEmpty()) return false
+        return replaceRange(start, end, insert, recordUndo)
+    }
+
+    private fun replaceRange(start: Int, end: Int, insert: String, recordUndo: Boolean = false): Boolean {
+        val safeStart = start.coerceIn(0, text.length)
+        val safeEnd = end.coerceIn(safeStart, text.length)
+        val previous = currentEventValue()
+        val next = TextEditOps.replaceRange(text, safeStart, safeEnd, insert)
+        if (!canAcceptText(next)) return false
+        if (next == text) return false
+        history.clearRedo()
+        if (recordUndo && (safeStart != safeEnd || insert.isNotEmpty())) {
+            pushUndoSnapshot()
+        }
+        applyText(next)
+        editState.caretIndex = (safeStart + insert.length).coerceIn(0, text.length)
+        editState.clearSelection()
+        editState.resetBlinkClock()
+        persistState()
+        notifyUserValueChanged(previous)
+        return true
+    }
+
+    private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean {
+        return TextEditShortcutDispatcher.dispatch(
+            event,
+            TextShortcutCallbacks(
+                canCopy = allowClipboardCopy(),
+                canCut = allowClipboardCut(),
+                canPaste = allowClipboardPaste(),
+                hasSelection = { editState.hasSelection() },
+                selectAll = {
+                    TextEditOps.selectAll(editState, text.length)
+                },
+                copySelection = { ClipboardBridge.writeText(selectedText()) },
+                cutSelection = {
+                    ClipboardBridge.writeText(selectedText())
+                    replaceSelectionWith("", recordUndo = true)
+                },
+                normalizePaste = { raw -> sanitizePastedText(raw) },
+                pasteSelection = { paste -> replaceSelectionWith(paste, recordUndo = true) },
+                undo = { undoLastEdit() },
+                redo = { redoLastUndo() },
+                beforeHandled = { resetTypingUndoGroup() },
+                afterHandled = { action ->
+                    editState.resetBlinkClock()
+                    if (action != TextShortcutAction.COPY) {
+                        persistState()
+                    }
+                }
+            )
+        )
+    }
+
+    private fun pushUndoSnapshot() {
+        history.pushUndo(
+            UndoSnapshot(
+                text = text,
+                caretIndex = editState.caretIndex,
+                selectionAnchor = editState.selectionAnchor
+            )
+        )
+    }
+
+    private fun currentSnapshot(): UndoSnapshot {
+        return UndoSnapshot(
+            text = text,
+            caretIndex = editState.caretIndex,
+            selectionAnchor = editState.selectionAnchor
+        )
+    }
+
+    private fun undoLastEdit(): Boolean {
+        val snapshot = history.undo(currentSnapshot()) ?: return false
+        val previous = currentEventValue()
+        applyText(snapshot.text)
+        editState.caretIndex = snapshot.caretIndex.coerceIn(0, text.length)
+        editState.selectionAnchor = snapshot.selectionAnchor?.coerceIn(0, text.length)
+        editState.clampToLength(text.length)
+        notifyUserValueChanged(previous)
+        return true
+    }
+
+    private fun redoLastUndo(): Boolean {
+        val snapshot = history.redo(currentSnapshot()) ?: return false
+        val previous = currentEventValue()
+        applyText(snapshot.text)
+        editState.caretIndex = snapshot.caretIndex.coerceIn(0, text.length)
+        editState.selectionAnchor = snapshot.selectionAnchor?.coerceIn(0, text.length)
+        editState.clampToLength(text.length)
+        notifyUserValueChanged(previous)
+        return true
+    }
+
+    private fun shouldRecordTypingUndo(ch: Char): Boolean {
+        return typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
+    }
+
+    private fun resetTypingUndoGroup() {
+        typingUndoGrouping.reset()
+    }
+
+    private fun selectedText(): String {
+        return TextEditOps.selectedText(text, editState)
+    }
+
+    private fun caretIndexFromMouseX(mouseX: Int): Int {
+        val rendered = displayText()
+        val localX = (mouseX - contentX()).coerceAtLeast(0)
+        val measure = lastMeasureText ?: { value: String -> value.length * 6 }
+        if (rendered.isEmpty() || localX <= 0) return 0
+
+        var previousWidth = 0
+        var index = 0
+        while (index < rendered.length) {
+            val nextIndex = index + 1
+            val nextWidth = measure(rendered.substring(0, nextIndex))
+            val midpoint = previousWidth + ((nextWidth - previousWidth) / 2)
+            if (localX < midpoint) {
+                return index
+            }
+            previousWidth = nextWidth
+            index = nextIndex
+        }
+        return rendered.length
+    }
+
+    private fun dragIdentity(): Any {
+        return TextEditOps.dragIdentity(key, this)
+    }
+
+    private fun isActiveSelectionDragTarget(): Boolean {
+        val active = activeSelectionDragIdentity ?: return false
+        return active == dragIdentity()
+    }
+
+    private fun persistState() {
+        persistedByKey.save(
+            key,
+            PersistedState(
+                caretIndex = editState.caretIndex,
+                selectionAnchor = editState.selectionAnchor,
+                undoHistory = history.undoHistory(),
+                redoHistory = history.redoHistory()
+            )
+        )
+    }
+
+    private fun restorePersistedState() {
+        val persisted = persistedByKey.load(key) ?: return
+        editState.caretIndex = persisted.caretIndex.coerceIn(0, text.length)
+        editState.selectionAnchor = persisted.selectionAnchor?.coerceIn(0, text.length)
+        history.restore(persisted.undoHistory, persisted.redoHistory)
+    }
+
+    override fun defaultBackgroundColor(): Int? = backgroundColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            backgroundColor = value
+        }
+    }
+
+    override fun defaultForegroundColor(): Int = textColor
+
+    override fun applyForegroundColor(value: Int) {
+        textColor = value
     }
 }

@@ -20,6 +20,7 @@ class RadioGroupNode(
     var selectedId: String? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "input"
     override val focusable: Boolean = true
     var textColor: Int = DsglColors.TEXT
     var boxColor: Int = 0xFF3A3A40.toInt()
@@ -30,6 +31,7 @@ class RadioGroupNode(
     init {
         EventBus.run {
             this@RadioGroupNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
+                if (this@RadioGroupNode.styleDisabled) return@addEventListener
                 val index = hitIndex(event.mouseX, event.mouseY)
                 if (index != null) {
                     val before = selectedId
@@ -89,5 +91,20 @@ class RadioGroupNode(
         val index = (mouseY - cy) / lineHeight
         if (index < 0 || index >= variants.size) return null
         return index
+    }
+
+    override fun defaultForegroundColor(): Int = textColor
+
+    override fun applyForegroundColor(value: Int) {
+        textColor = value
+        dotColor = value
+    }
+
+    override fun defaultBackgroundColor(): Int? = boxColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            boxColor = value
+        }
     }
 }

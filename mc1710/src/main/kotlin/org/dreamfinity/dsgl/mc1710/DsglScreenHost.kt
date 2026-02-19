@@ -7,13 +7,19 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
+import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
+import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
+import org.dreamfinity.dsgl.core.input.ClipboardAccess
+import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import java.time.Instant
 import java.time.ZoneId
+import java.io.File
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
@@ -49,9 +55,29 @@ abstract class DsglScreenHost(
     private var dragCaptureClass: Class<out DOMNode>? = null
     private var dragCaptureFocusKey: Any? = null
     private var pendingCleanupRoot: DOMNode? = null
+    private var activeTarget: DOMNode? = null
+    private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
+        override fun readText(): String {
+            return try {
+                getClipboardString() ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+        }
+
+        override fun writeText(value: String) {
+            try {
+                setClipboardString(value)
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     override fun initGui() {
         adapter = Mc1710UiAdapter(mc)
+        ClipboardBridge.install(clipboardAccess)
+        StyleEngine.setStylesDirectory(File(mc.mcDataDir, "dsgl/styles"))
+        StyleEngine.forceReloadStylesheets()
         window = windowFactory()
         window.attachHost(this)
         window.markOpened(Instant.now(), ZoneId.systemDefault())
@@ -98,7 +124,9 @@ abstract class DsglScreenHost(
     }
 
     override fun onGuiClosed() {
+        ClipboardBridge.install(null)
         FocusManager.clearFocus()
+        clearActiveTarget()
         flushPendingCleanup()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
@@ -153,9 +181,18 @@ abstract class DsglScreenHost(
 
     override fun handleKeyboardInput() {
         super.handleKeyboardInput()
+        KeyModifiers.sync(
+            shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT),
+            control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
+            meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA)
+        )
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
         if (Keyboard.getEventKeyState()) {
+            if (keyCode == Keyboard.KEY_F6) {
+                StyleEngine.forceReloadStylesheets()
+                requestRebuild("style reload")
+            }
             if (pressedKeys.add(keyCode)) {
                 EventBus.post(KeyboardKeyDownEvent(keyChar, keyCode))
             }
@@ -195,7 +232,8 @@ abstract class DsglScreenHost(
                 event.target = hoverTarget
                 EventBus.post(event)
                 if (mappedButton == MouseButton.LEFT) {
-                    val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget)
+                    setActiveTarget(event.target ?: hoverTarget)
+                    val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
                     if (captureTarget != null) {
                         setDragCapture(captureTarget)
                     } else if (dragCaptureTarget != null) {
@@ -217,6 +255,7 @@ abstract class DsglScreenHost(
                     EventBus.post(clickEvent)
                 }
             }
+            clearActiveTarget()
             releaseDragCapture()
         } else if (eventButton != -1 && lastMouseEvent > 0L) {
             mapButton(eventButton)?.let {
@@ -238,7 +277,7 @@ abstract class DsglScreenHost(
 
         if (dWheel != 0) {
             val wheelEvent = MouseWheelEvent(mouseX, mouseY, dWheel)
-            wheelEvent.target = hoverTarget
+            wheelEvent.target = resolveWheelTarget()
             EventBus.post(wheelEvent)
         }
 
@@ -271,16 +310,35 @@ abstract class DsglScreenHost(
 
     private fun releaseDragCapture() {
         RangeInputNode.clearActiveDrag()
+        SingleLineInputNode.clearActiveDrag()
+        TextAreaNode.clearActiveDrag()
         dragCaptureTarget = null
         dragCaptureKey = null
         dragCaptureClass = null
         dragCaptureFocusKey = null
     }
 
-    private fun resolveDragCaptureTarget(start: DOMNode?): DOMNode? {
+    private fun setActiveTarget(target: DOMNode?) {
+        if (target?.styleDisabled == true) return
+        if (activeTarget === target) return
+        activeTarget?.setActiveState(false)
+        activeTarget = target
+        activeTarget?.setActiveState(true)
+    }
+
+    private fun clearActiveTarget() {
+        activeTarget?.setActiveState(false)
+        activeTarget = null
+    }
+
+    private fun resolveDragCaptureTarget(start: DOMNode?, mouseX: Int, mouseY: Int): DOMNode? {
         var current = start
         while (current != null) {
-            if (current is RangeInputNode) return current
+            when (current) {
+                is RangeInputNode -> return current
+                is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
+                is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
+            }
             current = current.parent
         }
         return null
@@ -330,5 +388,25 @@ abstract class DsglScreenHost(
         }
         val chain = collectHoverChain(tree.root, mouseX, mouseY)
         hoverTarget = chain.lastOrNull()
+    }
+
+    private fun resolveWheelTarget(): DOMNode? {
+        val focused = FocusManager.focusedNode()
+        if (focused is TextAreaNode) {
+            val hovered = hoverTarget
+            if (!isSameOrAncestor(focused, hovered)) {
+                return focused
+            }
+        }
+        return hoverTarget
+    }
+
+    private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
+        var current = node
+        while (current != null) {
+            if (current === candidate) return true
+            current = current.parent
+        }
+        return false
     }
 }

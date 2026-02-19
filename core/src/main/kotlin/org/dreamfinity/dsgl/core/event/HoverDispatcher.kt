@@ -19,6 +19,7 @@ internal fun collectHoverChain(
     mouseY: Int,
     out: MutableList<DOMNode>
 ): Boolean {
+    if (root.styleDisabled) return false
     if (!root.bounds.contains(mouseX, mouseY)) return false
     out.add(root)
     for (i in root.children.size - 1 downTo 0) {
@@ -46,21 +47,26 @@ fun updateHover(
     var commonPrefixLen = 0
     while (
         commonPrefixLen < minSize &&
-        sameHoverNode(prevHoverChain[commonPrefixLen], currHoverChain[commonPrefixLen])
+        isSameHoverNode(prevHoverChain[commonPrefixLen], currHoverChain[commonPrefixLen])
     ) {
         commonPrefixLen++
     }
 
     for (i in prevHoverChain.size - 1 downTo commonPrefixLen) {
-        postLeave(prevHoverChain[i], mouseX, mouseY)
+        prevHoverChain[i].setHoveredState(false)
+        postMouseLeaveEvent(prevHoverChain[i], mouseX, mouseY)
     }
     for (i in commonPrefixLen until currHoverChain.size) {
-        postEnter(currHoverChain[i], mouseX, mouseY)
+        currHoverChain[i].setHoveredState(true)
+        postMouseEnterEvent(currHoverChain[i], mouseX, mouseY)
+    }
+    for (i in 0 until commonPrefixLen) {
+        currHoverChain[i].setHoveredState(true)
     }
 
     if (mouseDX != 0 || mouseDY != 0) {
         for (i in 0 until currHoverChain.size) {
-            postOver(currHoverChain[i], mouseX, mouseY)
+            postMouseOverEvent(currHoverChain[i], mouseX, mouseY)
         }
     }
 
@@ -74,7 +80,7 @@ fun updateHover(
  * Rebuilds create fresh DOM instances, so identity (`===`) alone makes hover diffing
  * emit synthetic leave/enter events while the cursor is stationary.
  */
-private fun sameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
+private fun isSameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
     if (prev === curr) return true
 
     val prevKey = prev.key
@@ -94,7 +100,7 @@ private fun sameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
     return false
 }
 
-private fun postEnter(target: DOMNode, mouseX: Int, mouseY: Int) {
+private fun postMouseEnterEvent(target: DOMNode, mouseX: Int, mouseY: Int) {
     val event = MouseEnterEvent(mouseX, mouseY)
     event.target = target
     EventBus.post(event)
@@ -104,7 +110,7 @@ private fun postEnter(target: DOMNode, mouseX: Int, mouseY: Int) {
     }
 }
 
-private fun postLeave(target: DOMNode, mouseX: Int, mouseY: Int) {
+private fun postMouseLeaveEvent(target: DOMNode, mouseX: Int, mouseY: Int) {
     val event = MouseLeaveEvent(mouseX, mouseY)
     event.target = target
     EventBus.post(event)
@@ -114,7 +120,7 @@ private fun postLeave(target: DOMNode, mouseX: Int, mouseY: Int) {
     }
 }
 
-private fun postOver(target: DOMNode, mouseX: Int, mouseY: Int) {
+private fun postMouseOverEvent(target: DOMNode, mouseX: Int, mouseY: Int) {
     val event = MouseOverEvent(mouseX, mouseY)
     event.target = target
     EventBus.post(event)

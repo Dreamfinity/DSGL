@@ -18,6 +18,8 @@ class ContainerNode(
     var backgroundColor: Int? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "div"
+
     init {
         this.padding = Insets.all(padding)
     }
@@ -78,11 +80,12 @@ class ContainerNode(
         when (layout) {
             LayoutDirection.Column -> {
                 var cursorY = contentY
+                val availableWidth = contentWidth()
                 children.forEach { child ->
                     val childSize = child.measure(ctx)
                     val childWidth = childSize.width
                     val childHeight = childSize.height
-                    val childX = contentX + child.margin.left
+                    val childX = alignedChildX(child, contentX, availableWidth, childWidth)
                     val childY = cursorY + child.margin.top
                     child.render(ctx, childX, childY, childWidth, childHeight)
                     cursorY += childHeight + child.margin.vertical + gap
@@ -90,23 +93,26 @@ class ContainerNode(
             }
             LayoutDirection.Row -> {
                 var cursorX = contentX
+                val availableHeight = contentHeight()
                 children.forEach { child ->
                     val childSize = child.measure(ctx)
                     val childWidth = childSize.width
                     val childHeight = childSize.height
                     val childX = cursorX + child.margin.left
-                    val childY = contentY + child.margin.top
+                    val childY = alignedChildY(child, contentY, availableHeight, childHeight)
                     child.render(ctx, childX, childY, childWidth, childHeight)
                     cursorX += childWidth + child.margin.horizontal + gap
                 }
             }
             LayoutDirection.Stack -> {
+                val availableWidth = contentWidth()
+                val availableHeight = contentHeight()
                 children.forEach { child ->
                     val childSize = child.measure(ctx)
                     val childWidth = childSize.width
                     val childHeight = childSize.height
-                    val childX = contentX + child.margin.left
-                    val childY = contentY + child.margin.top
+                    val childX = alignedChildX(child, contentX, availableWidth, childWidth)
+                    val childY = alignedChildY(child, contentY, availableHeight, childHeight)
                     child.render(ctx, childX, childY, childWidth, childHeight)
                 }
             }
@@ -117,7 +123,34 @@ class ContainerNode(
         backgroundColor?.let {
             out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, it))
         }
+        addBackgroundImageCommand(out)
         addBorderCommands(out)
         super.buildRenderCommands(ctx, out)
+    }
+
+    override fun defaultBackgroundColor(): Int? = backgroundColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        backgroundColor = value
+    }
+
+    private fun alignedChildX(child: DOMNode, contentX: Int, availableWidth: Int, childWidth: Int): Int {
+        val interactableWidth = (availableWidth - child.margin.horizontal).coerceAtLeast(0)
+        val horizontalOffset = when (child.align) {
+            org.dreamfinity.dsgl.core.style.StyleAlign.START -> 0
+            org.dreamfinity.dsgl.core.style.StyleAlign.CENTER -> (interactableWidth - childWidth) / 2
+            org.dreamfinity.dsgl.core.style.StyleAlign.END -> interactableWidth - childWidth
+        }
+        return contentX + child.margin.left + horizontalOffset.coerceAtLeast(0)
+    }
+
+    private fun alignedChildY(child: DOMNode, contentY: Int, availableHeight: Int, childHeight: Int): Int {
+        val interactableHeight = (availableHeight - child.margin.vertical).coerceAtLeast(0)
+        val verticalOffset = when (child.align) {
+            org.dreamfinity.dsgl.core.style.StyleAlign.START -> 0
+            org.dreamfinity.dsgl.core.style.StyleAlign.CENTER -> (interactableHeight - childHeight) / 2
+            org.dreamfinity.dsgl.core.style.StyleAlign.END -> interactableHeight - childHeight
+        }
+        return contentY + child.margin.top + verticalOffset.coerceAtLeast(0)
     }
 }

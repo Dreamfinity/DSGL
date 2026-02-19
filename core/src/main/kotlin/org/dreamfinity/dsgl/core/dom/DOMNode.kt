@@ -1,10 +1,15 @@
 package org.dreamfinity.dsgl.core.dom
 
 import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.ComputedStyle
+import org.dreamfinity.dsgl.core.style.ComputedStyleDefaults
+import org.dreamfinity.dsgl.core.style.StyleAlign
+import org.dreamfinity.dsgl.core.style.StyleDecls
 
 /**
  * Base class for all DOM nodes in the retained UI tree.
@@ -22,10 +27,37 @@ abstract class DOMNode(
     var margin: Insets = Insets.ZERO
     var padding: Insets = Insets.ZERO
     var border: Border = Border.NONE
+    var borderRadius: Int = 0
+    var align: StyleAlign = StyleAlign.START
+    var styleId: String? = null
+    val styleClasses: MutableSet<String> = linkedSetOf()
+    var inlineStyleDecls: StyleDecls = StyleDecls()
+    var styleHovered: Boolean = false
+        private set
+    var styleActive: Boolean = false
+        private set
+    var styleFocused: Boolean = false
+        private set
+    var styleDisabled: Boolean = false
+        set(value) {
+            field = value
+            if (value) {
+                styleHovered = false
+                styleActive = false
+                styleFocused = false
+                if (FocusManager.isFocused(this)) {
+                    FocusManager.clearFocus()
+                }
+            }
+        }
     open val focusable: Boolean = false
+    open val styleType: String = "node"
     open var onmouseenter: ((MouseEvent) -> Unit)? = null
     open var onmouseleave: ((MouseEvent) -> Unit)? = null
     open var onmouseover: ((MouseEvent) -> Unit)? = null
+    private var styledBackgroundImage: String? = null
+    private var styleDefaultsSnapshot: ComputedStyleDefaults? = null
+    private var appliedComputedStyle: ComputedStyle? = null
 
     private var onMouseDownHandler: ((MouseDownEvent) -> Unit)? = null
     private var onMouseUpHandler: ((MouseUpEvent) -> Unit)? = null
@@ -232,6 +264,10 @@ abstract class DOMNode(
 
     /** Applies event handlers from [ComponentProps] to this node. */
     fun applyHandlers(props: ComponentProps) {
+        styleId = props.id
+        setClassNames(props.className)
+        styleClasses.addAll(props.classes)
+        styleDisabled = props.disabled
         if (props.onMouseEnter != null) this.onMouseEnter = props.onMouseEnter
         if (props.onMouseLeave != null) this.onMouseLeave = props.onMouseLeave
         if (props.onMouseOver != null) this.onMouseOver = props.onMouseOver
@@ -255,6 +291,95 @@ abstract class DOMNode(
     fun applyStyle(style: StyleScope.() -> Unit) {
         StyleScope(this).style()
     }
+
+    fun setClassNames(value: String) {
+        styleClasses.clear()
+        styleClasses.addAll(parseClassNames(value))
+    }
+
+    fun addClass(name: String) {
+        val normalized = name.trim()
+        if (normalized.isNotEmpty()) {
+            styleClasses.add(normalized)
+        }
+    }
+
+    fun setHoveredState(value: Boolean) {
+        styleHovered = value && !styleDisabled
+    }
+
+    fun setActiveState(value: Boolean) {
+        styleActive = value && !styleDisabled
+    }
+
+    fun setFocusedState(value: Boolean) {
+        styleFocused = value && !styleDisabled
+    }
+
+    internal fun captureStyleDefaults(): ComputedStyleDefaults {
+        val existing = styleDefaultsSnapshot
+        if (existing != null) return existing
+        val computed = ComputedStyleDefaults(
+            margin = margin,
+            padding = padding,
+            backgroundColor = defaultBackgroundColor(),
+            backgroundImage = defaultBackgroundImage(),
+            borderColor = border.color,
+            borderWidth = maxOf(border.top, border.right, border.bottom, border.left),
+            borderRadius = borderRadius,
+            foregroundColor = defaultForegroundColor(),
+            fontSize = defaultFontSize(),
+            width = width,
+            height = height,
+            align = align
+        )
+        styleDefaultsSnapshot = computed
+        return computed
+    }
+
+    internal fun applyComputedStyle(style: ComputedStyle): Boolean {
+        val previous = appliedComputedStyle
+        margin = style.margin
+        padding = style.padding
+        border = Border.all(style.borderWidth, style.borderColor)
+        borderRadius = style.borderRadius
+        width = style.width
+        height = style.height
+        align = style.align
+        applyBackgroundColor(style.backgroundColor)
+        applyBackgroundImage(style.backgroundImage)
+        applyForegroundColor(style.foregroundColor)
+        applyFontSize(style.fontSize)
+        appliedComputedStyle = style
+
+        if (previous == null) return true
+        return previous.margin != style.margin ||
+            previous.padding != style.padding ||
+            previous.borderWidth != style.borderWidth ||
+            previous.borderColor != style.borderColor ||
+            previous.borderRadius != style.borderRadius ||
+            previous.width != style.width ||
+            previous.height != style.height ||
+            previous.align != style.align
+    }
+
+    protected open fun defaultBackgroundColor(): Int? = null
+
+    protected open fun defaultBackgroundImage(): String? = styledBackgroundImage
+
+    protected open fun defaultForegroundColor(): Int = DsglColors.TEXT
+
+    protected open fun defaultFontSize(): Int? = null
+
+    protected open fun applyBackgroundColor(value: Int?) {}
+
+    protected open fun applyBackgroundImage(value: String?) {
+        styledBackgroundImage = value
+    }
+
+    protected open fun applyForegroundColor(value: Int) {}
+
+    protected open fun applyFontSize(value: Int?) {}
 
     protected fun contentX(): Int = bounds.x + border.left + padding.left
 
@@ -288,6 +413,19 @@ abstract class DOMNode(
             out.add(RenderCommand.DrawRect(x + w - border.right, y, border.right, h, border.color))
         }
     }
+
+    protected fun addBackgroundImageCommand(out: MutableList<RenderCommand>) {
+        val image = styledBackgroundImage ?: return
+        out.add(RenderCommand.DrawImage(image, bounds.x, bounds.y, bounds.width, bounds.height))
+    }
+}
+
+private fun parseClassNames(value: String): Set<String> {
+    if (value.isBlank()) return emptySet()
+    return value.trim()
+        .split(Regex("\\s+"))
+        .filter { it.isNotBlank() }
+        .toSet()
 }
 
 /**

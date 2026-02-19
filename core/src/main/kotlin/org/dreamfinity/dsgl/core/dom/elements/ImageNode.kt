@@ -14,6 +14,8 @@ class ImageNode(
     var imageHeight: Int,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "img"
+
     override fun measure(ctx: UiMeasureContext): Size {
         val contentWidth = width ?: imageWidth
         val contentHeight = height ?: imageHeight
@@ -27,5 +29,13 @@ class ImageNode(
         val h = contentHeight()
         out.add(RenderCommand.DrawImage(url, contentX(), contentY(), w, h))
         addBorderCommands(out)
+    }
+
+    override fun defaultBackgroundImage(): String? = url
+
+    override fun applyBackgroundImage(value: String?) {
+        if (!value.isNullOrBlank()) {
+            url = value
+        }
     }
 }

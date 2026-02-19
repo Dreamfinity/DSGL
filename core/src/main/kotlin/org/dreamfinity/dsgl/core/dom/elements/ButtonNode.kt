@@ -20,6 +20,7 @@ class ButtonNode(
     padding: Int = 4,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "button"
     private var onClickHandler: ((MouseClickEvent) -> Unit)? = null
 
     init {
@@ -36,6 +37,7 @@ class ButtonNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, backgroundColor))
+        addBackgroundImageCommand(out)
         addBorderCommands(out)
         val textWidth = ctx.measureText(text)
         val contentWidth = contentWidth()
@@ -50,13 +52,29 @@ class ButtonNode(
         onClickHandler = handler
         EventBus.run {
             this@ButtonNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
+                if (this@ButtonNode.styleDisabled) return@addEventListener
                 handler(event)
             }
         }
     }
 
     override fun handleClick(event: MouseClickEvent): Boolean {
+        if (styleDisabled) return false
         onClickHandler?.invoke(event)
         return onClickHandler != null
+    }
+
+    override fun defaultBackgroundColor(): Int? = backgroundColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            backgroundColor = value
+        }
+    }
+
+    override fun defaultForegroundColor(): Int = textColor
+
+    override fun applyForegroundColor(value: Int) {
+        textColor = value
     }
 }
