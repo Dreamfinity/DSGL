@@ -115,6 +115,15 @@ object CapabilityChecklistCatalog {
             CapabilityId.HOOK_CHANGE
         )
 
+        DemoSection.TEXT_EDITING -> setOf(
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_TEXTAREA,
+            CapabilityId.HOOK_MOUSE_DOWN,
+            CapabilityId.HOOK_MOUSE_DRAG,
+            CapabilityId.HOOK_KEY_DOWN,
+            CapabilityId.HOOK_INPUT
+        )
+
         DemoSection.INTERACTIONS -> setOf(
             CapabilityId.HOOK_MOUSE_ENTER,
             CapabilityId.HOOK_MOUSE_LEAVE,

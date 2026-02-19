@@ -18,4 +18,8 @@ class PasswordInputNode(
     override fun displayText(): String {
         return if (text.isEmpty()) "" else "*".repeat(text.length)
     }
+
+    override fun allowClipboardCopy(): Boolean = false
+
+    override fun allowClipboardCut(): Boolean = false
 }

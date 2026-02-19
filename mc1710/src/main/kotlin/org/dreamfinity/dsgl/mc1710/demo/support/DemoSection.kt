@@ -9,6 +9,7 @@ enum class DemoSection(
     STYLESHEETS("Stylesheets", "Selectors, variables, pseudo-states, inline override"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),
+    TEXT_EDITING("Text Editing", "Caret blink, selection and clipboard shortcuts"),
     INTERACTIONS("Interactions", "Mouse/key hooks, bubbling, cancellation"),
     FOCUS_REBUILD("Focus & Rebuild", "Focus retention and invalidation"),
     MC_FEATURES("MC Features", "Image sources and item stack rendering")
