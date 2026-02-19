@@ -6,6 +6,7 @@ enum class DemoSection(
 ) {
     OVERVIEW("Overview", "How to use the showcase"),
     LAYOUT_STYLE("Layout & Style", "Containers, gaps, fixed sizes, style DSL"),
+    STYLESHEETS("Stylesheets", "Selectors, variables, pseudo-states, inline override"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),
     INTERACTIONS("Interactions", "Mouse/key hooks, bubbling, cancellation"),

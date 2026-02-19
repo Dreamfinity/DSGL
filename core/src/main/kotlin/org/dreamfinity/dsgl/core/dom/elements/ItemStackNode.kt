@@ -16,6 +16,8 @@ class ItemStackNode(
     var rotXDeg: Double = -11.0,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "itemstack"
+
     override fun measure(ctx: UiMeasureContext): Size {
         val contentWidth = width ?: size
         val nameHeight = ctx.fontHeight + 2

@@ -19,6 +19,7 @@ internal fun collectHoverChain(
     mouseY: Int,
     out: MutableList<DOMNode>
 ): Boolean {
+    if (root.styleDisabled) return false
     if (!root.bounds.contains(mouseX, mouseY)) return false
     out.add(root)
     for (i in root.children.size - 1 downTo 0) {
@@ -52,10 +53,15 @@ fun updateHover(
     }
 
     for (i in prevHoverChain.size - 1 downTo commonPrefixLen) {
+        prevHoverChain[i].setHoveredState(false)
         postLeave(prevHoverChain[i], mouseX, mouseY)
     }
     for (i in commonPrefixLen until currHoverChain.size) {
+        currHoverChain[i].setHoveredState(true)
         postEnter(currHoverChain[i], mouseX, mouseY)
+    }
+    for (i in 0 until commonPrefixLen) {
+        currHoverChain[i].setHoveredState(true)
     }
 
     if (mouseDX != 0 || mouseDY != 0) {

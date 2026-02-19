@@ -3,10 +3,12 @@ package org.dreamfinity.dsgl.core
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.*
-import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.LayoutDirection
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.style.StyleAlign
+import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleProperty
 import java.time.Instant
 import java.time.ZoneId
 
@@ -41,6 +43,10 @@ open class ComponentProps(
     var height: Int? = null,
     var backgroundColor: Int = DsglColors.PANEL,
     var key: Any? = null,
+    var id: String? = null,
+    var className: String = "",
+    var classes: Set<String> = emptySet(),
+    var disabled: Boolean = false,
     var style: StyleScope.() -> Unit = {},
     var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null,
     var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null,
@@ -59,7 +65,11 @@ open class ComponentProps(
     var onFocusLose: ((FocusLoseEvent) -> Unit)? = null,
     var onInput: ((InputEvent) -> Unit)? = null,
     var onValueChange: ((ValueChangedEvent) -> Unit)? = null
-)
+) {
+    fun classNames(value: String) {
+        className = value
+    }
+}
 
 /** Static text props. */
 open class TextProps(var value: String = "") : ComponentProps()
@@ -318,43 +328,147 @@ class UiScope internal constructor(private val parent: ContainerNode) {
  */
 class StyleScope internal constructor(private val node: DOMNode) {
     fun margin(all: Int) {
-        node.margin = Insets.all(all)
+        setSpacing(StyleProperty.MARGIN, Insets.all(all))
     }
 
     fun margin(horizontal: Int, vertical: Int) {
-        node.margin = Insets.horizontalVertical(horizontal, vertical)
+        setSpacing(StyleProperty.MARGIN, Insets.horizontalVertical(horizontal, vertical))
     }
 
     fun margin(top: Int, right: Int, bottom: Int, left: Int) {
-        node.margin = Insets(top, right, bottom, left)
+        setSpacing(StyleProperty.MARGIN, Insets(top, right, bottom, left))
     }
 
     fun padding(all: Int) {
-        node.padding = Insets.all(all)
+        setSpacing(StyleProperty.PADDING, Insets.all(all))
     }
 
     fun padding(horizontal: Int, vertical: Int) {
-        node.padding = Insets.horizontalVertical(horizontal, vertical)
+        setSpacing(StyleProperty.PADDING, Insets.horizontalVertical(horizontal, vertical))
     }
 
     fun padding(top: Int, right: Int, bottom: Int, left: Int) {
-        node.padding = Insets(top, right, bottom, left)
+        setSpacing(StyleProperty.PADDING, Insets(top, right, bottom, left))
     }
 
     fun border(width: Int) {
-        node.border = Border.all(width, DsglColors.BORDER)
+        borderWidth(width)
+        borderColor(DsglColors.BORDER)
     }
 
     fun border(width: Int, color: Int) {
-        node.border = Border.all(width, color)
+        borderWidth(width)
+        borderColor(color)
     }
 
     fun border(horizontal: Int, vertical: Int, color: Int = DsglColors.BORDER) {
-        node.border = Border.horizontalVertical(horizontal, vertical, color)
+        border(maxOf(horizontal, vertical), color)
     }
 
     fun border(top: Int, right: Int, bottom: Int, left: Int, color: Int = DsglColors.BORDER) {
-        node.border = Border(top, right, bottom, left, color)
+        border(maxOf(top, right, bottom, left), color)
+    }
+
+    fun backgroundColor(color: Int) {
+        setLiteral(StyleProperty.BACKGROUND_COLOR, toColorLiteral(color))
+    }
+
+    fun backgroundColor(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.BACKGROUND_COLOR, variable)
+    }
+
+    fun backgroundImage(path: String) {
+        setLiteral(StyleProperty.BACKGROUND_IMAGE, "\"$path\"")
+    }
+
+    fun backgroundImage(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.BACKGROUND_IMAGE, variable)
+    }
+
+    fun borderColor(color: Int) {
+        setLiteral(StyleProperty.BORDER_COLOR, toColorLiteral(color))
+    }
+
+    fun borderColor(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.BORDER_COLOR, variable)
+    }
+
+    fun borderWidth(value: Int) {
+        setLiteral(StyleProperty.BORDER_WIDTH, value.toString())
+    }
+
+    fun borderWidth(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.BORDER_WIDTH, variable)
+    }
+
+    fun borderRadius(value: Int) {
+        setLiteral(StyleProperty.BORDER_RADIUS, value.toString())
+    }
+
+    fun borderRadius(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.BORDER_RADIUS, variable)
+    }
+
+    fun foregroundColor(color: Int) {
+        setLiteral(StyleProperty.FOREGROUND_COLOR, toColorLiteral(color))
+    }
+
+    fun foregroundColor(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.FOREGROUND_COLOR, variable)
+    }
+
+    fun fontSize(value: Int) {
+        setLiteral(StyleProperty.FONT_SIZE, value.toString())
+    }
+
+    fun fontSize(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.FONT_SIZE, variable)
+    }
+
+    fun width(value: Int) {
+        setLiteral(StyleProperty.WIDTH, value.toString())
+    }
+
+    fun width(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.WIDTH, variable)
+    }
+
+    fun height(value: Int) {
+        setLiteral(StyleProperty.HEIGHT, value.toString())
+    }
+
+    fun height(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.HEIGHT, variable)
+    }
+
+    fun align(value: StyleAlign) {
+        setLiteral(StyleProperty.ALIGN, value.name.lowercase())
+    }
+
+    fun align(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.ALIGN, variable)
+    }
+
+    fun `var`(name: String): StyleExpression.VariableRef {
+        val normalized = if (name.startsWith("--")) name else "--$name"
+        return StyleExpression.VariableRef(normalized)
+    }
+
+    private fun setSpacing(property: StyleProperty, value: Insets) {
+        setLiteral(property, "${value.top} ${value.right} ${value.bottom} ${value.left}")
+    }
+
+    private fun setLiteral(property: StyleProperty, rawValue: String) {
+        node.inlineStyleDecls.set(property, StyleExpression.Literal(rawValue))
+    }
+
+    private fun setExpression(property: StyleProperty, expression: StyleExpression.VariableRef) {
+        node.inlineStyleDecls.set(property, expression)
+    }
+
+    private fun toColorLiteral(value: Int): String {
+        val unsigned = value.toLong() and 0xFFFFFFFFL
+        return "#" + unsigned.toString(16).padStart(8, '0').uppercase()
     }
 }
 

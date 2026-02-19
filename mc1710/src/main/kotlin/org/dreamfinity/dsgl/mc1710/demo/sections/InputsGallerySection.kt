@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
@@ -161,5 +162,54 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     placeholder = "Type multiple lines"
                 }
         )
+
+        text(TextProps("Clipping + internal scrolling demo (100 lines prefilled)").apply { color = DEMO_MUTED })
+        row(ComponentProps(gap = 4, key = "input.textarea.clip.demo.controls")) {
+            button(ButtonProps("Clear Focus")) {
+                onClick { FocusManager.clearFocus() }
+            }
+            text(
+                TextProps("1) Clear focus  2) wheel-scroll textarea  3) click visible text: caret must land exactly under cursor")
+                    .apply { color = DEMO_MUTED }
+            )
+        }
+        row(ComponentProps(gap = 4, key = "input.textarea.clip.demo.row")) {
+            div(
+                ComponentProps(
+                    key = "input.textarea.clip.left",
+                    width = 42,
+                    height = 84,
+                    backgroundColor = 0xFF5A3434.toInt(),
+                    padding = 2
+                )
+            ) {
+                text(TextProps("L").apply { color = 0xFFFFD0D0.toInt() })
+            }
+            textarea(
+                TextAreaProps(window.clippingScrollDemoText).apply {
+                    key = "input.textarea.clip"
+                    width = (contentWidth - 100).coerceAtLeast(90)
+                    height = 84
+                    placeholder = "Scroll with wheel / PgUp / PgDn"
+                    onInput = { event ->
+                        window.clippingScrollDemoText = event.value
+                    }
+                    onValueChange = { event ->
+                        window.clippingScrollDemoText = event.value
+                    }
+                }
+            )
+            div(
+                ComponentProps(
+                    key = "input.textarea.clip.right",
+                    width = 42,
+                    height = 84,
+                    backgroundColor = 0xFF345A34.toInt(),
+                    padding = 2
+                )
+            ) {
+                text(TextProps("R").apply { color = 0xFFD0FFD0.toInt() })
+            }
+        }
     }
 }

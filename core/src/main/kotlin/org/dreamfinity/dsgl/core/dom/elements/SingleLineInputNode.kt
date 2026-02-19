@@ -26,6 +26,7 @@ open class SingleLineInputNode(
     var placeholder: String = "",
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "input"
     private val initialText: String = text
 
     override val focusable: Boolean = true
@@ -44,9 +45,11 @@ open class SingleLineInputNode(
     init {
         EventBus.run {
             this@SingleLineInputNode.addEventListener(Events.CLICK) { _: MouseClickEvent ->
+                if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 FocusManager.requestFocus(this@SingleLineInputNode)
             }
             this@SingleLineInputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 if (!FocusManager.isFocused(this@SingleLineInputNode)) return@addEventListener
                 handleKey(event)
             }
@@ -133,19 +136,50 @@ open class SingleLineInputNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val focused = FocusManager.isFocused(this)
-        val bg = if (focused) focusedBackgroundColor else backgroundColor
+        val bg = if (focused && !styleDisabled) focusedBackgroundColor else backgroundColor
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, bg))
+        addBackgroundImageCommand(out)
         addBorderCommands(out)
 
         val showPlaceholder = text.isEmpty() && !focused && placeholder.isNotEmpty()
         val drawText = if (showPlaceholder) placeholder else displayText()
-        if (drawText.isNotEmpty()) {
-            val contentWidth = contentWidth()
-            val contentHeight = contentHeight()
-            val textX = contentX()
-            val textY = contentY() + (contentHeight - ctx.fontHeight) / 2
-            val color = if (showPlaceholder) placeholderColor else textColor
-            out.add(RenderCommand.DrawText(drawText, textX, textY, color))
+        val innerX = contentX()
+        val innerY = contentY()
+        val innerWidth = contentWidth()
+        val innerHeight = contentHeight()
+        val textY = innerY + (innerHeight - ctx.fontHeight) / 2
+
+        if (innerWidth > 0 && innerHeight > 0) {
+            out.add(RenderCommand.PushClip(innerX, innerY, innerWidth, innerHeight))
         }
+
+        if (drawText.isNotEmpty()) {
+            val color = if (showPlaceholder) placeholderColor else textColor
+            out.add(RenderCommand.DrawText(drawText, innerX, textY, color))
+        }
+
+        if (focused && !styleDisabled) {
+            val caretBaseText = displayText()
+            val caretX = innerX + ctx.measureText(caretBaseText)
+            out.add(RenderCommand.DrawRect(caretX, textY, 1, ctx.fontHeight, textColor))
+        }
+
+        if (innerWidth > 0 && innerHeight > 0) {
+            out.add(RenderCommand.PopClip)
+        }
+    }
+
+    override fun defaultBackgroundColor(): Int? = backgroundColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            backgroundColor = value
+        }
+    }
+
+    override fun defaultForegroundColor(): Int = textColor
+
+    override fun applyForegroundColor(value: Int) {
+        textColor = value
     }
 }

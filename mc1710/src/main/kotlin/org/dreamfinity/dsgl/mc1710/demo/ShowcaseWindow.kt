@@ -17,6 +17,7 @@ import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderFocusRebuildSection
@@ -26,6 +27,7 @@ import org.dreamfinity.dsgl.mc1710.demo.sections.renderInteractionsSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderLayoutStyleSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderMcFeaturesSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderOverviewSection
+import org.dreamfinity.dsgl.mc1710.demo.sections.renderStylesheetsSection
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityChecklistCatalog
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityId
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_BG
@@ -70,6 +72,11 @@ class ShowcaseWindow : DsglWindow() {
     internal var styleLargeGap by state(false)
     internal var styleFixedSize by state(false)
     internal var stackOverlayEnabled by state(true)
+    internal var stylesheetReloadCount by state(0)
+    internal var stylesheetDemoTextValue by state("")
+    internal var stylesheetDemoClickCount by state(0)
+    internal var stylesheetEditorValue by state("")
+    internal var stylesheetEditorStatus by state("not loaded")
 
     internal var mouseEnterCount by state(0)
     internal var mouseLeaveCount by state(0)
@@ -125,6 +132,7 @@ class ShowcaseWindow : DsglWindow() {
     private val inputEventLogLimit = 8
     private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     internal var sharedRangeValue by state(35L)
+    internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
@@ -138,6 +146,8 @@ class ShowcaseWindow : DsglWindow() {
 
     override fun onOpen() {
         prepareDemoMedia()
+        prepareDemoStylesheet()
+        loadStylesheetEditorFromFile("window open")
         appendInfo("Showcase opened")
     }
 
@@ -181,7 +191,7 @@ class ShowcaseWindow : DsglWindow() {
                         )
                     ) {
                         text(TextProps("Sections").apply { color = DsglColors.WHITE })
-                        DemoSection.values().forEach { section ->
+                        DemoSection.entries.forEach { section ->
                             button(
                                 navButtonProps(
                                     key = "nav.${section.name.lowercase()}",
@@ -206,6 +216,7 @@ class ShowcaseWindow : DsglWindow() {
                         when (selectedSection) {
                             DemoSection.OVERVIEW -> renderOverviewSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
+                            DemoSection.STYLESHEETS -> renderStylesheetsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUTS -> renderInputsGallerySection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUT_EVENTS -> renderInputEventsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INTERACTIONS -> renderInteractionsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
@@ -343,6 +354,42 @@ class ShowcaseWindow : DsglWindow() {
         }
     }
 
+    internal fun reloadStylesheetsProgrammatically(source: String) {
+        StyleEngine.forceReloadStylesheets()
+        stylesheetReloadCount += 1
+        requestManualInvalidate("stylesheets reload")
+        appendInfo("Stylesheets reloaded by $source (#$stylesheetReloadCount)")
+        stylesheetEditorStatus = "reloaded #$stylesheetReloadCount"
+    }
+
+    internal fun loadStylesheetEditorFromFile(source: String) {
+        try {
+            val file = demoStylesheetFile()
+            if (!file.exists()) {
+                prepareDemoStylesheet()
+            }
+            stylesheetEditorValue = file.readText()
+            stylesheetEditorStatus = "loaded by $source"
+            appendInfo("Stylesheet loaded by $source")
+        } catch (ex: Exception) {
+            stylesheetEditorStatus = "load failed: ${ex.javaClass.simpleName}"
+            appendLog("Stylesheet load failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+        }
+    }
+
+    internal fun saveStylesheetEditorToFile(source: String) {
+        try {
+            val file = demoStylesheetFile()
+            file.parentFile?.mkdirs()
+            file.writeText(stylesheetEditorValue)
+            stylesheetEditorStatus = "saved by $source"
+            appendInfo("Stylesheet saved by $source")
+        } catch (ex: Exception) {
+            stylesheetEditorStatus = "save failed: ${ex.javaClass.simpleName}"
+            appendLog("Stylesheet save failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+        }
+    }
+
     internal fun itemRotYLong(): Long = itemRotY.roundToLong().coerceIn(0L, 360L)
 
     internal fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
@@ -418,6 +465,89 @@ class ShowcaseWindow : DsglWindow() {
         }
     }
 
+    private fun prepareDemoStylesheet() {
+        try {
+            val stylesheetFile = demoStylesheetFile()
+            stylesheetFile.parentFile?.mkdirs()
+            var created = false
+            if (!stylesheetFile.exists()) {
+                stylesheetFile.writeText(
+                    """
+                    :root {
+                      --primary: #3E6B9E;
+                      --accent: #7CB6FF;
+                      --danger: #A34343;
+                      --fg: #E9F1FF;
+                    }
+                    
+                    button {
+                      border-width: 1;
+                      border-color: #000000;
+                      padding: 3 6;
+                    }
+                    
+                    .style-card {
+                      margin: 2 0 0 0;
+                      background-color: #2A3440;
+                      border-color: #5E6A77;
+                      border-width: 1;
+                      padding: 4;
+                    }
+                    
+                    .accent {
+                      background-color: #3F5A70;
+                    }
+                    
+                    button.primary {
+                      background-color: var(--primary);
+                      foreground-color: var(--fg);
+                    }
+                    
+                    #dangerAction {
+                      background-color: var(--danger);
+                      foreground-color: #FFFFFFFF;
+                    }
+                    
+                    #hoverActiveTarget:hover {
+                      background-color: #365F7D;
+                    }
+                    
+                    #hoverActiveTarget:active {
+                      background-color: #274356;
+                    }
+                    
+                    #focusInput:focus {
+                      border-color: var(--accent);
+                      border-width: 2;
+                    }
+                    
+                    #disabledTarget:disabled {
+                      background-color: #444444;
+                      foreground-color: #999999;
+                    }
+                    
+                    .vars-demo {
+                      background-color: #213348;
+                      border-color: var(--accent);
+                    }
+                    """.trimIndent()
+                )
+                appendInfo("Created demo stylesheet: ${stylesheetFile.name}")
+                created = true
+            }
+            if (created) {
+                StyleEngine.forceReloadStylesheets()
+            }
+        } catch (ex: Exception) {
+            appendLog("Stylesheet prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+        }
+    }
+
+    private fun demoStylesheetFile(): File {
+        val dataDir = Minecraft.getMinecraft().mcDataDir
+        return File(dataDir, "dsgl/styles/showcase_styles.dss")
+    }
+
     private fun writeDemoImage(file: File, colorA: Int, colorB: Int) {
         file.parentFile?.mkdirs()
         val image = BufferedImage(40, 40, BufferedImage.TYPE_INT_ARGB)
@@ -428,5 +558,16 @@ class ShowcaseWindow : DsglWindow() {
             }
         }
         ImageIO.write(image, "png", file)
+    }
+
+    private fun buildClippingScrollDemoText(): String {
+        val out = StringBuilder()
+        for (line in 1..100) {
+            out.append("Line ")
+            out.append(line)
+            out.append(" :: clipping+scroll demo")
+            if (line < 100) out.append('\n')
+        }
+        return out.toString()
     }
 }
