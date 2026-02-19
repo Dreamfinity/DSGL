@@ -20,8 +20,15 @@ import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.event.postChange
 import org.dreamfinity.dsgl.core.event.postInput
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.dom.elements.support.KeyedStateStore
+import org.dreamfinity.dsgl.core.dom.elements.support.TextChangeTracker
+import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
+import org.dreamfinity.dsgl.core.dom.elements.support.TextEditShortcutDispatcher
+import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutAction
+import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutCallbacks
+import org.dreamfinity.dsgl.core.dom.elements.support.UndoRedoHistory
+import org.dreamfinity.dsgl.core.dom.elements.support.WordUndoGrouping
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import java.util.ArrayDeque
 
 /**
  * Base class for single-line text inputs.
@@ -45,7 +52,7 @@ open class SingleLineInputNode(
             val redoHistory: List<UndoSnapshot>
         )
 
-        private val persistedByKey: MutableMap<Any, PersistedState> = HashMap()
+        private val persistedByKey: KeyedStateStore<PersistedState> = KeyedStateStore()
         private var activeSelectionDragIdentity: Any? = null
 
         fun clearActiveDrag() {
@@ -71,12 +78,10 @@ open class SingleLineInputNode(
     var caretBlinkPeriodMs: Long = 500L
 
     private val editState: TextEditState = TextEditState(caretIndex = this.text.length)
-    private val undoStack: ArrayDeque<UndoSnapshot> = ArrayDeque()
-    private val redoStack: ArrayDeque<UndoSnapshot> = ArrayDeque()
     private val undoLimit: Int = 32
-    private var typingWordUndoOpen: Boolean = false
-    private var valueAtFocusStart: String = this.text
-    private var dirtySinceFocus: Boolean = false
+    private val history: UndoRedoHistory<UndoSnapshot> = UndoRedoHistory(undoLimit)
+    private val typingUndoGrouping: WordUndoGrouping = WordUndoGrouping()
+    private val changeTracker: TextChangeTracker = TextChangeTracker(this.text)
     private var lastMeasureText: ((String) -> Int)? = null
 
     init {
@@ -113,8 +118,7 @@ open class SingleLineInputNode(
                 handleKey(event)
             }
             this@SingleLineInputNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
-                valueAtFocusStart = currentEventValue()
-                dirtySinceFocus = false
+                changeTracker.onFocus(currentEventValue())
                 editState.resetBlinkClock()
             }
             this@SingleLineInputNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
@@ -164,7 +168,7 @@ open class SingleLineInputNode(
     }
 
     protected fun isPrintable(ch: Char): Boolean {
-        return ch >= ' ' && ch.code != 127
+        return TextEditOps.isPrintable(ch)
     }
 
     protected open fun canAcceptText(next: String): Boolean {
@@ -178,20 +182,14 @@ open class SingleLineInputNode(
 
     protected fun commitCurrentValueChange() {
         val current = currentEventValue()
-        if (!dirtySinceFocus) return
-        if (current == valueAtFocusStart) {
-            dirtySinceFocus = false
-            return
+        changeTracker.commitIfNeeded(current) {
+            postChange(this, current, currentParsedValue())
         }
-        postChange(this, current, currentParsedValue())
-        valueAtFocusStart = current
-        dirtySinceFocus = false
     }
 
     protected fun notifyUserValueChanged(previousValue: String) {
         val current = currentEventValue()
-        if (current == previousValue) return
-        dirtySinceFocus = true
+        if (!changeTracker.markInputChange(previousValue, current)) return
         postInput(this, current, currentParsedValue())
     }
 
@@ -317,17 +315,7 @@ open class SingleLineInputNode(
     }
 
     private fun moveCaret(next: Int, extend: Boolean) {
-        if (extend) {
-            if (editState.selectionAnchor == null) {
-                editState.selectionAnchor = editState.caretIndex
-            }
-        } else {
-            editState.clearSelection()
-        }
-        editState.caretIndex = next.coerceIn(0, text.length)
-        if (!editState.hasSelection()) {
-            editState.clearSelection()
-        }
+        TextEditOps.moveCaretWithSelection(editState, next, text.length, extend)
     }
 
     private fun deleteBeforeCaret() {
@@ -349,10 +337,8 @@ open class SingleLineInputNode(
     }
 
     private fun replaceSelectionWith(insert: String, recordUndo: Boolean = false): Boolean {
-        val hasSelection = editState.hasSelection()
-        if (!hasSelection && insert.isEmpty()) return false
-        val start = if (hasSelection) editState.selectionStart() else editState.caretIndex
-        val end = if (hasSelection) editState.selectionEnd() else editState.caretIndex
+        val (start, end) = TextEditOps.selectionOrCaretBounds(editState)
+        if (start == end && insert.isEmpty()) return false
         return replaceRange(start, end, insert, recordUndo)
     }
 
@@ -360,10 +346,10 @@ open class SingleLineInputNode(
         val safeStart = start.coerceIn(0, text.length)
         val safeEnd = end.coerceIn(safeStart, text.length)
         val previous = currentEventValue()
-        val next = text.substring(0, safeStart) + insert + text.substring(safeEnd)
+        val next = TextEditOps.replaceRange(text, safeStart, safeEnd, insert)
         if (!canAcceptText(next)) return false
         if (next == text) return false
-        clearRedoHistory()
+        history.clearRedo()
         if (recordUndo && (safeStart != safeEnd || insert.isNotEmpty())) {
             pushUndoSnapshot()
         }
@@ -377,94 +363,44 @@ open class SingleLineInputNode(
     }
 
     private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean {
-        if (!KeyModifiers.shortcutDown) return false
-        when (event.keyCode) {
-            KeyCodes.A -> {
-                resetTypingUndoGroup()
-                if (text.isEmpty()) {
-                    editState.clearSelection()
-                    editState.caretIndex = 0
-                } else {
-                    editState.selectionAnchor = 0
-                    editState.caretIndex = text.length
-                }
-                editState.resetBlinkClock()
-                persistState()
-                return true
-            }
-
-            KeyCodes.C -> {
-                resetTypingUndoGroup()
-                if (allowClipboardCopy() && editState.hasSelection()) {
-                    ClipboardBridge.writeText(selectedText())
-                }
-                editState.resetBlinkClock()
-                return true
-            }
-
-            KeyCodes.X -> {
-                resetTypingUndoGroup()
-                if (allowClipboardCut() && editState.hasSelection()) {
+        return TextEditShortcutDispatcher.dispatch(
+            event,
+            TextShortcutCallbacks(
+                canCopy = allowClipboardCopy(),
+                canCut = allowClipboardCut(),
+                canPaste = allowClipboardPaste(),
+                hasSelection = { editState.hasSelection() },
+                selectAll = {
+                    TextEditOps.selectAll(editState, text.length)
+                },
+                copySelection = { ClipboardBridge.writeText(selectedText()) },
+                cutSelection = {
                     ClipboardBridge.writeText(selectedText())
                     replaceSelectionWith("", recordUndo = true)
+                },
+                normalizePaste = { raw -> sanitizePastedText(raw) },
+                pasteSelection = { paste -> replaceSelectionWith(paste, recordUndo = true) },
+                undo = { undoLastEdit() },
+                redo = { redoLastUndo() },
+                beforeHandled = { resetTypingUndoGroup() },
+                afterHandled = { action ->
+                    editState.resetBlinkClock()
+                    if (action != TextShortcutAction.COPY) {
+                        persistState()
+                    }
                 }
-                editState.resetBlinkClock()
-                persistState()
-                return true
-            }
-
-            KeyCodes.V -> {
-                resetTypingUndoGroup()
-                if (!allowClipboardPaste()) return true
-                val paste = sanitizePastedText(ClipboardBridge.readText())
-                if (paste.isNotEmpty()) {
-                    replaceSelectionWith(paste, recordUndo = true)
-                }
-                editState.resetBlinkClock()
-                persistState()
-                return true
-            }
-
-            KeyCodes.Z -> {
-                resetTypingUndoGroup()
-                if (KeyModifiers.shiftDown) {
-                    redoLastUndo()
-                } else {
-                    undoLastEdit()
-                }
-                editState.resetBlinkClock()
-                persistState()
-                return true
-            }
-
-            else -> return false
-        }
+            )
+        )
     }
 
     private fun pushUndoSnapshot() {
-        if (undoStack.size >= undoLimit) {
-            undoStack.removeFirst()
-        }
-        undoStack.addLast(
+        history.pushUndo(
             UndoSnapshot(
                 text = text,
                 caretIndex = editState.caretIndex,
                 selectionAnchor = editState.selectionAnchor
             )
         )
-    }
-
-    private fun pushRedoSnapshot(snapshot: UndoSnapshot) {
-        if (redoStack.size >= undoLimit) {
-            redoStack.removeFirst()
-        }
-        redoStack.addLast(snapshot)
-    }
-
-    private fun clearRedoHistory() {
-        if (redoStack.isNotEmpty()) {
-            redoStack.clear()
-        }
     }
 
     private fun currentSnapshot(): UndoSnapshot {
@@ -476,8 +412,7 @@ open class SingleLineInputNode(
     }
 
     private fun undoLastEdit(): Boolean {
-        val snapshot = undoStack.pollLast() ?: return false
-        pushRedoSnapshot(currentSnapshot())
+        val snapshot = history.undo(currentSnapshot()) ?: return false
         val previous = currentEventValue()
         applyText(snapshot.text)
         editState.caretIndex = snapshot.caretIndex.coerceIn(0, text.length)
@@ -488,8 +423,7 @@ open class SingleLineInputNode(
     }
 
     private fun redoLastUndo(): Boolean {
-        val snapshot = redoStack.pollLast() ?: return false
-        pushUndoSnapshot()
+        val snapshot = history.redo(currentSnapshot()) ?: return false
         val previous = currentEventValue()
         applyText(snapshot.text)
         editState.caretIndex = snapshot.caretIndex.coerceIn(0, text.length)
@@ -500,32 +434,15 @@ open class SingleLineInputNode(
     }
 
     private fun shouldRecordTypingUndo(ch: Char): Boolean {
-        val wordChar = ch.isLetterOrDigit() || ch == '_'
-        if (editState.hasSelection()) {
-            typingWordUndoOpen = wordChar
-            return true
-        }
-        if (!wordChar) {
-            typingWordUndoOpen = false
-            return false
-        }
-        if (!typingWordUndoOpen) {
-            typingWordUndoOpen = true
-            return true
-        }
-        return false
+        return typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
     }
 
     private fun resetTypingUndoGroup() {
-        typingWordUndoOpen = false
+        typingUndoGrouping.reset()
     }
 
     private fun selectedText(): String {
-        if (!editState.hasSelection()) return ""
-        val start = editState.selectionStart().coerceIn(0, text.length)
-        val end = editState.selectionEnd().coerceIn(0, text.length)
-        if (end <= start) return ""
-        return text.substring(start, end)
+        return TextEditOps.selectedText(text, editState)
     }
 
     private fun caretIndexFromMouseX(mouseX: Int): Int {
@@ -550,7 +467,7 @@ open class SingleLineInputNode(
     }
 
     private fun dragIdentity(): Any {
-        return key ?: this
+        return TextEditOps.dragIdentity(key, this)
     }
 
     private fun isActiveSelectionDragTarget(): Boolean {
@@ -559,24 +476,22 @@ open class SingleLineInputNode(
     }
 
     private fun persistState() {
-        val identity = key ?: return
-        persistedByKey[identity] = PersistedState(
-            caretIndex = editState.caretIndex,
-            selectionAnchor = editState.selectionAnchor,
-            undoHistory = undoStack.toList(),
-            redoHistory = redoStack.toList()
+        persistedByKey.save(
+            key,
+            PersistedState(
+                caretIndex = editState.caretIndex,
+                selectionAnchor = editState.selectionAnchor,
+                undoHistory = history.undoHistory(),
+                redoHistory = history.redoHistory()
+            )
         )
     }
 
     private fun restorePersistedState() {
-        val identity = key ?: return
-        val persisted = persistedByKey[identity] ?: return
+        val persisted = persistedByKey.load(key) ?: return
         editState.caretIndex = persisted.caretIndex.coerceIn(0, text.length)
         editState.selectionAnchor = persisted.selectionAnchor?.coerceIn(0, text.length)
-        undoStack.clear()
-        persisted.undoHistory.takeLast(undoLimit).forEach { snapshot -> undoStack.addLast(snapshot) }
-        redoStack.clear()
-        persisted.redoHistory.takeLast(undoLimit).forEach { snapshot -> redoStack.addLast(snapshot) }
+        history.restore(persisted.undoHistory, persisted.redoHistory)
     }
 
     override fun defaultBackgroundColor(): Int? = backgroundColor
