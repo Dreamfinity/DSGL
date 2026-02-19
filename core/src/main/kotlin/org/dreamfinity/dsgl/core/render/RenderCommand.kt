@@ -40,4 +40,15 @@ sealed class RenderCommand {
         val rotYDeg: Double = 0.0,
         val rotXDeg: Double = 0.0
     ) : RenderCommand()
+
+    /** Pushes a clipping rectangle (GUI coordinates, top-left origin). */
+    data class PushClip(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int
+    ) : RenderCommand()
+
+    /** Pops the current clipping rectangle. */
+    object PopClip : RenderCommand()
 }

@@ -55,6 +55,11 @@ enum class CapabilityId(
     LAYOUT_GAP_FIXED("Gap + fixed-size demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLE_MARGIN_PADDING_BORDER("Style margin/padding/border toggles", CapabilityGroup.SHOWCASE_FEATURES),
     STACK_BEHAVIOR("Stack behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
+    STYLESHEET_SELECTORS("Stylesheet selectors demo", CapabilityGroup.SHOWCASE_FEATURES),
+    STYLESHEET_PSEUDO_STATES("Stylesheet pseudo-states demo", CapabilityGroup.SHOWCASE_FEATURES),
+    STYLESHEET_VARIABLES("Stylesheet variables demo", CapabilityGroup.SHOWCASE_FEATURES),
+    STYLESHEET_INLINE_OVERRIDE("Inline style override demo", CapabilityGroup.SHOWCASE_FEATURES),
+    STYLESHEET_PROGRAMMATIC_RELOAD("Programmatic stylesheet reload", CapabilityGroup.SHOWCASE_FEATURES),
     FOCUS_RETENTION("Focus retention with stable keys", CapabilityGroup.SHOWCASE_FEATURES),
     STATE_REBUILD("State-driven rebuild demo", CapabilityGroup.SHOWCASE_FEATURES),
     MANUAL_INVALIDATE("Manual invalidate demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -132,6 +137,20 @@ object CapabilityChecklistCatalog {
             CapabilityId.FOCUS_RETENTION,
             CapabilityId.STATE_REBUILD,
             CapabilityId.MANUAL_INVALIDATE
+        )
+
+        DemoSection.STYLESHEETS -> setOf(
+            CapabilityId.BUILDER_ROW,
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.STYLESHEET_SELECTORS,
+            CapabilityId.STYLESHEET_PSEUDO_STATES,
+            CapabilityId.STYLESHEET_VARIABLES,
+            CapabilityId.STYLESHEET_INLINE_OVERRIDE,
+            CapabilityId.STYLESHEET_PROGRAMMATIC_RELOAD
         )
 
         DemoSection.MC_FEATURES -> setOf(
