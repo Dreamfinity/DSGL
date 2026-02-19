@@ -186,11 +186,11 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                 text(TextProps("L").apply { color = 0xFFFFD0D0.toInt() })
             }
             textarea(
-                TextAreaProps(window.clippingScrollDemoText).apply {
+                TextAreaProps("Scroll with wheel / PgUp / PgDn").apply {
                     key = "input.textarea.clip"
                     width = (contentWidth - 100).coerceAtLeast(90)
                     height = 84
-                    placeholder = "Scroll with wheel / PgUp / PgDn"
+                    value = window.clippingScrollDemoText
                     onInput = { event ->
                         window.clippingScrollDemoText = event.value
                     }

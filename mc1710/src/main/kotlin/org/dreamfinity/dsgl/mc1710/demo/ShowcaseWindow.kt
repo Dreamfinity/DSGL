@@ -28,6 +28,7 @@ import org.dreamfinity.dsgl.mc1710.demo.sections.renderLayoutStyleSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderMcFeaturesSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderOverviewSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderStylesheetsSection
+import org.dreamfinity.dsgl.mc1710.demo.sections.renderTextEditingSection
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityChecklistCatalog
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityId
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_BG
@@ -133,6 +134,15 @@ class ShowcaseWindow : DsglWindow() {
     private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     internal var sharedRangeValue by state(35L)
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
+    internal var textEditingSingleValue by state("Edit this line")
+    internal var textEditingPasswordValue by state("secret42")
+    internal var textEditingAreaValue by state(
+        "Line 1: drag-select me\nLine 2: use Shift+Arrows\nLine 3: Ctrl/Cmd+C/V/X"
+    )
+    internal var textEditingSawSelectionDrag by state(false)
+    internal var textEditingSawShiftSelection by state(false)
+    internal var textEditingSawClipboardShortcut by state(false)
+    internal var textEditingSawFocus by state(false)
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
@@ -219,6 +229,7 @@ class ShowcaseWindow : DsglWindow() {
                             DemoSection.STYLESHEETS -> renderStylesheetsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUTS -> renderInputsGallerySection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUT_EVENTS -> renderInputEventsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
+                            DemoSection.TEXT_EDITING -> renderTextEditingSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INTERACTIONS -> renderInteractionsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.MC_FEATURES -> renderMcFeaturesSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)

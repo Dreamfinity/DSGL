@@ -40,7 +40,7 @@ fun formatEventLine(
         else -> ""
     }
     val notePart = if (note.isNullOrBlank()) "" else " note=$note"
-    val raw = "$hookName ${event.type.name} target=$targetKey $coords $payload shift=${KeyModifiers.shiftDown}$notePart"
+    val raw = "$hookName ${event.type.name} target=$targetKey $coords $payload shift=${KeyModifiers.shiftDown} ctrl=${KeyModifiers.controlDown} meta=${KeyModifiers.metaDown} shortcut=${KeyModifiers.shortcutDown}$notePart"
     return truncateForPanel(raw, 118)
 }
 

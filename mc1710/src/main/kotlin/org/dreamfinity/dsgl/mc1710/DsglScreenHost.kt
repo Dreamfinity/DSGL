@@ -7,10 +7,13 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
+import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
+import org.dreamfinity.dsgl.core.input.ClipboardAccess
+import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
@@ -53,9 +56,26 @@ abstract class DsglScreenHost(
     private var dragCaptureFocusKey: Any? = null
     private var pendingCleanupRoot: DOMNode? = null
     private var activeTarget: DOMNode? = null
+    private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
+        override fun readText(): String {
+            return try {
+                getClipboardString() ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+        }
+
+        override fun writeText(value: String) {
+            try {
+                setClipboardString(value)
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     override fun initGui() {
         adapter = Mc1710UiAdapter(mc)
+        ClipboardBridge.install(clipboardAccess)
         StyleEngine.setStylesDirectory(File(mc.mcDataDir, "dsgl/styles"))
         StyleEngine.forceReloadStylesheets()
         window = windowFactory()
@@ -104,6 +124,7 @@ abstract class DsglScreenHost(
     }
 
     override fun onGuiClosed() {
+        ClipboardBridge.install(null)
         FocusManager.clearFocus()
         clearActiveTarget()
         flushPendingCleanup()
@@ -160,6 +181,11 @@ abstract class DsglScreenHost(
 
     override fun handleKeyboardInput() {
         super.handleKeyboardInput()
+        KeyModifiers.sync(
+            shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT),
+            control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
+            meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA)
+        )
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
         if (Keyboard.getEventKeyState()) {
@@ -284,6 +310,7 @@ abstract class DsglScreenHost(
 
     private fun releaseDragCapture() {
         RangeInputNode.clearActiveDrag()
+        SingleLineInputNode.clearActiveDrag()
         TextAreaNode.clearActiveDrag()
         dragCaptureTarget = null
         dragCaptureKey = null
@@ -309,7 +336,8 @@ abstract class DsglScreenHost(
         while (current != null) {
             when (current) {
                 is RangeInputNode -> return current
-                is TextAreaNode -> if (current.shouldCaptureScrollbarDrag(mouseX, mouseY)) return current
+                is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
+                is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
             }
             current = current.parent
         }
