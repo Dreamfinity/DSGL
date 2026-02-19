@@ -24,6 +24,15 @@ fun UiScope.renderOverviewSection(window: ShowcaseWindow, contentWidth: Int, con
         text(TextProps("Event Inspector and Checklist stay visible while switching sections.").apply {
             color = DEMO_MUTED
         })
+        text(TextProps("Stylesheets: <gameDir>/dsgl/styles/*.dss (manual reload).").apply {
+            color = DEMO_MUTED
+        })
+        text(TextProps("Open the Stylesheets section for full selector/pseudo-state/variables showcase.").apply {
+            color = DEMO_MUTED
+        })
+        text(TextProps("Press F6 to force stylesheet reload and rebuild after file edits.").apply {
+            color = DEMO_MUTED
+        })
 
         dynamicText(
             DynamicTextProps {
@@ -69,4 +78,3 @@ fun UiScope.renderOverviewSection(window: ShowcaseWindow, contentWidth: Int, con
         }
     }
 }
-

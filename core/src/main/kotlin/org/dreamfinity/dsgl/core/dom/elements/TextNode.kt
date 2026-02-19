@@ -14,6 +14,8 @@ class TextNode(
     var color: Int = DsglColors.TEXT,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "text"
+
     override fun measure(ctx: UiMeasureContext): Size {
         val contentWidth = width ?: ctx.measureText(text)
         val contentHeight = height ?: ctx.fontHeight
@@ -25,5 +27,11 @@ class TextNode(
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         addBorderCommands(out)
         out.add(RenderCommand.DrawText(text, contentX(), contentY(), color))
+    }
+
+    override fun defaultForegroundColor(): Int = color
+
+    override fun applyForegroundColor(value: Int) {
+        color = value
     }
 }

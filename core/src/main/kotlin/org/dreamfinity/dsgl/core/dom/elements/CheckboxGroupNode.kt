@@ -22,6 +22,7 @@ class CheckboxGroupNode(
     var maxSelected: Int? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "input"
     override val focusable: Boolean = true
     private val selectedIds: MutableSet<String> = selected.toMutableSet()
     var textColor: Int = DsglColors.TEXT
@@ -33,6 +34,7 @@ class CheckboxGroupNode(
     init {
         EventBus.run {
             this@CheckboxGroupNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
+                if (this@CheckboxGroupNode.styleDisabled) return@addEventListener
                 val index = hitIndex(event.mouseX, event.mouseY)
                 if (index != null) {
                     val before = valueString()
@@ -112,5 +114,20 @@ class CheckboxGroupNode(
 
     private fun valueString(): String {
         return selectedIds.toList().sorted().joinToString(",")
+    }
+
+    override fun defaultForegroundColor(): Int = textColor
+
+    override fun applyForegroundColor(value: Int) {
+        textColor = value
+        checkColor = value
+    }
+
+    override fun defaultBackgroundColor(): Int? = boxColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            boxColor = value
+        }
     }
 }

@@ -37,6 +37,7 @@ class RangeInputNode(
     }
 
     override val focusable: Boolean = true
+    override val styleType: String = "input"
     private val initialValue: Long = value
     var value: Long = initialValue
         private set
@@ -50,6 +51,7 @@ class RangeInputNode(
         setValue(initialValue)
         EventBus.run {
             this@RangeInputNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
+                if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
                 activeDragIdentity = dragIdentity()
@@ -65,6 +67,7 @@ class RangeInputNode(
                 }
             }
             this@RangeInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
                 val start = activeDragStartValue ?: this@RangeInputNode.value
@@ -78,6 +81,7 @@ class RangeInputNode(
                 clearActiveDrag()
             }
             this@RangeInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
+                if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
                 val before = this@RangeInputNode.value
@@ -114,6 +118,7 @@ class RangeInputNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        addBackgroundImageCommand(out)
         addBorderCommands(out)
         out.add(RenderCommand.DrawRect(trackRect.x, trackRect.y, trackRect.width, trackRect.height, trackColor))
         val knobX = valueToX()
@@ -158,5 +163,19 @@ class RangeInputNode(
     private fun isActiveDragTarget(): Boolean {
         val active = activeDragIdentity ?: return false
         return active == dragIdentity()
+    }
+
+    override fun defaultBackgroundColor(): Int? = trackColor
+
+    override fun applyBackgroundColor(value: Int?) {
+        if (value != null) {
+            trackColor = value
+        }
+    }
+
+    override fun defaultForegroundColor(): Int = knobColor
+
+    override fun applyForegroundColor(value: Int) {
+        knobColor = value
     }
 }

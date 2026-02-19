@@ -14,6 +14,8 @@ class DynamicTextNode(
     var color: Int = DsglColors.TEXT,
     key: Any? = null
 ) : DOMNode(key) {
+    override val styleType: String = "text"
+
     private fun currentText(): String = textProvider()
 
     override fun measure(ctx: UiMeasureContext): Size {
@@ -29,5 +31,11 @@ class DynamicTextNode(
         val text = currentText()
         addBorderCommands(out)
         out.add(RenderCommand.DrawText(text, contentX(), contentY(), color))
+    }
+
+    override fun defaultForegroundColor(): Int = color
+
+    override fun applyForegroundColor(value: Int) {
+        color = value
     }
 }

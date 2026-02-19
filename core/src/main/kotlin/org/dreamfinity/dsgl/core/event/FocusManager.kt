@@ -18,21 +18,26 @@ object FocusManager {
 
     /** Requests focus for a node, or clears it when null. */
     fun requestFocus(node: DOMNode?) {
+        val target = if (node?.styleDisabled == true) null else node
         val previous = focused
-        if (previous === node) return
+        if (previous === target) return
 
+        if (previous != null && previous.styleFocused) {
+            previous.setFocusedState(false)
+        }
         if (previous != null) {
-            postBlur(previous, node?.key)
+            postBlur(previous, target?.key)
         }
 
-        focused = node
-        if (node == null) {
+        focused = target
+        if (target == null) {
             focusedKey = null
             focusedPath = null
         } else {
-            focusedKey = node.key
-            focusedPath = buildPath(node)
-            postFocus(node, previous?.key)
+            focusedKey = target.key
+            focusedPath = buildPath(target)
+            target.setFocusedState(true)
+            postFocus(target, previous?.key)
         }
     }
 
@@ -45,7 +50,7 @@ object FocusManager {
     fun resolveFocusable(start: DOMNode?): DOMNode? {
         var current = start
         while (current != null) {
-            if (current.focusable) return current
+            if (current.focusable && !current.styleDisabled) return current
             current = current.parent
         }
         return null
@@ -72,18 +77,19 @@ object FocusManager {
             return
         }
 
-        var candidate: DOMNode? = null
+        var focusCandidate: DOMNode? = null
         if (currentKey != null) {
-            candidate = findByKey(root, currentKey)
+            focusCandidate = findByKey(root, currentKey)
         }
-        if (candidate == null && currentPath != null) {
-            candidate = findByPath(root, currentPath)
+        if (focusCandidate == null && currentPath != null) {
+            focusCandidate = findByPath(root, currentPath)
         }
 
-        if (candidate != null && candidate.focusable) {
-            focused = candidate
-            focusedKey = candidate.key
-            focusedPath = buildPath(candidate)
+        if (focusCandidate != null && focusCandidate.focusable) {
+            focused = focusCandidate
+            focusedKey = focusCandidate.key
+            focusedPath = buildPath(focusCandidate)
+            focusCandidate.setFocusedState(true)
         } else {
             clearFocus()
         }
