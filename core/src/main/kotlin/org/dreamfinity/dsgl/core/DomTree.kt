@@ -17,6 +17,7 @@ class DomTree(val root: DOMNode) {
     private var lastWidth: Int = 0
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
+    private val paintBuffer: MutableList<RenderCommand> = ArrayList(256)
 
     /** Measures and lays out the tree for the given viewport. */
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
@@ -28,15 +29,19 @@ class DomTree(val root: DOMNode) {
     }
 
     /** Builds render commands for the current layout. */
-    fun paint(ctx: UiMeasureContext): List<RenderCommand> {
-        val layoutDirtyFromStyles = StyleEngine.applyStylesRecursively(root)
+    fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
+        val layoutDirtyFromStyles = if (applyStyles) {
+            StyleEngine.applyStylesRecursively(root)
+        } else {
+            false
+        }
         if ((!laidOut || layoutDirtyFromStyles) && lastWidth > 0 && lastHeight > 0) {
             root.render(ctx, 0, 0, lastWidth, lastHeight)
             laidOut = true
         }
-        val out = mutableListOf<RenderCommand>()
-        root.buildRenderCommands(ctx, out)
-        return out
+        paintBuffer.clear()
+        root.buildRenderCommands(ctx, paintBuffer)
+        return paintBuffer
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {

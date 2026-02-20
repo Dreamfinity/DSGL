@@ -63,6 +63,8 @@ abstract class DsglWindow {
     open fun onClick(x: Int, y: Int, button: Int) {}
     /** Raw key input hook at the host level. */
     open fun onKeyTyped(typedChar: Char, keyCode: Int) {}
+    /** Called every host frame before draw/rebuild decisions. */
+    open fun onFrame(frameTimeMs: Long) {}
 
     /**
      * When true, the host will rebuild the tree on resize.

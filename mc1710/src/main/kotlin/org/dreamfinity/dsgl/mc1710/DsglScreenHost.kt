@@ -90,13 +90,16 @@ abstract class DsglScreenHost(
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
         if (!::adapter.isInitialized) return
         updateSize(force = false)
+        window.onFrame(System.currentTimeMillis())
         rebuildIfNeeded()
         val tree = domTree ?: return
+        var stylesAlreadyApplied = false
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
             needsLayout = false
+            stylesAlreadyApplied = true
         }
-        val commands = tree.paint(adapter)
+        val commands = tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
         val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
         val dx = mouseX - prevX
