@@ -11,12 +11,17 @@ import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.DynamicTextProps
 import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.event.MouseDownEvent
+import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.MouseUpEvent
+import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
@@ -46,6 +51,7 @@ import java.io.File
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.imageio.ImageIO
+import kotlin.math.abs
 import kotlin.math.roundToLong
 
 class ShowcaseWindow : DsglWindow() {
@@ -73,6 +79,12 @@ class ShowcaseWindow : DsglWindow() {
     internal var styleLargeGap by state(false)
     internal var styleFixedSize by state(false)
     internal var stackOverlayEnabled by state(true)
+    internal var layoutOverlayX by state(8)
+    internal var layoutOverlayY by state(92)
+    internal var layoutOverlayDragging: Boolean = false
+    private var layoutOverlayDragAnchorX: Int = 0
+    private var layoutOverlayDragAnchorY: Int = 0
+    private var layoutOverlayDragMoved: Boolean = false
     internal var stylesheetReloadCount by state(0)
     internal var stylesheetDemoTextValue by state("")
     internal var stylesheetDemoClickCount by state(0)
@@ -250,30 +262,6 @@ class ShowcaseWindow : DsglWindow() {
                 }
             }
 
-            if (selectedSection == DemoSection.LAYOUT_STYLE && stackOverlayEnabled) {
-                div(
-                    ComponentProps(
-                        key = "layout.stack.overlay",
-                        width = 172,
-                        backgroundColor = 0xCC5A3131.toInt(),
-                        onMouseClick = { event ->
-                            overlayClicks += 1
-                            logHook("overlay.onMouseClick", event, "overlayClicks=$overlayClicks")
-                        },
-                        style = {
-                            margin(28, 0, 0, 122)
-                            padding(4)
-                            border(1, 0xFF8D4848.toInt())
-                        }
-                    )
-                ) {
-                    dynamicText(
-                        DynamicTextProps {
-                            "Stack demo overlay (clicks=$overlayClicks)"
-                        }.apply { color = DsglColors.WHITE }
-                    )
-                }
-            }
         }
     }
 
@@ -405,6 +393,46 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
 
+    internal fun beginLayoutOverlayDrag(event: MouseDownEvent) {
+        if (event.mouseButton != MouseButton.LEFT) return
+        val overlayNode = findNodeInPath(event.target, "layout.stack.overlay") ?: return
+        layoutOverlayDragging = true
+        layoutOverlayDragAnchorX = (event.mouseX - overlayNode.bounds.x).coerceIn(0, overlayNode.bounds.width.coerceAtLeast(1))
+        layoutOverlayDragAnchorY = (event.mouseY - overlayNode.bounds.y).coerceIn(0, overlayNode.bounds.height.coerceAtLeast(1))
+        layoutOverlayDragMoved = false
+    }
+
+    internal fun updateLayoutOverlayDrag(event: MouseDragEvent, maxX: Int, maxY: Int) {
+        if (!layoutOverlayDragging) return
+        val currentX = event.lastMouseX + event.dx
+        val currentY = event.lastMouseY + event.dy
+        val stackNode = findNodeInPath(event.target, "section.layoutStyle.stack") ?: return
+        val nextX = (currentX - stackNode.bounds.x - layoutOverlayDragAnchorX).coerceIn(0, maxX)
+        val nextY = (currentY - stackNode.bounds.y - layoutOverlayDragAnchorY).coerceIn(0, maxY)
+        if (nextX != layoutOverlayX) {
+            if (abs(nextX - layoutOverlayX) > 0) {
+                layoutOverlayDragMoved = true
+            }
+            layoutOverlayX = nextX
+        }
+        if (nextY != layoutOverlayY) {
+            if (abs(nextY - layoutOverlayY) > 0) {
+                layoutOverlayDragMoved = true
+            }
+            layoutOverlayY = nextY
+        }
+    }
+
+    internal fun finishLayoutOverlayDrag(event: MouseUpEvent) {
+        if (!layoutOverlayDragging) return
+        if (event.mouseButton == MouseButton.LEFT && !layoutOverlayDragMoved) {
+            overlayClicks += 1
+            logHook("overlay.onMouseClick", event, "overlayClicks=$overlayClicks")
+        }
+        layoutOverlayDragging = false
+        layoutOverlayDragMoved = false
+    }
+
     internal fun recordInputEvent(control: String, phase: String, value: String, event: Event) {
         val time = LocalTime.now().format(inputEventTimeFormatter)
         val line = "$time $control.$phase value=$value"
@@ -453,6 +481,15 @@ class ShowcaseWindow : DsglWindow() {
         var normalized = value % 360.0
         if (normalized < 0.0) normalized += 360.0
         return normalized
+    }
+
+    private fun findNodeInPath(start: DOMNode?, key: Any): DOMNode? {
+        var current = start
+        while (current != null) {
+            if (current.key == key) return current
+            current = current.parent
+        }
+        return null
     }
 
     private fun prepareDemoMedia() {
