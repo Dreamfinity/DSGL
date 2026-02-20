@@ -287,6 +287,14 @@ abstract class DOMNode(
         styleFocused = value && !styleDisabled
     }
 
+    /**
+     * Indicates whether this node should receive pointer drag capture when pressed.
+     * Default behavior enables capture for nodes with explicit external onMouseDrag handlers.
+     */
+    open fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean {
+        return onMouseDrag != null && bounds.contains(mouseX, mouseY)
+    }
+
     internal fun syncBaseFrom(template: DOMNode) {
         key = template.key
         width = template.width

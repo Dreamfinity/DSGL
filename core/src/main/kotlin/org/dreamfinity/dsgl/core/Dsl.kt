@@ -156,6 +156,25 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         UiScope(this).block()
     }
 
+    /** Stack layout container (children overlap). */
+    fun stack(
+        props: ComponentProps = ComponentProps(),
+        block: UiScope.() -> Unit = {}
+    ) = ContainerNode(
+        LayoutDirection.Stack,
+        props.padding,
+        props.gap,
+        props.backgroundColor,
+        props.key
+    ).apply {
+        this.width = props.width
+        this.height = props.height
+        applyStyle(this, props.style)
+        applyHandlers(this, props)
+        add(this)
+        UiScope(this).block()
+    }
+
 
     /** Static text node. */
     fun text(props: TextProps) = TextNode(
@@ -199,7 +218,6 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
-        props.onMouseClick?.let { this.onClick(it) }
         add(this)
         ButtonScope(this).block()
     }

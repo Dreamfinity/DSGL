@@ -354,6 +354,9 @@ abstract class DsglScreenHost(
                 is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
                 is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
             }
+            if (current.shouldCapturePointerDrag(mouseX, mouseY)) {
+                return current
+            }
             current = current.parent
         }
         return null
