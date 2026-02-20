@@ -5,6 +5,13 @@ import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.DragEndEvent
+import org.dreamfinity.dsgl.core.event.DragEnterEvent
+import org.dreamfinity.dsgl.core.event.DragEvent
+import org.dreamfinity.dsgl.core.event.DragLeaveEvent
+import org.dreamfinity.dsgl.core.event.DragOverEvent
+import org.dreamfinity.dsgl.core.event.DragStartEvent
+import org.dreamfinity.dsgl.core.event.DropEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
@@ -97,4 +104,39 @@ fun DOMNode.onInput(handler: (InputEvent) -> Unit) {
 /** Registers a change handler for this node. */
 fun DOMNode.onChange(handler: (ValueChangedEvent) -> Unit) {
     EventBus.run { this@onChange.addEventListener(Events.CHANGE, handler) }
+}
+
+/** Registers a drag start handler for this node. */
+fun DOMNode.onDragStart(handler: (DragStartEvent) -> Unit) {
+    EventBus.run { this@onDragStart.addEventListener(Events.DRAGSTART, handler) }
+}
+
+/** Registers a drag handler for this node. */
+fun DOMNode.onDrag(handler: (DragEvent) -> Unit) {
+    EventBus.run { this@onDrag.addEventListener(Events.DRAGGING, handler) }
+}
+
+/** Registers a drag end handler for this node. */
+fun DOMNode.onDragEnd(handler: (DragEndEvent) -> Unit) {
+    EventBus.run { this@onDragEnd.addEventListener(Events.DRAGEND, handler) }
+}
+
+/** Registers a drag enter handler for this node. */
+fun DOMNode.onDragEnter(handler: (DragEnterEvent) -> Unit) {
+    EventBus.run { this@onDragEnter.addEventListener(Events.DRAGENTER, handler) }
+}
+
+/** Registers a drag over handler for this node. */
+fun DOMNode.onDragOver(handler: (DragOverEvent) -> Unit) {
+    EventBus.run { this@onDragOver.addEventListener(Events.DRAGOVER, handler) }
+}
+
+/** Registers a drag leave handler for this node. */
+fun DOMNode.onDragLeave(handler: (DragLeaveEvent) -> Unit) {
+    EventBus.run { this@onDragLeave.addEventListener(Events.DRAGLEAVE, handler) }
+}
+
+/** Registers a drop handler for this node. */
+fun DOMNode.onDrop(handler: (DropEvent) -> Unit) {
+    EventBus.run { this@onDrop.addEventListener(Events.DROP, handler) }
 }

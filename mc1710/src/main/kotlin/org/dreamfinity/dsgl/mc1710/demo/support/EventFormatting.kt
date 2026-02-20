@@ -4,6 +4,13 @@ import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.DragEndEvent
+import org.dreamfinity.dsgl.core.event.DragEnterEvent
+import org.dreamfinity.dsgl.core.event.DragEvent
+import org.dreamfinity.dsgl.core.event.DragLeaveEvent
+import org.dreamfinity.dsgl.core.event.DragOverEvent
+import org.dreamfinity.dsgl.core.event.DragStartEvent
+import org.dreamfinity.dsgl.core.event.DropEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
@@ -37,6 +44,13 @@ fun formatEventLine(
         is FocusLoseEvent -> "next=${event.nextTargetKey ?: "none"}"
         is InputEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
         is ValueChangedEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
+        is DragStartEvent -> "source=${event.sourceKey ?: "none"} types=${event.dataTransfer.types.joinToString(",")}"
+        is DragEvent -> "source=${event.sourceKey ?: "none"} effect=${event.dataTransfer.dropEffect.name.lowercase()}"
+        is DragEndEvent -> "drop=${event.didDrop} effect=${event.finalDropEffect.name.lowercase()} target=${event.dropTargetKey ?: "none"}"
+        is DragEnterEvent -> "source=${event.sourceKey ?: "none"}"
+        is DragOverEvent -> "source=${event.sourceKey ?: "none"} effect=${event.dataTransfer.dropEffect.name.lowercase()} accepted=${event.dropAccepted || event.cancelled}"
+        is DragLeaveEvent -> "source=${event.sourceKey ?: "none"}"
+        is DropEvent -> "source=${event.sourceKey ?: "none"} types=${event.dataTransfer.types.joinToString(",")}"
         else -> ""
     }
     val notePart = if (note.isNullOrBlank()) "" else " note=$note"

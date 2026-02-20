@@ -47,6 +47,8 @@ open class ComponentProps(
     var className: String = "",
     var classes: Set<String> = emptySet(),
     var disabled: Boolean = false,
+    var draggable: Boolean = false,
+    var droppable: Boolean = false,
     var style: StyleScope.() -> Unit = {},
     var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null,
     var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null,
@@ -64,7 +66,14 @@ open class ComponentProps(
     var onFocusGain: ((FocusGainEvent) -> Unit)? = null,
     var onFocusLose: ((FocusLoseEvent) -> Unit)? = null,
     var onInput: ((InputEvent) -> Unit)? = null,
-    var onValueChange: ((ValueChangedEvent) -> Unit)? = null
+    var onValueChange: ((ValueChangedEvent) -> Unit)? = null,
+    var onDragStart: ((DragStartEvent) -> Unit)? = null,
+    var onDrag: ((DragEvent) -> Unit)? = null,
+    var onDragEnd: ((DragEndEvent) -> Unit)? = null,
+    var onDragEnter: ((DragEnterEvent) -> Unit)? = null,
+    var onDragOver: ((DragOverEvent) -> Unit)? = null,
+    var onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
+    var onDrop: ((DropEvent) -> Unit)? = null
 ) {
     fun classNames(value: String) {
         className = value
