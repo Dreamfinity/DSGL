@@ -18,6 +18,13 @@ enum class Events {
     KEYUP,
 
     DRAG,
+    DRAGSTART,
+    DRAGGING,
+    DRAGEND,
+    DRAGENTER,
+    DRAGOVER,
+    DRAGLEAVE,
+    DROP,
 
     FOCUS,
     BLUR,

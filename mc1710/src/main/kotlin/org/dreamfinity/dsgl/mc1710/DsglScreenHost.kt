@@ -14,12 +14,13 @@ import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
-import java.io.File
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
@@ -56,6 +57,7 @@ abstract class DsglScreenHost(
     private var dragCaptureFocusKey: Any? = null
     private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
     private var activeTarget: DOMNode? = null
+    private var lastFrameNanos: Long = 0L
     private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
         override fun readText(): String {
             return try {
@@ -93,6 +95,13 @@ abstract class DsglScreenHost(
         window.onFrame(System.currentTimeMillis())
         rebuildIfNeeded()
         val tree = domTree ?: return
+        val nowNanos = System.nanoTime()
+        val dtSeconds = if (lastFrameNanos == 0L) {
+            1.0 / 60.0
+        } else {
+            ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
+        }
+        lastFrameNanos = nowNanos
         var stylesAlreadyApplied = false
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
@@ -100,6 +109,8 @@ abstract class DsglScreenHost(
             stylesAlreadyApplied = true
         }
         val commands = tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
+        DragManager.onMouseMove(tree.root, mouseX, mouseY)
+        DragManager.onFrame(tree.root, dtSeconds)
         val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
         val dx = mouseX - prevX
@@ -116,7 +127,10 @@ abstract class DsglScreenHost(
         }
         lastMoveX = mouseX
         lastMoveY = mouseY
-        adapter.paint(commands)
+        val composedCommands = ArrayList<RenderCommand>(commands.size + 48)
+        composedCommands.addAll(commands)
+        DragManager.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
+        adapter.paint(composedCommands)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
     }
@@ -129,6 +143,7 @@ abstract class DsglScreenHost(
     override fun onGuiClosed() {
         ClipboardBridge.install(null)
         FocusManager.clearFocus()
+        DragManager.cancelActiveDrag()
         clearActiveTarget()
         flushPendingCleanup()
         domTree?.root?.let { root ->
@@ -137,6 +152,7 @@ abstract class DsglScreenHost(
         hoverChain.clear()
         hoverTarget = null
         releaseDragCapture()
+        lastFrameNanos = 0L
         window.onClose()
         super.onGuiClosed()
     }
@@ -187,6 +203,7 @@ abstract class DsglScreenHost(
             domTree?.root?.let { root ->
                 FocusManager.retainFocus(root)
                 restoreDragCapture(root)
+                DragManager.rebindAfterReconcile(root)
             }
         }
     }
@@ -220,11 +237,10 @@ abstract class DsglScreenHost(
     override fun handleMouseInput() {
         updateSize(force = false)
         rebuildIfNeeded()
-        domTree?.let { tree ->
-            if (needsLayout) {
-                tree.render(adapter, lastWidth, lastHeight)
-                needsLayout = false
-            }
+        val tree = domTree ?: return
+        if (needsLayout) {
+            tree.render(adapter, lastWidth, lastHeight)
+            needsLayout = false
         }
 
         val mouseX = Mouse.getEventX() * width / mc.displayWidth
@@ -243,6 +259,7 @@ abstract class DsglScreenHost(
                 val event = MouseDownEvent(mouseX, mouseY, mappedButton)
                 event.target = hoverTarget
                 EventBus.post(event)
+                DragManager.onMouseDown(tree.root, event.target ?: hoverTarget, event)
                 if (mappedButton == MouseButton.LEFT) {
                     setActiveTarget(event.target ?: hoverTarget)
                     val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
@@ -257,12 +274,13 @@ abstract class DsglScreenHost(
             val releaseTarget = dragCaptureTarget ?: hoverTarget
             val hadDragCapture = dragCaptureTarget != null
             eventButton = -1
-            mapButton(mouseButton)?.let {
-                val upEvent = MouseUpEvent(mouseX, mouseY, it)
+            mapButton(mouseButton)?.let { mappedButton ->
+                val upEvent = MouseUpEvent(mouseX, mouseY, mappedButton)
                 upEvent.target = releaseTarget
                 EventBus.post(upEvent)
-                if (!hadDragCapture) {
-                    val clickEvent = MouseClickEvent(mouseX, mouseY, it)
+                val dndConsumed = DragManager.onMouseUp(tree.root, upEvent)
+                if (!hadDragCapture && !dndConsumed) {
+                    val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
                     clickEvent.target = hoverTarget
                     EventBus.post(clickEvent)
                 }
@@ -270,19 +288,22 @@ abstract class DsglScreenHost(
             clearActiveTarget()
             releaseDragCapture()
         } else if (eventButton != -1 && lastMouseEvent > 0L) {
-            mapButton(eventButton)?.let {
+            mapButton(eventButton)?.let { mappedButton ->
                 val dx = mouseX - lastMouseX
                 val dy = mouseY - lastMouseY
                 if (dx != 0 || dy != 0) {
+                    DragManager.onMouseMove(tree.root, mouseX, mouseY)
                     val dragEvent = MouseDragEvent(
                         lastMouseX,
                         lastMouseY,
                         dx,
                         dy,
-                        it
+                        mappedButton
                     )
-                    dragEvent.target = dragCaptureTarget ?: hoverTarget
-                    EventBus.post(dragEvent)
+                    if (!DragManager.isDragging) {
+                        dragEvent.target = dragCaptureTarget ?: hoverTarget
+                        EventBus.post(dragEvent)
+                    }
                 }
             }
         }
@@ -385,9 +406,11 @@ abstract class DsglScreenHost(
         cls: Class<out DOMNode>
     ): DOMNode? {
         if (node.key == key && node.javaClass == cls) return node
-        node.children.forEach { child ->
+        for (child in node.children) {
             val found = findByKeyAndClass(child, key, cls)
-            if (found != null) return found
+            if (found != null) {
+                return found
+            }
         }
         return null
     }

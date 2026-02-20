@@ -109,6 +109,13 @@ object EventBus {
             Events.MOUSEMOVE -> allListeners
             Events.DRAG -> allListeners
             Events.MOUSEENTER -> allListeners
+            Events.DRAGSTART,
+            Events.DRAGGING,
+            Events.DRAGEND,
+            Events.DRAGENTER,
+            Events.DRAGOVER,
+            Events.DRAGLEAVE,
+            Events.DROP -> allListeners
             Events.FOCUS, Events.BLUR, Events.INPUT, Events.CHANGE -> allListeners
         }
 

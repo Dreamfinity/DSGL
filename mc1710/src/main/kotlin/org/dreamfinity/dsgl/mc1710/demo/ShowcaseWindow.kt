@@ -18,6 +18,13 @@ import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.event.DragEndEvent
+import org.dreamfinity.dsgl.core.event.DragEvent
+import org.dreamfinity.dsgl.core.event.DragOverEvent
+import org.dreamfinity.dsgl.core.event.DragStartEvent
+import org.dreamfinity.dsgl.core.event.EffectAllowed
+import org.dreamfinity.dsgl.core.event.DropEffect
+import org.dreamfinity.dsgl.core.event.DropEvent
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseDragEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
@@ -26,6 +33,7 @@ import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderFocusRebuildSection
+import org.dreamfinity.dsgl.mc1710.demo.sections.renderDragDropSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputsGallerySection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputEventsSection
 import org.dreamfinity.dsgl.mc1710.demo.sections.renderInteractionsSection
@@ -55,6 +63,17 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 class ShowcaseWindow : DsglWindow() {
+    companion object {
+        private const val DND_ZONE_REORDER = "reorder"
+        private const val DND_ZONE_TRASH = "trash"
+        private const val DND_ZONE_COPY = "copy"
+    }
+
+    data class DndDemoItem(
+        val id: String,
+        val label: String
+    )
+
     private var viewportWidth: Int = 320
     private var viewportHeight: Int = 240
 
@@ -155,6 +174,16 @@ class ShowcaseWindow : DsglWindow() {
     internal var textEditingSawShiftSelection by state(false)
     internal var textEditingSawClipboardShortcut by state(false)
     internal var textEditingSawFocus by state(false)
+    internal var dndItems by state(
+        defaultDndItems()
+    )
+    internal var dndHoverZone by state("none")
+    internal var dndLastAction by state("none")
+    internal var dndTransferTypes by state("-")
+    internal var dndDropEffect by state("none")
+    internal var dndActiveItem by state("none")
+    internal var dndDragTickCount by state(0)
+    private var dndCopySequence: Int = 0
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
@@ -242,6 +271,7 @@ class ShowcaseWindow : DsglWindow() {
                             DemoSection.INPUTS -> renderInputsGallerySection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INPUT_EVENTS -> renderInputEventsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.TEXT_EDITING -> renderTextEditingSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
+                            DemoSection.DRAG_DROP -> renderDragDropSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.INTERACTIONS -> renderInteractionsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
                             DemoSection.MC_FEATURES -> renderMcFeaturesSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
@@ -464,10 +494,107 @@ class ShowcaseWindow : DsglWindow() {
         return inputEventCheckboxValue.toList().sorted().joinToString(",")
     }
 
+    internal fun resetDndItems(source: String) {
+        dndItems = defaultDndItems()
+        dndLastAction = "reset list"
+        dndHoverZone = "none"
+        dndActiveItem = "none"
+        dndDropEffect = "none"
+        dndTransferTypes = "-"
+        dndDragTickCount = 0
+        appendInfo("DnD demo list reset by $source")
+    }
+
+    internal fun handleDndStart(item: DndDemoItem, event: DragStartEvent) {
+        val sourceBounds = event.target?.bounds
+        val offsetX = if (sourceBounds != null) {
+            (event.mouseX - sourceBounds.x).coerceIn(0, sourceBounds.width.coerceAtLeast(1))
+        } else {
+            0
+        }
+        val offsetY = if (sourceBounds != null) {
+            (event.mouseY - sourceBounds.y).coerceIn(0, sourceBounds.height.coerceAtLeast(1))
+        } else {
+            0
+        }
+        event.dataTransfer.setData("text/plain", item.label)
+        event.dataTransfer.setData("application/x-dsgl-item-id", item.id)
+        event.dataTransfer.effectAllowed = EffectAllowed.COPY_MOVE
+        event.dataTransfer.dropEffect = DropEffect.MOVE
+        event.dataTransfer.setDragImage("dnd.item.${item.id}", offsetX, offsetY)
+        dndActiveItem = item.label
+        dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        dndLastAction = "dragstart ${item.label}"
+        logHook("dnd.onDragStart", event, "item=${item.id}")
+    }
+
+    internal fun handleDndDrag(event: DragEvent) {
+        dndDragTickCount += 1
+        dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        if (dndDragTickCount % 5 == 0) {
+            logHook("dnd.onDrag", event, "tick=$dndDragTickCount")
+        }
+    }
+
+    internal fun handleDndOver(zone: String, effect: DropEffect, event: DragOverEvent) {
+        dndHoverZone = zone
+        event.acceptDrop(effect)
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        logHook("dnd.$zone.onDragOver", event, "effect=${event.dataTransfer.dropEffect.name.lowercase()}")
+    }
+
+    internal fun handleDndDrop(zone: String, event: DropEvent) {
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id")
+        val source = dndItems.firstOrNull { it.id == draggedId }
+        when {
+            source == null -> {
+                dndLastAction = "drop ignored (missing source)"
+            }
+
+            zone == DND_ZONE_REORDER -> {
+                val next = dndItems.filterNot { it.id == source.id } + source
+                dndItems = next
+                dndLastAction = "moved ${source.label} to end"
+            }
+
+            zone == DND_ZONE_TRASH -> {
+                dndItems = dndItems.filterNot { it.id == source.id }
+                dndLastAction = "deleted ${source.label}"
+            }
+
+            zone == DND_ZONE_COPY -> {
+                dndCopySequence += 1
+                val copy = DndDemoItem(
+                    id = "${source.id}_copy_$dndCopySequence",
+                    label = "${source.label} Copy $dndCopySequence"
+                )
+                dndItems = dndItems + copy
+                dndLastAction = "copied ${source.label}"
+            }
+        }
+        dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        dndHoverZone = zone
+        logHook("dnd.$zone.onDrop", event, "item=${source?.id ?: "none"}")
+    }
+
+    internal fun handleDndEnd(event: DragEndEvent) {
+        dndHoverZone = "none"
+        dndDropEffect = event.finalDropEffect.name.lowercase()
+        dndLastAction = "dragend drop=${event.didDrop} effect=${event.finalDropEffect.name.lowercase()}"
+        dndActiveItem = "none"
+        logHook("dnd.onDragEnd", event, "drop=${event.didDrop}")
+    }
+
     private fun selectSection(section: DemoSection) {
         if (selectedSection == section) return
         selectedSection = section
         interactionZoneInside = false
+        if (section != DemoSection.DRAG_DROP) {
+            dndHoverZone = "none"
+        }
         appendInfo("Section: ${section.title}")
     }
 
@@ -594,6 +721,15 @@ class ShowcaseWindow : DsglWindow() {
     private fun demoStylesheetFile(): File {
         val dataDir = Minecraft.getMinecraft().mcDataDir
         return File(dataDir, "dsgl/styles/showcase_styles.dss")
+    }
+
+    private fun defaultDndItems(): List<DndDemoItem> {
+        return listOf(
+            DndDemoItem("apple", "Apple"),
+            DndDemoItem("bread", "Bread"),
+            DndDemoItem("carrot", "Carrot"),
+            DndDemoItem("diamond", "Diamond")
+        )
     }
 
     private fun writeDemoImage(file: File, colorA: Int, colorB: Int) {
