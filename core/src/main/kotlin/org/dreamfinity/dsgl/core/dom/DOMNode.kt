@@ -339,6 +339,9 @@ abstract class DOMNode(
 
     internal fun applyComputedStyle(style: ComputedStyle): Boolean {
         val previous = appliedComputedStyle
+        if (previous === style || previous == style) {
+            return false
+        }
         margin = style.margin
         padding = style.padding
         border = Border.all(style.borderWidth, style.borderColor)
