@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
  * Text node whose value is computed on each rebuild.
  */
 class DynamicTextNode(
-    private val textProvider: () -> String,
+    private var textProvider: () -> String,
     var color: Int = DsglColors.TEXT,
     key: Any? = null
 ) : DOMNode(key) {
@@ -37,5 +37,9 @@ class DynamicTextNode(
 
     override fun applyForegroundColor(value: Int) {
         color = value
+    }
+
+    internal fun syncProviderFrom(template: DynamicTextNode) {
+        textProvider = template.textProvider
     }
 }

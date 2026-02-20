@@ -2,6 +2,8 @@ package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
+import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -13,7 +15,7 @@ import org.dreamfinity.dsgl.core.style.StyleEngine
  * Hosts should call [render] when size changes or when a rebuild is requested,
  * and [paint] every frame to obtain render commands.
  */
-class DomTree(val root: DOMNode) {
+class DomTree(var root: DOMNode) {
     private var lastWidth: Int = 0
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
@@ -42,6 +44,17 @@ class DomTree(val root: DOMNode) {
         paintBuffer.clear()
         root.buildRenderCommands(ctx, paintBuffer)
         return paintBuffer
+    }
+
+    /**
+     * Reconciles this retained tree against a freshly built tree.
+     * Reuses compatible nodes and returns detached subtrees for cleanup.
+     */
+    fun reconcileWith(next: DomTree): DomReconcileResult {
+        val result = DomReconciler.reconcile(root, next.root)
+        root = result.root
+        laidOut = false
+        return result
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {

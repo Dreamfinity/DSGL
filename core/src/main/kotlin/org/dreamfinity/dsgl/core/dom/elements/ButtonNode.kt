@@ -25,6 +25,12 @@ class ButtonNode(
 
     init {
         this.padding = Insets.all(padding)
+        EventBus.run {
+            this@ButtonNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
+                if (this@ButtonNode.styleDisabled) return@addEventListener
+                this@ButtonNode.onClickHandler?.invoke(event)
+            }
+        }
     }
 
     override fun measure(ctx: UiMeasureContext): Size {
@@ -50,12 +56,10 @@ class ButtonNode(
     /** Registers a click handler for this button. */
     fun onClick(handler: (MouseClickEvent) -> Unit) {
         onClickHandler = handler
-        EventBus.run {
-            this@ButtonNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
-                if (this@ButtonNode.styleDisabled) return@addEventListener
-                handler(event)
-            }
-        }
+    }
+
+    internal fun syncClickFrom(template: ButtonNode) {
+        onClickHandler = template.onClickHandler
     }
 
     override fun handleClick(event: MouseClickEvent): Boolean {

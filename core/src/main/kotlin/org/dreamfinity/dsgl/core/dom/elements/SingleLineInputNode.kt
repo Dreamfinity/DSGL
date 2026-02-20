@@ -507,4 +507,23 @@ open class SingleLineInputNode(
     override fun applyForegroundColor(value: Int) {
         textColor = value
     }
+
+    internal fun syncEditablePropsFrom(template: SingleLineInputNode) {
+        placeholder = template.placeholder
+        allowedChars = template.allowedChars
+        minLength = template.minLength
+        maxLength = template.maxLength
+        textColor = template.textColor
+        placeholderColor = template.placeholderColor
+        backgroundColor = template.backgroundColor
+        focusedBackgroundColor = template.focusedBackgroundColor
+        minContentWidth = template.minContentWidth
+        selectionColor = template.selectionColor
+        caretBlinkPeriodMs = template.caretBlinkPeriodMs
+        if (text != template.text) {
+            text = template.text
+            editState.clampToLength(text.length)
+            editState.resetBlinkClock()
+        }
+    }
 }

@@ -54,7 +54,7 @@ abstract class DsglScreenHost(
     private var dragCaptureKey: Any? = null
     private var dragCaptureClass: Class<out DOMNode>? = null
     private var dragCaptureFocusKey: Any? = null
-    private var pendingCleanupRoot: DOMNode? = null
+    private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
     private var activeTarget: DOMNode? = null
     private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
         override fun readText(): String {
@@ -171,8 +171,17 @@ abstract class DsglScreenHost(
     private fun rebuildIfNeeded() {
         if (needsRender || domTree == null) {
             rendersCount++
-            domTree?.root?.let { root -> pendingCleanupRoot = root }
-            domTree = window.render()
+            val nextTree = window.render()
+            val currentTree = domTree
+            if (currentTree == null) {
+                domTree = nextTree
+            } else {
+                val reconcile = currentTree.reconcileWith(nextTree)
+                if (reconcile.detachedRoots.isNotEmpty()) {
+                    pendingCleanupRoots.addAll(reconcile.detachedRoots)
+                }
+                domTree = currentTree
+            }
             needsRender = false
             needsLayout = true
             domTree?.root?.let { root ->
@@ -298,9 +307,12 @@ abstract class DsglScreenHost(
     }
 
     private fun flushPendingCleanup() {
-        pendingCleanupRoot?.let { root ->
+        if (pendingCleanupRoots.isEmpty()) return
+        val it = pendingCleanupRoots.iterator()
+        while (it.hasNext()) {
+            val root = it.next()
             EventBus.run { root.clearListenersDeep() }
-            pendingCleanupRoot = null
+            it.remove()
         }
     }
 

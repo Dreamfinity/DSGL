@@ -10,6 +10,8 @@ import org.dreamfinity.dsgl.core.style.ComputedStyle
 import org.dreamfinity.dsgl.core.style.ComputedStyleDefaults
 import org.dreamfinity.dsgl.core.style.StyleAlign
 import org.dreamfinity.dsgl.core.style.StyleDecls
+import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleProperty
 
 /**
  * Base class for all DOM nodes in the retained UI tree.
@@ -74,77 +76,62 @@ abstract class DOMNode(
     private var onFocusLoseHandler: ((FocusLoseEvent) -> Unit)? = null
     private var onInputHandler: ((InputEvent) -> Unit)? = null
     private var onValueChangeHandler: ((ValueChangedEvent) -> Unit)? = null
+    private var externalEventBridgeInstalled: Boolean = false
 
     var onMouseDown: ((MouseDownEvent) -> Unit)?
         get() = onMouseDownHandler
         set(value) {
             onMouseDownHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSEDOWN, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseUp: ((MouseUpEvent) -> Unit)?
         get() = onMouseUpHandler
         set(value) {
             onMouseUpHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSEUP, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseClick: ((MouseClickEvent) -> Unit)?
         get() = onMouseClickHandler
         set(value) {
             onMouseClickHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.CLICK, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseDrag: ((MouseDragEvent) -> Unit)?
         get() = onMouseDragHandler
         set(value) {
             onMouseDragHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.DRAG, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseWheel: ((MouseWheelEvent) -> Unit)?
         get() = onMouseWheelHandler
         set(value) {
             onMouseWheelHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.WHEEL, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseMove: ((MouseMoveEvent) -> Unit)?
         get() = onMouseMoveHandler
         set(value) {
             onMouseMoveHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSEMOVE, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)?
         get() = onKeyDownHandler
         set(value) {
             onKeyDownHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.KEYDOWN, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)?
         get() = onKeyUpHandler
         set(value) {
             onKeyUpHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.KEYUP, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)?
@@ -163,63 +150,49 @@ abstract class DOMNode(
         get() = onMouseEnterHandler
         set(value) {
             onMouseEnterHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSEENTER, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseLeave: ((MouseLeaveEvent) -> Unit)?
         get() = onMouseLeaveHandler
         set(value) {
             onMouseLeaveHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSELEAVE, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onMouseOver: ((MouseOverEvent) -> Unit)?
         get() = onMouseOverHandler
         set(value) {
             onMouseOverHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.MOUSEOVER, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onFocusGain: ((FocusGainEvent) -> Unit)?
         get() = onFocusGainHandler
         set(value) {
             onFocusGainHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.FOCUS, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onFocusLose: ((FocusLoseEvent) -> Unit)?
         get() = onFocusLoseHandler
         set(value) {
             onFocusLoseHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.BLUR, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onInput: ((InputEvent) -> Unit)?
         get() = onInputHandler
         set(value) {
             onInputHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.INPUT, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     var onValueChange: ((ValueChangedEvent) -> Unit)?
         get() = onValueChangeHandler
         set(value) {
             onValueChangeHandler = value
-            value?.let { handler ->
-                EventBus.run { this@DOMNode.addEventListener(Events.CHANGE, handler) }
-            }
+            if (value != null) ensureExternalEventBridge()
         }
 
     /** Measures the node's desired size. */
@@ -268,23 +241,21 @@ abstract class DOMNode(
         setClassNames(props.className)
         styleClasses.addAll(props.classes)
         styleDisabled = props.disabled
-        if (props.onMouseEnter != null) this.onMouseEnter = props.onMouseEnter
-        if (props.onMouseLeave != null) this.onMouseLeave = props.onMouseLeave
-        if (props.onMouseOver != null) this.onMouseOver = props.onMouseOver
-        if (props.onMouseMove != null) this.onMouseMove = props.onMouseMove
-        if (props.onMouseDown != null) this.onMouseDown = props.onMouseDown
-        if (props.onMouseUp != null) this.onMouseUp = props.onMouseUp
-        if (props.onMouseClick != null) this.onMouseClick = props.onMouseClick
-        if (props.onMouseDrag != null) this.onMouseDrag = props.onMouseDrag
-        if (props.onMouseWheel != null) this.onMouseWheel = props.onMouseWheel
-        if (props.onKeyDown != null) this.onKeyDown = props.onKeyDown
-        if (props.onKeyUp != null) this.onKeyUp = props.onKeyUp
-        if (props.onKeyPressed != null) this.onKeyPressed = props.onKeyPressed
-        if (props.onKeyReleased != null) this.onKeyReleased = props.onKeyReleased
-        if (props.onFocusGain != null) this.onFocusGain = props.onFocusGain
-        if (props.onFocusLose != null) this.onFocusLose = props.onFocusLose
-        if (props.onInput != null) this.onInput = props.onInput
-        if (props.onValueChange != null) this.onValueChange = props.onValueChange
+        this.onMouseEnter = props.onMouseEnter
+        this.onMouseLeave = props.onMouseLeave
+        this.onMouseOver = props.onMouseOver
+        this.onMouseMove = props.onMouseMove
+        this.onMouseDown = props.onMouseDown
+        this.onMouseUp = props.onMouseUp
+        this.onMouseClick = props.onMouseClick
+        this.onMouseDrag = props.onMouseDrag
+        this.onMouseWheel = props.onMouseWheel
+        this.onKeyDown = props.onKeyPressed ?: props.onKeyDown
+        this.onKeyUp = props.onKeyReleased ?: props.onKeyUp
+        this.onFocusGain = props.onFocusGain
+        this.onFocusLose = props.onFocusLose
+        this.onInput = props.onInput
+        this.onValueChange = props.onValueChange
     }
 
     /** Applies [StyleScope] DSL to this node. */
@@ -314,6 +285,39 @@ abstract class DOMNode(
 
     fun setFocusedState(value: Boolean) {
         styleFocused = value && !styleDisabled
+    }
+
+    internal fun syncBaseFrom(template: DOMNode) {
+        key = template.key
+        width = template.width
+        height = template.height
+        margin = template.margin
+        padding = template.padding
+        border = template.border
+        borderRadius = template.borderRadius
+        align = template.align
+        styleId = template.styleId
+        styleClasses.clear()
+        styleClasses.addAll(template.styleClasses)
+        inlineStyleDecls = copyStyleDecls(template.inlineStyleDecls)
+        styleDisabled = template.styleDisabled
+        onMouseEnter = template.onMouseEnter
+        onMouseLeave = template.onMouseLeave
+        onMouseOver = template.onMouseOver
+        onMouseMove = template.onMouseMove
+        onMouseDown = template.onMouseDown
+        onMouseUp = template.onMouseUp
+        onMouseClick = template.onMouseClick
+        onMouseDrag = template.onMouseDrag
+        onMouseWheel = template.onMouseWheel
+        onKeyDown = template.onKeyDown
+        onKeyUp = template.onKeyUp
+        onFocusGain = template.onFocusGain
+        onFocusLose = template.onFocusLose
+        onInput = template.onInput
+        onValueChange = template.onValueChange
+        styleDefaultsSnapshot = null
+        appliedComputedStyle = null
     }
 
     internal fun captureStyleDefaults(): ComputedStyleDefaults {
@@ -420,6 +424,64 @@ abstract class DOMNode(
     protected fun addBackgroundImageCommand(out: MutableList<RenderCommand>) {
         val image = styledBackgroundImage ?: return
         out.add(RenderCommand.DrawImage(image, bounds.x, bounds.y, bounds.width, bounds.height))
+    }
+
+    private fun ensureExternalEventBridge() {
+        if (externalEventBridgeInstalled) return
+        externalEventBridgeInstalled = true
+        EventBus.run {
+            this@DOMNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
+                this@DOMNode.onMouseDownHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                this@DOMNode.onMouseUpHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.CLICK) { event: MouseClickEvent ->
+                this@DOMNode.onMouseClickHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
+                this@DOMNode.onMouseDragHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.WHEEL) { event: MouseWheelEvent ->
+                this@DOMNode.onMouseWheelHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.MOUSEMOVE) { event: MouseMoveEvent ->
+                this@DOMNode.onMouseMoveHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                this@DOMNode.onKeyDownHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.KEYUP) { event: KeyboardKeyUpEvent ->
+                this@DOMNode.onKeyUpHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.MOUSEENTER) { event: MouseEnterEvent ->
+                this@DOMNode.onMouseEnterHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.MOUSELEAVE) { event: MouseLeaveEvent ->
+                this@DOMNode.onMouseLeaveHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.MOUSEOVER) { event: MouseOverEvent ->
+                this@DOMNode.onMouseOverHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.FOCUS) { event: FocusGainEvent ->
+                this@DOMNode.onFocusGainHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.BLUR) { event: FocusLoseEvent ->
+                this@DOMNode.onFocusLoseHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.INPUT) { event: InputEvent ->
+                this@DOMNode.onInputHandler?.invoke(event)
+            }
+            this@DOMNode.addEventListener(Events.CHANGE) { event: ValueChangedEvent ->
+                this@DOMNode.onValueChangeHandler?.invoke(event)
+            }
+        }
+    }
+
+    private fun copyStyleDecls(source: StyleDecls): StyleDecls {
+        return StyleDecls(linkedMapOf<StyleProperty, StyleExpression>().apply {
+            putAll(source.values)
+        })
     }
 }
 
