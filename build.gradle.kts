@@ -249,3 +249,9 @@ tasks.register("bumpPatch") {
     description = "Alias for bumpCorePatch."
     dependsOn("bumpCorePatch")
 }
+
+tasks.register("runDemoClient") {
+    group = "application"
+    description = "Run Minecraft client with DSGL showcase demo module."
+    dependsOn(":mc1710-demo:runClient")
+}
