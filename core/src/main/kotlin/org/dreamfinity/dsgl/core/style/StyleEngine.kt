@@ -71,7 +71,7 @@ object StyleEngine {
             typeName = node.styleType,
             nodeId = node.styleId,
             classesHash = node.styleClasses.hashCode(),
-            inlineHash = node.inlineStyleDecls.toStableHash(),
+            inlineHash = node.inlineStyleDeclarations.toStableHash(),
             hovered = node.styleHovered,
             active = node.styleActive,
             focused = node.styleFocused,
@@ -100,7 +100,7 @@ object StyleEngine {
         defaults: ComputedStyleDefaults,
         snapshot: StylesheetSnapshot
     ): ComputedStyle {
-        val merged = StyleDecls()
+        val merged = StyleDeclarations()
         val candidates = gatherCandidates(node, snapshot.index)
             .filter { selectorMatches(node, it.selector) }
             .sortedWith(
@@ -109,7 +109,7 @@ object StyleEngine {
             )
 
         candidates.forEach { merged.mergeFrom(it.declarations) }
-        merged.mergeFrom(node.inlineStyleDecls)
+        merged.mergeFrom(node.inlineStyleDeclarations)
 
         val variables = linkedMapOf<String, String>()
         variables.putAll(snapshot.rootVariables)

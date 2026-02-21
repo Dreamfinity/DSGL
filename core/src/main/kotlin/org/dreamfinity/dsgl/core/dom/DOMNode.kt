@@ -9,7 +9,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.ComputedStyle
 import org.dreamfinity.dsgl.core.style.ComputedStyleDefaults
 import org.dreamfinity.dsgl.core.style.StyleAlign
-import org.dreamfinity.dsgl.core.style.StyleDecls
+import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
 
@@ -33,7 +33,7 @@ abstract class DOMNode(
     var align: StyleAlign = StyleAlign.START
     var styleId: String? = null
     val styleClasses: MutableSet<String> = linkedSetOf()
-    var inlineStyleDecls: StyleDecls = StyleDecls()
+    var inlineStyleDeclarations: StyleDeclarations = StyleDeclarations()
     var styleHovered: Boolean = false
         private set
     var styleActive: Boolean = false
@@ -54,6 +54,12 @@ abstract class DOMNode(
         }
     var draggable: Boolean = false
     var droppable: Boolean = false
+    var dragPreviewMode: DragPreviewMode = DragPreviewMode.GHOST
+    var hideSourceWhileDragging: Boolean = false
+    var dragPreviewBuilder: (DragPreviewScope.() -> Unit)? = null
+    var dragPlaceholderBuilder: (PlaceholderScope.() -> Unit)? = null
+    var dragRenderHidden: Boolean = false
+    var dragHitTestHidden: Boolean = false
     open val focusable: Boolean = false
     open val styleType: String = "node"
     open var onmouseenter: ((MouseEvent) -> Unit)? = null
@@ -277,7 +283,15 @@ abstract class DOMNode(
 
     /** Appends render commands for this node and its children. */
     open fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        children.forEach { it.buildRenderCommands(ctx, out) }
+        children.forEach { child ->
+            child.appendRenderCommands(ctx, out)
+        }
+    }
+
+    /** Appends render commands if this node is currently visible in render tree. */
+    fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        if (dragRenderHidden) return
+        buildRenderCommands(ctx, out)
     }
 
     /** Handles a click; return true when consumed. */
@@ -290,7 +304,11 @@ abstract class DOMNode(
 
     /** Returns true if the mouse event is within current bounds. */
     fun hovered(event: MouseEvent): Boolean {
-        return bounds.contains(event.mouseX, event.mouseY)
+        return isHitTestVisible() && bounds.contains(event.mouseX, event.mouseY)
+    }
+
+    fun isHitTestVisible(): Boolean {
+        return !dragHitTestHidden
     }
 
     /** Applies event handlers from [ComponentProps] to this node. */
@@ -305,6 +323,10 @@ abstract class DOMNode(
             props.onDragOver != null ||
             props.onDragLeave != null ||
             props.onDrop != null
+        this@DOMNode.dragPreviewMode = props.dragPreviewMode
+        this@DOMNode.hideSourceWhileDragging = props.hideSourceWhileDragging
+        this@DOMNode.dragPreviewBuilder = props.dragPreview
+        this@DOMNode.dragPlaceholderBuilder = props.dragPlaceholder
         this@DOMNode.onMouseEnter = props.onMouseEnter
         this@DOMNode.onMouseLeave = props.onMouseLeave
         this@DOMNode.onMouseOver = props.onMouseOver
@@ -378,10 +400,14 @@ abstract class DOMNode(
         styleId = template.styleId
         styleClasses.clear()
         styleClasses.addAll(template.styleClasses)
-        inlineStyleDecls = copyStyleDecls(template.inlineStyleDecls)
+        inlineStyleDeclarations = copyStyleDecls(template.inlineStyleDeclarations)
         styleDisabled = template.styleDisabled
         draggable = template.draggable
         droppable = template.droppable
+        dragPreviewMode = template.dragPreviewMode
+        hideSourceWhileDragging = template.hideSourceWhileDragging
+        dragPreviewBuilder = template.dragPreviewBuilder
+        dragPlaceholderBuilder = template.dragPlaceholderBuilder
         onMouseEnter = template.onMouseEnter
         onMouseLeave = template.onMouseLeave
         onMouseOver = template.onMouseOver
@@ -587,8 +613,8 @@ abstract class DOMNode(
         }
     }
 
-    private fun copyStyleDecls(source: StyleDecls): StyleDecls {
-        return StyleDecls(linkedMapOf<StyleProperty, StyleExpression>().apply {
+    private fun copyStyleDecls(source: StyleDeclarations): StyleDeclarations {
+        return StyleDeclarations(linkedMapOf<StyleProperty, StyleExpression>().apply {
             putAll(source.values)
         })
     }

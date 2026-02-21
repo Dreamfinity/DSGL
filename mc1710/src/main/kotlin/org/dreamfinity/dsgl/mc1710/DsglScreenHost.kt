@@ -129,6 +129,7 @@ abstract class DsglScreenHost(
         lastMoveY = mouseY
         val composedCommands = ArrayList<RenderCommand>(commands.size + 48)
         composedCommands.addAll(commands)
+        DragManager.appendPlaceholderCommands(composedCommands)
         DragManager.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
         adapter.paint(composedCommands)
         flushPendingCleanup()

@@ -2,18 +2,30 @@ package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.math.exp
 
 /**
- * Core drag-and-drop orchestrator with HTML-like event semantics.
+ * Core drag-and-drop orchestrator with react-dnd-like source/preview behavior.
  */
 object DragManager {
     private const val DRAG_THRESHOLD_SQUARED_DISTANCE = 16
-    private const val GHOST_SMOOTHING_COEF = 32.0
     private const val DRAG_TICK_SEC = 0.05
     private const val OVER_TICK_SEC = 0.04
+    private const val MIN_SMOOTHING_K = 0.0
+    private const val MAX_SMOOTHING_K = 96.0
+
+    data class DragMonitorState(
+        val isDragging: Boolean,
+        val sourceKey: Any?,
+        val cursorX: Int,
+        val cursorY: Int,
+        val previewX: Double,
+        val previewY: Double,
+        val mode: DragPreviewMode?
+    )
 
     private data class PendingDrag(
         val sourceNode: DOMNode,
@@ -28,10 +40,18 @@ object DragManager {
         val sourceKey: Any?,
         val sourceClass: Class<out DOMNode>,
         val dataTransfer: DataTransfer,
+        val previewMode: DragPreviewMode,
+        val sourceHiddenDuringDrag: Boolean,
+        val placeholderWidth: Int,
+        val placeholderHeight: Int,
+        val placeholderBuilder: (PlaceholderScope.() -> Unit)?,
+        val previewBuilder: (DragPreviewScope.() -> Unit)?,
         var cursorX: Int,
         var cursorY: Int,
-        var ghostX: Double,
-        var ghostY: Double,
+        var previewX: Double,
+        var previewY: Double,
+        var previewOffsetX: Int,
+        var previewOffsetY: Int,
         var dropTargetNode: DOMNode? = null,
         var dropTargetKey: Any? = null,
         var dropTargetClass: Class<out DOMNode>? = null,
@@ -42,12 +62,50 @@ object DragManager {
 
     private var pendingDrag: PendingDrag? = null
     private var activeDrag: ActiveDrag? = null
+    private var smoothingFactor: Double = 26.0
 
     val isDragging: Boolean
         get() = activeDrag != null
 
     val isPointerCaptured: Boolean
         get() = pendingDrag != null || activeDrag != null
+
+    fun setSmoothingFactor(value: Double) {
+        smoothingFactor = value.coerceIn(MIN_SMOOTHING_K, MAX_SMOOTHING_K)
+    }
+
+    fun getSmoothingFactor(): Double = smoothingFactor
+
+    fun monitor(nodeKey: Any? = null): DragMonitorState {
+        val active = activeDrag
+        if (active == null) {
+            return DragMonitorState(
+                isDragging = false,
+                sourceKey = null,
+                cursorX = 0,
+                cursorY = 0,
+                previewX = 0.0,
+                previewY = 0.0,
+                mode = null
+            )
+        }
+        val draggingThisSource = nodeKey != null && nodeKey == active.sourceKey
+        return DragMonitorState(
+            isDragging = nodeKey == null || draggingThisSource,
+            sourceKey = active.sourceKey,
+            cursorX = active.cursorX,
+            cursorY = active.cursorY,
+            previewX = active.previewX,
+            previewY = active.previewY,
+            mode = active.previewMode
+        )
+    }
+
+    fun isDraggingNode(nodeKey: Any?): Boolean {
+        val active = activeDrag ?: return false
+        if (nodeKey == null) return false
+        return nodeKey == active.sourceKey
+    }
 
     fun onMouseDown(_root: DOMNode, target: DOMNode?, event: MouseDownEvent) {
         if (event.mouseButton != MouseButton.LEFT) {
@@ -113,16 +171,11 @@ object DragManager {
             EventBus.post(dropEvent)
             dropTargetKey = acceptedTarget.key
             didDrop = true
-            if (dropEvent.dropAccepted) {
-                active.dropAccepted = true
-            }
         } else {
             active.dataTransfer.dropEffect = DropEffect.NONE
         }
 
-        dispatchDragEnd(active, didDrop, dropTargetKey)
-        pendingDrag = null
-        activeDrag = null
+        finishDrag(active, didDrop, dropTargetKey)
         return true
     }
 
@@ -130,23 +183,41 @@ object DragManager {
         if (activeDrag == null) return
         val safeDt = dtSeconds.coerceAtLeast(0.0)
         rebindAfterReconcile(root)
-        val rebound = activeDrag ?: return
+        val active = activeDrag ?: return
 
-        val alpha = 1.0 - exp(-GHOST_SMOOTHING_COEF * safeDt)
-        rebound.ghostX += (rebound.cursorX.toDouble() - rebound.ghostX) * alpha
-        rebound.ghostY += (rebound.cursorY.toDouble() - rebound.ghostY) * alpha
+        val alpha = if (smoothingFactor <= 0.0) {
+            1.0
+        } else {
+            1.0 - exp(-smoothingFactor * safeDt)
+        }
+        active.previewX += (active.cursorX.toDouble() - active.previewX) * alpha
+        active.previewY += (active.cursorY.toDouble() - active.previewY) * alpha
 
-        rebound.dragTickAccum += safeDt
-        if (rebound.dragTickAccum >= DRAG_TICK_SEC) {
-            rebound.dragTickAccum = 0.0
-            dispatchDragEvent(rebound)
+        active.dragTickAccum += safeDt
+        if (active.dragTickAccum >= DRAG_TICK_SEC) {
+            active.dragTickAccum = 0.0
+            dispatchDragEvent(active)
         }
 
-        rebound.overTickAccum += safeDt
-        if (rebound.overTickAccum >= OVER_TICK_SEC) {
-            rebound.overTickAccum = 0.0
-            updateDropTarget(root, rebound, dispatchOver = true)
+        active.overTickAccum += safeDt
+        if (active.overTickAccum >= OVER_TICK_SEC) {
+            active.overTickAccum = 0.0
+            updateDropTarget(root, active, dispatchOver = true)
         }
+    }
+
+    fun appendPlaceholderCommands(out: MutableList<RenderCommand>) {
+        val active = activeDrag ?: return
+        if (active.previewMode != DragPreviewMode.ORIGINAL) return
+
+        val source = active.sourceNode
+        val width = active.placeholderWidth.coerceAtLeast(0)
+        val height = active.placeholderHeight.coerceAtLeast(0)
+        if (width <= 0 || height <= 0) return
+        val bounds = Rect(source.bounds.x, source.bounds.y, width, height)
+        val scope = PlaceholderScope()
+        active.placeholderBuilder?.invoke(scope)
+        out.addAll(scope.buildCommands(bounds))
     }
 
     fun appendOverlayCommands(
@@ -159,23 +230,10 @@ object DragManager {
         val active = activeDrag ?: return
         if (viewportWidth <= 0 || viewportHeight <= 0) return
 
-        val preview = active.dataTransfer.currentDragImageSpec()?.let { spec ->
-            findByKey(root, spec.nodeKey)?.let { node -> node to spec }
-        }
-
         out.add(RenderCommand.PushClip(0, 0, viewportWidth, viewportHeight))
-        if (preview != null) {
-            val previewNode = preview.first
-            val spec = preview.second
-            val dx = (active.ghostX - spec.offsetX - previewNode.bounds.x).toInt()
-            val dy = (active.ghostY - spec.offsetY - previewNode.bounds.y).toInt()
-            val previewCommands = ArrayList<RenderCommand>(32)
-            previewNode.buildRenderCommands(ctx, previewCommands)
-            previewCommands.forEach { cmd ->
-                out.add(shiftCommand(cmd, dx, dy))
-            }
-        } else {
-            drawDefaultGhost(active, ctx, out)
+        when (active.previewMode) {
+            DragPreviewMode.ORIGINAL -> appendOriginalPreviewCommands(active, ctx, out)
+            DragPreviewMode.GHOST -> appendGhostPreviewCommands(root, active, ctx, out)
         }
         out.add(RenderCommand.PopClip)
     }
@@ -185,10 +243,17 @@ object DragManager {
 
         val reboundSource = findByKeyAndClass(root, active.sourceKey, active.sourceClass)
         if (reboundSource == null) {
-            finishDragWithoutDrop(active)
+            finishDrag(active, didDrop = false, dropTargetKey = null)
             return
         }
-        active.sourceNode = reboundSource
+
+        if (active.sourceNode !== reboundSource) {
+            clearSourceHiddenFlags(active.sourceNode)
+            active.sourceNode = reboundSource
+            applySourceHiddenFlags(active)
+        } else {
+            applySourceHiddenFlags(active)
+        }
 
         val dropClass = active.dropTargetClass
         val reboundTarget = if (active.dropTargetKey != null && dropClass != null) {
@@ -210,7 +275,7 @@ object DragManager {
             pendingDrag = null
             return
         }
-        finishDragWithoutDrop(active)
+        finishDrag(active, didDrop = false, dropTargetKey = null)
     }
 
     private fun tryStartDrag(root: DOMNode, pending: PendingDrag, mouseX: Int, mouseY: Int) {
@@ -229,18 +294,35 @@ object DragManager {
             return
         }
 
+        val sourceBounds = source.bounds
+        val defaultOffsetX = (mouseX - sourceBounds.x).coerceIn(0, sourceBounds.width.coerceAtLeast(1))
+        val defaultOffsetY = (mouseY - sourceBounds.y).coerceIn(0, sourceBounds.height.coerceAtLeast(1))
+        val previewSpec = transfer.currentDragImageSpec()
+        val previewOffsetX = previewSpec?.offsetX ?: defaultOffsetX
+        val previewOffsetY = previewSpec?.offsetY ?: defaultOffsetY
+        val hideSource = source.dragPreviewMode == DragPreviewMode.ORIGINAL || source.hideSourceWhileDragging
+
         val startedDrag = ActiveDrag(
             sourceNode = source,
             sourceKey = source.key,
             sourceClass = source.javaClass,
             dataTransfer = transfer,
+            previewMode = source.dragPreviewMode,
+            sourceHiddenDuringDrag = hideSource,
+            placeholderWidth = sourceBounds.width,
+            placeholderHeight = sourceBounds.height,
+            placeholderBuilder = source.dragPlaceholderBuilder,
+            previewBuilder = source.dragPreviewBuilder,
             cursorX = mouseX,
             cursorY = mouseY,
-            ghostX = mouseX.toDouble(),
-            ghostY = mouseY.toDouble()
+            previewX = mouseX.toDouble(),
+            previewY = mouseY.toDouble(),
+            previewOffsetX = previewOffsetX,
+            previewOffsetY = previewOffsetY
         )
         activeDrag = startedDrag
         pendingDrag = null
+        applySourceHiddenFlags(startedDrag)
         updateDropTarget(root, startedDrag, dispatchOver = true)
         dispatchDragEvent(startedDrag)
     }
@@ -350,10 +432,80 @@ object DragManager {
         EventBus.post(event)
     }
 
-    private fun finishDragWithoutDrop(active: ActiveDrag) {
-        dispatchDragEnd(active, didDrop = false, dropTargetKey = null)
+    private fun finishDrag(active: ActiveDrag, didDrop: Boolean, dropTargetKey: Any?) {
+        clearSourceHiddenFlags(active.sourceNode)
+        dispatchDragEnd(active, didDrop, dropTargetKey)
         pendingDrag = null
         activeDrag = null
+    }
+
+    private fun applySourceHiddenFlags(active: ActiveDrag) {
+        if (!active.sourceHiddenDuringDrag) return
+        active.sourceNode.dragRenderHidden = true
+        active.sourceNode.dragHitTestHidden = true
+    }
+
+    private fun clearSourceHiddenFlags(source: DOMNode?) {
+        if (source == null) return
+        source.dragRenderHidden = false
+        source.dragHitTestHidden = false
+    }
+
+    private fun appendOriginalPreviewCommands(
+        active: ActiveDrag,
+        ctx: UiMeasureContext,
+        out: MutableList<RenderCommand>
+    ) {
+        val source = active.sourceNode
+        val dx = (active.previewX - active.previewOffsetX - source.bounds.x).toInt()
+        val dy = (active.previewY - active.previewOffsetY - source.bounds.y).toInt()
+        val previewCommands = ArrayList<RenderCommand>(32)
+        source.buildRenderCommands(ctx, previewCommands)
+        previewCommands.forEach { cmd ->
+            out.add(shiftCommand(cmd, dx, dy))
+        }
+    }
+
+    private fun appendGhostPreviewCommands(
+        root: DOMNode,
+        active: ActiveDrag,
+        ctx: UiMeasureContext,
+        out: MutableList<RenderCommand>
+    ) {
+        if (!active.dataTransfer.ghostVisible) return
+        val anchorX = (active.previewX - active.previewOffsetX).toInt()
+        val anchorY = (active.previewY - active.previewOffsetY).toInt()
+        val sourceBounds = active.sourceNode.bounds
+
+        val customBuilder = active.previewBuilder
+        if (customBuilder != null) {
+            val scope = DragPreviewScope(
+                dataTransfer = active.dataTransfer,
+                sourceBounds = sourceBounds,
+                anchorX = anchorX,
+                anchorY = anchorY
+            )
+            customBuilder.invoke(scope)
+            out.addAll(scope.build())
+            return
+        }
+
+        val previewSpec = active.dataTransfer.currentDragImageSpec()
+        val previewNode = previewSpec?.let { spec ->
+            findByKey(root, spec.nodeKey)
+        }
+        if (previewNode != null && previewSpec != null) {
+            val dx = (active.previewX - previewSpec.offsetX - previewNode.bounds.x).toInt()
+            val dy = (active.previewY - previewSpec.offsetY - previewNode.bounds.y).toInt()
+            val previewCommands = ArrayList<RenderCommand>(32)
+            previewNode.buildRenderCommands(ctx, previewCommands)
+            previewCommands.forEach { cmd ->
+                out.add(shiftCommand(cmd, dx, dy))
+            }
+            return
+        }
+
+        drawDefaultGhost(active, ctx, out)
     }
 
     private fun normalizeDropEffect(requested: DropEffect, allowed: EffectAllowed): DropEffect {
@@ -391,8 +543,8 @@ object DragManager {
         out: MutableList<RenderCommand>
     ) {
         val label = active.dataTransfer.getData("text/plain") ?: "drag"
-        val x = (active.ghostX - 10.0).toInt()
-        val y = (active.ghostY - 10.0).toInt()
+        val x = (active.previewX - active.previewOffsetX).toInt()
+        val y = (active.previewY - active.previewOffsetY).toInt()
         val width = (ctx.measureText(label) + 12).coerceAtLeast(48)
         val height = (ctx.fontHeight + 8).coerceAtLeast(14)
         out.add(RenderCommand.DrawRect(x, y, width, height, 0xCC222222.toInt()))

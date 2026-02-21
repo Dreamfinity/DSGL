@@ -20,6 +20,7 @@ internal fun collectHoverChain(
     out: MutableList<DOMNode>
 ): Boolean {
     if (root.styleDisabled) return false
+    if (!root.isHitTestVisible()) return false
     if (!root.bounds.contains(mouseX, mouseY)) return false
     out.add(root)
     for (i in root.children.size - 1 downTo 0) {

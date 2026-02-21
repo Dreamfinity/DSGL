@@ -49,6 +49,10 @@ open class ComponentProps(
     var disabled: Boolean = false,
     var draggable: Boolean = false,
     var droppable: Boolean = false,
+    var dragPreviewMode: DragPreviewMode = DragPreviewMode.GHOST,
+    var hideSourceWhileDragging: Boolean = false,
+    var dragPreview: (DragPreviewScope.() -> Unit)? = null,
+    var dragPlaceholder: (PlaceholderScope.() -> Unit)? = null,
     var style: StyleScope.() -> Unit = {},
     var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null,
     var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null,
@@ -486,11 +490,11 @@ class StyleScope internal constructor(private val node: DOMNode) {
     }
 
     private fun setLiteral(property: StyleProperty, rawValue: String) {
-        node.inlineStyleDecls.set(property, StyleExpression.Literal(rawValue))
+        node.inlineStyleDeclarations.set(property, StyleExpression.Literal(rawValue))
     }
 
     private fun setExpression(property: StyleProperty, expression: StyleExpression.VariableRef) {
-        node.inlineStyleDecls.set(property, expression)
+        node.inlineStyleDeclarations.set(property, expression)
     }
 
     private fun toColorLiteral(value: Int): String {
