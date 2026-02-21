@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
+import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
@@ -20,6 +21,7 @@ class DomTree(var root: DOMNode) {
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
     private val paintBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val refManager: RefManager = RefManager()
 
     /** Measures and lays out the tree for the given viewport. */
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
@@ -27,6 +29,7 @@ class DomTree(var root: DOMNode) {
         lastHeight = height
         StyleEngine.applyStylesRecursively(root)
         root.render(ctx, 0, 0, width, height)
+        refManager.commit(root)
         laidOut = true
     }
 
@@ -39,6 +42,7 @@ class DomTree(var root: DOMNode) {
         }
         if ((!laidOut || layoutDirtyFromStyles) && lastWidth > 0 && lastHeight > 0) {
             root.render(ctx, 0, 0, lastWidth, lastHeight)
+            refManager.commit(root)
             laidOut = true
         }
         paintBuffer.clear()
@@ -63,5 +67,9 @@ class DomTree(var root: DOMNode) {
         }
 
         return dispatchClick(root, event)
+    }
+
+    fun clearRefs() {
+        refManager.clear()
     }
 }

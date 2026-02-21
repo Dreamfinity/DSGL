@@ -6,6 +6,8 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.ref.ElementHandle
+import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.style.ComputedStyle
 import org.dreamfinity.dsgl.core.style.ComputedStyleDefaults
 import org.dreamfinity.dsgl.core.style.StyleAlign
@@ -58,6 +60,7 @@ abstract class DOMNode(
     var hideSourceWhileDragging: Boolean = false
     var dragPreviewBuilder: (DragPreviewScope.() -> Unit)? = null
     var dragPlaceholderBuilder: (PlaceholderScope.() -> Unit)? = null
+    var refTarget: RefTarget<ElementHandle>? = null
     var dragRenderHidden: Boolean = false
     var dragHitTestHidden: Boolean = false
     open val focusable: Boolean = false
@@ -327,6 +330,7 @@ abstract class DOMNode(
         this@DOMNode.hideSourceWhileDragging = props.hideSourceWhileDragging
         this@DOMNode.dragPreviewBuilder = props.dragPreview
         this@DOMNode.dragPlaceholderBuilder = props.dragPlaceholder
+        this@DOMNode.refTarget = props.ref
         this@DOMNode.onMouseEnter = props.onMouseEnter
         this@DOMNode.onMouseLeave = props.onMouseLeave
         this@DOMNode.onMouseOver = props.onMouseOver
@@ -408,6 +412,7 @@ abstract class DOMNode(
         hideSourceWhileDragging = template.hideSourceWhileDragging
         dragPreviewBuilder = template.dragPreviewBuilder
         dragPlaceholderBuilder = template.dragPlaceholderBuilder
+        refTarget = template.refTarget
         onMouseEnter = template.onMouseEnter
         onMouseLeave = template.onMouseLeave
         onMouseOver = template.onMouseOver
