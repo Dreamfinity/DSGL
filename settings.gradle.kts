@@ -18,4 +18,5 @@ rootProject.name = "dsgl"
 include(
     ":core",
     ":mc1710",
+    ":mc1710-demo",
 )
