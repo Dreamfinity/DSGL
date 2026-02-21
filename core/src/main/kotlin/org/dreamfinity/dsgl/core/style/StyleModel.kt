@@ -51,7 +51,7 @@ sealed class StyleExpression {
     data class VariableRef(val name: String) : StyleExpression()
 }
 
-data class StyleDecls(
+data class StyleDeclarations(
     val values: MutableMap<StyleProperty, StyleExpression> = linkedMapOf()
 ) {
     fun set(property: StyleProperty, value: StyleExpression) {
@@ -62,7 +62,7 @@ data class StyleDecls(
 
     fun isEmpty(): Boolean = values.isEmpty()
 
-    fun mergeFrom(other: StyleDecls) {
+    fun mergeFrom(other: StyleDeclarations) {
         other.values.forEach { (property, expression) ->
             values[property] = expression
         }

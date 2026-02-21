@@ -31,6 +31,7 @@ class DataTransfer {
     private val dataByType: LinkedHashMap<String, String> = linkedMapOf()
     var effectAllowed: EffectAllowed = EffectAllowed.ALL
     var dropEffect: DropEffect = DropEffect.NONE
+    var ghostVisible: Boolean = true
     private var dragImageSpec: DragImageSpec? = null
 
     val types: Set<String>
@@ -60,6 +61,14 @@ class DataTransfer {
 
     fun setDragImage(nodeKey: Any, offsetX: Int, offsetY: Int) {
         dragImageSpec = DragImageSpec(nodeKey, offsetX, offsetY)
+    }
+
+    fun hideGhost() {
+        ghostVisible = false
+    }
+
+    fun showGhost() {
+        ghostVisible = true
     }
 
     internal fun currentDragImageSpec(): DragImageSpec? = dragImageSpec

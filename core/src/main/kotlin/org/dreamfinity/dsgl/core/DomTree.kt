@@ -42,7 +42,7 @@ class DomTree(var root: DOMNode) {
             laidOut = true
         }
         paintBuffer.clear()
-        root.buildRenderCommands(ctx, paintBuffer)
+        root.appendRenderCommands(ctx, paintBuffer)
         return paintBuffer
     }
 

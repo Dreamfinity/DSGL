@@ -75,10 +75,12 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
                     is RenderCommand.DrawItemStack -> {
                         val stack = (command.stack as? McItemStackRef)?.stack ?: continue
-                        if (isBlockStack(stack)) {
-                            draw3DItem(stack, command.x, command.y, command.size, command.rotYDeg, command.rotXDeg)
-                        } else {
-                            draw2DItem(stack, command.x, command.y, command.size, command.width)
+                        withStack(attributesBitMask = GL11.GL_ALL_ATTRIB_BITS) {
+                            if (isBlockStack(stack)) {
+                                draw3DItem(stack, command.x, command.y, command.size, command.rotYDeg, command.rotXDeg)
+                            } else {
+                                draw2DItem(stack, command.x, command.y, command.size, command.width)
+                            }
                         }
                     }
 

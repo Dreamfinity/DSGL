@@ -40,7 +40,7 @@ object DssParser {
             }
             index++ // '{'
 
-            val declarations = StyleDecls()
+            val declarations = StyleDeclarations()
             index = parseDeclarations(
                 sourceName = sourceName,
                 text = text,
@@ -76,7 +76,7 @@ object DssParser {
         sourceName: String,
         text: String,
         fromIndex: Int,
-        declarations: StyleDecls,
+        declarations: StyleDeclarations,
         rootVars: MutableMap<String, String>,
         allowVariables: Boolean
     ): Int {

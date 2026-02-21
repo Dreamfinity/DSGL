@@ -5,55 +5,14 @@ import net.minecraft.init.Blocks
 import net.minecraft.init.Items
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DomTree
-import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
-import org.dreamfinity.dsgl.core.event.Event
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyInput
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.DragEndEvent
-import org.dreamfinity.dsgl.core.event.DragEvent
-import org.dreamfinity.dsgl.core.event.DragOverEvent
-import org.dreamfinity.dsgl.core.event.DragStartEvent
-import org.dreamfinity.dsgl.core.event.EffectAllowed
-import org.dreamfinity.dsgl.core.event.DropEffect
-import org.dreamfinity.dsgl.core.event.DropEvent
-import org.dreamfinity.dsgl.core.event.MouseDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
-import org.dreamfinity.dsgl.core.event.MouseUpEvent
-import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.style.StyleEngine
-import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderFocusRebuildSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderDragDropSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputsGallerySection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderInputEventsSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderInteractionsSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderLayoutStyleSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderMcFeaturesSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderOverviewSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderStylesheetsSection
-import org.dreamfinity.dsgl.mc1710.demo.sections.renderTextEditingSection
-import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityChecklistCatalog
-import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityId
-import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_BG
-import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
-import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
-import org.dreamfinity.dsgl.mc1710.demo.support.DemoSection
-import org.dreamfinity.dsgl.mc1710.demo.support.EventLogEntry
-import org.dreamfinity.dsgl.mc1710.demo.support.formatEventLine
-import org.dreamfinity.dsgl.mc1710.demo.support.navButtonProps
-import org.dreamfinity.dsgl.mc1710.demo.support.panelProps
-import org.dreamfinity.dsgl.mc1710.demo.support.renderChecklistPanel
-import org.dreamfinity.dsgl.mc1710.demo.support.renderEventInspectorPanel
+import org.dreamfinity.dsgl.mc1710.demo.sections.*
+import org.dreamfinity.dsgl.mc1710.demo.support.*
 import java.awt.image.BufferedImage
 import java.io.File
 import java.time.LocalTime
@@ -63,16 +22,17 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 class ShowcaseWindow : DsglWindow() {
-    companion object {
-        private const val DND_ZONE_REORDER = "reorder"
-        private const val DND_ZONE_TRASH = "trash"
-        private const val DND_ZONE_COPY = "copy"
-    }
-
     data class DndDemoItem(
         val id: String,
-        val label: String
+        val label: String,
+        val stack: McItemStackRef
     )
+
+    internal enum class DndLaneIndicator {
+        NONE,
+        BEFORE,
+        AFTER
+    }
 
     private var viewportWidth: Int = 320
     private var viewportHeight: Int = 240
@@ -183,7 +143,19 @@ class ShowcaseWindow : DsglWindow() {
     internal var dndDropEffect by state("none")
     internal var dndActiveItem by state("none")
     internal var dndDragTickCount by state(0)
-    private var dndCopySequence: Int = 0
+    internal var dndGhostEnabled by state(true)
+    internal var dndHideSourceWhileDragging by state(false)
+    internal var dndSmoothFactor by state(26.0)
+    internal var dndReorderHoverTargetId by state<String?>(null)
+    internal var dndReorderHoverInsertAfter by state(false)
+    internal var dndReorderHoverLaneAppend by state(false)
+    internal var dndBoxes by state(
+        linkedMapOf(
+            "box-a" to emptyList<DndDemoItem>(),
+            "box-b" to emptyList<DndDemoItem>(),
+            "box-c" to emptyList<DndDemoItem>()
+        )
+    )
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
@@ -199,6 +171,7 @@ class ShowcaseWindow : DsglWindow() {
         prepareDemoMedia()
         prepareDemoStylesheet()
         loadStylesheetEditorFromFile("window open")
+        DragManager.setSmoothingFactor(dndSmoothFactor)
         appendInfo("Showcase opened")
     }
 
@@ -265,16 +238,65 @@ class ShowcaseWindow : DsglWindow() {
                         text(TextProps(selectedSection.title).apply { color = DsglColors.WHITE })
                         text(TextProps(selectedSection.subtitle).apply { color = DEMO_MUTED })
                         when (selectedSection) {
-                            DemoSection.OVERVIEW -> renderOverviewSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.STYLESHEETS -> renderStylesheetsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.INPUTS -> renderInputsGallerySection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.INPUT_EVENTS -> renderInputEventsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.TEXT_EDITING -> renderTextEditingSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.DRAG_DROP -> renderDragDropSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.INTERACTIONS -> renderInteractionsSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
-                            DemoSection.MC_FEATURES -> renderMcFeaturesSection(this@ShowcaseWindow, contentWidth - 10, bodyHeight - 30)
+                            DemoSection.OVERVIEW -> renderOverviewSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.STYLESHEETS -> renderStylesheetsSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.INPUTS -> renderInputsGallerySection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.INPUT_EVENTS -> renderInputEventsSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.TEXT_EDITING -> renderTextEditingSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.DRAG_DROP -> renderDragDropSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.INTERACTIONS -> renderInteractionsSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
+
+                            DemoSection.MC_FEATURES -> renderMcFeaturesSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30
+                            )
                         }
                     }
 
@@ -427,8 +449,10 @@ class ShowcaseWindow : DsglWindow() {
         if (event.mouseButton != MouseButton.LEFT) return
         val overlayNode = findNodeInPath(event.target, "layout.stack.overlay") ?: return
         layoutOverlayDragging = true
-        layoutOverlayDragAnchorX = (event.mouseX - overlayNode.bounds.x).coerceIn(0, overlayNode.bounds.width.coerceAtLeast(1))
-        layoutOverlayDragAnchorY = (event.mouseY - overlayNode.bounds.y).coerceIn(0, overlayNode.bounds.height.coerceAtLeast(1))
+        layoutOverlayDragAnchorX =
+            (event.mouseX - overlayNode.bounds.x).coerceIn(0, overlayNode.bounds.width.coerceAtLeast(1))
+        layoutOverlayDragAnchorY =
+            (event.mouseY - overlayNode.bounds.y).coerceIn(0, overlayNode.bounds.height.coerceAtLeast(1))
         layoutOverlayDragMoved = false
     }
 
@@ -502,7 +526,19 @@ class ShowcaseWindow : DsglWindow() {
         dndDropEffect = "none"
         dndTransferTypes = "-"
         dndDragTickCount = 0
+        clearLaneReorderHover()
+        dndBoxes = linkedMapOf(
+            "box-a" to emptyList(),
+            "box-b" to emptyList(),
+            "box-c" to emptyList()
+        )
         appendInfo("DnD demo list reset by $source")
+    }
+
+    internal fun updateDndSmoothing(delta: Double) {
+        dndSmoothFactor = (dndSmoothFactor + delta).coerceIn(0.0, 96.0)
+        DragManager.setSmoothingFactor(dndSmoothFactor)
+        appendInfo("DnD smoothing k=${"%.1f".format(dndSmoothFactor)}")
     }
 
     internal fun handleDndStart(item: DndDemoItem, event: DragStartEvent) {
@@ -521,12 +557,16 @@ class ShowcaseWindow : DsglWindow() {
         event.dataTransfer.setData("application/x-dsgl-item-id", item.id)
         event.dataTransfer.effectAllowed = EffectAllowed.COPY_MOVE
         event.dataTransfer.dropEffect = DropEffect.MOVE
-        event.dataTransfer.setDragImage("dnd.item.${item.id}", offsetX, offsetY)
+        if (!dndGhostEnabled) {
+            event.dataTransfer.hideGhost()
+        }
+        event.dataTransfer.setDragImage("dnd.card.${item.id}", offsetX, offsetY)
         dndActiveItem = item.label
         dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
         dndLastAction = "dragstart ${item.label}"
-        logHook("dnd.onDragStart", event, "item=${item.id}")
+        val mode = event.target?.dragPreviewMode?.name?.lowercase() ?: "unknown"
+        logHook("dnd.onDragStart", event, "item=${item.id} mode=$mode")
     }
 
     internal fun handleDndDrag(event: DragEvent) {
@@ -538,54 +578,368 @@ class ShowcaseWindow : DsglWindow() {
         }
     }
 
-    internal fun handleDndOver(zone: String, effect: DropEffect, event: DragOverEvent) {
-        dndHoverZone = zone
-        event.acceptDrop(effect)
+    internal fun handleDndLaneOver(event: DragOverEvent) {
+        val laneNode = event.target
+        val intent = resolveLaneIntentFromMouse(laneNode, event.mouseY)
+        dndReorderHoverLaneAppend = intent.append
+        dndReorderHoverTargetId = intent.targetId
+        dndReorderHoverInsertAfter = intent.insertAfter
+        event.acceptDrop(DropEffect.MOVE)
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
-        logHook("dnd.$zone.onDragOver", event, "effect=${event.dataTransfer.dropEffect.name.lowercase()}")
     }
 
-    internal fun handleDndDrop(zone: String, event: DropEvent) {
-        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id")
-        val source = dndItems.firstOrNull { it.id == draggedId }
-        when {
-            source == null -> {
-                dndLastAction = "drop ignored (missing source)"
-            }
-
-            zone == DND_ZONE_REORDER -> {
-                val next = dndItems.filterNot { it.id == source.id } + source
-                dndItems = next
-                dndLastAction = "moved ${source.label} to end"
-            }
-
-            zone == DND_ZONE_TRASH -> {
-                dndItems = dndItems.filterNot { it.id == source.id }
-                dndLastAction = "deleted ${source.label}"
-            }
-
-            zone == DND_ZONE_COPY -> {
-                dndCopySequence += 1
-                val copy = DndDemoItem(
-                    id = "${source.id}_copy_$dndCopySequence",
-                    label = "${source.label} Copy $dndCopySequence"
-                )
-                dndItems = dndItems + copy
-                dndLastAction = "copied ${source.label}"
-            }
+    internal fun handleDndLaneDrop(event: DropEvent) {
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id") ?: return
+        val laneNode = event.target
+        val intent = resolveLaneIntentFromMouse(laneNode, event.mouseY)
+        val targetId = intent.targetId
+        val insertAfter = if (intent.append) null else intent.insertAfter
+        val moved = commitLaneReorderDrop(
+            draggedId = draggedId,
+            targetId = targetId,
+            insertAfter = insertAfter,
+            dropOnLane = intent.append
+        )
+        if (moved) {
+            appendInfo(
+                "Lane drop: drag=$draggedId target=${targetId ?: "lane"} pos=${
+                    if (intent.append) "append" else if (insertAfter == true) "after" else "before"
+                }"
+            )
         }
-        dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
+        clearLaneReorderHover()
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
-        dndHoverZone = zone
-        logHook("dnd.$zone.onDrop", event, "item=${source?.id ?: "none"}")
+        logHook(
+            "dnd.reorder.lane.onDrop",
+            event,
+            "dragged=$draggedId target=${targetId ?: "lane"} append=${intent.append}"
+        )
+    }
+
+    internal fun handleDndCardReorderOver(targetCardId: String, insertAfter: Boolean, event: DragOverEvent) {
+        dndReorderHoverTargetId = targetCardId
+        dndReorderHoverInsertAfter = insertAfter
+        dndReorderHoverLaneAppend = false
+        event.acceptDrop(DropEffect.MOVE)
+        event.cancelled = true
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+    }
+
+    internal fun handleDndCardReorderDrop(targetCardId: String, insertAfter: Boolean, event: DropEvent) {
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id") ?: return
+        val moved = commitLaneReorderDrop(
+            draggedId = draggedId,
+            targetId = targetCardId,
+            insertAfter = insertAfter,
+            dropOnLane = false
+        )
+        if (moved) {
+            appendInfo(
+                "Card drop: drag=$draggedId target=$targetCardId pos=${if (insertAfter) "after" else "before"}"
+            )
+        }
+        clearLaneReorderHover()
+        event.cancelled = true
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        logHook(
+            "dnd.reorder.card.onDrop",
+            event,
+            "dragged=$draggedId target=$targetCardId pos=${if (insertAfter) "after" else "before"}"
+        )
+    }
+
+    internal fun handleDndBoxOver(boxId: String, event: DragOverEvent) {
+        clearLaneReorderHover()
+        dndHoverZone = boxId
+        event.acceptDrop(DropEffect.MOVE)
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+    }
+
+    internal fun handleDndBoxDrop(boxId: String, event: DropEvent) {
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id")
+        if (draggedId == null) return
+        val moved = moveCardToBox(draggedId, boxId)
+        if (moved) {
+            dndHoverZone = boxId
+            dndLastAction = "moved $draggedId to $boxId"
+        }
+        dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        logHook("dnd.$boxId.onDrop", event, "dragged=$draggedId")
     }
 
     internal fun handleDndEnd(event: DragEndEvent) {
         dndHoverZone = "none"
+        clearLaneReorderHover()
         dndDropEffect = event.finalDropEffect.name.lowercase()
         dndLastAction = "dragend drop=${event.didDrop} effect=${event.finalDropEffect.name.lowercase()}"
         dndActiveItem = "none"
         logHook("dnd.onDragEnd", event, "drop=${event.didDrop}")
+    }
+
+    internal fun resolveLanePreviewOrder(sourceKey: Any?): List<DndDemoItem> {
+        val draggedId = extractCardIdFromKey(sourceKey) ?: return dndItems
+        val draggedAlreadyInLane = dndItems.any { it.id == draggedId }
+        if (draggedAlreadyInLane) {
+            return dndItems
+        }
+        if (!dndReorderHoverLaneAppend && dndReorderHoverTargetId == null) {
+            return dndItems
+        }
+        val draggedCard = findCardById(draggedId) ?: return dndItems
+        val laneWithDragged = if (dndItems.any { it.id == draggedId }) dndItems else dndItems + draggedCard
+        return reorder(
+            list = laneWithDragged,
+            draggedId = draggedId,
+            targetId = dndReorderHoverTargetId,
+            insertAfter = if (dndReorderHoverLaneAppend) null else dndReorderHoverInsertAfter,
+            dropOnLane = dndReorderHoverLaneAppend
+        )
+    }
+
+    internal fun laneIndicatorForCard(cardId: String, sourceKey: Any?): DndLaneIndicator {
+        if (dndReorderHoverLaneAppend) return DndLaneIndicator.NONE
+        if (dndReorderHoverTargetId != cardId) return DndLaneIndicator.NONE
+        val draggedId = extractCardIdFromKey(sourceKey) ?: return DndLaneIndicator.NONE
+        val wouldChange = wouldLaneReorderChange(
+            draggedId = draggedId,
+            targetId = cardId,
+            insertAfter = dndReorderHoverInsertAfter,
+            dropOnLane = false
+        )
+        if (!wouldChange) return DndLaneIndicator.NONE
+        return if (dndReorderHoverInsertAfter) DndLaneIndicator.AFTER else DndLaneIndicator.BEFORE
+    }
+
+    internal fun isLaneAppendHighlighted(): Boolean {
+        return dndReorderHoverLaneAppend
+    }
+
+    internal fun shouldShowLaneAppendGap(sourceKey: Any?): Boolean {
+        if (!dndReorderHoverLaneAppend) return false
+        val draggedId = extractCardIdFromKey(sourceKey) ?: return true
+        if (!wouldLaneReorderChange(draggedId, targetId = null, insertAfter = null, dropOnLane = true)) {
+            return false
+        }
+        val index = dndItems.indexOfFirst { it.id == draggedId }
+        if (index < 0) return true
+        return index != dndItems.lastIndex
+    }
+
+    internal fun clearLaneReorderHoverState() {
+        clearLaneReorderHover()
+    }
+
+    internal fun bucketCards(boxId: String): List<DndDemoItem> {
+        return dndBoxes[boxId] ?: emptyList()
+    }
+
+    private fun extractCardIdFromKey(sourceKey: Any?): String? {
+        val key = sourceKey as? String ?: return null
+        val prefix = "dnd.card."
+        if (!key.startsWith(prefix)) return null
+        return key.removePrefix(prefix)
+    }
+
+    private fun moveCardToBox(cardId: String, boxId: String): Boolean {
+        val extracted = extractCard(cardId) ?: return false
+        val lane = extracted.second.toMutableList()
+        val boxes = extracted.third
+        val card = extracted.first
+
+        val target = boxes.getOrPut(boxId) { mutableListOf() }
+        target.add(card)
+        dndItems = lane
+        dndBoxes = boxes.mapValuesTo(linkedMapOf()) { (_, value) -> value.toList() }
+        return true
+    }
+
+    private fun extractCard(
+        cardId: String
+    ): Triple<DndDemoItem, List<DndDemoItem>, LinkedHashMap<String, MutableList<DndDemoItem>>>? {
+        val lane = dndItems.toMutableList()
+        val boxes = linkedMapOf<String, MutableList<DndDemoItem>>().apply {
+            dndBoxes.forEach { (key, list) ->
+                this[key] = list.toMutableList()
+            }
+        }
+
+        val laneIndex = lane.indexOfFirst { it.id == cardId }
+        if (laneIndex >= 0) {
+            val card = lane.removeAt(laneIndex)
+            return Triple(card, lane, boxes)
+        }
+
+        boxes.forEach { (_, list) ->
+            val boxIndex = list.indexOfFirst { it.id == cardId }
+            if (boxIndex >= 0) {
+                val card = list.removeAt(boxIndex)
+                return Triple(card, lane, boxes)
+            }
+        }
+        return null
+    }
+
+    private fun commitLaneReorderDrop(
+        draggedId: String,
+        targetId: String?,
+        insertAfter: Boolean?,
+        dropOnLane: Boolean
+    ): Boolean {
+        val draggedCard = findCardById(draggedId) ?: return false
+        val fromBox = dndBoxes.any { (_, cards) -> cards.any { it.id == draggedId } }
+        val laneWithDragged = if (dndItems.any { it.id == draggedId }) {
+            dndItems
+        } else {
+            dndItems + draggedCard
+        }
+        val fromIndex = laneWithDragged.indexOfFirst { it.id == draggedId }
+        val reordered = reorder(
+            list = laneWithDragged,
+            draggedId = draggedId,
+            targetId = targetId,
+            insertAfter = insertAfter,
+            dropOnLane = dropOnLane
+        )
+        val toIndex = reordered.indexOfFirst { it.id == draggedId }
+        val laneChanged = !sameOrderById(laneWithDragged, reordered)
+        if (!laneChanged && !fromBox) {
+            dndLastAction = "reorder noop drag=$draggedId"
+            return false
+        }
+
+        dndItems = reordered
+        dndBoxes = dndBoxes.mapValuesTo(linkedMapOf()) { (_, cards) ->
+            cards.filterNot { it.id == draggedId }
+        }
+        dndLastAction = buildString {
+            append("reorder drag=")
+            append(draggedId)
+            append(" target=")
+            append(targetId ?: "lane")
+            append(" pos=")
+            append(
+                when {
+                    dropOnLane -> "append"
+                    insertAfter == true -> "after"
+                    else -> "before"
+                }
+            )
+            append(" from=")
+            append(fromIndex)
+            append(" to=")
+            append(toIndex)
+            append(" order=")
+            append(reordered.joinToString(">") { it.id })
+        }
+        return true
+    }
+
+    private fun reorder(
+        list: List<DndDemoItem>,
+        draggedId: String,
+        targetId: String?,
+        insertAfter: Boolean?,
+        dropOnLane: Boolean
+    ): List<DndDemoItem> {
+        val fromIndex = list.indexOfFirst { it.id == draggedId }
+        if (fromIndex < 0) return list
+        if (!dropOnLane && targetId != null && targetId == draggedId) return list
+
+        val mutable = list.toMutableList()
+        val dragged = mutable.removeAt(fromIndex)
+        val targetIndex = when {
+            dropOnLane || targetId == null -> mutable.size
+            else -> {
+                val targetPos = mutable.indexOfFirst { it.id == targetId }
+                if (targetPos < 0) {
+                    mutable.size
+                } else if (insertAfter == true) {
+                    targetPos + 1
+                } else {
+                    targetPos
+                }
+            }
+        }.coerceIn(0, mutable.size)
+
+        mutable.add(targetIndex, dragged)
+        return if (sameOrderById(list, mutable)) list else mutable
+    }
+
+    private fun findCardById(cardId: String): DndDemoItem? {
+        dndItems.firstOrNull { it.id == cardId }?.let { return it }
+        dndBoxes.values.forEach { cards ->
+            cards.firstOrNull { it.id == cardId }?.let { return it }
+        }
+        return null
+    }
+
+    private fun sameOrderById(left: List<DndDemoItem>, right: List<DndDemoItem>): Boolean {
+        if (left.size != right.size) return false
+        left.indices.forEach { index ->
+            if (left[index].id != right[index].id) return false
+        }
+        return true
+    }
+
+    private fun wouldLaneReorderChange(
+        draggedId: String,
+        targetId: String?,
+        insertAfter: Boolean?,
+        dropOnLane: Boolean
+    ): Boolean {
+        val draggedCard = findCardById(draggedId) ?: return false
+        val laneWithDragged = if (dndItems.any { it.id == draggedId }) dndItems else dndItems + draggedCard
+        val reordered = reorder(
+            list = laneWithDragged,
+            draggedId = draggedId,
+            targetId = targetId,
+            insertAfter = insertAfter,
+            dropOnLane = dropOnLane
+        )
+        return !sameOrderById(laneWithDragged, reordered)
+    }
+
+    private fun clearLaneReorderHover() {
+        dndReorderHoverTargetId = null
+        dndReorderHoverInsertAfter = false
+        dndReorderHoverLaneAppend = false
+    }
+
+    private data class LaneHoverIntent(
+        val targetId: String?,
+        val insertAfter: Boolean,
+        val append: Boolean
+    )
+
+    private fun resolveLaneIntentFromMouse(laneNode: DOMNode?, mouseY: Int): LaneHoverIntent {
+        if (laneNode == null) {
+            return LaneHoverIntent(targetId = null, insertAfter = false, append = true)
+        }
+        val cards = laneNode.children
+            .mapNotNull { child ->
+                val id = extractCardIdFromKey(child.key) ?: return@mapNotNull null
+                id to child
+            }
+            .sortedBy { (_, node) -> node.bounds.y }
+
+        if (cards.isEmpty()) {
+            return LaneHoverIntent(targetId = null, insertAfter = false, append = true)
+        }
+
+        val lastCard = cards.last().second
+        val appendThresholdY = lastCard.bounds.y + lastCard.bounds.height + 2
+        if (mouseY >= appendThresholdY) {
+            return LaneHoverIntent(targetId = null, insertAfter = false, append = true)
+        }
+
+        val target = cards.firstOrNull { (_, node) ->
+            mouseY < node.bounds.y + node.bounds.height
+        } ?: cards.last()
+        val targetId = target.first
+        val targetNode = target.second
+        val splitY = targetNode.bounds.y + (targetNode.bounds.height / 2)
+        val insertAfter = mouseY >= splitY
+        return LaneHoverIntent(targetId = targetId, insertAfter = insertAfter, append = false)
     }
 
     private fun selectSection(section: DemoSection) {
@@ -725,10 +1079,10 @@ class ShowcaseWindow : DsglWindow() {
 
     private fun defaultDndItems(): List<DndDemoItem> {
         return listOf(
-            DndDemoItem("apple", "Apple"),
-            DndDemoItem("bread", "Bread"),
-            DndDemoItem("carrot", "Carrot"),
-            DndDemoItem("diamond", "Diamond")
+            DndDemoItem("diamond", "Diamond", McItemStackRef(ItemStack(Items.diamond))),
+            DndDemoItem("carrot", "Carrot", McItemStackRef(ItemStack(Items.carrot))),
+            DndDemoItem("apple", "Apple", McItemStackRef(ItemStack(Items.apple))),
+            DndDemoItem("bread", "Bread", McItemStackRef(ItemStack(Items.bread)))
         )
     }
 
