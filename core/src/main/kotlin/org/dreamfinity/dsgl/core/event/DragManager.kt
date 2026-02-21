@@ -77,18 +77,15 @@ object DragManager {
     fun getSmoothingFactor(): Double = smoothingFactor
 
     fun monitor(nodeKey: Any? = null): DragMonitorState {
-        val active = activeDrag
-        if (active == null) {
-            return DragMonitorState(
-                isDragging = false,
-                sourceKey = null,
-                cursorX = 0,
-                cursorY = 0,
-                previewX = 0.0,
-                previewY = 0.0,
-                mode = null
-            )
-        }
+        val active = activeDrag ?: return DragMonitorState(
+            isDragging = false,
+            sourceKey = null,
+            cursorX = 0,
+            cursorY = 0,
+            previewX = 0.0,
+            previewY = 0.0,
+            mode = null
+        )
         val draggingThisSource = nodeKey != null && nodeKey == active.sourceKey
         return DragMonitorState(
             isDragging = nodeKey == null || draggingThisSource,
@@ -593,9 +590,9 @@ object DragManager {
         val currKey = current.key
         if (prevKey != null || currKey != null) {
             return prevKey != null &&
-                currKey != null &&
-                prevKey == currKey &&
-                prev.javaClass == current.javaClass
+                    currKey != null &&
+                    prevKey == currKey &&
+                    prev.javaClass == current.javaClass
         }
         return false
     }
