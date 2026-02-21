@@ -147,6 +147,7 @@ abstract class DsglScreenHost(
         DragManager.cancelActiveDrag()
         clearActiveTarget()
         flushPendingCleanup()
+        domTree?.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }
@@ -188,6 +189,7 @@ abstract class DsglScreenHost(
     private fun rebuildIfNeeded() {
         if (needsRender || domTree == null) {
             rendersCount++
+            window.beginRenderBuild()
             val nextTree = window.render()
             val currentTree = domTree
             if (currentTree == null) {

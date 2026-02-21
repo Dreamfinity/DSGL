@@ -2,6 +2,8 @@ package org.dreamfinity.dsgl.core
 
 import java.time.Instant
 import java.time.ZoneId
+import org.dreamfinity.dsgl.core.ref.Ref
+import org.dreamfinity.dsgl.core.ref.RefObject
 
 /**
  * Version-agnostic window definition. Platform hosts own the UI lifecycle.
@@ -14,6 +16,8 @@ abstract class DsglWindow {
     private var invalidator: (() -> Unit)? = null
     private var openedAtInstant: Instant = Instant.now()
     private var openedZoneId: ZoneId = ZoneId.systemDefault()
+    private val refSlots: MutableList<RefObject<*>> = ArrayList()
+    private var refSlotCursor: Int = 0
 
     /**
      * Called by platform hosts to connect this window to a host implementation.
@@ -71,4 +75,24 @@ abstract class DsglWindow {
      */
     open val rebuildOnResize: Boolean
         get() = false
+
+    /**
+     * Host lifecycle hook: resets hook-style slots before calling [render].
+     */
+    fun beginRenderBuild() {
+        refSlotCursor = 0
+    }
+
+    internal fun <T : Any> useRefSlot(initial: T?): Ref<T> {
+        val slotIndex = refSlotCursor
+        refSlotCursor += 1
+        @Suppress("UNCHECKED_CAST")
+        val existing = refSlots.getOrNull(slotIndex) as RefObject<T>?
+        if (existing != null) {
+            return existing
+        }
+        val created = RefObject(initial)
+        refSlots.add(created)
+        return created
+    }
 }

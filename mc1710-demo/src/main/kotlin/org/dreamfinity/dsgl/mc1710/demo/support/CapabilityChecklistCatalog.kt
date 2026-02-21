@@ -67,6 +67,9 @@ enum class CapabilityId(
     STYLESHEET_VARIABLES("Stylesheet variables demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_INLINE_OVERRIDE("Inline style override demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_PROGRAMMATIC_RELOAD("Programmatic stylesheet reload", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_OBJECT("Object ref (.current) demo", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_CALLBACK("Callback ref attach/detach demo", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_IMPERATIVE_FOCUS("Imperative focus via ref", CapabilityGroup.SHOWCASE_FEATURES),
     DND_SMOOTH_GHOST("Smooth drag ghost", CapabilityGroup.SHOWCASE_FEATURES),
     DND_DATA_TRANSFER("DataTransfer payload demo", CapabilityGroup.SHOWCASE_FEATURES),
     DND_DROP_EFFECT("Drop effect demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -132,6 +135,16 @@ object CapabilityChecklistCatalog {
             CapabilityId.HOOK_MOUSE_DRAG,
             CapabilityId.HOOK_KEY_DOWN,
             CapabilityId.HOOK_INPUT
+        )
+
+        DemoSection.REFS -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.REFS_OBJECT,
+            CapabilityId.REFS_CALLBACK,
+            CapabilityId.REFS_IMPERATIVE_FOCUS
         )
 
         DemoSection.DRAG_DROP -> setOf(

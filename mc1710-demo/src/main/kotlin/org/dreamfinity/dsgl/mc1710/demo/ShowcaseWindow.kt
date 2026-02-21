@@ -9,6 +9,9 @@ import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.ref.ElementHandle
+import org.dreamfinity.dsgl.core.ref.RefTarget
+import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
@@ -134,6 +137,12 @@ class ShowcaseWindow : DsglWindow() {
     internal var textEditingSawShiftSelection by state(false)
     internal var textEditingSawClipboardShortcut by state(false)
     internal var textEditingSawFocus by state(false)
+    internal var refsInputValue by state("Ref demo input")
+    internal var refsRebuildCount by state(0)
+    internal var refsCallbackMounted by state(true)
+    internal var refsCallbackAttachCount by state(0)
+    internal var refsCallbackDetachCount by state(0)
+    internal var refsCallbackLast by state("none")
     internal var dndItems by state(
         defaultDndItems()
     )
@@ -167,6 +176,18 @@ class ShowcaseWindow : DsglWindow() {
     override val rebuildOnResize: Boolean
         get() = true
 
+    internal val refsCallbackRef: RefTarget<ElementHandle> = RefTarget { handle ->
+        if (handle == null) {
+            refsCallbackDetachCount += 1
+            refsCallbackLast = "detach"
+            appendInfo("Refs callback detached")
+            return@RefTarget
+        }
+        refsCallbackAttachCount += 1
+        refsCallbackLast = "attach key=${handle.key}"
+        appendInfo("Refs callback attached key=${handle.key}")
+    }
+
     override fun onOpen() {
         prepareDemoMedia()
         prepareDemoStylesheet()
@@ -182,6 +203,8 @@ class ShowcaseWindow : DsglWindow() {
 
     override fun render(): DomTree {
         renderPasses += 1
+        val refsInputHandle = useRef<ElementHandle>()
+        val refsPanelHandle = useRef<ElementHandle>()
 
         val navWidth = 106
         val sidebarWidth = 158
@@ -272,6 +295,14 @@ class ShowcaseWindow : DsglWindow() {
                                 this@ShowcaseWindow,
                                 contentWidth - 10,
                                 bodyHeight - 30
+                            )
+
+                            DemoSection.REFS -> renderRefsSection(
+                                this@ShowcaseWindow,
+                                contentWidth - 10,
+                                bodyHeight - 30,
+                                refsInputHandle,
+                                refsPanelHandle
                             )
 
                             DemoSection.DRAG_DROP -> renderDragDropSection(

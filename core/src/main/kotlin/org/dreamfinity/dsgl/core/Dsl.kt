@@ -6,6 +6,8 @@ import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.LayoutDirection
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.ref.ElementHandle
+import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.style.StyleAlign
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -53,6 +55,7 @@ open class ComponentProps(
     var hideSourceWhileDragging: Boolean = false,
     var dragPreview: (DragPreviewScope.() -> Unit)? = null,
     var dragPlaceholder: (PlaceholderScope.() -> Unit)? = null,
+    var ref: RefTarget<ElementHandle>? = null,
     var style: StyleScope.() -> Unit = {},
     var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null,
     var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null,
@@ -113,6 +116,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     /** Vertical layout container. */
     fun column(
         props: ComponentProps = ComponentProps(),
+        ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ): ContainerNode = ContainerNode(
         LayoutDirection.Column,
@@ -125,6 +129,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
         UiScope(this).block()
     }
@@ -133,6 +138,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     /** Horizontal layout container. */
     fun row(
         props: ComponentProps = ComponentProps(),
+        ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ): ContainerNode = ContainerNode(
         LayoutDirection.Row,
@@ -145,6 +151,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
         UiScope(this).block()
     }
@@ -153,6 +160,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     /** Shorthand for a column container. */
     fun div(
         props: ComponentProps = ComponentProps(),
+        ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ) = ContainerNode(
         LayoutDirection.Column,
@@ -165,6 +173,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
         UiScope(this).block()
     }
@@ -172,6 +181,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     /** Stack layout container (children overlap). */
     fun stack(
         props: ComponentProps = ComponentProps(),
+        ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ) = ContainerNode(
         LayoutDirection.Stack,
@@ -184,13 +194,17 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
         UiScope(this).block()
     }
 
 
     /** Static text node. */
-    fun text(props: TextProps) = TextNode(
+    fun text(
+        props: TextProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = TextNode(
         props.value,
         props.color,
         props.key
@@ -199,11 +213,15 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
     }
 
     /** Dynamic text node built from a provider. */
-    fun dynamicText(props: DynamicTextProps) = DynamicTextNode(
+    fun dynamicText(
+        props: DynamicTextProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = DynamicTextNode(
         props.valueProvider,
         props.color,
         props.key
@@ -212,6 +230,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
     }
 
@@ -219,6 +238,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     /** Button node with optional extra button scope. */
     fun button(
         props: ButtonProps,
+        ref: RefTarget<ElementHandle>? = null,
         block: ButtonScope.() -> Unit = {}
     ) = ButtonNode(
         props.text,
@@ -231,13 +251,17 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
         ButtonScope(this).block()
     }
 
 
     /** Image node from resource, file, or URL (host-dependent). */
-    fun img(props: ImageProps) = ImageNode(
+    fun img(
+        props: ImageProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = ImageNode(
         props.url,
         props.width ?: 0,
         props.height ?: 0,
@@ -245,11 +269,15 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     ).apply {
         applyStyle(props.style)
         applyHandlers(props)
+        applyRef(this, ref)
         add(this)
     }
 
     /** Item stack node for platform-specific stack types. */
-    fun itemStack(props: ItemStackProps) = ItemStackNode(
+    fun itemStack(
+        props: ItemStackProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = ItemStackNode(
         props.stack,
         props.size,
         props.rotYDeg,
@@ -260,11 +288,15 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
     }
 
     /** Input node backed by an [InputType]. */
-    fun input(props: InputProps) = when (props.type) {
+    fun input(
+        props: InputProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = when (props.type) {
         is InputType.Text -> TextInputNode(
             text = props.type.value,
             placeholder = props.type.placeholder,
@@ -323,12 +355,16 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         this.height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
     }
 
 
     /** Multiline text input area. */
-    fun textarea(props: TextAreaProps) = TextAreaNode(
+    fun textarea(
+        props: TextAreaProps,
+        ref: RefTarget<ElementHandle>? = null
+    ) = TextAreaNode(
         props.value,
         props.placeholder,
         props.key
@@ -337,6 +373,7 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         height = props.height
         applyStyle(this, props.style)
         applyHandlers(this, props)
+        applyRef(this, ref)
         add(this)
     }
 
@@ -350,6 +387,12 @@ class UiScope internal constructor(private val parent: ContainerNode) {
 
     private fun applyStyle(node: DOMNode, style: StyleScope.() -> Unit) {
         node.applyStyle(style)
+    }
+
+    private fun applyRef(node: DOMNode, ref: RefTarget<ElementHandle>?) {
+        if (ref != null) {
+            node.refTarget = ref
+        }
     }
 }
 
