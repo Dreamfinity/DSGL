@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.event
+package org.dreamfinity.dsgl.core.dnd
 
 enum class EffectAllowed {
     NONE,

@@ -6,14 +6,7 @@ import org.dreamfinity.dsgl.core.DynamicTextProps
 import org.dreamfinity.dsgl.core.ItemStackProps
 import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
-import org.dreamfinity.dsgl.core.event.DragEndEvent
-import org.dreamfinity.dsgl.core.event.DragEvent
-import org.dreamfinity.dsgl.core.event.DragManager
-import org.dreamfinity.dsgl.core.event.DragLeaveEvent
-import org.dreamfinity.dsgl.core.event.DragOverEvent
-import org.dreamfinity.dsgl.core.event.DragPreviewMode
-import org.dreamfinity.dsgl.core.event.DragStartEvent
-import org.dreamfinity.dsgl.core.event.DropEvent
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -41,7 +34,7 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
     } else {
         contentWidth.coerceAtLeast(0)
     }
-    val monitor = DragManager.monitor()
+    val monitor = DndSystem.monitor()
 
     column(
         ComponentProps(
@@ -146,7 +139,7 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
 }
 
 private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int) {
-    val monitor = DragManager.monitor()
+    val monitor = DndSystem.monitor()
     val draggedId = extractCardIdFromDragKey(monitor.sourceKey)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
     column(
@@ -165,48 +158,62 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
             text(TextProps("No items available").apply { color = DEMO_MUTED })
         } else {
             val laneCardSize = CARD_SIZE.coerceAtMost((width - 12).coerceAtLeast(24))
+            val laneDroppable = window.useDroppable(
+                id = "lane",
+                nodeKey = "dnd.lane.column",
+                accepts = { active -> !active.id.isNullOrBlank() },
+                onDragOver = { event, _ -> window.handleDndLaneOver(event) },
+                onDragLeave = { _, _ -> window.clearLaneReorderHoverState() },
+                onDrop = { event, _ -> window.handleDndLaneDrop(event) }
+            )
             column(
                 ComponentProps(
                     gap = 2,
                     key = "dnd.lane.column",
-                    droppable = true,
                     backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000,
-                    onDragOver = { event -> window.handleDndLaneOver(event) },
-                    onDragLeave = { _: DragLeaveEvent ->
-                        window.clearLaneReorderHoverState()
-                    },
-                    onDrop = { event -> window.handleDndLaneDrop(event) },
                     style = {
                         border(
                             1,
                             if (window.isLaneAppendHighlighted()) 0xFF9EC4E3.toInt() else 0x44405058
                         )
                     }
-                )
+                ).apply {
+                    applyDroppable(laneDroppable)
+                }
             ) {
                 previewOrder.forEach { item ->
                     val indicator = window.laneIndicatorForCard(item.id, monitor.sourceKey)
                     val isDraggedItem = draggedId != null && draggedId == item.id
+                    val sortable = window.useSortable(
+                        id = item.id,
+                        nodeKey = "dnd.lane.card.${item.id}",
+                        containerId = "lane",
+                        items = previewOrder.map { it.id },
+                        data = item,
+                        previewMode = DragPreviewMode.ORIGINAL,
+                        hideSourceWhileDragging = true
+                    )
                     renderCard(
                         item = item,
                         key = "dnd.lane.card.${item.id}",
                         size = laneCardSize,
-                        previewMode = DragPreviewMode.ORIGINAL,
-                        hideSourceWhileDragging = true,
+                        sortable = sortable,
                         draggableEnabled = !isDraggedItem,
                         highlighted = indicator != ShowcaseWindow.DndLaneIndicator.NONE,
                         insertionIndicator = indicator,
-                        onDragStart = { event -> window.handleDndStart(item, event) },
-                        onDrag = { event -> window.handleDndDrag(event) },
-                        onDragEnd = { event -> window.handleDndEnd(event) },
-                        onDragOver = if (isDraggedItem) null else { event ->
-                            val insertAfter = resolveInsertAfter(event)
-                            window.handleDndCardReorderOver(item.id, insertAfter, event)
-                        },
-                        onDrop = if (isDraggedItem) null else { event ->
-                            val insertAfter = resolveInsertAfter(event)
-                            window.handleDndCardReorderDrop(item.id, insertAfter, event)
-                        }
+                        extraListeners = DndListeners(
+                            onDragStart = { event -> window.handleDndStart(item, event) },
+                            onDrag = { event -> window.handleDndDrag(event) },
+                            onDragEnd = { event -> window.handleDndEnd(event) },
+                            onDragOver = if (isDraggedItem) null else { event ->
+                                val insertAfter = resolveInsertAfter(event)
+                                window.handleDndCardReorderOver(item.id, insertAfter, event)
+                            },
+                            onDrop = if (isDraggedItem) null else { event ->
+                                val insertAfter = resolveInsertAfter(event)
+                                window.handleDndCardReorderDrop(item.id, insertAfter, event)
+                            }
+                        )
                     )
                 }
                 if (window.shouldShowLaneAppendGap(monitor.sourceKey)) {
@@ -298,18 +305,14 @@ private fun UiScope.renderCard(
     item: DndDemoItem,
     key: Any,
     size: Int,
-    previewMode: DragPreviewMode,
-    hideSourceWhileDragging: Boolean,
+    draggable: Draggable? = null,
+    sortable: Sortable? = null,
     draggableEnabled: Boolean = true,
     highlighted: Boolean,
     insertionIndicator: ShowcaseWindow.DndLaneIndicator = ShowcaseWindow.DndLaneIndicator.NONE,
-    onDragStart: ((DragStartEvent) -> Unit)? = null,
-    onDrag: ((DragEvent) -> Unit)? = null,
-    onDragEnd: ((DragEndEvent) -> Unit)? = null,
-    onDragOver: ((DragOverEvent) -> Unit)? = null,
-    onDrop: ((DropEvent) -> Unit)? = null
+    extraListeners: DndListeners = DndListeners()
 ) {
-    val draggingThis = DragManager.isDraggingNode(key)
+    val draggingThis = sortable?.isDragging ?: draggable?.isDragging ?: DndSystem.monitor(key).isDragging
     val accent = itemAccentColor(item.id)
     val base = itemBaseColor(item.id)
     val insertionGap = (size + 2).coerceAtLeast(24)
@@ -320,10 +323,6 @@ private fun UiScope.renderCard(
             height = size,
             padding = 2,
             gap = 1,
-            draggable = draggableEnabled,
-            droppable = onDragOver != null || onDrop != null,
-            dragPreviewMode = previewMode,
-            hideSourceWhileDragging = hideSourceWhileDragging,
             dragPlaceholder = {
                 fillColor = 0x44333F4D
                 borderColor = accent
@@ -334,11 +333,6 @@ private fun UiScope.renderCard(
                 highlighted -> lighten(base, HIGHLIGHT_DELTA)
                 else -> base
             },
-            onDragStart = onDragStart,
-            onDrag = onDrag,
-            onDragEnd = onDragEnd,
-            onDragOver = onDragOver,
-            onDrop = onDrop,
             style = {
                 border(1, accent)
                 borderRadius(3)
@@ -348,7 +342,17 @@ private fun UiScope.renderCard(
                     ShowcaseWindow.DndLaneIndicator.NONE -> Unit
                 }
             }
-        )
+        ).apply {
+            when {
+                sortable != null -> applySortable(sortable)
+                draggable != null -> applyDraggable(draggable)
+                else -> this.draggable = draggableEnabled
+            }
+            if (!draggableEnabled) {
+                this.draggable = false
+            }
+            applyDndListeners(extraListeners)
+        }
     ) {
         div(
             ComponentProps(
@@ -386,6 +390,23 @@ private fun UiScope.renderDropBox(
     width: Int
 ) {
     val highlighted = window.dndHoverZone == boxId
+    val dropDescriptor = window.useDroppable(
+        id = boxId,
+        nodeKey = key,
+        accepts = { active -> !active.id.isNullOrBlank() },
+        onDragEnter = { event, _ ->
+            window.dndHoverZone = boxId
+            window.logHook("dnd.$boxId.onDragEnter", event)
+        },
+        onDragOver = { event, _ -> window.handleDndBoxOver(boxId, event) },
+        onDragLeave = { event, _ ->
+            if (window.dndHoverZone == boxId) {
+                window.dndHoverZone = "none"
+            }
+            window.logHook("dnd.$boxId.onDragLeave", event)
+        },
+        onDrop = { event, _ -> window.handleDndBoxDrop(boxId, event) }
+    )
     div(
         ComponentProps(
             key = key,
@@ -393,25 +414,14 @@ private fun UiScope.renderDropBox(
             height = BOX_HEIGHT,
             padding = 4,
             gap = 2,
-            droppable = true,
             backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color,
-            onDragEnter = { event ->
-                window.dndHoverZone = boxId
-                window.logHook("dnd.$boxId.onDragEnter", event)
-            },
-            onDragOver = { event -> window.handleDndBoxOver(boxId, event) },
-            onDragLeave = { event ->
-                if (window.dndHoverZone == boxId) {
-                    window.dndHoverZone = "none"
-                }
-                window.logHook("dnd.$boxId.onDragLeave", event)
-            },
-            onDrop = { event -> window.handleDndBoxDrop(boxId, event) },
             style = {
                 border(1, 0xFF8A94A2.toInt())
                 borderRadius(3)
             }
-        )
+        ).apply {
+            applyDroppable(dropDescriptor)
+        }
     ) {
         text(TextProps("$title (${cards.size})"))
         if (cards.isEmpty()) {
@@ -421,16 +431,24 @@ private fun UiScope.renderDropBox(
             val maxVisibleCards = ((rowBudget + 2) / (BOX_CARD_SIZE + 2)).coerceAtLeast(1)
             row(ComponentProps(gap = 2, key = "$key.cards")) {
                 cards.take(maxVisibleCards).forEach { item ->
+                    val draggable = window.useDraggable(
+                        id = item.id,
+                        nodeKey = "dnd.box.$boxId.card.${item.id}",
+                        type = "card",
+                        data = item,
+                        previewMode = DragPreviewMode.GHOST,
+                        hideSourceWhileDragging = window.dndHideSourceWhileDragging,
+                        onDragStart = { event -> window.handleDndStart(item, event) },
+                        onDrag = { event -> window.handleDndDrag(event) },
+                        onDragEnd = { event -> window.handleDndEnd(event) }
+                    )
                     renderCard(
                         item = item,
                         key = "dnd.box.$boxId.card.${item.id}",
                         size = BOX_CARD_SIZE,
-                        previewMode = DragPreviewMode.GHOST,
-                        hideSourceWhileDragging = window.dndHideSourceWhileDragging,
+                        draggable = draggable,
                         highlighted = false,
-                        onDragStart = { event -> window.handleDndStart(item, event) },
-                        onDrag = { event -> window.handleDndDrag(event) },
-                        onDragEnd = { event -> window.handleDndEnd(event) }
+                        extraListeners = DndListeners()
                     )
                 }
                 if (cards.size > maxVisibleCards) {

@@ -6,6 +6,7 @@ import net.minecraft.init.Items
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.event.*
@@ -197,7 +198,7 @@ class ShowcaseWindow : DsglWindow() {
         prepareDemoMedia()
         prepareDemoStylesheet()
         loadStylesheetEditorFromFile("window open")
-        DragManager.setSmoothingFactor(dndSmoothFactor)
+        DndSystem.setSmoothingFactor(dndSmoothFactor)
         appendInfo("Showcase opened")
     }
 
@@ -208,6 +209,28 @@ class ShowcaseWindow : DsglWindow() {
 
     override fun render(): DomTree {
         renderPasses += 1
+        useDragDropMonitor(
+            DragDropMonitorCallbacks(
+                onDragMove = { active, over ->
+                    dndActiveItem = active.id ?: active.sourceKey?.toString() ?: "none"
+                    dndDebugOverContainerId = if (over == null) "none" else "target"
+                    dndDebugOverId = over?.toString() ?: "none"
+                },
+                onDragOver = { active, over ->
+                    dndDropEffect = active.dropEffect.name.lowercase()
+                    dndDebugOverId = over?.toString() ?: "none"
+                },
+                onDragEnd = { _, _, effect ->
+                    dndDropEffect = effect.name.lowercase()
+                    dndDebugOverId = "none"
+                    dndDebugOverContainerId = "none"
+                },
+                onDragCancel = {
+                    dndDebugOverId = "none"
+                    dndDebugOverContainerId = "none"
+                }
+            )
+        )
         val refsInputHandle = useRef<ElementHandle>()
         val refsPanelHandle = useRef<ElementHandle>()
 
@@ -578,7 +601,7 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun updateDndSmoothing(delta: Double) {
         dndSmoothFactor = (dndSmoothFactor + delta).coerceIn(0.0, 96.0)
-        DragManager.setSmoothingFactor(dndSmoothFactor)
+        DndSystem.setSmoothingFactor(dndSmoothFactor)
         appendInfo("DnD smoothing k=${"%.1f".format(dndSmoothFactor)}")
     }
 

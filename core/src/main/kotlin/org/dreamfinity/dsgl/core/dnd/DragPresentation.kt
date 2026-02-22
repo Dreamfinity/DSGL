@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.event
+package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.layout.Rect

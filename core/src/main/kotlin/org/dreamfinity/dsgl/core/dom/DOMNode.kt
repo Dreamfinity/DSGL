@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.dom
 import org.dreamfinity.dsgl.core.ComponentProps
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.StyleScope
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
