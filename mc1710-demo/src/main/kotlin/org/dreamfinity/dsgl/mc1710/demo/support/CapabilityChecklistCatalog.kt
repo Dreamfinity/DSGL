@@ -48,6 +48,13 @@ enum class CapabilityId(
     HOOK_BLUR("hook: onBlur", CapabilityGroup.EVENT_HOOKS),
     HOOK_INPUT("hook: onInput", CapabilityGroup.EVENT_HOOKS),
     HOOK_CHANGE("hook: onChange", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG_START("hook: onDragStart", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG("hook: onDrag", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG_END("hook: onDragEnd", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG_ENTER("hook: onDragEnter", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG_OVER("hook: onDragOver", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DRAG_LEAVE("hook: onDragLeave", CapabilityGroup.EVENT_HOOKS),
+    HOOK_DROP("hook: onDrop", CapabilityGroup.EVENT_HOOKS),
 
     EVENT_INSPECTOR("Event Inspector panel", CapabilityGroup.SHOWCASE_FEATURES),
     CAPABILITY_CHECKLIST("Capability Checklist panel", CapabilityGroup.SHOWCASE_FEATURES),
@@ -60,6 +67,12 @@ enum class CapabilityId(
     STYLESHEET_VARIABLES("Stylesheet variables demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_INLINE_OVERRIDE("Inline style override demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_PROGRAMMATIC_RELOAD("Programmatic stylesheet reload", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_OBJECT("Object ref (.current) demo", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_CALLBACK("Callback ref attach/detach demo", CapabilityGroup.SHOWCASE_FEATURES),
+    REFS_IMPERATIVE_FOCUS("Imperative focus via ref", CapabilityGroup.SHOWCASE_FEATURES),
+    DND_SMOOTH_GHOST("Smooth drag ghost", CapabilityGroup.SHOWCASE_FEATURES),
+    DND_DATA_TRANSFER("DataTransfer payload demo", CapabilityGroup.SHOWCASE_FEATURES),
+    DND_DROP_EFFECT("Drop effect demo", CapabilityGroup.SHOWCASE_FEATURES),
     FOCUS_RETENTION("Focus retention with stable keys", CapabilityGroup.SHOWCASE_FEATURES),
     STATE_REBUILD("State-driven rebuild demo", CapabilityGroup.SHOWCASE_FEATURES),
     MANUAL_INVALIDATE("Manual invalidate demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -73,7 +86,7 @@ enum class CapabilityId(
 }
 
 object CapabilityChecklistCatalog {
-    val required: List<CapabilityId> = CapabilityId.values().toList()
+    val required: List<CapabilityId> = CapabilityId.entries
 
     fun capabilitiesForSection(section: DemoSection): Set<CapabilityId> = when (section) {
         DemoSection.OVERVIEW -> setOf(
@@ -122,6 +135,33 @@ object CapabilityChecklistCatalog {
             CapabilityId.HOOK_MOUSE_DRAG,
             CapabilityId.HOOK_KEY_DOWN,
             CapabilityId.HOOK_INPUT
+        )
+
+        DemoSection.REFS -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.REFS_OBJECT,
+            CapabilityId.REFS_CALLBACK,
+            CapabilityId.REFS_IMPERATIVE_FOCUS
+        )
+
+        DemoSection.DRAG_DROP -> setOf(
+            CapabilityId.BUILDER_ROW,
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.HOOK_DRAG_START,
+            CapabilityId.HOOK_DRAG,
+            CapabilityId.HOOK_DRAG_END,
+            CapabilityId.HOOK_DRAG_ENTER,
+            CapabilityId.HOOK_DRAG_OVER,
+            CapabilityId.HOOK_DRAG_LEAVE,
+            CapabilityId.HOOK_DROP,
+            CapabilityId.DND_SMOOTH_GHOST,
+            CapabilityId.DND_DATA_TRANSFER,
+            CapabilityId.DND_DROP_EFFECT
         )
 
         DemoSection.INTERACTIONS -> setOf(
@@ -175,7 +215,7 @@ object CapabilityChecklistCatalog {
     }
 
     fun implementedByAllSections(): Set<CapabilityId> {
-        return DemoSection.values()
+        return DemoSection.entries
             .flatMap { capabilitiesForSection(it) }
             .toSet()
     }

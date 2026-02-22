@@ -84,7 +84,7 @@ data class StyleSelector(
 
 data class StyleRule(
     val selector: StyleSelector,
-    val declarations: StyleDecls,
+    val declarations: StyleDeclarations,
     val sourceOrder: Int,
     val fileName: String
 )

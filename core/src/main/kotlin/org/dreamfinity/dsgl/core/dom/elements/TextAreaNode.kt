@@ -281,6 +281,24 @@ class TextAreaNode(
         textColor = value
     }
 
+    internal fun syncEditablePropsFrom(template: TextAreaNode) {
+        placeholder = template.placeholder
+        textColor = template.textColor
+        placeholderColor = template.placeholderColor
+        backgroundColor = template.backgroundColor
+        focusedBackgroundColor = template.focusedBackgroundColor
+        minContentWidth = template.minContentWidth
+        minContentHeight = template.minContentHeight
+        selectionColor = template.selectionColor
+        caretBlinkPeriodMs = template.caretBlinkPeriodMs
+        if (text != template.text) {
+            text = template.text
+            editState.clampToLength(text.length)
+            clampScroll()
+            editState.resetBlinkClock()
+        }
+    }
+
     fun shouldCaptureScrollbarDrag(mouseX: Int, mouseY: Int): Boolean {
         if (styleDisabled || !hasVerticalOverflow || lastMaxScroll <= 0) return false
         return isInScrollbarTrack(mouseX, mouseY)
