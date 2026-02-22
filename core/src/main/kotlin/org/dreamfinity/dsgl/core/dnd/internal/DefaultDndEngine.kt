@@ -1,34 +1,24 @@
-package org.dreamfinity.dsgl.core.event
+package org.dreamfinity.dsgl.core.dnd.internal
 
 import org.dreamfinity.dsgl.core.DsglColors
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.math.exp
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Core drag-and-drop orchestrator with react-dnd-like source/preview behavior.
+ * Core drag-and-drop orchestrator.
  */
-object DragManager {
+object DefaultDndEngine : DndEngine {
     private const val DRAG_THRESHOLD_SQUARED_DISTANCE = 16
     private const val DRAG_TICK_SEC = 0.05
     private const val OVER_TICK_SEC = 0.04
     private const val MIN_SMOOTHING_K = 0.0
     private const val MAX_SMOOTHING_K = 96.0
-
-    data class DragMonitorState(
-        val isDragging: Boolean,
-        val sourceKey: Any?,
-        val cursorX: Int,
-        val cursorY: Int,
-        val previewX: Double,
-        val previewY: Double,
-        val mode: DragPreviewMode?,
-        val overKey: Any?,
-        val collisionCandidates: Int,
-        val sourceExcludedFromHitTest: Boolean
-    )
 
     private data class PendingDrag(
         val sourceNode: DOMNode,
@@ -38,7 +28,7 @@ object DragManager {
         val startY: Int
     )
 
-    private data class ActiveDrag(
+    private data class ActiveSession(
         var sourceNode: DOMNode,
         val sourceKey: Any?,
         val sourceClass: Class<out DOMNode>,
@@ -66,23 +56,25 @@ object DragManager {
     )
 
     private var pendingDrag: PendingDrag? = null
-    private var activeDrag: ActiveDrag? = null
+    private var activeDrag: ActiveSession? = null
     private var smoothingFactor: Double = 26.0
+    private val monitorListeners: LinkedHashMap<Long, DndMonitorListener> = linkedMapOf()
+    private val monitorTokenGenerator: AtomicLong = AtomicLong(1L)
 
-    val isDragging: Boolean
+    override val isDragging: Boolean
         get() = activeDrag != null
 
-    val isPointerCaptured: Boolean
+    override val isPointerCaptured: Boolean
         get() = pendingDrag != null || activeDrag != null
 
-    fun setSmoothingFactor(value: Double) {
+    override fun setSmoothingFactor(value: Double) {
         smoothingFactor = value.coerceIn(MIN_SMOOTHING_K, MAX_SMOOTHING_K)
     }
 
-    fun getSmoothingFactor(): Double = smoothingFactor
+    override fun getSmoothingFactor(): Double = smoothingFactor
 
-    fun monitor(nodeKey: Any? = null): DragMonitorState {
-        val active = activeDrag ?: return DragMonitorState(
+    override fun monitor(nodeKey: Any?): DndMonitorState {
+        val active = activeDrag ?: return DndMonitorState(
             isDragging = false,
             sourceKey = null,
             cursorX = 0,
@@ -95,7 +87,7 @@ object DragManager {
             sourceExcludedFromHitTest = true
         )
         val draggingThisSource = nodeKey != null && nodeKey == active.sourceKey
-        return DragMonitorState(
+        return DndMonitorState(
             isDragging = nodeKey == null || draggingThisSource,
             sourceKey = active.sourceKey,
             cursorX = active.cursorX,
@@ -109,13 +101,26 @@ object DragManager {
         )
     }
 
-    fun isDraggingNode(nodeKey: Any?): Boolean {
+    override fun isDraggingNode(nodeKey: Any?): Boolean {
         val active = activeDrag ?: return false
         if (nodeKey == null) return false
         return nodeKey == active.sourceKey
     }
 
-    fun onMouseDown(_root: DOMNode, target: DOMNode?, event: MouseDownEvent) {
+    override fun activeDrag(): ActiveDrag? {
+        val active = activeDrag ?: return null
+        return toApiActiveDrag(active)
+    }
+
+    override fun subscribe(listener: DndMonitorListener): AutoCloseable {
+        val token = monitorTokenGenerator.getAndIncrement()
+        monitorListeners[token] = listener
+        return AutoCloseable {
+            monitorListeners.remove(token)
+        }
+    }
+
+    override fun onMouseDown(_root: DOMNode, target: DOMNode?, event: MouseDownEvent) {
         if (event.mouseButton != MouseButton.LEFT) {
             pendingDrag = null
             return
@@ -132,7 +137,7 @@ object DragManager {
         }
     }
 
-    fun onMouseMove(root: DOMNode, mouseX: Int, mouseY: Int) {
+    override fun onMouseMove(root: DOMNode, mouseX: Int, mouseY: Int) {
         val pending = pendingDrag
         if (pending != null && activeDrag == null) {
             val dx = mouseX - pending.startX
@@ -149,10 +154,11 @@ object DragManager {
         if (moved) {
             updateDropTarget(root, active, dispatchOver = true)
             dispatchDragEvent(active)
+            notifyDragMove(active)
         }
     }
 
-    fun onMouseUp(root: DOMNode, event: MouseUpEvent): Boolean {
+    override fun onMouseUp(root: DOMNode, event: MouseUpEvent): Boolean {
         if (event.mouseButton != MouseButton.LEFT) return false
 
         val active = activeDrag
@@ -187,7 +193,7 @@ object DragManager {
         return true
     }
 
-    fun onFrame(root: DOMNode, dtSeconds: Double) {
+    override fun onFrame(root: DOMNode, dtSeconds: Double) {
         if (activeDrag == null) return
         val safeDt = dtSeconds.coerceAtLeast(0.0)
         rebindAfterReconcile(root)
@@ -214,7 +220,7 @@ object DragManager {
         }
     }
 
-    fun appendPlaceholderCommands(out: MutableList<RenderCommand>) {
+    override fun appendPlaceholderCommands(out: MutableList<RenderCommand>) {
         val active = activeDrag ?: return
         if (active.previewMode != DragPreviewMode.ORIGINAL) return
 
@@ -228,7 +234,7 @@ object DragManager {
         out.addAll(scope.buildCommands(bounds))
     }
 
-    fun appendOverlayCommands(
+    override fun appendOverlayCommands(
         root: DOMNode,
         ctx: UiMeasureContext,
         viewportWidth: Int,
@@ -246,11 +252,12 @@ object DragManager {
         out.add(RenderCommand.PopClip)
     }
 
-    fun rebindAfterReconcile(root: DOMNode) {
+    override fun rebindAfterReconcile(root: DOMNode) {
         val active = activeDrag ?: return
 
         val reboundSource = findByKeyAndClass(root, active.sourceKey, active.sourceClass)
         if (reboundSource == null) {
+            notifyDragCancel(active)
             finishDrag(active, didDrop = false, dropTargetKey = null)
             return
         }
@@ -278,11 +285,12 @@ object DragManager {
         }
     }
 
-    fun cancelActiveDrag() {
+    override fun cancelActiveDrag() {
         val active = activeDrag ?: run {
             pendingDrag = null
             return
         }
+        notifyDragCancel(active)
         finishDrag(active, didDrop = false, dropTargetKey = null)
     }
 
@@ -310,7 +318,7 @@ object DragManager {
         val previewOffsetY = previewSpec?.offsetY ?: defaultOffsetY
         val hideSource = source.dragPreviewMode == DragPreviewMode.ORIGINAL || source.hideSourceWhileDragging
 
-        val startedDrag = ActiveDrag(
+        val startedDrag = ActiveSession(
             sourceNode = source,
             sourceKey = source.key,
             sourceClass = source.javaClass,
@@ -333,6 +341,7 @@ object DragManager {
         applySourceHiddenFlags(startedDrag)
         updateDropTarget(root, startedDrag, dispatchOver = true)
         dispatchDragEvent(startedDrag)
+        notifyDragStart(startedDrag)
     }
 
     private fun resolveDraggableSource(start: DOMNode?): DOMNode? {
@@ -344,7 +353,7 @@ object DragManager {
         return null
     }
 
-    private fun updateDropTarget(root: DOMNode, active: ActiveDrag, dispatchOver: Boolean) {
+    private fun updateDropTarget(root: DOMNode, active: ActiveSession, dispatchOver: Boolean) {
         val resolvedTarget = resolveDropTarget(root, active, active.cursorX, active.cursorY)
         if (!isSameNode(active.dropTargetNode, resolvedTarget)) {
             active.dropTargetNode?.let { prev ->
@@ -400,9 +409,10 @@ object DragManager {
         } else {
             active.dataTransfer.dropEffect = DropEffect.NONE
         }
+        notifyDragOver(active)
     }
 
-    private fun resolveDropTarget(root: DOMNode, active: ActiveDrag, mouseX: Int, mouseY: Int): DOMNode? {
+    private fun resolveDropTarget(root: DOMNode, active: ActiveSession, mouseX: Int, mouseY: Int): DOMNode? {
         val chain = collectHoverChain(root, mouseX, mouseY)
         val candidates = ArrayList<DOMNode>(chain.size)
         var excludedSource = false
@@ -441,7 +451,7 @@ object DragManager {
         return null
     }
 
-    private fun dispatchDragEvent(active: ActiveDrag) {
+    private fun dispatchDragEvent(active: ActiveSession) {
         val source = active.sourceNode
         val dragEvent = DragEvent(
             x = active.cursorX,
@@ -453,7 +463,7 @@ object DragManager {
         EventBus.post(dragEvent)
     }
 
-    private fun dispatchDragEnd(active: ActiveDrag, didDrop: Boolean, dropTargetKey: Any?) {
+    private fun dispatchDragEnd(active: ActiveSession, didDrop: Boolean, dropTargetKey: Any?) {
         val source = active.sourceNode
         val event = DragEndEvent(
             x = active.cursorX,
@@ -468,14 +478,15 @@ object DragManager {
         EventBus.post(event)
     }
 
-    private fun finishDrag(active: ActiveDrag, didDrop: Boolean, dropTargetKey: Any?) {
+    private fun finishDrag(active: ActiveSession, didDrop: Boolean, dropTargetKey: Any?) {
         clearSourceHiddenFlags(active.sourceNode)
         dispatchDragEnd(active, didDrop, dropTargetKey)
+        notifyDragEnd(active, didDrop, dropTargetKey)
         pendingDrag = null
         activeDrag = null
     }
 
-    private fun applySourceHiddenFlags(active: ActiveDrag) {
+    private fun applySourceHiddenFlags(active: ActiveSession) {
         if (!active.sourceHiddenDuringDrag) return
         active.sourceNode.dragRenderHidden = true
         active.sourceNode.dragHitTestHidden = true
@@ -488,7 +499,7 @@ object DragManager {
     }
 
     private fun appendOriginalPreviewCommands(
-        active: ActiveDrag,
+        active: ActiveSession,
         ctx: UiMeasureContext,
         out: MutableList<RenderCommand>
     ) {
@@ -504,7 +515,7 @@ object DragManager {
 
     private fun appendGhostPreviewCommands(
         root: DOMNode,
-        active: ActiveDrag,
+        active: ActiveSession,
         ctx: UiMeasureContext,
         out: MutableList<RenderCommand>
     ) {
@@ -574,7 +585,7 @@ object DragManager {
     }
 
     private fun drawDefaultGhost(
-        active: ActiveDrag,
+        active: ActiveSession,
         ctx: UiMeasureContext,
         out: MutableList<RenderCommand>
     ) {
@@ -657,5 +668,61 @@ object DragManager {
             }
         }
         return null
+    }
+
+    private fun notifyDragStart(active: ActiveSession) {
+        val snapshot = toApiActiveDrag(active)
+        monitorListeners.values.forEach { listener ->
+            listener.onDragStart(snapshot)
+        }
+    }
+
+    private fun notifyDragMove(active: ActiveSession) {
+        val snapshot = toApiActiveDrag(active)
+        monitorListeners.values.forEach { listener ->
+            listener.onDragMove(snapshot, active.dropTargetKey)
+        }
+    }
+
+    private fun notifyDragOver(active: ActiveSession) {
+        val snapshot = toApiActiveDrag(active)
+        monitorListeners.values.forEach { listener ->
+            listener.onDragOver(snapshot, active.dropTargetKey)
+        }
+    }
+
+    private fun notifyDragEnd(active: ActiveSession, didDrop: Boolean, dropTargetKey: Any?) {
+        val snapshot = toApiActiveDrag(active)
+        val effect = if (didDrop) active.dataTransfer.dropEffect else DropEffect.NONE
+        monitorListeners.values.forEach { listener ->
+            listener.onDragEnd(snapshot, dropTargetKey, effect)
+        }
+    }
+
+    private fun notifyDragCancel(active: ActiveSession) {
+        val snapshot = toApiActiveDrag(active)
+        monitorListeners.values.forEach { listener ->
+            listener.onDragCancel(snapshot)
+        }
+    }
+
+    private fun toApiActiveDrag(active: ActiveSession): ActiveDrag {
+        val id = active.dataTransfer.getData(DND_DATA_ID_MIME)
+        val type = active.dataTransfer.getData(DND_DATA_TYPE_MIME)
+        return ActiveDrag(
+            id = id,
+            type = type,
+            sourceKey = active.sourceKey,
+            overKey = active.dropTargetKey,
+            data = DndSystem.payload(id),
+            cursorX = active.cursorX,
+            cursorY = active.cursorY,
+            transform = Transform(
+                x = active.previewX - active.cursorX.toDouble(),
+                y = active.previewY - active.cursorY.toDouble()
+            ),
+            dropEffect = active.dataTransfer.dropEffect,
+            dataTransfer = active.dataTransfer
+        )
     }
 }

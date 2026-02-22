@@ -1,4 +1,7 @@
-package org.dreamfinity.dsgl.core.event
+package org.dreamfinity.dsgl.core.dnd
+
+import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.MouseEvent
 
 abstract class DragDropEvent(
     override var mouseX: Int,

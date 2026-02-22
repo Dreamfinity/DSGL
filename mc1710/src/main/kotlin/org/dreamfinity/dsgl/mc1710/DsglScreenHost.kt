@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
@@ -109,8 +110,8 @@ abstract class DsglScreenHost(
             stylesAlreadyApplied = true
         }
         val commands = tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
-        DragManager.onMouseMove(tree.root, mouseX, mouseY)
-        DragManager.onFrame(tree.root, dtSeconds)
+        DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
+        DndRuntime.engine.onFrame(tree.root, dtSeconds)
         val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
         val dx = mouseX - prevX
@@ -129,8 +130,8 @@ abstract class DsglScreenHost(
         lastMoveY = mouseY
         val composedCommands = ArrayList<RenderCommand>(commands.size + 48)
         composedCommands.addAll(commands)
-        DragManager.appendPlaceholderCommands(composedCommands)
-        DragManager.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
+        DndRuntime.engine.appendPlaceholderCommands(composedCommands)
+        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
         adapter.paint(composedCommands)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
@@ -144,7 +145,7 @@ abstract class DsglScreenHost(
     override fun onGuiClosed() {
         ClipboardBridge.install(null)
         FocusManager.clearFocus()
-        DragManager.cancelActiveDrag()
+        DndRuntime.engine.cancelActiveDrag()
         clearActiveTarget()
         flushPendingCleanup()
         domTree?.clearRefs()
@@ -206,7 +207,7 @@ abstract class DsglScreenHost(
             domTree?.root?.let { root ->
                 FocusManager.retainFocus(root)
                 restoreDragCapture(root)
-                DragManager.rebindAfterReconcile(root)
+                DndRuntime.engine.rebindAfterReconcile(root)
             }
         }
     }
@@ -262,7 +263,7 @@ abstract class DsglScreenHost(
                 val event = MouseDownEvent(mouseX, mouseY, mappedButton)
                 event.target = hoverTarget
                 EventBus.post(event)
-                DragManager.onMouseDown(tree.root, event.target ?: hoverTarget, event)
+                DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
                 if (mappedButton == MouseButton.LEFT) {
                     setActiveTarget(event.target ?: hoverTarget)
                     val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
@@ -281,7 +282,7 @@ abstract class DsglScreenHost(
                 val upEvent = MouseUpEvent(mouseX, mouseY, mappedButton)
                 upEvent.target = releaseTarget
                 EventBus.post(upEvent)
-                val dndConsumed = DragManager.onMouseUp(tree.root, upEvent)
+                val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
                 if (!hadDragCapture && !dndConsumed) {
                     val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
                     clickEvent.target = hoverTarget
@@ -295,7 +296,7 @@ abstract class DsglScreenHost(
                 val dx = mouseX - lastMouseX
                 val dy = mouseY - lastMouseY
                 if (dx != 0 || dy != 0) {
-                    DragManager.onMouseMove(tree.root, mouseX, mouseY)
+                    DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
                     val dragEvent = MouseDragEvent(
                         lastMouseX,
                         lastMouseY,
@@ -303,7 +304,7 @@ abstract class DsglScreenHost(
                         dy,
                         mappedButton
                     )
-                    if (!DragManager.isDragging) {
+                    if (!DndRuntime.engine.isDragging) {
                         dragEvent.target = dragCaptureTarget ?: hoverTarget
                         EventBus.post(dragEvent)
                     }
