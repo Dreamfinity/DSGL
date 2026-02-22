@@ -63,6 +63,16 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
                 "types=${window.dndTransferTypes} dragTicks=${window.dndDragTickCount} action=${window.dndLastAction}"
             }.apply { color = DEMO_MUTED }
         )
+        dynamicText(
+            DynamicTextProps {
+                "debug active=${monitor.sourceKey ?: "none"} over=${window.dndDebugOverId} container=${window.dndDebugOverContainerId}"
+            }.apply { color = DEMO_MUTED }
+        )
+        dynamicText(
+            DynamicTextProps {
+                "candidates=${window.dndDebugCandidatesCount} insert=${window.dndDebugInsertPosition} excludeActive=${window.dndDebugExcludesActiveCard}"
+            }.apply { color = DEMO_MUTED }
+        )
 
         row(ComponentProps(gap = 3)) {
             button(
@@ -79,6 +89,16 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
                         window.dndHideSourceWhileDragging = !window.dndHideSourceWhileDragging
                         window.appendInfo("DnD hideSource=${window.dndHideSourceWhileDragging}")
                     }
+                }
+            )
+            button(
+                ButtonProps("Reset state").apply {
+                    onMouseClick = { window.resetDndItems("toolbar") }
+                }
+            )
+            button(
+                ButtonProps("Reset logs").apply {
+                    onMouseClick = { window.clearEventLogs() }
                 }
             )
         }
@@ -127,6 +147,7 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
 
 private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int) {
     val monitor = DragManager.monitor()
+    val draggedId = extractCardIdFromDragKey(monitor.sourceKey)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
     column(
         ComponentProps(
@@ -165,22 +186,24 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
             ) {
                 previewOrder.forEach { item ->
                     val indicator = window.laneIndicatorForCard(item.id, monitor.sourceKey)
+                    val isDraggedItem = draggedId != null && draggedId == item.id
                     renderCard(
                         item = item,
-                        key = "dnd.card.${item.id}",
+                        key = "dnd.lane.card.${item.id}",
                         size = laneCardSize,
                         previewMode = DragPreviewMode.ORIGINAL,
                         hideSourceWhileDragging = true,
+                        draggableEnabled = !isDraggedItem,
                         highlighted = indicator != ShowcaseWindow.DndLaneIndicator.NONE,
                         insertionIndicator = indicator,
                         onDragStart = { event -> window.handleDndStart(item, event) },
                         onDrag = { event -> window.handleDndDrag(event) },
                         onDragEnd = { event -> window.handleDndEnd(event) },
-                        onDragOver = { event ->
+                        onDragOver = if (isDraggedItem) null else { event ->
                             val insertAfter = resolveInsertAfter(event)
                             window.handleDndCardReorderOver(item.id, insertAfter, event)
                         },
-                        onDrop = { event ->
+                        onDrop = if (isDraggedItem) null else { event ->
                             val insertAfter = resolveInsertAfter(event)
                             window.handleDndCardReorderDrop(item.id, insertAfter, event)
                         }
@@ -277,6 +300,7 @@ private fun UiScope.renderCard(
     size: Int,
     previewMode: DragPreviewMode,
     hideSourceWhileDragging: Boolean,
+    draggableEnabled: Boolean = true,
     highlighted: Boolean,
     insertionIndicator: ShowcaseWindow.DndLaneIndicator = ShowcaseWindow.DndLaneIndicator.NONE,
     onDragStart: ((DragStartEvent) -> Unit)? = null,
@@ -296,7 +320,7 @@ private fun UiScope.renderCard(
             height = size,
             padding = 2,
             gap = 1,
-            draggable = true,
+            draggable = draggableEnabled,
             droppable = onDragOver != null || onDrop != null,
             dragPreviewMode = previewMode,
             hideSourceWhileDragging = hideSourceWhileDragging,
@@ -399,7 +423,7 @@ private fun UiScope.renderDropBox(
                 cards.take(maxVisibleCards).forEach { item ->
                     renderCard(
                         item = item,
-                        key = "dnd.card.${item.id}",
+                        key = "dnd.box.$boxId.card.${item.id}",
                         size = BOX_CARD_SIZE,
                         previewMode = DragPreviewMode.GHOST,
                         hideSourceWhileDragging = window.dndHideSourceWhileDragging,
@@ -415,6 +439,14 @@ private fun UiScope.renderDropBox(
             }
         }
     }
+}
+
+private fun extractCardIdFromDragKey(sourceKey: Any?): String? {
+    val key = sourceKey as? String ?: return null
+    val marker = ".card."
+    val markerIndex = key.indexOf(marker)
+    if (markerIndex < 0) return null
+    return key.substring(markerIndex + marker.length).takeIf { it.isNotBlank() }
 }
 
 private fun itemBaseColor(itemId: String): Int {

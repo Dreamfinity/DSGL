@@ -24,7 +24,10 @@ object DragManager {
         val cursorY: Int,
         val previewX: Double,
         val previewY: Double,
-        val mode: DragPreviewMode?
+        val mode: DragPreviewMode?,
+        val overKey: Any?,
+        val collisionCandidates: Int,
+        val sourceExcludedFromHitTest: Boolean
     )
 
     private data class PendingDrag(
@@ -56,6 +59,8 @@ object DragManager {
         var dropTargetKey: Any? = null,
         var dropTargetClass: Class<out DOMNode>? = null,
         var dropAccepted: Boolean = false,
+        var collisionCandidateCount: Int = 0,
+        var sourceExcludedFromHitTest: Boolean = true,
         var dragTickAccum: Double = 0.0,
         var overTickAccum: Double = 0.0
     )
@@ -84,7 +89,10 @@ object DragManager {
             cursorY = 0,
             previewX = 0.0,
             previewY = 0.0,
-            mode = null
+            mode = null,
+            overKey = null,
+            collisionCandidates = 0,
+            sourceExcludedFromHitTest = true
         )
         val draggingThisSource = nodeKey != null && nodeKey == active.sourceKey
         return DragMonitorState(
@@ -94,7 +102,10 @@ object DragManager {
             cursorY = active.cursorY,
             previewX = active.previewX,
             previewY = active.previewY,
-            mode = active.previewMode
+            mode = active.previewMode,
+            overKey = active.dropTargetKey,
+            collisionCandidates = active.collisionCandidateCount,
+            sourceExcludedFromHitTest = active.sourceExcludedFromHitTest
         )
     }
 
@@ -334,7 +345,7 @@ object DragManager {
     }
 
     private fun updateDropTarget(root: DOMNode, active: ActiveDrag, dispatchOver: Boolean) {
-        val resolvedTarget = resolveDropTarget(root, active.cursorX, active.cursorY)
+        val resolvedTarget = resolveDropTarget(root, active, active.cursorX, active.cursorY)
         if (!isSameNode(active.dropTargetNode, resolvedTarget)) {
             active.dropTargetNode?.let { prev ->
                 val leaveEvent = DragLeaveEvent(
@@ -391,13 +402,41 @@ object DragManager {
         }
     }
 
-    private fun resolveDropTarget(root: DOMNode, mouseX: Int, mouseY: Int): DOMNode? {
+    private fun resolveDropTarget(root: DOMNode, active: ActiveDrag, mouseX: Int, mouseY: Int): DOMNode? {
         val chain = collectHoverChain(root, mouseX, mouseY)
-        for (index in chain.size - 1 downTo 0) {
+        val candidates = ArrayList<DOMNode>(chain.size)
+        var excludedSource = false
+        for (index in chain.indices) {
             val node = chain[index]
-            if (node.droppable && !node.styleDisabled) {
-                return node
+            if (!node.droppable || node.styleDisabled) continue
+            if (node === active.sourceNode) {
+                excludedSource = true
+                continue
             }
+            if (active.sourceKey != null &&
+                node.key == active.sourceKey &&
+                node.javaClass == active.sourceClass
+            ) {
+                excludedSource = true
+                continue
+            }
+            candidates.add(node)
+        }
+        active.collisionCandidateCount = candidates.size
+        active.sourceExcludedFromHitTest = excludedSource || active.sourceExcludedFromHitTest
+
+        val previousTarget = active.dropTargetNode
+        if (previousTarget != null) {
+            for (index in candidates.indices.reversed()) {
+                val candidate = candidates[index]
+                if (isSameNode(candidate, previousTarget)) {
+                    return candidate
+                }
+            }
+        }
+
+        for (index in candidates.size - 1 downTo 0) {
+            return candidates[index]
         }
         return null
     }

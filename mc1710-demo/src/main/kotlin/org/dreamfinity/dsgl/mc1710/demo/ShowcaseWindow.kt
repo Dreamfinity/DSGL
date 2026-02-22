@@ -158,6 +158,11 @@ class ShowcaseWindow : DsglWindow() {
     internal var dndReorderHoverTargetId by state<String?>(null)
     internal var dndReorderHoverInsertAfter by state(false)
     internal var dndReorderHoverLaneAppend by state(false)
+    internal var dndDebugOverId by state("none")
+    internal var dndDebugOverContainerId by state("none")
+    internal var dndDebugCandidatesCount by state(0)
+    internal var dndDebugInsertPosition by state("none")
+    internal var dndDebugExcludesActiveCard by state(true)
     internal var dndBoxes by state(
         linkedMapOf(
             "box-a" to emptyList<DndDemoItem>(),
@@ -558,6 +563,11 @@ class ShowcaseWindow : DsglWindow() {
         dndTransferTypes = "-"
         dndDragTickCount = 0
         clearLaneReorderHover()
+        dndDebugOverId = "none"
+        dndDebugOverContainerId = "none"
+        dndDebugCandidatesCount = 0
+        dndDebugInsertPosition = "none"
+        dndDebugExcludesActiveCard = true
         dndBoxes = linkedMapOf(
             "box-a" to emptyList(),
             "box-b" to emptyList(),
@@ -591,11 +601,20 @@ class ShowcaseWindow : DsglWindow() {
         if (!dndGhostEnabled) {
             event.dataTransfer.hideGhost()
         }
-        event.dataTransfer.setDragImage("dnd.card.${item.id}", offsetX, offsetY)
+        val sourceKey = event.target?.key?.toString()
+        if (!sourceKey.isNullOrBlank()) {
+            event.dataTransfer.setDragImage(sourceKey, offsetX, offsetY)
+        }
         dndActiveItem = item.label
         dndTransferTypes = event.dataTransfer.types.sorted().joinToString(",").ifBlank { "-" }
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
         dndLastAction = "dragstart ${item.label}"
+        clearLaneReorderHover()
+        dndDebugOverId = "none"
+        dndDebugOverContainerId = "none"
+        dndDebugCandidatesCount = 0
+        dndDebugInsertPosition = "none"
+        dndDebugExcludesActiveCard = true
         val mode = event.target?.dragPreviewMode?.name?.lowercase() ?: "unknown"
         logHook("dnd.onDragStart", event, "item=${item.id} mode=$mode")
     }
@@ -611,10 +630,21 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun handleDndLaneOver(event: DragOverEvent) {
         val laneNode = event.target
-        val intent = resolveLaneIntentFromMouse(laneNode, event.mouseY)
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id")
+        val proposed = resolveLaneIntentFromMouse(laneNode, event.mouseY, draggedId)
+        val intent = stabilizeLaneIntent(laneNode, event.mouseY, draggedId, proposed)
         dndReorderHoverLaneAppend = intent.append
         dndReorderHoverTargetId = intent.targetId
         dndReorderHoverInsertAfter = intent.insertAfter
+        dndDebugOverContainerId = "lane"
+        dndDebugOverId = intent.targetId ?: "append"
+        dndDebugCandidatesCount = laneCandidateCount(laneNode, draggedId)
+        dndDebugInsertPosition = when {
+            intent.append -> "append"
+            intent.insertAfter -> "after"
+            else -> "before"
+        }
+        dndDebugExcludesActiveCard = true
         event.acceptDrop(DropEffect.MOVE)
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
     }
@@ -622,7 +652,8 @@ class ShowcaseWindow : DsglWindow() {
     internal fun handleDndLaneDrop(event: DropEvent) {
         val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id") ?: return
         val laneNode = event.target
-        val intent = resolveLaneIntentFromMouse(laneNode, event.mouseY)
+        val proposed = resolveLaneIntentFromMouse(laneNode, event.mouseY, draggedId)
+        val intent = stabilizeLaneIntent(laneNode, event.mouseY, draggedId, proposed)
         val targetId = intent.targetId
         val insertAfter = if (intent.append) null else intent.insertAfter
         val moved = commitLaneReorderDrop(
@@ -640,6 +671,9 @@ class ShowcaseWindow : DsglWindow() {
         }
         clearLaneReorderHover()
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
+        dndDebugOverId = "none"
+        dndDebugOverContainerId = "none"
+        dndDebugInsertPosition = "none"
         logHook(
             "dnd.reorder.lane.onDrop",
             event,
@@ -648,9 +682,19 @@ class ShowcaseWindow : DsglWindow() {
     }
 
     internal fun handleDndCardReorderOver(targetCardId: String, insertAfter: Boolean, event: DragOverEvent) {
+        val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id")
+        if (draggedId != null && draggedId == targetCardId) {
+            return
+        }
+        val laneNode = event.target?.parent
         dndReorderHoverTargetId = targetCardId
         dndReorderHoverInsertAfter = insertAfter
         dndReorderHoverLaneAppend = false
+        dndDebugOverContainerId = "lane"
+        dndDebugOverId = targetCardId
+        dndDebugCandidatesCount = laneCandidateCount(laneNode, draggedId)
+        dndDebugInsertPosition = if (insertAfter) "after" else "before"
+        dndDebugExcludesActiveCard = true
         event.acceptDrop(DropEffect.MOVE)
         event.cancelled = true
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
@@ -658,6 +702,9 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun handleDndCardReorderDrop(targetCardId: String, insertAfter: Boolean, event: DropEvent) {
         val draggedId = event.dataTransfer.getData("application/x-dsgl-item-id") ?: return
+        if (draggedId == targetCardId) {
+            return
+        }
         val moved = commitLaneReorderDrop(
             draggedId = draggedId,
             targetId = targetCardId,
@@ -670,6 +717,9 @@ class ShowcaseWindow : DsglWindow() {
             )
         }
         clearLaneReorderHover()
+        dndDebugOverId = "none"
+        dndDebugOverContainerId = "none"
+        dndDebugInsertPosition = "none"
         event.cancelled = true
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
         logHook(
@@ -682,6 +732,11 @@ class ShowcaseWindow : DsglWindow() {
     internal fun handleDndBoxOver(boxId: String, event: DragOverEvent) {
         clearLaneReorderHover()
         dndHoverZone = boxId
+        dndDebugOverId = boxId
+        dndDebugOverContainerId = "box:$boxId"
+        dndDebugInsertPosition = "drop"
+        dndDebugCandidatesCount = 1
+        dndDebugExcludesActiveCard = true
         event.acceptDrop(DropEffect.MOVE)
         dndDropEffect = event.dataTransfer.dropEffect.name.lowercase()
     }
@@ -704,27 +759,18 @@ class ShowcaseWindow : DsglWindow() {
         dndDropEffect = event.finalDropEffect.name.lowercase()
         dndLastAction = "dragend drop=${event.didDrop} effect=${event.finalDropEffect.name.lowercase()}"
         dndActiveItem = "none"
+        dndDebugOverId = "none"
+        dndDebugOverContainerId = "none"
+        dndDebugCandidatesCount = 0
+        dndDebugInsertPosition = "none"
         logHook("dnd.onDragEnd", event, "drop=${event.didDrop}")
     }
 
     internal fun resolveLanePreviewOrder(sourceKey: Any?): List<DndDemoItem> {
-        val draggedId = extractCardIdFromKey(sourceKey) ?: return dndItems
-        val draggedAlreadyInLane = dndItems.any { it.id == draggedId }
-        if (draggedAlreadyInLane) {
-            return dndItems
+        if (sourceKey != null) {
+            // Lane preview keeps a single insertion gap and avoids rendering a duplicate card while dragging from boxes.
         }
-        if (!dndReorderHoverLaneAppend && dndReorderHoverTargetId == null) {
-            return dndItems
-        }
-        val draggedCard = findCardById(draggedId) ?: return dndItems
-        val laneWithDragged = if (dndItems.any { it.id == draggedId }) dndItems else dndItems + draggedCard
-        return reorder(
-            list = laneWithDragged,
-            draggedId = draggedId,
-            targetId = dndReorderHoverTargetId,
-            insertAfter = if (dndReorderHoverLaneAppend) null else dndReorderHoverInsertAfter,
-            dropOnLane = dndReorderHoverLaneAppend
-        )
+        return dndItems
     }
 
     internal fun laneIndicatorForCard(cardId: String, sourceKey: Any?): DndLaneIndicator {
@@ -766,9 +812,11 @@ class ShowcaseWindow : DsglWindow() {
 
     private fun extractCardIdFromKey(sourceKey: Any?): String? {
         val key = sourceKey as? String ?: return null
-        val prefix = "dnd.card."
-        if (!key.startsWith(prefix)) return null
-        return key.removePrefix(prefix)
+        val marker = ".card."
+        val markerIndex = key.indexOf(marker)
+        if (markerIndex < 0) return null
+        val value = key.substring(markerIndex + marker.length)
+        return value.takeIf { it.isNotBlank() }
     }
 
     private fun moveCardToBox(cardId: String, boxId: String): Boolean {
@@ -942,16 +990,15 @@ class ShowcaseWindow : DsglWindow() {
         val append: Boolean
     )
 
-    private fun resolveLaneIntentFromMouse(laneNode: DOMNode?, mouseY: Int): LaneHoverIntent {
+    private fun resolveLaneIntentFromMouse(
+        laneNode: DOMNode?,
+        mouseY: Int,
+        excludedCardId: String? = null
+    ): LaneHoverIntent {
         if (laneNode == null) {
             return LaneHoverIntent(targetId = null, insertAfter = false, append = true)
         }
-        val cards = laneNode.children
-            .mapNotNull { child ->
-                val id = extractCardIdFromKey(child.key) ?: return@mapNotNull null
-                id to child
-            }
-            .sortedBy { (_, node) -> node.bounds.y }
+        val cards = laneCards(laneNode, excludedCardId)
 
         if (cards.isEmpty()) {
             return LaneHoverIntent(targetId = null, insertAfter = false, append = true)
@@ -971,6 +1018,71 @@ class ShowcaseWindow : DsglWindow() {
         val splitY = targetNode.bounds.y + (targetNode.bounds.height / 2)
         val insertAfter = mouseY >= splitY
         return LaneHoverIntent(targetId = targetId, insertAfter = insertAfter, append = false)
+    }
+
+    private fun laneCandidateCount(laneNode: DOMNode?, excludedCardId: String?): Int {
+        return laneCards(laneNode, excludedCardId).size
+    }
+
+    private fun stabilizeLaneIntent(
+        laneNode: DOMNode?,
+        mouseY: Int,
+        excludedCardId: String?,
+        proposed: LaneHoverIntent
+    ): LaneHoverIntent {
+        if (laneNode == null) return proposed
+        if (proposed.append) return proposed
+
+        val cards = laneCards(laneNode, excludedCardId)
+        val currentTargetId = dndReorderHoverTargetId
+        if (currentTargetId != null && currentTargetId != proposed.targetId) {
+            val previousNode = cards.firstOrNull { (id, _) -> id == currentTargetId }?.second
+            if (previousNode != null) {
+                val insidePrevious = mouseY >= previousNode.bounds.y &&
+                    mouseY < (previousNode.bounds.y + previousNode.bounds.height)
+                if (insidePrevious) {
+                    return LaneHoverIntent(
+                        targetId = currentTargetId,
+                        insertAfter = dndReorderHoverInsertAfter,
+                        append = false
+                    )
+                }
+            }
+        }
+
+        if (currentTargetId != null &&
+            currentTargetId == proposed.targetId &&
+            !dndReorderHoverLaneAppend &&
+            proposed.targetId != null &&
+            proposed.insertAfter != dndReorderHoverInsertAfter
+        ) {
+            val currentNode = cards.firstOrNull { (id, _) -> id == currentTargetId }?.second
+            if (currentNode != null) {
+                val splitY = currentNode.bounds.y + (currentNode.bounds.height / 2)
+                if (abs(mouseY - splitY) <= 3) {
+                    return LaneHoverIntent(
+                        targetId = currentTargetId,
+                        insertAfter = dndReorderHoverInsertAfter,
+                        append = false
+                    )
+                }
+            }
+        }
+
+        return proposed
+    }
+
+    private fun laneCards(laneNode: DOMNode?, excludedCardId: String?): List<Pair<String, DOMNode>> {
+        if (laneNode == null) return emptyList()
+        return laneNode.children
+            .mapNotNull { child ->
+                val id = extractCardIdFromKey(child.key) ?: return@mapNotNull null
+                if (excludedCardId != null && id == excludedCardId) {
+                    return@mapNotNull null
+                }
+                id to child
+            }
+            .sortedBy { (_, node) -> node.bounds.y }
     }
 
     private fun selectSection(section: DemoSection) {
