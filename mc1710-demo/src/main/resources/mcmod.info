@@ -7,7 +7,9 @@
     "mcversion": "${gameVersion}",
     "url": "",
     "updateUrl": "",
-    "authorList": ["${modAuthor}"],
+    "authorList": [
+      "${modAuthor}"
+    ],
     "credits": "${modCredits}",
     "logoFile": "${modIcon}",
     "screenshots": [],

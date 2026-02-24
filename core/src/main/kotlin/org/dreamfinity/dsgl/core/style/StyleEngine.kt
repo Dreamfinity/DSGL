@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.style
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.WeakHashMap
+import java.util.*
 
 object StyleEngine {
     private data class CacheKey(
@@ -176,6 +176,21 @@ object StyleEngine {
             StyleProperty.WIDTH -> current.copy(width = parseIntLike(literal).coerceAtLeast(0))
             StyleProperty.HEIGHT -> current.copy(height = parseIntLike(literal).coerceAtLeast(0))
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
+            StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
+            StyleProperty.FLEX_DIRECTION -> current.copy(flexDirection = parseFlexDirection(literal))
+            StyleProperty.JUSTIFY_CONTENT -> current.copy(justifyContent = parseJustifyContent(literal))
+            StyleProperty.ALIGN_ITEMS -> current.copy(alignItems = parseAlignItems(literal))
+            StyleProperty.JUSTIFY_ITEMS -> current.copy(justifyItems = parseJustifyItems(literal))
+            StyleProperty.GAP -> current.copy(gap = parseIntLike(literal).coerceAtLeast(0))
+            StyleProperty.FLEX_GROW -> current.copy(flexGrow = parseFloatLike(literal).coerceAtLeast(0f))
+            StyleProperty.FLEX_SHRINK -> current.copy(flexShrink = parseFloatLike(literal).coerceAtLeast(0f))
+            StyleProperty.FLEX_BASIS -> current.copy(flexBasis = parseOptionalInt(literal)?.coerceAtLeast(0))
+            StyleProperty.GRID_COLUMNS -> current.copy(gridColumns = parseIntLike(literal).coerceAtLeast(1))
+            StyleProperty.GRID_ROWS -> current.copy(gridRows = parseOptionalInt(literal)?.coerceAtLeast(1))
+            StyleProperty.GRID_AUTO_FLOW -> current.copy(gridAutoFlow = parseGridAutoFlow(literal))
+            StyleProperty.GRID_COLUMN_SPAN -> current.copy(gridColumnSpan = parseIntLike(literal).coerceAtLeast(1))
+            StyleProperty.GRID_ROW_SPAN -> current.copy(gridRowSpan = parseIntLike(literal).coerceAtLeast(1))
+            StyleProperty.TEXT_WRAP -> current.copy(textWrap = parseTextWrap(literal))
         }
     }
 }

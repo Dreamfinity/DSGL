@@ -1,37 +1,30 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.ImageProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.ItemStackProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    column(
+    div(
         ComponentProps(
             key = "section.mcFeatures",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Image sources: resource + file:// + http(s):// cached path."))
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "mediaReady=${window.mediaReady} file=${
                     if (window.mediaReady) "prepared" else "failed"
                 }"
             }.apply { color = DEMO_MUTED }
         )
 
-        row(ComponentProps(gap = 3)) {
-            column(ComponentProps(gap = 2, key = "mc.image.resource.col")) {
+        div(ComponentProps(gap = 3).asFlexRow()) {
+            div(ComponentProps(gap = 2, key = "mc.image.resource.col").asFlexColumn()) {
                 text(TextProps("Resource").apply { color = DEMO_MUTED })
                 img(
                     ImageProps(window.resourceImageSource).apply {
@@ -42,7 +35,7 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
                     }
                 )
             }
-            column(ComponentProps(gap = 2, key = "mc.image.file.col")) {
+            div(ComponentProps(gap = 2, key = "mc.image.file.col").asFlexColumn()) {
                 text(TextProps("file://").apply { color = DEMO_MUTED })
                 img(
                     ImageProps(window.fileImageSource).apply {
@@ -53,7 +46,7 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
                     }
                 )
             }
-            column(ComponentProps(gap = 2, key = "mc.image.http.col")) {
+            div(ComponentProps(gap = 2, key = "mc.image.http.col").asFlexColumn()) {
                 text(TextProps("http://").apply { color = DEMO_MUTED })
                 img(
                     ImageProps(window.httpImageSource).apply {
@@ -67,7 +60,7 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
         }
 
         text(TextProps("Item stack render modes (2D item + 3D block)"))
-        row(ComponentProps(gap = 10, key = "mc.items.row")) {
+        div(ComponentProps(gap = 10, key = "mc.items.row").asFlexRow()) {
             itemStack(
                 ItemStackProps(window.flatItemRef, size = 18).apply {
                     key = "mc.item.2d"
@@ -153,7 +146,7 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
             }
         )
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             button(
                 ButtonProps("Y-15").apply {
                     width = 36
@@ -189,11 +182,10 @@ fun UiScope.renderMcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, c
             )
         }
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "rotY=${window.itemRotYLong()} rotX=${window.itemRotXLong()}"
             }.apply { color = DEMO_MUTED }
         )
     }
 }
-

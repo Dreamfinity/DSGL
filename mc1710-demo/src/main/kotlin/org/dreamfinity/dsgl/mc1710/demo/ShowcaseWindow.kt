@@ -6,6 +6,8 @@ import net.minecraft.init.Items
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.components.modal.ModalSpec
+import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
@@ -61,6 +63,19 @@ class ShowcaseWindow : DsglWindow() {
     internal var styleUseBorder by state(true)
     internal var styleLargeGap by state(false)
     internal var styleFixedSize by state(false)
+    internal var displayBlockLargeGap by state(false)
+    internal var displayInlineWidth by state(132L)
+    internal var displayShowHidden by state(true)
+    internal var displayFlexJustifyIndex by state(0)
+    internal var displayFlexAlignIndex by state(0)
+    internal var displayGridColumns by state(3L)
+    internal var displayGridLargeGap by state(false)
+    internal var displayNoneClicks by state(0)
+    internal var textWrapNoWrap by state(false)
+    internal var textWrapWidth by state(176L)
+    internal var modalBackgroundCounter by state(0)
+    internal var modalPromptValue by state("hello")
+    internal var demoModals by state(emptyList<ModalSpec>())
     internal var stackOverlayEnabled by state(true)
     internal var layoutOverlayX by state(8)
     internal var layoutOverlayY by state(92)
@@ -242,142 +257,182 @@ class ShowcaseWindow : DsglWindow() {
         val checklistHeight = (bodyHeight - inspectorHeight - 4).coerceAtLeast(72)
 
         return ui {
-            column(
-                ComponentProps(
-                    key = "showcase.root",
-                    padding = 4,
-                    gap = 4,
-                    backgroundColor = DEMO_BG
-                )
-            ) {
-                text(TextProps("DSGL Showcase Window").apply { color = DsglColors.WHITE })
-                dynamicText(
-                    DynamicTextProps {
-                        "renderPasses=$renderPasses section=${selectedSection.title} viewport=${viewportWidth}x$viewportHeight"
-                    }.apply { color = DEMO_MUTED }
-                )
+            modalHost(modals = demoModals, key = "showcase.modalHost") {
+                div(
+                    ComponentProps(
+                        key = "showcase.root",
+                        padding = 4,
+                        gap = 4,
+                        backgroundColor = DEMO_BG
+                    ).asFlexColumn()
+                ) {
+                    text(TextProps("DSGL Showcase Window").apply { color = DsglColors.WHITE })
+                    text(
+                        TextProps {
+                            "renderPasses=$renderPasses section=${selectedSection.title} viewport=${viewportWidth}x$viewportHeight"
+                        }.apply { color = DEMO_MUTED }
+                    )
 
-                row(ComponentProps(key = "showcase.body", gap = 4)) {
-                    div(
-                        panelProps(
-                            key = "showcase.nav",
-                            width = navWidth,
-                            height = bodyHeight
-                        )
-                    ) {
-                        text(TextProps("Sections").apply { color = DsglColors.WHITE })
-                        DemoSection.entries.forEach { section ->
-                            button(
-                                navButtonProps(
-                                    key = "nav.${section.name.lowercase()}",
-                                    title = section.title,
-                                    selected = selectedSection == section
-                                ) {
-                                    selectSection(section)
-                                }
-                            )
+                    div(ComponentProps(key = "showcase.body", gap = 4).asFlexRow()) {
+                        div(
+                            panelProps(
+                                key = "showcase.nav",
+                                width = navWidth,
+                                height = bodyHeight
+                            ).asFlexColumn()
+                        ) {
+                            text(TextProps("Sections").apply { color = DsglColors.WHITE })
+                            DemoSection.entries.forEach { section ->
+                                button(
+                                    navButtonProps(
+                                        key = "nav.${section.name.lowercase()}",
+                                        title = section.title,
+                                        selected = selectedSection == section
+                                    ) {
+                                        selectSection(section)
+                                    }
+                                )
+                            }
                         }
-                    }
 
-                    div(
-                        panelProps(
-                            key = "showcase.content",
-                            width = contentWidth,
-                            height = bodyHeight
-                        )
-                    ) {
-                        text(TextProps(selectedSection.title).apply { color = DsglColors.WHITE })
-                        text(TextProps(selectedSection.subtitle).apply { color = DEMO_MUTED })
-                        when (selectedSection) {
-                            DemoSection.OVERVIEW -> renderOverviewSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
+                        div(
+                            panelProps(
+                                key = "showcase.content",
+                                width = contentWidth,
+                                height = bodyHeight
                             )
+                        ) {
+                            text(TextProps(selectedSection.title).apply { color = DsglColors.WHITE })
+                            text(TextProps(selectedSection.subtitle).apply { color = DEMO_MUTED })
+                            when (selectedSection) {
+                                DemoSection.OVERVIEW -> renderOverviewSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.STYLESHEETS -> renderStylesheetsSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.DISPLAY -> renderDisplaySection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.INPUTS -> renderInputsGallerySection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.TEXT_WRAP -> renderTextWrapSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.INPUT_EVENTS -> renderInputEventsSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.MODALS -> renderModalsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.TEXT_EDITING -> renderTextEditingSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.STYLESHEETS -> renderStylesheetsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.REFS -> renderRefsSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30,
-                                refsInputHandle,
-                                refsPanelHandle
-                            )
+                                DemoSection.INPUTS -> renderInputsGallerySection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.DRAG_DROP -> renderDragDropSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.INPUT_EVENTS -> renderInputEventsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.INTERACTIONS -> renderInteractionsSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.TEXT_EDITING -> renderTextEditingSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
 
-                            DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.REFS -> renderRefsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30,
+                                    refsInputHandle,
+                                    refsPanelHandle
+                                )
 
-                            DemoSection.MC_FEATURES -> renderMcFeaturesSection(
-                                this@ShowcaseWindow,
-                                contentWidth - 10,
-                                bodyHeight - 30
-                            )
+                                DemoSection.DRAG_DROP -> renderDragDropSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.INTERACTIONS -> renderInteractionsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.FOCUS_REBUILD -> renderFocusRebuildSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.MC_FEATURES -> renderMcFeaturesSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+                            }
                         }
-                    }
 
-                    column(
-                        ComponentProps(
-                            key = "showcase.side",
-                            width = sidebarWidth,
-                            height = bodyHeight,
-                            gap = 4
-                        )
-                    ) {
-                        renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
-                        renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)
+                        div(
+                            ComponentProps(
+                                key = "showcase.side",
+                                width = sidebarWidth,
+                                height = bodyHeight,
+                                gap = 4
+                            ).asFlexColumn()
+                        ) {
+                            renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
+                            renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)
+                        }
                     }
                 }
             }
-
         }
     }
 
     internal fun clearEventLogs() {
         eventLogs = emptyList()
+    }
+
+    internal fun pushModal(spec: ModalSpec) {
+        if (demoModals.any { it.key == spec.key }) return
+        demoModals = demoModals + spec
+        appendInfo("Modal pushed: ${spec.key}")
+    }
+
+    internal fun removeModal(key: String) {
+        val before = demoModals.size
+        demoModals = demoModals.filterNot { it.key == key }
+        if (demoModals.size != before) {
+            appendInfo("Modal removed: $key")
+        }
+    }
+
+    internal fun popTopModal() {
+        if (demoModals.isEmpty()) return
+        val removed = demoModals.last()
+        demoModals = demoModals.dropLast(1)
+        appendInfo("Modal popped: ${removed.key}")
     }
 
     internal fun moveChecklistPage(delta: Int) {
@@ -1062,7 +1117,7 @@ class ShowcaseWindow : DsglWindow() {
             val previousNode = cards.firstOrNull { (id, _) -> id == currentTargetId }?.second
             if (previousNode != null) {
                 val insidePrevious = mouseY >= previousNode.bounds.y &&
-                    mouseY < (previousNode.bounds.y + previousNode.bounds.height)
+                        mouseY < (previousNode.bounds.y + previousNode.bounds.height)
                 if (insidePrevious) {
                     return LaneHoverIntent(
                         targetId = currentTargetId,

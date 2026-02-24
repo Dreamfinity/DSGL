@@ -41,4 +41,3 @@ fun navButtonProps(
     this.backgroundColor = if (selected) DEMO_ACCENT else DsglColors.BUTTON
     this.onMouseClick = { onClick() }
 }
-

@@ -10,21 +10,21 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
     val halfWidth = ((contentWidth - 6) / 2).coerceAtLeast(88)
     val inputWidth = (halfWidth - 6).coerceAtLeast(76)
 
-    column(
+    div(
         ComponentProps(
             key = "section.inputs",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("All InputType variants are interactive below."))
         text(TextProps("Validation examples: allowed chars, min/max, step, date format.").apply {
             color = DEMO_MUTED
         })
 
-        row(ComponentProps(gap = 6)) {
-            column(ComponentProps(width = halfWidth, gap = 3, key = "inputs.left")) {
+        div(ComponentProps(gap = 6).asFlexRow()) {
+            div(ComponentProps(width = halfWidth, gap = 3, key = "inputs.left").asFlexColumn()) {
                 text(TextProps("Text (A-F/0-9, max 8)"))
                 input(
                     InputProps(
@@ -84,7 +84,7 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     }
                 )
 
-                dynamicText(DynamicTextProps { "Range (step 5, value=${window.sharedRangeValue})" })
+                text(TextProps { "Range (step 5, value=${window.sharedRangeValue})" })
                 input(
                     InputProps(
                         InputType.Range(
@@ -102,7 +102,7 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                 )
             }
 
-            column(ComponentProps(width = halfWidth, gap = 3, key = "inputs.right")) {
+            div(ComponentProps(width = halfWidth, gap = 3, key = "inputs.right").asFlexColumn()) {
                 text(TextProps("Checkbox (min 1, max 2)"))
                 input(
                     InputProps(
@@ -144,8 +144,8 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     }
                 )
 
-                dynamicText(
-                    DynamicTextProps {
+                text(
+                    TextProps {
                         "Opened: ${window.openedAtForDemo}"
                     }.apply { color = DEMO_MUTED }
                 )
@@ -164,7 +164,7 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
         )
 
         text(TextProps("Clipping + internal scrolling demo (100 lines prefilled)").apply { color = DEMO_MUTED })
-        row(ComponentProps(gap = 4, key = "input.textarea.clip.demo.controls")) {
+        div(ComponentProps(gap = 4, key = "input.textarea.clip.demo.controls").asFlexRow()) {
             button(ButtonProps("Clear Focus")) {
                 onClick { FocusManager.clearFocus() }
             }
@@ -173,7 +173,7 @@ fun UiScope.renderInputsGallerySection(window: ShowcaseWindow, contentWidth: Int
                     .apply { color = DEMO_MUTED }
             )
         }
-        row(ComponentProps(gap = 4, key = "input.textarea.clip.demo.row")) {
+        div(ComponentProps(gap = 4, key = "input.textarea.clip.demo.row").asFlexRow()) {
             div(
                 ComponentProps(
                     key = "input.textarea.clip.left",

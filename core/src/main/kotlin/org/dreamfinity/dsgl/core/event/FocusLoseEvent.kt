@@ -9,4 +9,3 @@ data class FocusLoseEvent(
     override val type: Events
         get() = Events.BLUR
 }
-

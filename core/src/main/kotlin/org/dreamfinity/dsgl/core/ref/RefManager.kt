@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.ref
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.IdentityHashMap
+import java.util.*
 
 internal class RefManager {
     private data class AttachedRef(
@@ -67,4 +67,3 @@ internal class RefManager {
         }
     }
 }
-

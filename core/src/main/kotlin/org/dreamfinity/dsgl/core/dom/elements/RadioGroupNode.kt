@@ -5,11 +5,7 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.event.Events
-import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.event.postChange
-import org.dreamfinity.dsgl.core.event.postInput
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 /**
@@ -100,7 +96,7 @@ class RadioGroupNode(
         dotColor = value
     }
 
-    override fun defaultBackgroundColor(): Int? = boxColor
+    override fun defaultBackgroundColor(): Int = boxColor
 
     override fun applyBackgroundColor(value: Int?) {
         if (value != null) {

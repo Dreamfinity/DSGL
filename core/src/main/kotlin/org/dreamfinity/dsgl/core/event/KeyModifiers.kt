@@ -4,11 +4,14 @@ package org.dreamfinity.dsgl.core.event
  * Tracks modifier key state.
  */
 object KeyModifiers {
-    @Volatile var shiftDown: Boolean = false
+    @Volatile
+    var shiftDown: Boolean = false
         private set
-    @Volatile var controlDown: Boolean = false
+    @Volatile
+    var controlDown: Boolean = false
         private set
-    @Volatile var metaDown: Boolean = false
+    @Volatile
+    var metaDown: Boolean = false
         private set
 
     private val macOs: Boolean = run {

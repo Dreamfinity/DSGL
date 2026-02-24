@@ -1,14 +1,9 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.ItemStackProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dnd.*
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private const val LEFT_PANEL_PERCENT = 58
@@ -36,38 +31,38 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
     }
     val monitor = DndSystem.monitor()
 
-    column(
+    div(
         ComponentProps(
             key = "section.dragDrop",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview)."))
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 val mode = monitor.mode?.name ?: "none"
                 "active=${window.dndActiveItem} mode=$mode effect=${window.dndDropEffect} hover=${window.dndHoverZone}"
             }.apply { color = DEMO_MUTED }
         )
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "types=${window.dndTransferTypes} dragTicks=${window.dndDragTickCount} action=${window.dndLastAction}"
             }.apply { color = DEMO_MUTED }
         )
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "debug active=${monitor.sourceKey ?: "none"} over=${window.dndDebugOverId} container=${window.dndDebugOverContainerId}"
             }.apply { color = DEMO_MUTED }
         )
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "candidates=${window.dndDebugCandidatesCount} insert=${window.dndDebugInsertPosition} excludeActive=${window.dndDebugExcludesActiveCard}"
             }.apply { color = DEMO_MUTED }
         )
 
-        row(ComponentProps(gap = 3)) {
+        div(ComponentProps(gap = 3).asFlexRow()) {
             button(
                 ButtonProps(if (window.dndGhostEnabled) "Ghost ON" else "Ghost OFF").apply {
                     onMouseClick = {
@@ -95,7 +90,7 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
                 }
             )
         }
-        row(ComponentProps(gap = 3)) {
+        div(ComponentProps(gap = 3).asFlexRow()) {
             button(
                 ButtonProps("k-").apply {
                     width = 26
@@ -111,25 +106,25 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
             text(TextProps("smoothing k=${"%.1f".format(window.dndSmoothFactor)}").apply { color = DEMO_MUTED })
         }
         if (splitAllowed) {
-            row(
+            div(
                 ComponentProps(
                     key = "dnd.row.main",
                     width = leftWidth + rightWidth + PANELS_GAP,
                     height = (contentHeight - 70).coerceAtLeast(96),
                     gap = PANELS_GAP
-                )
+                ).asFlexRow()
             ) {
                 renderOriginalModeReorder(window, leftWidth)
                 renderGhostModeBoxes(window, rightWidth)
             }
         } else {
-            column(
+            div(
                 ComponentProps(
                     key = "dnd.col.main",
                     width = contentWidth.coerceAtLeast(0),
                     height = (contentHeight - 70).coerceAtLeast(96),
                     gap = 4
-                )
+                ).asFlexColumn()
             ) {
                 renderOriginalModeReorder(window, contentWidth.coerceAtLeast(0))
                 renderGhostModeBoxes(window, contentWidth.coerceAtLeast(0))
@@ -142,7 +137,7 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
     val monitor = DndSystem.monitor()
     val draggedId = extractCardIdFromDragKey(monitor.sourceKey)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
-    column(
+    div(
         ComponentProps(
             key = "dnd.original.panel",
             width = width,
@@ -150,7 +145,7 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
             padding = 3,
             backgroundColor = 0xFF2D333B.toInt(),
             style = { border(1, 0xFF6B7785.toInt()) }
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("ORIGINAL mode: reorder list"))
         text(TextProps("Detached source follows cursor; slot uses placeholder.").apply { color = DEMO_MUTED })
@@ -166,7 +161,7 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                 onDragLeave = { _, _ -> window.clearLaneReorderHoverState() },
                 onDrop = { event, _ -> window.handleDndLaneDrop(event) }
             )
-            column(
+            div(
                 ComponentProps(
                     gap = 2,
                     key = "dnd.lane.column",
@@ -179,7 +174,7 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                     }
                 ).apply {
                     applyDroppable(laneDroppable)
-                }
+                }.asFlexColumn()
             ) {
                 previewOrder.forEach { item ->
                     val indicator = window.laneIndicatorForCard(item.id, monitor.sourceKey)
@@ -233,8 +228,8 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                     }
                 }
             }
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     val source = monitor.sourceKey ?: "none"
                     "dragSource=$source previewCount=${previewOrder.size}"
                 }.apply { color = DEMO_MUTED }
@@ -250,7 +245,7 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
 }
 
 private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, width: Int) {
-    column(
+    div(
         ComponentProps(
             key = "dnd.ghost.panel",
             width = width,
@@ -258,7 +253,7 @@ private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, width: Int) {
             padding = 3,
             backgroundColor = 0xFF2D333B.toInt(),
             style = { border(1, 0xFF6B7785.toInt()) }
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Buckets: drop card to move it into a box"))
         text(TextProps("Ghost toggle applies to drag previews in this panel.").apply { color = DEMO_MUTED })
@@ -429,7 +424,7 @@ private fun UiScope.renderDropBox(
         } else {
             val rowBudget = (width - 20).coerceAtLeast(1)
             val maxVisibleCards = ((rowBudget + 2) / (BOX_CARD_SIZE + 2)).coerceAtLeast(1)
-            row(ComponentProps(gap = 2, key = "$key.cards")) {
+            div(ComponentProps(gap = 2, key = "$key.cards").asFlexRow()) {
                 cards.take(maxVisibleCards).forEach { item ->
                     val draggable = window.useDraggable(
                         id = item.id,

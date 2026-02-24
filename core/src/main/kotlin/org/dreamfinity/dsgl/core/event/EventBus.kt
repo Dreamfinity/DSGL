@@ -1,8 +1,7 @@
 package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.EnumMap
-import java.util.WeakHashMap
+import java.util.*
 
 typealias EventCallback = (Event) -> Unit
 
@@ -104,8 +103,10 @@ object EventBus {
             Events.KEYUP, Events.KEYDOWN -> allListeners
             Events.MOUSEDOWN, Events.CLICK, Events.MOUSEUP, Events.WHEEL, Events.MOUSEOVER ->
                 allListeners.filter { it.key.hovered(event as MouseEvent) }
+
             Events.MOUSEOUT, Events.MOUSELEAVE ->
                 allListeners.filter { !it.key.hovered(event as MouseEvent) }
+
             Events.MOUSEMOVE -> allListeners
             Events.DRAG -> allListeners
             Events.MOUSEENTER -> allListeners
@@ -116,6 +117,7 @@ object EventBus {
             Events.DRAGOVER,
             Events.DRAGLEAVE,
             Events.DROP -> allListeners
+
             Events.FOCUS, Events.BLUR, Events.INPUT, Events.CHANGE -> allListeners
         }
 

@@ -1,26 +1,7 @@
 package org.dreamfinity.dsgl.mc1710.demo.support
 
-import org.dreamfinity.dsgl.core.dnd.DragEndEvent
-import org.dreamfinity.dsgl.core.dnd.DragEnterEvent
-import org.dreamfinity.dsgl.core.dnd.DragEvent
-import org.dreamfinity.dsgl.core.dnd.DragLeaveEvent
-import org.dreamfinity.dsgl.core.dnd.DragOverEvent
-import org.dreamfinity.dsgl.core.dnd.DragStartEvent
-import org.dreamfinity.dsgl.core.dnd.DropEvent
-import org.dreamfinity.dsgl.core.event.Event
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
-import org.dreamfinity.dsgl.core.event.ValueChangedEvent
-import org.dreamfinity.dsgl.core.event.FocusGainEvent
-import org.dreamfinity.dsgl.core.event.InputEvent
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
-import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.event.MouseDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
-import org.dreamfinity.dsgl.core.event.MouseEvent
-import org.dreamfinity.dsgl.core.event.MouseUpEvent
-import org.dreamfinity.dsgl.core.event.MouseWheelEvent
+import org.dreamfinity.dsgl.core.dnd.*
+import org.dreamfinity.dsgl.core.event.*
 
 fun formatEventLine(
     hookName: String,
@@ -54,7 +35,8 @@ fun formatEventLine(
         else -> ""
     }
     val notePart = if (note.isNullOrBlank()) "" else " note=$note"
-    val raw = "$hookName ${event.type.name} target=$targetKey $coords $payload shift=${KeyModifiers.shiftDown} ctrl=${KeyModifiers.controlDown} meta=${KeyModifiers.metaDown} shortcut=${KeyModifiers.shortcutDown}$notePart"
+    val raw =
+        "$hookName ${event.type.name} target=$targetKey $coords $payload shift=${KeyModifiers.shiftDown} ctrl=${KeyModifiers.controlDown} meta=${KeyModifiers.metaDown} shortcut=${KeyModifiers.shortcutDown}$notePart"
     return truncateForPanel(raw, 118)
 }
 

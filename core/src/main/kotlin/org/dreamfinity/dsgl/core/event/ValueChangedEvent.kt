@@ -10,4 +10,3 @@ data class ValueChangedEvent(
     override val type: Events
         get() = Events.CHANGE
 }
-

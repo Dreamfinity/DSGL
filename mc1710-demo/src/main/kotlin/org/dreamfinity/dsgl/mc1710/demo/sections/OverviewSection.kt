@@ -2,7 +2,6 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.ButtonProps
 import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
 import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -12,13 +11,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
 
 fun UiScope.renderOverviewSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    column(
+    div(
         ComponentProps(
             key = "section.overview",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Use left navigation to open each capability group."))
         text(TextProps("Event Inspector and Checklist stay visible while switching sections.").apply {
@@ -34,18 +33,22 @@ fun UiScope.renderOverviewSection(window: ShowcaseWindow, contentWidth: Int, con
             color = DEMO_MUTED
         })
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            value = {
                 "Manual invalidates: ${window.manualInvalidateCount} (last=${window.lastManualReason})"
-            }.apply { color = DEMO_MUTED }
-        )
-        dynamicText(
-            DynamicTextProps {
+            }
+        ) {
+            color = DEMO_MUTED
+        }
+        text(
+            value = {
                 "Auto state rebuild counter: ${window.autoRebuildCounter}"
-            }.apply { color = DEMO_MUTED }
-        )
+            }
+        ) {
+            color = DEMO_MUTED
+        }
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             button(
                 ButtonProps("Auto state +1").apply {
                     width = 90

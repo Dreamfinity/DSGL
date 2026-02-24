@@ -4,6 +4,7 @@ package org.dreamfinity.dsgl.core.event
  * Common key codes used by the host.
  */
 object KeyCodes {
+    const val ESCAPE: Int = 1
     const val BACKSPACE: Int = 14
     const val DELETE: Int = 211
     const val ENTER: Int = 28

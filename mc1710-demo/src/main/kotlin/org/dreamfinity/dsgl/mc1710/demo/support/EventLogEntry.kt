@@ -5,4 +5,3 @@ data class EventLogEntry(
     val line: String,
     val color: Int
 )
-

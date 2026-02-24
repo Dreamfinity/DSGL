@@ -10,4 +10,3 @@ data class InputEvent(
     override val type: Events
         get() = Events.INPUT
 }
-

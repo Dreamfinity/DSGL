@@ -25,4 +25,3 @@ fun <T : Any> createRef(initial: T? = null): Ref<T> = RefObject(initial)
 fun <T : Any> DsglWindow.useRef(initial: T? = null): Ref<T> {
     return useRefSlot(initial)
 }
-

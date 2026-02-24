@@ -6,15 +6,10 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
-import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
-import org.dreamfinity.dsgl.core.style.ComputedStyle
-import org.dreamfinity.dsgl.core.style.ComputedStyleDefaults
-import org.dreamfinity.dsgl.core.style.StyleAlign
-import org.dreamfinity.dsgl.core.style.StyleDeclarations
-import org.dreamfinity.dsgl.core.style.StyleExpression
-import org.dreamfinity.dsgl.core.style.StyleProperty
+import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.*
 
 /**
  * Base class for all DOM nodes in the retained UI tree.
@@ -34,6 +29,32 @@ abstract class DOMNode(
     var border: Border = Border.NONE
     var borderRadius: Int = 0
     var align: StyleAlign = StyleAlign.START
+    var display: Display = Display.Block
+        set(value) {
+            field = value
+            if (value == Display.None) {
+                styleHovered = false
+                styleActive = false
+                styleFocused = false
+                if (FocusManager.isFocused(this)) {
+                    FocusManager.clearFocus()
+                }
+            }
+        }
+    var flexDirection: FlexDirection = FlexDirection.Row
+    var justifyContent: JustifyContent = JustifyContent.Start
+    var alignItems: AlignItems = AlignItems.Stretch
+    var justifyItems: JustifyItems = JustifyItems.Stretch
+    var gap: Int = 0
+    var flexGrow: Float = 0f
+    var flexShrink: Float = 1f
+    var flexBasis: Int? = null
+    var gridColumns: Int = 2
+    var gridRows: Int? = null
+    var gridAutoFlow: GridAutoFlow = GridAutoFlow.Row
+    var gridColumnSpan: Int = 1
+    var gridRowSpan: Int = 1
+    var textWrap: TextWrap = TextWrap.Wrap
     var styleId: String? = null
     val styleClasses: MutableSet<String> = linkedSetOf()
     var inlineStyleDeclarations: StyleDeclarations = StyleDeclarations()
@@ -265,6 +286,9 @@ abstract class DOMNode(
 
     /** Measures the node's desired size. */
     open fun measure(ctx: UiMeasureContext): Size {
+        if (display == Display.None) {
+            return Size(0, 0)
+        }
         val contentWidth = width ?: 0
         val contentHeight = height ?: 0
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
@@ -274,10 +298,15 @@ abstract class DOMNode(
 
     /** Lays out this node and its children for the given bounds. */
     open fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        if (display == Display.None) {
+            bounds = Rect(x, y, 0, 0)
+            return
+        }
         bounds = Rect(x, y, width, height)
         val contentX = x + border.left + padding.left
         val contentY = y + border.top + padding.top
         children.forEach { child ->
+            if (child.display == Display.None) return@forEach
             val childSize = child.measure(ctx)
             val childX = contentX + child.margin.left
             val childY = contentY + child.margin.top
@@ -294,7 +323,7 @@ abstract class DOMNode(
 
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (dragRenderHidden) return
+        if (dragRenderHidden || display == Display.None) return
         buildRenderCommands(ctx, out)
     }
 
@@ -312,7 +341,7 @@ abstract class DOMNode(
     }
 
     fun isHitTestVisible(): Boolean {
-        return !dragHitTestHidden
+        return !dragHitTestHidden && display != Display.None
     }
 
     /** Applies event handlers from [ComponentProps] to this node. */
@@ -323,10 +352,10 @@ abstract class DOMNode(
         this@DOMNode.styleDisabled = props.disabled
         this@DOMNode.draggable = props.draggable
         this@DOMNode.droppable = props.droppable ||
-            props.onDragEnter != null ||
-            props.onDragOver != null ||
-            props.onDragLeave != null ||
-            props.onDrop != null
+                props.onDragEnter != null ||
+                props.onDragOver != null ||
+                props.onDragLeave != null ||
+                props.onDrop != null
         this@DOMNode.dragPreviewMode = props.dragPreviewMode
         this@DOMNode.hideSourceWhileDragging = props.hideSourceWhileDragging
         this@DOMNode.dragPreviewBuilder = props.dragPreview
@@ -402,6 +431,21 @@ abstract class DOMNode(
         border = template.border
         borderRadius = template.borderRadius
         align = template.align
+        display = template.display
+        flexDirection = template.flexDirection
+        justifyContent = template.justifyContent
+        alignItems = template.alignItems
+        justifyItems = template.justifyItems
+        gap = template.gap
+        flexGrow = template.flexGrow
+        flexShrink = template.flexShrink
+        flexBasis = template.flexBasis
+        gridColumns = template.gridColumns
+        gridRows = template.gridRows
+        gridAutoFlow = template.gridAutoFlow
+        gridColumnSpan = template.gridColumnSpan
+        gridRowSpan = template.gridRowSpan
+        textWrap = template.textWrap
         styleId = template.styleId
         styleClasses.clear()
         styleClasses.addAll(template.styleClasses)
@@ -455,7 +499,22 @@ abstract class DOMNode(
             fontSize = defaultFontSize(),
             width = width,
             height = height,
-            align = align
+            align = align,
+            display = display,
+            flexDirection = flexDirection,
+            justifyContent = justifyContent,
+            alignItems = alignItems,
+            justifyItems = justifyItems,
+            gap = gap,
+            flexGrow = flexGrow,
+            flexShrink = flexShrink,
+            flexBasis = flexBasis,
+            gridColumns = gridColumns,
+            gridRows = gridRows,
+            gridAutoFlow = gridAutoFlow,
+            gridColumnSpan = gridColumnSpan,
+            gridRowSpan = gridRowSpan,
+            textWrap = textWrap
         )
         styleDefaultsSnapshot = computed
         return computed
@@ -473,6 +532,21 @@ abstract class DOMNode(
         width = style.width
         height = style.height
         align = style.align
+        display = style.display
+        flexDirection = style.flexDirection
+        justifyContent = style.justifyContent
+        alignItems = style.alignItems
+        justifyItems = style.justifyItems
+        gap = style.gap
+        flexGrow = style.flexGrow
+        flexShrink = style.flexShrink
+        flexBasis = style.flexBasis
+        gridColumns = style.gridColumns
+        gridRows = style.gridRows
+        gridAutoFlow = style.gridAutoFlow
+        gridColumnSpan = style.gridColumnSpan
+        gridRowSpan = style.gridRowSpan
+        textWrap = style.textWrap
         applyBackgroundColor(style.backgroundColor)
         applyBackgroundImage(style.backgroundImage)
         applyForegroundColor(style.foregroundColor)
@@ -481,13 +555,28 @@ abstract class DOMNode(
 
         if (previous == null) return true
         return previous.margin != style.margin ||
-            previous.padding != style.padding ||
-            previous.borderWidth != style.borderWidth ||
-            previous.borderColor != style.borderColor ||
-            previous.borderRadius != style.borderRadius ||
-            previous.width != style.width ||
-            previous.height != style.height ||
-            previous.align != style.align
+                previous.padding != style.padding ||
+                previous.borderWidth != style.borderWidth ||
+                previous.borderColor != style.borderColor ||
+                previous.borderRadius != style.borderRadius ||
+                previous.width != style.width ||
+                previous.height != style.height ||
+                previous.align != style.align ||
+                previous.display != style.display ||
+                previous.flexDirection != style.flexDirection ||
+                previous.justifyContent != style.justifyContent ||
+                previous.alignItems != style.alignItems ||
+                previous.justifyItems != style.justifyItems ||
+                previous.gap != style.gap ||
+                previous.flexGrow != style.flexGrow ||
+                previous.flexShrink != style.flexShrink ||
+                previous.flexBasis != style.flexBasis ||
+                previous.gridColumns != style.gridColumns ||
+                previous.gridRows != style.gridRows ||
+                previous.gridAutoFlow != style.gridAutoFlow ||
+                previous.gridColumnSpan != style.gridColumnSpan ||
+                previous.gridRowSpan != style.gridRowSpan ||
+                previous.textWrap != style.textWrap
     }
 
     protected open fun defaultBackgroundColor(): Int? = null

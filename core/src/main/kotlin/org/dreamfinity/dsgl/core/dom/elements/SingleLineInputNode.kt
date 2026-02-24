@@ -2,33 +2,13 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.*
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.event.Events
-import org.dreamfinity.dsgl.core.event.FocusGainEvent
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
-import org.dreamfinity.dsgl.core.event.FocusManager
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyInput
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.event.MouseDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
-import org.dreamfinity.dsgl.core.event.MouseUpEvent
-import org.dreamfinity.dsgl.core.event.postChange
-import org.dreamfinity.dsgl.core.event.postInput
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
-import org.dreamfinity.dsgl.core.dom.elements.support.KeyedStateStore
-import org.dreamfinity.dsgl.core.dom.elements.support.TextChangeTracker
-import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
-import org.dreamfinity.dsgl.core.dom.elements.support.TextEditShortcutDispatcher
-import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutAction
-import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutCallbacks
-import org.dreamfinity.dsgl.core.dom.elements.support.UndoRedoHistory
-import org.dreamfinity.dsgl.core.dom.elements.support.WordUndoGrouping
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.TextWrap
 
 /**
  * Base class for single-line text inputs.
@@ -85,6 +65,7 @@ open class SingleLineInputNode(
     private var lastMeasureText: ((String) -> Int)? = null
 
     init {
+        textWrap = TextWrap.NoWrap
         restorePersistedState()
     }
 
@@ -172,8 +153,7 @@ open class SingleLineInputNode(
     }
 
     protected open fun canAcceptText(next: String): Boolean {
-        if (maxLength != null && next.length > maxLength!!) return false
-        return true
+        return !(maxLength != null && next.length > maxLength!!)
     }
 
     protected open fun applyText(next: String) {

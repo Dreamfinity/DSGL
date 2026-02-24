@@ -138,7 +138,6 @@ abstract class DsglScreenHost(
     }
 
     override fun keyTyped(typedChar: Char, keyCode: Int) {
-        super.keyTyped(typedChar, keyCode)
         window.onKeyTyped(typedChar, keyCode)
     }
 
@@ -213,7 +212,6 @@ abstract class DsglScreenHost(
     }
 
     override fun handleKeyboardInput() {
-        super.handleKeyboardInput()
         KeyModifiers.sync(
             shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT),
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
@@ -227,7 +225,14 @@ abstract class DsglScreenHost(
                 requestRebuild("style reload")
             }
             if (pressedKeys.add(keyCode)) {
-                EventBus.post(KeyboardKeyDownEvent(keyChar, keyCode))
+                val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
+                EventBus.post(downEvent)
+                if (!downEvent.cancelled) {
+                    window.onKeyTyped(keyChar, keyCode)
+                    if (keyCode == Keyboard.KEY_ESCAPE) {
+                        mc.displayGuiScreen(null)
+                    }
+                }
             }
         } else {
             if (pressedKeys.remove(keyCode)) {

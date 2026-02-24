@@ -10,6 +10,10 @@ fun dispatchClick(root: DOMNode, event: MouseClickEvent): Boolean {
 }
 
 internal fun dispatchClickInternal(element: DOMNode, event: MouseClickEvent): Boolean {
+    if (!element.isHitTestVisible()) {
+        return false
+    }
+
     if (!element.bounds.contains(event.mouseX, event.mouseY)) {
         return false
     }

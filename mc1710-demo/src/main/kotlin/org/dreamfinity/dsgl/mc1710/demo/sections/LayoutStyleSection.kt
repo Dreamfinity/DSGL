@@ -2,7 +2,6 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.ButtonProps
 import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
 import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -19,7 +18,7 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
     val overlayX = window.layoutOverlayX.coerceIn(0, overlayMaxX)
     val overlayY = window.layoutOverlayY.coerceIn(0, overlayMaxY)
 
-    stack(
+    overlay(
         ComponentProps(
             key = "section.layoutStyle.stack",
             width = contentWidth,
@@ -27,19 +26,19 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
             gap = 0
         )
     ) {
-        column(
+        div(
             ComponentProps(
                 key = "section.layoutStyle",
                 width = contentWidth,
                 height = contentHeight,
                 gap = 4
-            )
+            ).asFlexColumn()
         ) {
             text(TextProps("Toggle values and click boxes to verify row/column behavior.").apply {
                 color = DEMO_MUTED
             })
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps(if (window.styleLargeGap) "Gap: Large" else "Gap: Compact").apply {
                         width = 82
@@ -60,7 +59,7 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
                 )
             }
 
-            row(ComponentProps(gap = demoGap, key = "layout.row.demo")) {
+            div(ComponentProps(gap = demoGap, key = "layout.row.demo").asFlexRow()) {
                 repeat(3) { index ->
                     div(
                         ComponentProps(
@@ -81,7 +80,7 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             }
 
-            column(ComponentProps(gap = demoGap, key = "layout.column.demo")) {
+            div(ComponentProps(gap = demoGap, key = "layout.column.demo").asFlexColumn()) {
                 repeat(3) { index ->
                     div(
                         ComponentProps(
@@ -101,7 +100,7 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             }
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps(if (window.styleUseMargin) "Margin ON" else "Margin OFF").apply {
                         width = 62
@@ -138,14 +137,14 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
                 )
             ) {
                 text(TextProps("Style target (margin/padding/border)"))
-                dynamicText(
-                    DynamicTextProps {
+                text(
+                    TextProps {
                         "margin=${window.styleUseMargin} padding=${window.styleUsePadding} border=${window.styleUseBorder}"
                     }.apply { color = DEMO_MUTED }
                 )
             }
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps(if (window.stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF").apply {
                         width = 116
@@ -166,8 +165,8 @@ fun UiScope.renderLayoutStyleSection(window: ShowcaseWindow, contentWidth: Int, 
                         }
                     }
                 )
-                dynamicText(
-                    DynamicTextProps {
+                text(
+                    TextProps {
                         "Overlay: ${overlayX},${overlayY} clicks=${window.overlayClicks}"
                     }.apply { color = DEMO_MUTED }
                 )

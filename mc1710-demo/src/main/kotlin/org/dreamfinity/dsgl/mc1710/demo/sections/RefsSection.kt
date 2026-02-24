@@ -1,11 +1,6 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.Ref
@@ -19,13 +14,13 @@ fun UiScope.renderRefsSection(
     inputRef: Ref<ElementHandle>,
     panelRef: Ref<ElementHandle>
 ) {
-    column(
+    div(
         ComponentProps(
             key = "section.refs",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Refs: object refs + callback refs (commit-phase attach/detach)."))
         text(TextProps("Focus via ref uses ElementHandle.requestFocus().").apply { color = DEMO_MUTED })
@@ -47,7 +42,7 @@ fun UiScope.renderRefsSection(
             ref = inputRef
         )
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             button(
                 ButtonProps("Focus via ref").apply {
                     width = 82
@@ -77,8 +72,8 @@ fun UiScope.renderRefsSection(
             )
         }
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 val hasRef = inputRef.current != null
                 "objectRef.current set=$hasRef rebuilds=${window.refsRebuildCount}"
             }.apply { color = DEMO_MUTED }
@@ -97,8 +92,8 @@ fun UiScope.renderRefsSection(
             text(TextProps("Bounds target panel").apply { color = 0xFFE2EAFF.toInt() })
         }
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 val bounds = panelRef.current?.bounds
                 if (bounds == null) {
                     "panelRef.current: null"
@@ -123,8 +118,8 @@ fun UiScope.renderRefsSection(
             }
         }
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "callback attaches=${window.refsCallbackAttachCount} detaches=${window.refsCallbackDetachCount} last=${window.refsCallbackLast}"
             }.apply { color = DEMO_MUTED }
         )

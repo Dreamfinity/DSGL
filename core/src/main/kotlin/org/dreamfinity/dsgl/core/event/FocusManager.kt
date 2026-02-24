@@ -9,6 +9,7 @@ object FocusManager {
     private var focused: DOMNode? = null
     private var focusedKey: Any? = null
     private var focusedPath: IntArray? = null
+    private var lastRoot: DOMNode? = null
 
     /** Current focused node, if any. */
     fun focusedNode(): DOMNode? = focused
@@ -70,6 +71,7 @@ object FocusManager {
      * Retains focus across rebuilds using node key or path.
      */
     fun retainFocus(root: DOMNode) {
+        lastRoot = root
         val currentKey = focusedKey
         val currentPath = focusedPath
         if (currentKey == null && currentPath == null) {
@@ -93,6 +95,34 @@ object FocusManager {
         } else {
             clearFocus()
         }
+    }
+
+    fun requestFocusByKey(key: Any?): Boolean {
+        if (key == null) return false
+        val root = lastRoot ?: return false
+        val target = findByKey(root, key) ?: return false
+        val focusable = findFirstFocusable(target) ?: return false
+        requestFocus(focusable)
+        return true
+    }
+
+    fun requestFocusFirstInSubtree(rootKey: Any?): Boolean {
+        if (rootKey == null) return false
+        val root = lastRoot ?: return false
+        val subtree = findByKey(root, rootKey) ?: return false
+        val focusable = findFirstFocusable(subtree) ?: return false
+        requestFocus(focusable)
+        return true
+    }
+
+    fun isFocusWithinSubtree(rootKey: Any?): Boolean {
+        if (rootKey == null) return false
+        var current = focused
+        while (current != null) {
+            if (current.key == rootKey) return true
+            current = current.parent
+        }
+        return false
     }
 
     private fun buildPath(node: DOMNode): IntArray {
@@ -121,6 +151,17 @@ object FocusManager {
         if (root.key == key) return root
         for (child in root.children) {
             val found = findByKey(child, key)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun findFirstFocusable(node: DOMNode): DOMNode? {
+        if (node.focusable && !node.styleDisabled && node.display != org.dreamfinity.dsgl.core.style.Display.None) {
+            return node
+        }
+        for (child in node.children) {
+            val found = findFirstFocusable(child)
             if (found != null) return found
         }
         return null

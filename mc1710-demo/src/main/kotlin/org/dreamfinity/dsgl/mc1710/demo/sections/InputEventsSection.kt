@@ -1,17 +1,11 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextAreaProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
-import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
+import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
@@ -19,21 +13,21 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
 fun UiScope.renderInputEventsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     val halfWidth = ((contentWidth - 8) / 2).coerceAtLeast(90)
 
-    column(
+    div(
         ComponentProps(
             key = "section.inputEvents",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("HTML-like events demo: onFocus/onBlur/onInput/onChange"))
         text(TextProps("Proof case: type in text field, then click elsewhere -> onInput per key, onChange on blur.").apply {
             color = DEMO_MUTED
         })
 
-        row(ComponentProps(gap = 6)) {
-            column(ComponentProps(width = halfWidth, gap = 3, key = "inputEvents.left")) {
+        div(ComponentProps(gap = 6).asFlexRow()) {
+            div(ComponentProps(width = halfWidth, gap = 3, key = "inputEvents.left").asFlexColumn()) {
                 text(TextProps("Text input"))
                 input(
                     InputProps(InputType.Text(value = window.inputEventTextValue, placeholder = "Type then blur"))
@@ -82,7 +76,7 @@ fun UiScope.renderInputEventsSection(window: ShowcaseWindow, contentWidth: Int, 
                 )
             }
 
-            column(ComponentProps(width = halfWidth, gap = 3, key = "inputEvents.right")) {
+            div(ComponentProps(width = halfWidth, gap = 3, key = "inputEvents.right").asFlexColumn()) {
                 text(TextProps("Checkbox"))
                 input(
                     InputProps(
@@ -167,23 +161,23 @@ fun UiScope.renderInputEventsSection(window: ShowcaseWindow, contentWidth: Int, 
                         }
                     }
                 )
-                dynamicText(
-                    DynamicTextProps {
+                text(
+                    TextProps {
                         "Range value=${window.inputEventRangeValue}"
                     }.apply { color = DEMO_MUTED }
                 )
             }
         }
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             button(
                 ButtonProps("Clear Log").apply {
                     width = 62
                     onMouseClick = { window.clearInputEventLog() }
                 }
             )
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "Entries=${window.inputEventLogEntries.size}"
                 }.apply { color = DEMO_MUTED }
             )
@@ -209,4 +203,3 @@ fun UiScope.renderInputEventsSection(window: ShowcaseWindow, contentWidth: Int, 
         }
     }
 }
-

@@ -1,11 +1,10 @@
 package org.dreamfinity.dsgl.mc1710.demo.support
 
 import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
+import org.dreamfinity.dsgl.core.ComponentProps
 import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.ui
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 
 fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, width: Int, height: Int) {
     div(
@@ -16,7 +15,7 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, width: Int, height
             backgroundColor = DEMO_SURFACE_ALT
         )
     ) {
-        row {
+        div(ComponentProps().asFlexRow()) {
             text(TextProps("Event Inspector"))
             button(
                 ButtonProps("Clear").apply {
@@ -25,8 +24,8 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, width: Int, height
                 }
             )
         }
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "Stored: ${window.eventLogs.size}/${window.maxEventLogs}"
             }.apply {
                 color = DEMO_MUTED
@@ -72,15 +71,15 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, width: Int, height: Int
         )
     ) {
         text(TextProps("Capability Checklist"))
-        row {
+        div(ComponentProps().asFlexRow()) {
             button(
                 ButtonProps("<").apply {
                     this.width = 22
                     onMouseClick = { window.moveChecklistPage(-1) }
                 }
             )
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "Page ${window.checklistPage + 1}/$pageCount"
                 }.apply { color = DEMO_MUTED }
             )
@@ -99,8 +98,8 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, width: Int, height: Int
             )
         }
         val missing = required.count { !implemented.contains(it) }
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "Missing: $missing / ${required.size}"
             }.apply {
                 color = if (missing == 0) DEMO_OK else DEMO_ERR
@@ -108,4 +107,3 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, width: Int, height: Int
         )
     }
 }
-

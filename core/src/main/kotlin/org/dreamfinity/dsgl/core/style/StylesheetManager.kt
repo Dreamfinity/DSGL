@@ -158,13 +158,16 @@ object StylesheetManager {
                 selector.id != null -> {
                     idIndex.getOrPut(selector.id) { mutableListOf() }.add(rule)
                 }
+
                 selector.typeName != null && selector.className != null -> {
                     val key = selector.typeName + "|" + selector.className
                     typeClassIndex.getOrPut(key) { mutableListOf() }.add(rule)
                 }
+
                 selector.className != null -> {
                     classIndex.getOrPut(selector.className) { mutableListOf() }.add(rule)
                 }
+
                 selector.typeName != null -> {
                     typeIndex.getOrPut(selector.typeName) { mutableListOf() }.add(rule)
                 }

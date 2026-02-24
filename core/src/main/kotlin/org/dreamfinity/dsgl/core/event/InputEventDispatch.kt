@@ -28,4 +28,3 @@ fun postChange(target: DOMNode, value: String, parsedValue: Any? = null) {
     event.target = target
     EventBus.post(event)
 }
-

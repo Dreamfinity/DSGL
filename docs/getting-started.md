@@ -22,12 +22,12 @@ class MyWindow : DsglWindow() {
     private var clicks by state(0)
 
     override fun render(): DomTree = ui {
-        column(ComponentProps(padding = 8, gap = 6)) {
+        div(ComponentProps(padding = 8, gap = 6).asFlexColumn()) {
             text(TextProps("Hello DSGL"))
             button(ButtonProps("Click me").apply {
                 onMouseClick = { clicks += 1 }
             })
-            dynamicText(DynamicTextProps { "Clicks: $clicks" })
+            text { "Clicks: $clicks" }
         }
     }
 }
@@ -44,4 +44,4 @@ Minecraft.getMinecraft().displayGuiScreen(MyScreen())
 ## Example
 
 For an end-to-end example with input handling and state, see:
-`mc1710/src/main/kotlin/org/dreamfinity/dsgl/mc1710/demo/DemoScreen.kt`.
+`mc1710-demo/src/main/kotlin/org/dreamfinity/dsgl/mc1710/demo/ShowcaseWindow.kt`.

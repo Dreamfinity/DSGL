@@ -1,24 +1,18 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.TextAreaProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    column(
+    div(
         ComponentProps(
             key = "section.stylesheets",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("This section demonstrates DSS selectors, pseudo-states, vars and inline override."))
         text(TextProps("Edit <gameDir>/dsgl/styles/*.dss then click Reload stylesheets.").apply {
@@ -52,7 +46,7 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             )
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps("Save").apply {
                         key = "styles.editor.save"
@@ -86,8 +80,8 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
                     }
                 )
             }
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "status=${window.stylesheetEditorStatus}; reloads=${window.stylesheetReloadCount}; clicks=${window.stylesheetDemoClickCount}"
                 }.apply { color = DEMO_MUTED }
             )
@@ -111,7 +105,7 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
                 color = DEMO_MUTED
             })
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps("button").apply {
                         key = "styles.selector.type"
@@ -143,7 +137,7 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
                 )
             }
 
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps("#dangerAction").apply {
                         key = "styles.selector.id"
@@ -185,7 +179,7 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
             }
         ) {
             text(TextProps("Pseudo-states: :hover, :active, :focus, :disabled"))
-            row(ComponentProps(gap = 4)) {
+            div(ComponentProps(gap = 4).asFlexRow()) {
                 button(
                     ButtonProps("Hover / Active target").apply {
                         key = "styles.state.hoverActive"
@@ -240,8 +234,8 @@ fun UiScope.renderStylesheetsSection(window: ShowcaseWindow, contentWidth: Int, 
             text(TextProps("Try: .vars-demo { backgroundColor: var(--primary); borderColor: var(--accent); }").apply {
                 color = DEMO_MUTED
             })
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "focusInputValue='${window.stylesheetDemoTextValue}'"
                 }.apply { color = DEMO_MUTED }
             )

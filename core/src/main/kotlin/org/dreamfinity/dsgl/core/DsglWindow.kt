@@ -1,9 +1,9 @@
 package org.dreamfinity.dsgl.core
 
-import java.time.Instant
-import java.time.ZoneId
 import org.dreamfinity.dsgl.core.ref.Ref
 import org.dreamfinity.dsgl.core.ref.RefObject
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * Version-agnostic window definition. Platform hosts own the UI lifecycle.
@@ -59,14 +59,19 @@ abstract class DsglWindow {
 
     /** Lifecycle callback when the UI is opened by the host. */
     open fun onOpen() {}
+
     /** Lifecycle callback when the UI is closed by the host. */
     open fun onClose() {}
+
     /** Called when the host viewport changes. */
     open fun onResize(width: Int, height: Int) {}
+
     /** Raw mouse click hook at the host level. */
     open fun onClick(x: Int, y: Int, button: Int) {}
+
     /** Raw key input hook at the host level. */
     open fun onKeyTyped(typedChar: Char, keyCode: Int) {}
+
     /** Called every host frame before draw/rebuild decisions. */
     open fun onFrame(frameTimeMs: Long) {}
 

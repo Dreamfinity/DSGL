@@ -12,11 +12,10 @@ enum class CapabilityId(
     val label: String,
     val group: CapabilityGroup
 ) {
-    BUILDER_COLUMN("builder: column", CapabilityGroup.DSL_BUILDERS),
-    BUILDER_ROW("builder: row", CapabilityGroup.DSL_BUILDERS),
     BUILDER_DIV("builder: div", CapabilityGroup.DSL_BUILDERS),
+    BUILDER_OVERLAY("builder: overlay", CapabilityGroup.DSL_BUILDERS),
     BUILDER_TEXT("builder: text", CapabilityGroup.DSL_BUILDERS),
-    BUILDER_DYNAMIC_TEXT("builder: dynamicText", CapabilityGroup.DSL_BUILDERS),
+    BUILDER_TEXT_LAMBDA("builder: text(lambda)", CapabilityGroup.DSL_BUILDERS),
     BUILDER_BUTTON("builder: button", CapabilityGroup.DSL_BUILDERS),
     BUILDER_IMG("builder: img", CapabilityGroup.DSL_BUILDERS),
     BUILDER_ITEM_STACK("builder: itemStack", CapabilityGroup.DSL_BUILDERS),
@@ -59,9 +58,20 @@ enum class CapabilityId(
     EVENT_INSPECTOR("Event Inspector panel", CapabilityGroup.SHOWCASE_FEATURES),
     CAPABILITY_CHECKLIST("Capability Checklist panel", CapabilityGroup.SHOWCASE_FEATURES),
     EVENT_CANCELLATION("Event cancellation/bubbling demo", CapabilityGroup.SHOWCASE_FEATURES),
+    DISPLAY_BLOCK("Display: block", CapabilityGroup.SHOWCASE_FEATURES),
+    DISPLAY_INLINE("Display: inline", CapabilityGroup.SHOWCASE_FEATURES),
+    DISPLAY_NONE("Display: none", CapabilityGroup.SHOWCASE_FEATURES),
+    DISPLAY_FLEX("Display: flex", CapabilityGroup.SHOWCASE_FEATURES),
+    DISPLAY_GRID("Display: grid", CapabilityGroup.SHOWCASE_FEATURES),
+    TEXT_WRAP("Text wrap style demo", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_HOST("Modal host overlay", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_STACKING("Modal deterministic stacking", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_BACKDROP("Modal backdrop behaviors", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_ESCAPE("Modal ESC close behavior", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_FOCUS_TRAP("Modal focus trap + restore", CapabilityGroup.SHOWCASE_FEATURES),
     LAYOUT_GAP_FIXED("Gap + fixed-size demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLE_MARGIN_PADDING_BORDER("Style margin/padding/border toggles", CapabilityGroup.SHOWCASE_FEATURES),
-    STACK_BEHAVIOR("Stack behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
+    OVERLAY_BEHAVIOR("Overlay behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_SELECTORS("Stylesheet selectors demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_PSEUDO_STATES("Stylesheet pseudo-states demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_VARIABLES("Stylesheet variables demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -90,21 +100,51 @@ object CapabilityChecklistCatalog {
 
     fun capabilitiesForSection(section: DemoSection): Set<CapabilityId> = when (section) {
         DemoSection.OVERVIEW -> setOf(
-            CapabilityId.BUILDER_COLUMN,
             CapabilityId.BUILDER_TEXT,
-            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
             CapabilityId.BUILDER_BUTTON,
             CapabilityId.EVENT_INSPECTOR,
             CapabilityId.CAPABILITY_CHECKLIST
         )
 
         DemoSection.LAYOUT_STYLE -> setOf(
-            CapabilityId.BUILDER_ROW,
             CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_OVERLAY,
             CapabilityId.HOOK_MOUSE_CLICK,
             CapabilityId.LAYOUT_GAP_FIXED,
             CapabilityId.STYLE_MARGIN_PADDING_BORDER,
-            CapabilityId.STACK_BEHAVIOR
+            CapabilityId.OVERLAY_BEHAVIOR
+        )
+
+        DemoSection.DISPLAY -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.HOOK_MOUSE_CLICK,
+            CapabilityId.DISPLAY_BLOCK,
+            CapabilityId.DISPLAY_INLINE,
+            CapabilityId.DISPLAY_NONE,
+            CapabilityId.DISPLAY_FLEX,
+            CapabilityId.DISPLAY_GRID
+        )
+
+        DemoSection.TEXT_WRAP -> setOf(
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.TEXT_WRAP
+        )
+
+        DemoSection.MODALS -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.MODAL_HOST,
+            CapabilityId.MODAL_STACKING,
+            CapabilityId.MODAL_BACKDROP,
+            CapabilityId.MODAL_ESCAPE,
+            CapabilityId.MODAL_FOCUS_TRAP
         )
 
         DemoSection.INPUTS -> setOf(
@@ -141,17 +181,16 @@ object CapabilityChecklistCatalog {
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_INPUT,
             CapabilityId.BUILDER_BUTTON,
-            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
             CapabilityId.REFS_OBJECT,
             CapabilityId.REFS_CALLBACK,
             CapabilityId.REFS_IMPERATIVE_FOCUS
         )
 
         DemoSection.DRAG_DROP -> setOf(
-            CapabilityId.BUILDER_ROW,
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_TEXT,
-            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
             CapabilityId.HOOK_DRAG_START,
             CapabilityId.HOOK_DRAG,
             CapabilityId.HOOK_DRAG_END,
@@ -189,10 +228,9 @@ object CapabilityChecklistCatalog {
         )
 
         DemoSection.STYLESHEETS -> setOf(
-            CapabilityId.BUILDER_ROW,
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_TEXT,
-            CapabilityId.BUILDER_DYNAMIC_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
             CapabilityId.BUILDER_BUTTON,
             CapabilityId.BUILDER_INPUT,
             CapabilityId.STYLESHEET_SELECTORS,

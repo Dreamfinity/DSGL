@@ -9,4 +9,3 @@ data class FocusGainEvent(
     override val type: Events
         get() = Events.FOCUS
 }
-

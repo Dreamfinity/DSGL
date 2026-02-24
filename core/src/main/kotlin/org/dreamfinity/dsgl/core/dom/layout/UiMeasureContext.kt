@@ -8,8 +8,10 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 interface UiMeasureContext {
     /** Font height in pixels for the active UI font. */
     val fontHeight: Int
+
     /** Measures text width in pixels. */
     fun measureText(text: String): Int
+
     /** Executes render commands on the host. */
     fun paint(commands: List<RenderCommand>)
 }

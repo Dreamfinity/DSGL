@@ -1,29 +1,7 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.dnd.DragEndEvent
-import org.dreamfinity.dsgl.core.dnd.DragEnterEvent
-import org.dreamfinity.dsgl.core.dnd.DragEvent
-import org.dreamfinity.dsgl.core.dnd.DragLeaveEvent
-import org.dreamfinity.dsgl.core.dnd.DragOverEvent
-import org.dreamfinity.dsgl.core.dnd.DragStartEvent
-import org.dreamfinity.dsgl.core.dnd.DropEvent
-import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.event.Events
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
-import org.dreamfinity.dsgl.core.event.ValueChangedEvent
-import org.dreamfinity.dsgl.core.event.FocusGainEvent
-import org.dreamfinity.dsgl.core.event.InputEvent
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
-import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.event.MouseDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
-import org.dreamfinity.dsgl.core.event.MouseEnterEvent
-import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
-import org.dreamfinity.dsgl.core.event.MouseMoveEvent
-import org.dreamfinity.dsgl.core.event.MouseOverEvent
-import org.dreamfinity.dsgl.core.event.MouseUpEvent
-import org.dreamfinity.dsgl.core.event.MouseWheelEvent
+import org.dreamfinity.dsgl.core.dnd.*
+import org.dreamfinity.dsgl.core.event.*
 
 /** Registers a mouse enter handler for this node. */
 fun DOMNode.onMouseEnter(handler: (MouseEnterEvent) -> Unit) {

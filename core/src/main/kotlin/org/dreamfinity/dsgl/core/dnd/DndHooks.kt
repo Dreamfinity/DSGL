@@ -4,7 +4,7 @@ import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
-import java.util.WeakHashMap
+import java.util.*
 
 private data class SortableState(
     var activeId: String? = null,
@@ -218,7 +218,7 @@ fun DsglWindow.useDragDropMonitor(callbacks: DragDropMonitorCallbacks) {
     })
 }
 
-private fun activeFromEvent(event: DragDropEvent): ActiveDrag? {
+private fun activeFromEvent(event: DragDropEvent): ActiveDrag {
     val id = event.dataTransfer.getData(DND_DATA_ID_MIME)
     val type = event.dataTransfer.getData(DND_DATA_TYPE_MIME)
     val payload = DndSystem.payload(id)

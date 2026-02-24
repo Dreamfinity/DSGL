@@ -16,10 +16,13 @@ data class Viewport(
  */
 interface DsglWindowHost {
     val window: DsglWindow
+
     /** Requests a rebuild of the DOM tree. */
     fun requestRebuild(reason: String? = null)
+
     /** Requests a redraw without rebuild. */
     fun requestRedraw()
+
     /** Returns current viewport information. */
     fun getViewport(): Viewport
 }

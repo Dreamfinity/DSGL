@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -9,6 +10,7 @@ import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.TextWrap
 
 /**
  * Clickable button node with centered text.
@@ -34,8 +36,16 @@ class ButtonNode(
     }
 
     override fun measure(ctx: UiMeasureContext): Size {
-        val contentWidth = width ?: ctx.measureText(text)
-        val contentHeight = height ?: ctx.fontHeight
+        val wrapWidth = if (textWrap == TextWrap.Wrap) width else null
+        val layout = TextLayoutEngine.layout(
+            text = text,
+            maxWidth = wrapWidth,
+            wrap = textWrap,
+            fontHeight = ctx.fontHeight,
+            measureText = ctx::measureText
+        )
+        val contentWidth = width ?: layout.maxLineWidth
+        val contentHeight = height ?: layout.totalHeight
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
@@ -45,12 +55,23 @@ class ButtonNode(
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, backgroundColor))
         addBackgroundImageCommand(out)
         addBorderCommands(out)
-        val textWidth = ctx.measureText(text)
         val contentWidth = contentWidth()
         val contentHeight = contentHeight()
-        val textX = contentX() + (contentWidth - textWidth) / 2
-        val textY = contentY() + (contentHeight - ctx.fontHeight) / 2
-        out.add(RenderCommand.DrawText(text, textX, textY, textColor))
+        val wrapWidth = if (textWrap == TextWrap.Wrap) contentWidth else null
+        val layout = TextLayoutEngine.layout(
+            text = text,
+            maxWidth = wrapWidth,
+            wrap = textWrap,
+            fontHeight = ctx.fontHeight,
+            measureText = ctx::measureText
+        )
+        val textBlockHeight = layout.totalHeight
+        val blockY = contentY() + (contentHeight - textBlockHeight) / 2
+        layout.lines.forEachIndexed { index, line ->
+            val lineX = contentX() + (contentWidth - line.width) / 2
+            val lineY = blockY + index * layout.lineHeight
+            out.add(RenderCommand.DrawText(line.text, lineX, lineY, textColor))
+        }
     }
 
     /** Registers a click handler for this button. */
@@ -68,7 +89,7 @@ class ButtonNode(
         return onClickHandler != null
     }
 
-    override fun defaultBackgroundColor(): Int? = backgroundColor
+    override fun defaultBackgroundColor(): Int = backgroundColor
 
     override fun applyBackgroundColor(value: Int?) {
         if (value != null) {

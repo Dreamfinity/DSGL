@@ -1,17 +1,8 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextAreaProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.event.InputEvent
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
@@ -22,13 +13,13 @@ private const val AREA_KEY = "textEditing.area"
 private const val FAIL_COLOR = 0xFFFF8A8A.toInt()
 
 fun UiScope.renderTextEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    column(
+    div(
         ComponentProps(
             key = "section.textEditing",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("HTML-like text editing: caret blink, selection and clipboard shortcuts"))
         text(TextProps("Use Ctrl on Windows/Linux or Cmd on macOS for copy/cut/paste/select-all/undo/redo.").apply {
@@ -160,17 +151,17 @@ private fun trackKeyboardEditing(window: ShowcaseWindow, event: KeyboardKeyDownE
 
 private fun isArrowLike(keyCode: Int): Boolean {
     return keyCode == KeyCodes.LEFT ||
-        keyCode == KeyCodes.RIGHT ||
-        keyCode == KeyCodes.UP ||
-        keyCode == KeyCodes.DOWN ||
-        keyCode == KeyCodes.HOME ||
-        keyCode == KeyCodes.END
+            keyCode == KeyCodes.RIGHT ||
+            keyCode == KeyCodes.UP ||
+            keyCode == KeyCodes.DOWN ||
+            keyCode == KeyCodes.HOME ||
+            keyCode == KeyCodes.END
 }
 
 private fun isClipboardShortcut(keyCode: Int): Boolean {
     return keyCode == KeyCodes.C ||
-        keyCode == KeyCodes.X ||
-        keyCode == KeyCodes.V ||
-        keyCode == KeyCodes.A ||
-        keyCode == KeyCodes.Z
+            keyCode == KeyCodes.X ||
+            keyCode == KeyCodes.V ||
+            keyCode == KeyCodes.A ||
+            keyCode == KeyCodes.Z
 }

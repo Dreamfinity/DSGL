@@ -1,17 +1,14 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.*
-import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.Insets
-import org.dreamfinity.dsgl.core.dom.layout.LayoutDirection
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
-import org.dreamfinity.dsgl.core.style.StyleAlign
-import org.dreamfinity.dsgl.core.style.StyleExpression
-import org.dreamfinity.dsgl.core.style.StyleProperty
+import org.dreamfinity.dsgl.core.style.*
 import java.time.Instant
 import java.time.ZoneId
 
@@ -27,7 +24,7 @@ annotation class DsglDsl
  * Call this from [DsglWindow.render] to define the UI hierarchy.
  */
 fun ui(block: UiScope.() -> Unit): DomTree {
-    val root = ContainerNode(layout = LayoutDirection.Stack)
+    val root = ContainerNode(stackLayout = true)
     val scope = UiScope(root)
     scope.block()
     return DomTree(root)
@@ -83,21 +80,46 @@ open class ComponentProps(
     var onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
     var onDrop: ((DropEvent) -> Unit)? = null
 ) {
-    fun classNames(value: String) {
-        className = value
+
+    fun asFlexRow(): ComponentProps = asFlex(FlexDirection.Row)
+
+    fun asFlexColumn(): ComponentProps = asFlex(FlexDirection.Column)
+
+    private fun asFlex(direction: FlexDirection): ComponentProps {
+        val previous = style
+        style = {
+            display = Display.Flex
+            flexDirection = direction
+            previous()
+        }
+        return this
     }
 }
 
 /** Static text props. */
-open class TextProps(var value: String = "") : ComponentProps()
-/** Dynamic text computed on each rebuild. */
-open class DynamicTextProps(var placeholder: String = "", var valueProvider: () -> String) : TextProps()
+open class TextProps(value: String = "") : ComponentProps() {
+    var source: TextSource = TextSource.Static(value)
+
+    constructor(valueProvider: () -> String) : this() {
+        source = TextSource.Dynamic(valueProvider)
+    }
+
+    var value: String
+        get() = source.resolve()
+        set(newValue) {
+            source = TextSource.Static(newValue)
+        }
+}
+
 /** Multiline text area props. */
 open class TextAreaProps(var placeholder: String = "") : TextProps()
+
 /** Input node props, driven by [InputType]. */
 open class InputProps(val type: InputType) : TextProps()
+
 /** Image node props; accepts resource id, file://, or http(s) URLs in MC host. */
 open class ImageProps(var url: String) : ComponentProps()
+
 /** Item stack node props for platform-specific stacks. */
 open class ItemStackProps(
     var stack: ItemStackRef,
@@ -113,62 +135,18 @@ open class ButtonProps(var text: String) : TextProps()
 /**
  * Root DSL scope used by [ui] to add layout and component nodes.
  */
-class UiScope internal constructor(private val parent: ContainerNode) {
-    /** Vertical layout container. */
-    fun column(
-        props: ComponentProps = ComponentProps(),
-        ref: RefTarget<ElementHandle>? = null,
-        block: UiScope.() -> Unit = {}
-    ): ContainerNode = ContainerNode(
-        LayoutDirection.Column,
-        props.padding,
-        props.gap,
-        props.backgroundColor,
-        props.key
-    ).apply {
-        width = props.width
-        height = props.height
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
-        UiScope(this).block()
-    }
-
-
-    /** Horizontal layout container. */
-    fun row(
-        props: ComponentProps = ComponentProps(),
-        ref: RefTarget<ElementHandle>? = null,
-        block: UiScope.() -> Unit = {}
-    ): ContainerNode = ContainerNode(
-        LayoutDirection.Row,
-        props.padding,
-        props.gap,
-        props.backgroundColor,
-        props.key
-    ).apply {
-        this.width = props.width
-        this.height = props.height
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
-        UiScope(this).block()
-    }
-
-
-    /** Shorthand for a column container. */
+class UiScope internal constructor(private val parent: DOMNode) {
+    /** Generic container; layout is controlled by style.display. */
     fun div(
         props: ComponentProps = ComponentProps(),
         ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ) = ContainerNode(
-        LayoutDirection.Column,
-        props.padding,
-        props.gap,
-        props.backgroundColor,
-        props.key
+        padding = props.padding,
+        gap = props.gap,
+        backgroundColor = props.backgroundColor,
+        stackLayout = false,
+        key = props.key
     ).apply {
         this.width = props.width
         this.height = props.height
@@ -179,17 +157,17 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         UiScope(this).block()
     }
 
-    /** Stack layout container (children overlap). */
-    fun stack(
+    /** Overlay layout container (children overlap). */
+    fun overlay(
         props: ComponentProps = ComponentProps(),
         ref: RefTarget<ElementHandle>? = null,
         block: UiScope.() -> Unit = {}
     ) = ContainerNode(
-        LayoutDirection.Stack,
-        props.padding,
-        props.gap,
-        props.backgroundColor,
-        props.key
+        padding = props.padding,
+        gap = props.gap,
+        backgroundColor = props.backgroundColor,
+        stackLayout = true,
+        key = props.key
     ).apply {
         this.width = props.width
         this.height = props.height
@@ -201,12 +179,12 @@ class UiScope internal constructor(private val parent: ContainerNode) {
     }
 
 
-    /** Static text node. */
+    /** Text node. Supports static and rebuild-driven dynamic text. */
     fun text(
         props: TextProps,
         ref: RefTarget<ElementHandle>? = null
     ) = TextNode(
-        props.value,
+        props.source,
         props.color,
         props.key
     ).apply {
@@ -218,23 +196,25 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         add(this)
     }
 
-    /** Dynamic text node built from a provider. */
-    fun dynamicText(
-        props: DynamicTextProps,
-        ref: RefTarget<ElementHandle>? = null
-    ) = DynamicTextNode(
-        props.valueProvider,
-        props.color,
-        props.key
-    ).apply {
-        this.width = props.width
-        this.height = props.height
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+    fun text(
+        value: String,
+        ref: RefTarget<ElementHandle>? = null,
+        block: (TextProps.() -> Unit)? = null
+    ) {
+        val props = TextProps(value)
+        block?.invoke(props)
+        text(props, ref)
     }
 
+    fun text(
+        value: () -> String,
+        ref: RefTarget<ElementHandle>? = null,
+        block: (TextProps.() -> Unit)? = null
+    ) {
+        val props = TextProps(value)
+        block?.invoke(props)
+        text(props, ref)
+    }
 
     /** Button node with optional extra button scope. */
     fun button(
@@ -382,6 +362,10 @@ class UiScope internal constructor(private val parent: ContainerNode) {
         return node.applyParent(parent)
     }
 
+    internal fun <T : DOMNode> mount(node: T): T {
+        return add(node)
+    }
+
     private fun applyHandlers(node: DOMNode, props: ComponentProps) {
         node.applyHandlers(props)
     }
@@ -402,6 +386,104 @@ class UiScope internal constructor(private val parent: ContainerNode) {
  * Styling DSL attached to a [DOMNode].
  */
 class StyleScope internal constructor(private val node: DOMNode) {
+    var display: Display
+        get() = Display.Block
+        set(value) {
+            setLiteral(StyleProperty.DISPLAY, value.toCssLiteral())
+        }
+
+    var flexDirection: FlexDirection
+        get() = FlexDirection.Row
+        set(value) {
+            setLiteral(StyleProperty.FLEX_DIRECTION, value.toCssLiteral())
+        }
+
+    var justifyContent: JustifyContent
+        get() = JustifyContent.Start
+        set(value) {
+            setLiteral(StyleProperty.JUSTIFY_CONTENT, value.toCssLiteral())
+        }
+
+    var alignItems: AlignItems
+        get() = AlignItems.Stretch
+        set(value) {
+            setLiteral(StyleProperty.ALIGN_ITEMS, value.toCssLiteral())
+        }
+
+    var justifyItems: JustifyItems
+        get() = JustifyItems.Stretch
+        set(value) {
+            setLiteral(StyleProperty.JUSTIFY_ITEMS, value.toCssLiteral())
+        }
+
+    var gap: Int
+        get() = 0
+        set(value) {
+            setLiteral(StyleProperty.GAP, value.coerceAtLeast(0).toString())
+        }
+
+    var flexGrow: Float
+        get() = 0f
+        set(value) {
+            setLiteral(StyleProperty.FLEX_GROW, value.coerceAtLeast(0f).toString())
+        }
+
+    var flexShrink: Float
+        get() = 1f
+        set(value) {
+            setLiteral(StyleProperty.FLEX_SHRINK, value.coerceAtLeast(0f).toString())
+        }
+
+    var flexBasis: Int?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.FLEX_BASIS, "auto")
+            } else {
+                setLiteral(StyleProperty.FLEX_BASIS, value.coerceAtLeast(0).toString())
+            }
+        }
+
+    var gridColumns: Int
+        get() = 2
+        set(value) {
+            setLiteral(StyleProperty.GRID_COLUMNS, value.coerceAtLeast(1).toString())
+        }
+
+    var gridRows: Int?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.GRID_ROWS, "auto")
+            } else {
+                setLiteral(StyleProperty.GRID_ROWS, value.coerceAtLeast(1).toString())
+            }
+        }
+
+    var gridAutoFlow: GridAutoFlow
+        get() = GridAutoFlow.Row
+        set(value) {
+            setLiteral(StyleProperty.GRID_AUTO_FLOW, value.toCssLiteral())
+        }
+
+    var gridColumnSpan: Int
+        get() = 1
+        set(value) {
+            setLiteral(StyleProperty.GRID_COLUMN_SPAN, value.coerceAtLeast(1).toString())
+        }
+
+    var gridRowSpan: Int
+        get() = 1
+        set(value) {
+            setLiteral(StyleProperty.GRID_ROW_SPAN, value.coerceAtLeast(1).toString())
+        }
+
+    var textWrap: TextWrap
+        get() = TextWrap.NoWrap
+        set(value) {
+            setLiteral(StyleProperty.TEXT_WRAP, value.toCssLiteral())
+        }
+
     fun margin(all: Int) {
         setSpacing(StyleProperty.MARGIN, Insets.all(all))
     }
@@ -544,6 +626,52 @@ class StyleScope internal constructor(private val node: DOMNode) {
     private fun toColorLiteral(value: Int): String {
         val unsigned = value.toLong() and 0xFFFFFFFFL
         return "#" + unsigned.toString(16).padStart(8, '0').uppercase()
+    }
+
+    private fun Display.toCssLiteral(): String = when (this) {
+        Display.Block -> "block"
+        Display.Inline -> "inline"
+        Display.None -> "none"
+        Display.Flex -> "flex"
+        Display.Grid -> "grid"
+    }
+
+    private fun FlexDirection.toCssLiteral(): String = when (this) {
+        FlexDirection.Row -> "row"
+        FlexDirection.Column -> "column"
+    }
+
+    private fun JustifyContent.toCssLiteral(): String = when (this) {
+        JustifyContent.Start -> "start"
+        JustifyContent.Center -> "center"
+        JustifyContent.End -> "end"
+        JustifyContent.SpaceBetween -> "space-between"
+        JustifyContent.SpaceAround -> "space-around"
+        JustifyContent.SpaceEvenly -> "space-evenly"
+    }
+
+    private fun AlignItems.toCssLiteral(): String = when (this) {
+        AlignItems.Start -> "start"
+        AlignItems.Center -> "center"
+        AlignItems.End -> "end"
+        AlignItems.Stretch -> "stretch"
+    }
+
+    private fun JustifyItems.toCssLiteral(): String = when (this) {
+        JustifyItems.Start -> "start"
+        JustifyItems.Center -> "center"
+        JustifyItems.End -> "end"
+        JustifyItems.Stretch -> "stretch"
+    }
+
+    private fun GridAutoFlow.toCssLiteral(): String = when (this) {
+        GridAutoFlow.Row -> "row"
+        GridAutoFlow.Column -> "column"
+    }
+
+    private fun TextWrap.toCssLiteral(): String = when (this) {
+        TextWrap.Wrap -> "wrap"
+        TextWrap.NoWrap -> "nowrap"
     }
 }
 

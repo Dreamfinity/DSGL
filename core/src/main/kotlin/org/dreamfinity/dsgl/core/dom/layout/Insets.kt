@@ -12,6 +12,7 @@ data class Insets(
     /** Combined left/right value. */
     val horizontal: Int
         get() = left + right
+
     /** Combined top/bottom value. */
     val vertical: Int
         get() = top + bottom

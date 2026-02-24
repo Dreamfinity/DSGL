@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.dom.elements.support
 
-import java.util.ArrayDeque
+import java.util.*
 
 /**
  * Undo/redo stack pair with a fixed snapshot capacity.
@@ -51,4 +51,3 @@ internal class UndoRedoHistory<S>(
         stack.addLast(snapshot)
     }
 }
-

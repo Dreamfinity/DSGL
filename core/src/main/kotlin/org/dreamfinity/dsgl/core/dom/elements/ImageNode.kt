@@ -31,7 +31,7 @@ class ImageNode(
         addBorderCommands(out)
     }
 
-    override fun defaultBackgroundImage(): String? = url
+    override fun defaultBackgroundImage(): String = url
 
     override fun applyBackgroundImage(value: String?) {
         if (!value.isNullOrBlank()) {

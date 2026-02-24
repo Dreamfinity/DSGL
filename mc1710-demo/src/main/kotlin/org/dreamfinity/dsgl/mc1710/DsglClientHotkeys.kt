@@ -38,4 +38,3 @@ object DsglClientHotkeys {
         }
     }
 }
-

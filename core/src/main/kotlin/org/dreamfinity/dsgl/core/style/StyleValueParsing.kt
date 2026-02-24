@@ -40,10 +40,12 @@ fun parseColor(raw: String): Int {
             val b = "${hex[2]}${hex[2]}".toInt(16)
             ((0xFF shl 24) or (r shl 16) or (g shl 8) or b)
         }
+
         6 -> {
             val rgb = hex.toLong(16).toInt()
             (0xFF shl 24) or rgb
         }
+
         8 -> hex.toLong(16).toInt()
         else -> error("Unsupported color format '$raw'.")
     }
@@ -58,10 +60,88 @@ fun parseAlign(raw: String): StyleAlign {
     }
 }
 
+fun parseDisplay(raw: String): Display {
+    return when (raw.trim().lowercase()) {
+        "block" -> Display.Block
+        "inline" -> Display.Inline
+        "none" -> Display.None
+        "flex" -> Display.Flex
+        "grid" -> Display.Grid
+        else -> error("Unsupported display value '$raw'.")
+    }
+}
+
+fun parseFlexDirection(raw: String): FlexDirection {
+    return when (raw.trim().lowercase()) {
+        "row" -> FlexDirection.Row
+        "column" -> FlexDirection.Column
+        else -> error("Unsupported flex-direction value '$raw'.")
+    }
+}
+
+fun parseJustifyContent(raw: String): JustifyContent {
+    return when (raw.trim().lowercase()) {
+        "start", "flex-start", "left", "top" -> JustifyContent.Start
+        "center" -> JustifyContent.Center
+        "end", "flex-end", "right", "bottom" -> JustifyContent.End
+        "space-between" -> JustifyContent.SpaceBetween
+        "space-around" -> JustifyContent.SpaceAround
+        "space-evenly" -> JustifyContent.SpaceEvenly
+        else -> error("Unsupported justify-content value '$raw'.")
+    }
+}
+
+fun parseAlignItems(raw: String): AlignItems {
+    return when (raw.trim().lowercase()) {
+        "start", "flex-start", "top", "left" -> AlignItems.Start
+        "center" -> AlignItems.Center
+        "end", "flex-end", "bottom", "right" -> AlignItems.End
+        "stretch" -> AlignItems.Stretch
+        else -> error("Unsupported align-items value '$raw'.")
+    }
+}
+
+fun parseJustifyItems(raw: String): JustifyItems {
+    return when (raw.trim().lowercase()) {
+        "start", "left", "top" -> JustifyItems.Start
+        "center" -> JustifyItems.Center
+        "end", "right", "bottom" -> JustifyItems.End
+        "stretch" -> JustifyItems.Stretch
+        else -> error("Unsupported justify-items value '$raw'.")
+    }
+}
+
+fun parseGridAutoFlow(raw: String): GridAutoFlow {
+    return when (raw.trim().lowercase()) {
+        "row" -> GridAutoFlow.Row
+        "column" -> GridAutoFlow.Column
+        else -> error("Unsupported grid-auto-flow value '$raw'.")
+    }
+}
+
+fun parseTextWrap(raw: String): TextWrap {
+    return when (raw.trim().lowercase()) {
+        "wrap" -> TextWrap.Wrap
+        "nowrap" -> TextWrap.NoWrap
+        else -> error("Unsupported text-wrap value '$raw'.")
+    }
+}
+
 fun parseIntLike(raw: String): Int {
     val trimmed = raw.trim()
     require(numberRegex.matches(trimmed)) { "Expected number but got '$raw'." }
     return trimmed.toDouble().roundToInt()
+}
+
+fun parseFloatLike(raw: String): Float {
+    val trimmed = raw.trim()
+    require(numberRegex.matches(trimmed)) { "Expected number but got '$raw'." }
+    return trimmed.toFloat()
+}
+
+fun parseOptionalInt(raw: String): Int? {
+    val normalized = raw.trim().lowercase()
+    return if (normalized == "auto") null else parseIntLike(raw)
 }
 
 fun parseStringLiteral(raw: String): String {
@@ -93,6 +173,21 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.HEIGHT -> parseIntLike(literal)
 
         StyleProperty.ALIGN -> parseAlign(literal)
+        StyleProperty.DISPLAY -> parseDisplay(literal)
+        StyleProperty.FLEX_DIRECTION -> parseFlexDirection(literal)
+        StyleProperty.JUSTIFY_CONTENT -> parseJustifyContent(literal)
+        StyleProperty.ALIGN_ITEMS -> parseAlignItems(literal)
+        StyleProperty.JUSTIFY_ITEMS -> parseJustifyItems(literal)
+        StyleProperty.GAP -> parseIntLike(literal)
+        StyleProperty.FLEX_GROW -> parseFloatLike(literal)
+        StyleProperty.FLEX_SHRINK -> parseFloatLike(literal)
+        StyleProperty.FLEX_BASIS -> parseOptionalInt(literal)
+        StyleProperty.GRID_COLUMNS -> parseIntLike(literal)
+        StyleProperty.GRID_ROWS -> parseOptionalInt(literal)
+        StyleProperty.GRID_AUTO_FLOW -> parseGridAutoFlow(literal)
+        StyleProperty.GRID_COLUMN_SPAN -> parseIntLike(literal)
+        StyleProperty.GRID_ROW_SPAN -> parseIntLike(literal)
+        StyleProperty.TEXT_WRAP -> parseTextWrap(literal)
     }
 }
 

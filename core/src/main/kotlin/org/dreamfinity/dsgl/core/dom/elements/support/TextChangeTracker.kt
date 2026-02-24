@@ -36,4 +36,3 @@ internal class TextChangeTracker(
         return true
     }
 }
-

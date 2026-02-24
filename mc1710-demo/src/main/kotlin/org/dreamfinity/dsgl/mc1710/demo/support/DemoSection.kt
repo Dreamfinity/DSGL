@@ -6,7 +6,10 @@ enum class DemoSection(
 ) {
     OVERVIEW("Overview", "How to use the showcase"),
     LAYOUT_STYLE("Layout & Style", "Containers, gaps, fixed sizes, style DSL"),
+    DISPLAY("Display", "block/inline/none/flex/grid layout behaviors"),
+    TEXT_WRAP("Text Wrap", "wrap/nowrap behavior for text rendering"),
     STYLESHEETS("Stylesheets", "Selectors, variables, pseudo-states, inline override"),
+    MODALS("Modals", "Declarative stacked modal host (RB-inspired)"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),
     TEXT_EDITING("Text Editing", "Caret blink, selection and clipboard shortcuts"),

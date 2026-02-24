@@ -88,9 +88,9 @@ private fun isSameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
     val currKey = curr.key
     if (prevKey != null || currKey != null) {
         return prevKey != null &&
-            currKey != null &&
-            prevKey == currKey &&
-            prev.javaClass == curr.javaClass
+                currKey != null &&
+                prevKey == currKey &&
+                prev.javaClass == curr.javaClass
     }
 
     // Root is recreated on every rebuild but is conceptually the same hover scope.

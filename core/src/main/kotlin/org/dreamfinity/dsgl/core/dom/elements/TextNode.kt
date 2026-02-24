@@ -2,23 +2,36 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.TextWrap
 
 /**
  * Static text node.
  */
 class TextNode(
-    var text: String,
+    private var textSource: TextSource,
     var color: Int = DsglColors.TEXT,
     key: Any? = null
 ) : DOMNode(key) {
     override val styleType: String = "text"
 
+    var text: String = textSource.resolve()
+        private set
+
     override fun measure(ctx: UiMeasureContext): Size {
-        val contentWidth = width ?: ctx.measureText(text)
-        val contentHeight = height ?: ctx.fontHeight
+        val wrapWidth = if (textWrap == TextWrap.Wrap) width else null
+        val layout = TextLayoutEngine.layout(
+            text = this@TextNode.text,
+            maxWidth = wrapWidth,
+            wrap = textWrap,
+            fontHeight = ctx.fontHeight,
+            measureText = ctx::measureText
+        )
+        val contentWidth = width ?: layout.maxLineWidth
+        val contentHeight = height ?: layout.totalHeight
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
@@ -26,12 +39,30 @@ class TextNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         addBorderCommands(out)
-        out.add(RenderCommand.DrawText(text, contentX(), contentY(), color))
+        val wrapWidth = if (textWrap == TextWrap.Wrap) contentWidth() else null
+        val layout = TextLayoutEngine.layout(
+            text = this@TextNode.text,
+            maxWidth = wrapWidth,
+            wrap = textWrap,
+            fontHeight = ctx.fontHeight,
+            measureText = ctx::measureText
+        )
+        val baseX = contentX()
+        var lineY = contentY()
+        layout.lines.forEach { line ->
+            out.add(RenderCommand.DrawText(line.text, baseX, lineY, color))
+            lineY += layout.lineHeight
+        }
     }
 
     override fun defaultForegroundColor(): Int = color
 
     override fun applyForegroundColor(value: Int) {
         color = value
+    }
+
+    internal fun syncSourceFrom(template: TextNode) {
+        textSource = template.textSource
+        text = textSource.resolve()
     }
 }

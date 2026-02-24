@@ -16,6 +16,52 @@ enum class StyleAlign {
     END
 }
 
+enum class Display {
+    Block,
+    Inline,
+    None,
+    Flex,
+    Grid
+}
+
+enum class FlexDirection {
+    Row,
+    Column
+}
+
+enum class JustifyContent {
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly
+}
+
+enum class AlignItems {
+    Start,
+    Center,
+    End,
+    Stretch
+}
+
+enum class JustifyItems {
+    Start,
+    Center,
+    End,
+    Stretch
+}
+
+enum class GridAutoFlow {
+    Row,
+    Column
+}
+
+enum class TextWrap {
+    Wrap,
+    NoWrap
+}
+
 enum class StyleProperty(val key: String) {
     MARGIN("margin"),
     PADDING("padding"),
@@ -28,19 +74,68 @@ enum class StyleProperty(val key: String) {
     FONT_SIZE("font-size"),
     WIDTH("width"),
     HEIGHT("height"),
-    ALIGN("align");
+    ALIGN("align"),
+    DISPLAY("display"),
+    FLEX_DIRECTION("flex-direction"),
+    JUSTIFY_CONTENT("justify-content"),
+    ALIGN_ITEMS("align-items"),
+    JUSTIFY_ITEMS("justify-items"),
+    GAP("gap"),
+    FLEX_GROW("flex-grow"),
+    FLEX_SHRINK("flex-shrink"),
+    FLEX_BASIS("flex-basis"),
+    GRID_COLUMNS("grid-columns"),
+    GRID_ROWS("grid-rows"),
+    GRID_AUTO_FLOW("grid-auto-flow"),
+    GRID_COLUMN_SPAN("grid-column-span"),
+    GRID_ROW_SPAN("grid-row-span"),
+    TEXT_WRAP("text-wrap");
 
     companion object {
         private val byName: Map<String, StyleProperty> = entries.associateBy { it.key.lowercase() } +
-            mapOf(
-                "background-color" to BACKGROUND_COLOR,
-                "background-image" to BACKGROUND_IMAGE,
-                "border-color" to BORDER_COLOR,
-                "border-width" to BORDER_WIDTH,
-                "border-radius" to BORDER_RADIUS,
-                "foreground-color" to FOREGROUND_COLOR,
-                "font-size" to FONT_SIZE
-            )
+                mapOf(
+                    "backgroundcolor" to BACKGROUND_COLOR,
+                    "background-color" to BACKGROUND_COLOR,
+                    "backgroundimage" to BACKGROUND_IMAGE,
+                    "background-image" to BACKGROUND_IMAGE,
+                    "bordercolor" to BORDER_COLOR,
+                    "border-color" to BORDER_COLOR,
+                    "borderwidth" to BORDER_WIDTH,
+                    "border-width" to BORDER_WIDTH,
+                    "borderradius" to BORDER_RADIUS,
+                    "border-radius" to BORDER_RADIUS,
+                    "foregroundcolor" to FOREGROUND_COLOR,
+                    "foreground-color" to FOREGROUND_COLOR,
+                    "fontsize" to FONT_SIZE,
+                    "font-size" to FONT_SIZE
+                ) + mapOf(
+            "flexdirection" to FLEX_DIRECTION,
+            "flex-direction" to FLEX_DIRECTION,
+            "justifycontent" to JUSTIFY_CONTENT,
+            "justify-content" to JUSTIFY_CONTENT,
+            "alignitems" to ALIGN_ITEMS,
+            "align-items" to ALIGN_ITEMS,
+            "justifyitems" to JUSTIFY_ITEMS,
+            "justify-items" to JUSTIFY_ITEMS,
+            "flexgrow" to FLEX_GROW,
+            "flex-grow" to FLEX_GROW,
+            "flexshrink" to FLEX_SHRINK,
+            "flex-shrink" to FLEX_SHRINK,
+            "flexbasis" to FLEX_BASIS,
+            "flex-basis" to FLEX_BASIS,
+            "gridcolumns" to GRID_COLUMNS,
+            "grid-columns" to GRID_COLUMNS,
+            "gridrows" to GRID_ROWS,
+            "grid-rows" to GRID_ROWS,
+            "gridautoflow" to GRID_AUTO_FLOW,
+            "grid-auto-flow" to GRID_AUTO_FLOW,
+            "gridcolumnspan" to GRID_COLUMN_SPAN,
+            "grid-column-span" to GRID_COLUMN_SPAN,
+            "gridrowspan" to GRID_ROW_SPAN,
+            "grid-row-span" to GRID_ROW_SPAN,
+            "textwrap" to TEXT_WRAP,
+            "text-wrap" to TEXT_WRAP
+        )
 
         fun fromKeyOrNull(name: String): StyleProperty? = byName[name.trim().lowercase()]
     }
@@ -90,7 +185,22 @@ data class ComputedStyle(
     val fontSize: Int?,
     val width: Int?,
     val height: Int?,
-    val align: StyleAlign
+    val align: StyleAlign,
+    val display: Display,
+    val flexDirection: FlexDirection,
+    val justifyContent: JustifyContent,
+    val alignItems: AlignItems,
+    val justifyItems: JustifyItems,
+    val gap: Int,
+    val flexGrow: Float,
+    val flexShrink: Float,
+    val flexBasis: Int?,
+    val gridColumns: Int,
+    val gridRows: Int?,
+    val gridAutoFlow: GridAutoFlow,
+    val gridColumnSpan: Int,
+    val gridRowSpan: Int,
+    val textWrap: TextWrap
 )
 
 data class ComputedStyleDefaults(
@@ -105,7 +215,22 @@ data class ComputedStyleDefaults(
     val fontSize: Int? = null,
     val width: Int? = null,
     val height: Int? = null,
-    val align: StyleAlign = StyleAlign.START
+    val align: StyleAlign = StyleAlign.START,
+    val display: Display = Display.Block,
+    val flexDirection: FlexDirection = FlexDirection.Row,
+    val justifyContent: JustifyContent = JustifyContent.Start,
+    val alignItems: AlignItems = AlignItems.Stretch,
+    val justifyItems: JustifyItems = JustifyItems.Stretch,
+    val gap: Int = 0,
+    val flexGrow: Float = 0f,
+    val flexShrink: Float = 1f,
+    val flexBasis: Int? = null,
+    val gridColumns: Int = 2,
+    val gridRows: Int? = null,
+    val gridAutoFlow: GridAutoFlow = GridAutoFlow.Row,
+    val gridColumnSpan: Int = 1,
+    val gridRowSpan: Int = 1,
+    val textWrap: TextWrap = TextWrap.Wrap
 ) {
     fun toComputedStyle(): ComputedStyle {
         return ComputedStyle(
@@ -120,7 +245,22 @@ data class ComputedStyleDefaults(
             fontSize = fontSize,
             width = width,
             height = height,
-            align = align
+            align = align,
+            display = display,
+            flexDirection = flexDirection,
+            justifyContent = justifyContent,
+            alignItems = alignItems,
+            justifyItems = justifyItems,
+            gap = gap,
+            flexGrow = flexGrow,
+            flexShrink = flexShrink,
+            flexBasis = flexBasis,
+            gridColumns = gridColumns,
+            gridRows = gridRows,
+            gridAutoFlow = gridAutoFlow,
+            gridColumnSpan = gridColumnSpan,
+            gridRowSpan = gridRowSpan,
+            textWrap = textWrap
         )
     }
 }

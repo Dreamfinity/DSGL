@@ -13,6 +13,7 @@ data class Border(
     /** Combined left/right thickness. */
     val horizontal: Int
         get() = left + right
+
     /** Combined top/bottom thickness. */
     val vertical: Int
         get() = top + bottom

@@ -1,11 +1,6 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.DynamicTextProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -13,13 +8,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
 
 fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    column(
+    div(
         ComponentProps(
             key = "section.interactions",
             width = contentWidth,
             height = contentHeight,
             gap = 4
-        )
+        ).asFlexColumn()
     ) {
         text(TextProps("Mouse zone wires all mouse hooks. Key fields wire key hooks."))
         text(TextProps("Event Inspector will show bubbling and cancellation details.").apply {
@@ -83,14 +78,14 @@ fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int,
             )
         ) {
             text(TextProps("Move, click, drag and wheel here"))
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "E${window.mouseEnterCount} L${window.mouseLeaveCount} O${window.mouseOverCount} M${window.mouseMoveCount} D${window.mouseDownCount}/${window.mouseUpCount} C${window.mouseClickCount} G${window.mouseDragCount} W${window.mouseWheelCount}"
                 }.apply { color = DEMO_MUTED }
             )
         }
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             input(
                 InputProps(InputType.Text(placeholder = "onKeyDown/onKeyUp")).apply {
                     key = "interactions.key.downUp"
@@ -126,13 +121,13 @@ fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int,
             )
         }
 
-        dynamicText(
-            DynamicTextProps {
+        text(
+            TextProps {
                 "Key counters: down=${window.keyDownCount} up=${window.keyUpCount} pressed=${window.keyPressedCount} released=${window.keyReleasedCount} enter=${window.enterActionCount}"
             }.apply { color = DEMO_MUTED }
         )
 
-        row(ComponentProps(gap = 4)) {
+        div(ComponentProps(gap = 4).asFlexRow()) {
             button(
                 ButtonProps(if (window.cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF").apply {
                     width = 126
@@ -142,8 +137,8 @@ fun UiScope.renderInteractionsSection(window: ShowcaseWindow, contentWidth: Int,
                     }
                 }
             )
-            dynamicText(
-                DynamicTextProps {
+            text(
+                TextProps {
                     "Parent=${window.cancellationParentHits} Child=${window.cancellationChildHits}"
                 }.apply { color = DEMO_MUTED }
             )

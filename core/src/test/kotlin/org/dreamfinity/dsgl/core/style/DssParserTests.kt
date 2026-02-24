@@ -1,11 +1,7 @@
 package org.dreamfinity.dsgl.core.style
 
 import java.nio.file.Files
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class DssParserTests {
     @Test
@@ -151,5 +147,40 @@ class DssParserTests {
         } finally {
             tempDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun parsesDisplayFlexAndGridProperties() {
+        val data = DssParser.parse(
+            """
+            .layout {
+              display: flex;
+              flex-direction: row;
+              justify-content: space-between;
+              align-items: center;
+              gap: 6;
+              text-wrap: nowrap;
+            }
+            .grid {
+              display: grid;
+              grid-columns: 4;
+              grid-column-span: 2;
+            }
+            """.trimIndent(),
+            "display.dss"
+        )
+
+        val layoutRule = data.rules.first { it.selector.className == "layout" }
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.DISPLAY))
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.FLEX_DIRECTION))
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.JUSTIFY_CONTENT))
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.ALIGN_ITEMS))
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.GAP))
+        assertIs<StyleExpression.Literal>(layoutRule.declarations.get(StyleProperty.TEXT_WRAP))
+
+        val gridRule = data.rules.first { it.selector.className == "grid" }
+        assertIs<StyleExpression.Literal>(gridRule.declarations.get(StyleProperty.DISPLAY))
+        assertIs<StyleExpression.Literal>(gridRule.declarations.get(StyleProperty.GRID_COLUMNS))
+        assertIs<StyleExpression.Literal>(gridRule.declarations.get(StyleProperty.GRID_COLUMN_SPAN))
     }
 }

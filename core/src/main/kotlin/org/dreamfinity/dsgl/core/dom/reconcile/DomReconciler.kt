@@ -160,51 +160,53 @@ object DomReconciler {
 
     private fun isReplaceOnlyType(node: DOMNode): Boolean {
         return node is CheckboxGroupNode ||
-            node is NumberInputNode ||
-            node is DateInputNode ||
-            node is RangeInputNode
+                node is NumberInputNode ||
+                node is DateInputNode ||
+                node is RangeInputNode
     }
 
     private fun syncNode(current: DOMNode, template: DOMNode) {
         current.syncBaseFrom(template)
-        when {
-            current is ContainerNode && template is ContainerNode -> {
-                current.layout = template.layout
-                current.gap = template.gap
+        when (current) {
+            is ContainerNode if template is ContainerNode -> {
                 current.backgroundColor = template.backgroundColor
+                current.stackLayout = template.stackLayout
             }
-            current is TextNode && template is TextNode -> {
-                current.text = template.text
+
+            is TextNode if template is TextNode -> {
                 current.color = template.color
+                current.syncSourceFrom(template)
             }
-            current is DynamicTextNode && template is DynamicTextNode -> {
-                current.color = template.color
-                current.syncProviderFrom(template)
-            }
-            current is ButtonNode && template is ButtonNode -> {
+
+            is ButtonNode if template is ButtonNode -> {
                 current.text = template.text
                 current.textColor = template.textColor
                 current.backgroundColor = template.backgroundColor
                 current.syncClickFrom(template)
             }
-            current is ImageNode && template is ImageNode -> {
+
+            is ImageNode if template is ImageNode -> {
                 current.url = template.url
                 current.imageWidth = template.imageWidth
                 current.imageHeight = template.imageHeight
             }
-            current is ItemStackNode && template is ItemStackNode -> {
+
+            is ItemStackNode if template is ItemStackNode -> {
                 current.stack = template.stack
                 current.size = template.size
                 current.rotYDeg = template.rotYDeg
                 current.rotXDeg = template.rotXDeg
             }
-            current is SingleLineInputNode && template is SingleLineInputNode -> {
+
+            is SingleLineInputNode if template is SingleLineInputNode -> {
                 current.syncEditablePropsFrom(template)
             }
-            current is TextAreaNode && template is TextAreaNode -> {
+
+            is TextAreaNode if template is TextAreaNode -> {
                 current.syncEditablePropsFrom(template)
             }
-            current is RadioGroupNode && template is RadioGroupNode -> {
+
+            is RadioGroupNode if template is RadioGroupNode -> {
                 current.variants = template.variants
                 current.selectedId = template.selectedId
                 current.textColor = template.textColor
@@ -222,4 +224,3 @@ object DomReconciler {
         return total
     }
 }
-

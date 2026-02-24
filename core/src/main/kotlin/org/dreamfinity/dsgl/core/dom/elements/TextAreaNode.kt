@@ -2,35 +2,14 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.*
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.event.Events
-import org.dreamfinity.dsgl.core.event.FocusGainEvent
-import org.dreamfinity.dsgl.core.event.FocusLoseEvent
-import org.dreamfinity.dsgl.core.event.FocusManager
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyInput
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.event.MouseDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
-import org.dreamfinity.dsgl.core.event.MouseUpEvent
-import org.dreamfinity.dsgl.core.event.MouseWheelEvent
-import org.dreamfinity.dsgl.core.event.postChange
-import org.dreamfinity.dsgl.core.event.postInput
-import org.dreamfinity.dsgl.core.dom.elements.support.KeyedStateStore
-import org.dreamfinity.dsgl.core.dom.elements.support.TextChangeTracker
-import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
-import org.dreamfinity.dsgl.core.dom.elements.support.TextEditShortcutDispatcher
-import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutAction
-import org.dreamfinity.dsgl.core.dom.elements.support.TextShortcutCallbacks
-import org.dreamfinity.dsgl.core.dom.elements.support.UndoRedoHistory
-import org.dreamfinity.dsgl.core.dom.elements.support.WordUndoGrouping
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.TextWrap
 
 /**
  * Multiline text area node.
@@ -98,6 +77,8 @@ class TextAreaNode(
     private var scrollbarThumbFocusedColor: Int = 0xCCB7C3D1.toInt()
     private var scrollbarDragAnchorY: Int = 0
     private var lastMeasureText: ((String) -> Int)? = null
+    private var lastTextLayout: TextLayoutEngine.Layout = TextLayoutEngine.layout("", null, TextWrap.Wrap, 1) { 0 }
+    private var lastTextLayoutWidth: Int? = null
 
     init {
         restorePersistedState()
@@ -187,10 +168,17 @@ class TextAreaNode(
         lastMeasureText = { value -> ctx.measureText(value) }
         lastLineHeight = ctx.fontHeight.coerceAtLeast(1)
         val display = if (text.isNotEmpty()) text else placeholder
-        val lines = splitLines(display)
-        val maxLineWidth = lines.maxOfOrNull { ctx.measureText(it) } ?: 0
-        val contentWidth = width ?: maxOf(maxLineWidth, minContentWidth)
-        val contentHeight = height ?: maxOf(lines.size * ctx.fontHeight, minContentHeight)
+        val contentWidth = width ?: maxOf(
+            layoutForText(display, null, ctx.fontHeight, ctx::measureText).maxLineWidth,
+            minContentWidth
+        )
+        val textLayout = layoutForText(
+            source = display,
+            contentWidth = if (textWrap == TextWrap.Wrap) contentWidth else null,
+            fontHeight = ctx.fontHeight,
+            measureText = ctx::measureText
+        )
+        val contentHeight = height ?: maxOf(textLayout.totalHeight, minContentHeight)
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
@@ -211,44 +199,53 @@ class TextAreaNode(
         lastLineHeight = ctx.fontHeight.coerceAtLeast(1)
         lastVisibleHeight = innerHeight.coerceAtLeast(lastLineHeight)
         editState.clampToLength(text.length)
+        var textInnerWidth = innerWidth.coerceAtLeast(0)
+        var textLayout = layoutForText(text, textInnerWidth, ctx.fontHeight, ctx::measureText)
+        var maxScroll = (textLayout.totalHeight - innerHeight).coerceAtLeast(0)
+        hasVerticalOverflow = maxScroll > 0 && innerHeight > 0
+        if (hasVerticalOverflow) {
+            val constrainedWidth = (innerWidth - scrollbarWidth - scrollbarGap).coerceAtLeast(0)
+            if (constrainedWidth != textInnerWidth) {
+                textInnerWidth = constrainedWidth
+                textLayout = layoutForText(text, textInnerWidth, ctx.fontHeight, ctx::measureText)
+                maxScroll = (textLayout.totalHeight - innerHeight).coerceAtLeast(0)
+            }
+        }
+        lastTextLayout = textLayout
+        lastTextLayoutWidth = textInnerWidth
+        lastMaxScroll = maxScroll
         clampScroll()
 
         val showPlaceholder = text.isEmpty() && !focused && placeholder.isNotEmpty()
-        val drawText = if (showPlaceholder) placeholder else text
-        val color = if (showPlaceholder) placeholderColor else textColor
-        val lines = splitLines(drawText)
-        val totalContentHeight = lines.size * lastLineHeight
-        val maxScroll = (totalContentHeight - innerHeight).coerceAtLeast(0)
-        hasVerticalOverflow = !showPlaceholder && maxScroll > 0 && innerHeight > 0
-        lastMaxScroll = if (hasVerticalOverflow) maxScroll else 0
-        val textInnerWidth = if (hasVerticalOverflow) {
-            (innerWidth - scrollbarWidth - scrollbarGap).coerceAtLeast(0)
+        val drawLayout = if (showPlaceholder) {
+            layoutForText(placeholder, textInnerWidth, ctx.fontHeight, ctx::measureText)
         } else {
-            innerWidth
+            textLayout
         }
+        val color = if (showPlaceholder) placeholderColor else textColor
         val effectiveScroll = if (showPlaceholder) 0 else editState.scrollY.coerceIn(0, maxScroll)
-        val firstVisibleLine = (effectiveScroll / lastLineHeight).coerceAtLeast(0)
+        val firstVisibleLine = (effectiveScroll / lastLineHeight).coerceIn(0, drawLayout.lines.lastIndex)
         val lastVisibleLine = ((effectiveScroll + innerHeight) / lastLineHeight + 1)
-            .coerceIn(0, lines.size - 1)
+            .coerceIn(0, drawLayout.lines.lastIndex)
 
         if (textInnerWidth > 0 && innerHeight > 0) {
             out.add(RenderCommand.PushClip(innerX, innerY, textInnerWidth, innerHeight))
         }
 
         if (!showPlaceholder && focused && editState.hasSelection()) {
-            drawSelection(out, lines, firstVisibleLine, lastVisibleLine, innerX, innerY, effectiveScroll)
+            drawSelection(out, textLayout, firstVisibleLine, lastVisibleLine, innerX, innerY, effectiveScroll)
         }
 
         for (lineIndex in firstVisibleLine..lastVisibleLine) {
-            val line = lines[lineIndex]
+            val line = drawLayout.lines[lineIndex]
             val lineY = innerY - effectiveScroll + lineIndex * lastLineHeight
-            out.add(RenderCommand.DrawText(line, innerX, lineY, color))
+            out.add(RenderCommand.DrawText(line.text, innerX, lineY, color))
         }
 
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {
-            val caret = caretLineAndColumn(text, editState.caretIndex)
-            val caretLineText = lines[caret.first]
-            val caretPrefix = caretLineText.substring(0, caret.second.coerceIn(0, caretLineText.length))
+            val caret = caretLineAndColumn(editState.caretIndex, textLayout)
+            val caretLine = textLayout.lines[caret.first]
+            val caretPrefix = caretLine.text.substring(0, caret.second.coerceIn(0, caretLine.text.length))
             val caretX = innerX + ctx.measureText(caretPrefix)
             val caretY = innerY - effectiveScroll + caret.first * lastLineHeight
             out.add(RenderCommand.DrawRect(caretX, caretY, 1, lastLineHeight, textColor))
@@ -264,10 +261,9 @@ class TextAreaNode(
             scrollbarTrackRect = null
             scrollbarThumbRect = null
         }
-
     }
 
-    override fun defaultBackgroundColor(): Int? = backgroundColor
+    override fun defaultBackgroundColor(): Int = backgroundColor
 
     override fun applyBackgroundColor(value: Int?) {
         if (value != null) {
@@ -324,6 +320,7 @@ class TextAreaNode(
                 resetTypingUndoGroup()
                 replaceSelectionWith("\n", recordUndo = true)
             }
+
             KeyCodes.LEFT -> moveCaretHorizontal(-1, KeyModifiers.shiftDown)
             KeyCodes.RIGHT -> moveCaretHorizontal(1, KeyModifiers.shiftDown)
             KeyCodes.UP -> moveCaretVertical(-1, KeyModifiers.shiftDown)
@@ -481,12 +478,12 @@ class TextAreaNode(
     private fun moveCaretVertical(deltaLines: Int, extend: Boolean) {
         resetTypingUndoGroup()
         if (deltaLines == 0) return
-        val starts = lineStarts(text)
-        val current = caretLineAndColumn(text, editState.caretIndex, starts)
-        val targetLine = (current.first + deltaLines).coerceIn(0, starts.lastIndex)
+        val layout = currentTextLayout()
+        val current = caretLineAndColumn(editState.caretIndex, layout)
+        val targetLine = (current.first + deltaLines).coerceIn(0, layout.lines.lastIndex)
         val desiredColumn = preferredColumn ?: current.second
-        val targetLineEnd = lineEndIndex(starts, targetLine, text.length)
-        val nextIndex = (starts[targetLine] + desiredColumn).coerceAtMost(targetLineEnd)
+        val target = layout.lines[targetLine]
+        val nextIndex = (target.startIndex + desiredColumn).coerceAtMost(target.endIndexExclusive)
         moveCaretTo(nextIndex, extend)
         preferredColumn = desiredColumn
         ensureCaretVisible()
@@ -503,12 +500,13 @@ class TextAreaNode(
 
     private fun moveCaretToLineBoundary(start: Boolean, extend: Boolean) {
         resetTypingUndoGroup()
-        val starts = lineStarts(text)
-        val current = caretLineAndColumn(text, editState.caretIndex, starts)
+        val layout = currentTextLayout()
+        val current = caretLineAndColumn(editState.caretIndex, layout)
+        val line = layout.lines[current.first]
         val next = if (start) {
-            starts[current.first]
+            line.startIndex
         } else {
-            lineEndIndex(starts, current.first, text.length)
+            line.endIndexExclusive
         }
         moveCaretTo(next, extend)
         preferredColumn = null
@@ -581,7 +579,7 @@ class TextAreaNode(
     }
 
     private fun ensureCaretVisible() {
-        val line = caretLineAndColumn(text, editState.caretIndex).first
+        val line = caretLineAndColumn(editState.caretIndex, currentTextLayout()).first
         val caretTop = line * lastLineHeight
         val caretBottom = caretTop + lastLineHeight
         val visibleHeight = lastVisibleHeight.coerceAtLeast(lastLineHeight)
@@ -607,7 +605,10 @@ class TextAreaNode(
 
     private fun maxScrollFor(source: String): Int {
         val visibleHeight = lastVisibleHeight.coerceAtLeast(lastLineHeight)
-        val totalHeight = splitLines(source).size * lastLineHeight
+        val layout = if (source == text) currentTextLayout() else {
+            layoutForText(source, textContentWrapWidth(), lastLineHeight, currentMeasure())
+        }
+        val totalHeight = layout.totalHeight
         return (totalHeight - visibleHeight).coerceAtLeast(0)
     }
 
@@ -624,7 +625,15 @@ class TextAreaNode(
         val trackHeight = innerHeight.coerceAtLeast(1)
         val trackRect = Rect(trackX, innerY, trackWidth, trackHeight)
         scrollbarTrackRect = trackRect
-        out.add(RenderCommand.DrawRect(trackRect.x, trackRect.y, trackRect.width, trackRect.height, scrollbarTrackColor))
+        out.add(
+            RenderCommand.DrawRect(
+                trackRect.x,
+                trackRect.y,
+                trackRect.width,
+                trackRect.height,
+                scrollbarTrackColor
+            )
+        )
 
         val thumbHeight = computeThumbHeight(trackHeight)
         val thumbTravel = (trackHeight - thumbHeight).coerceAtLeast(0)
@@ -642,7 +651,7 @@ class TextAreaNode(
 
     private fun drawSelection(
         out: MutableList<RenderCommand>,
-        lines: List<String>,
+        layout: TextLayoutEngine.Layout,
         firstVisibleLine: Int,
         lastVisibleLine: Int,
         innerX: Int,
@@ -654,27 +663,23 @@ class TextAreaNode(
         val endIndex = editState.selectionEnd().coerceIn(0, text.length)
         if (endIndex <= startIndex) return
 
-        val start = caretLineAndColumn(text, startIndex)
-        val end = caretLineAndColumn(text, endIndex)
-        val minLine = maxOf(start.first, firstVisibleLine)
-        val maxLine = minOf(end.first, lastVisibleLine)
+        val minLine = maxOf(layout.lineForCaret(startIndex), firstVisibleLine)
+        val maxLine = minOf(layout.lineForCaret(endIndex), lastVisibleLine)
         if (maxLine < minLine) return
 
         val measure = lastMeasureText ?: { value: String -> value.length * 6 }
         for (lineIndex in minLine..maxLine) {
-            val line = lines[lineIndex]
-            val startCol = when {
-                lineIndex == start.first -> start.second
-                else -> 0
-            }.coerceIn(0, line.length)
-            val endCol = when {
-                lineIndex == end.first -> end.second
-                else -> line.length
-            }.coerceIn(0, line.length)
+            val line = layout.lines[lineIndex]
+            val lineStart = line.startIndex
+            val lineEnd = line.endIndexExclusive
+            val selectionStartInLine = maxOf(startIndex, lineStart)
+            val selectionEndInLine = minOf(endIndex, lineEnd)
+            val startCol = (selectionStartInLine - lineStart).coerceIn(0, line.text.length)
+            val endCol = (selectionEndInLine - lineStart).coerceIn(0, line.text.length)
             if (endCol <= startCol) continue
 
-            val prefixStart = line.substring(0, startCol)
-            val prefixEnd = line.substring(0, endCol)
+            val prefixStart = line.text.substring(0, startCol)
+            val prefixEnd = line.text.substring(0, endCol)
             val x1 = innerX + measure(prefixStart)
             val x2 = innerX + measure(prefixEnd)
             val width = (x2 - x1).coerceAtLeast(1)
@@ -725,17 +730,15 @@ class TextAreaNode(
     }
 
     private fun caretIndexFromClick(mouseX: Int, mouseY: Int, scrollOffsetY: Int): Int {
-        val lines = splitLines(text)
-        val starts = lineStarts(text)
-        if (lines.isEmpty() || starts.isEmpty()) return 0
+        val layout = currentTextLayout()
+        if (layout.lines.isEmpty()) return 0
 
         val localY = mouseY - contentY() + scrollOffsetY
-        val lineIndex = (localY / lastLineHeight).coerceIn(0, lines.lastIndex)
-        val lineText = lines[lineIndex]
+        val lineIndex = (localY / lastLineHeight).coerceIn(0, layout.lines.lastIndex)
+        val line = layout.lines[lineIndex]
         val localX = (mouseX - contentX()).coerceAtLeast(0)
-        val column = caretColumnFromX(lineText, localX)
-        val lineEnd = lineEndIndex(starts, lineIndex, text.length)
-        return (starts[lineIndex] + column).coerceIn(starts[lineIndex], lineEnd)
+        val column = caretColumnFromX(line.text, localX)
+        return (line.startIndex + column).coerceIn(line.startIndex, line.endIndexExclusive)
     }
 
     private fun caretColumnFromX(lineText: String, localX: Int): Int {
@@ -808,50 +811,54 @@ class TextAreaNode(
         history.restore(persisted.undoHistory, persisted.redoHistory)
     }
 
-    private fun splitLines(source: String): List<String> {
-        if (source.isEmpty()) return listOf("")
-        val out = ArrayList<String>()
-        var start = 0
-        for (i in source.indices) {
-            if (source[i] == '\n') {
-                out.add(source.substring(start, i))
-                start = i + 1
-            }
+    private fun currentTextLayout(): TextLayoutEngine.Layout {
+        val contentWidth = textContentWrapWidth()
+        val measure = currentMeasure()
+        val expected = layoutForText(text, contentWidth, lastLineHeight, measure)
+        if (lastTextLayout != expected || lastTextLayoutWidth != contentWidth) {
+            lastTextLayout = expected
+            lastTextLayoutWidth = contentWidth
         }
-        out.add(source.substring(start, source.length))
-        return out
+        return lastTextLayout
     }
 
-    private fun lineStarts(source: String): IntArray {
-        if (source.isEmpty()) return intArrayOf(0)
-        val starts = ArrayList<Int>()
-        starts.add(0)
-        for (i in source.indices) {
-            if (source[i] == '\n') {
-                starts.add(i + 1)
-            }
-        }
-        return starts.toIntArray()
-    }
-
-    private fun lineEndIndex(starts: IntArray, line: Int, textLength: Int): Int {
-        return if (line + 1 < starts.size) {
-            (starts[line + 1] - 1).coerceAtLeast(starts[line])
+    private fun textContentWrapWidth(): Int? {
+        if (textWrap == TextWrap.NoWrap) return null
+        val base = contentWidth()
+        if (base <= 0) return 0
+        return if (hasVerticalOverflow) {
+            (base - scrollbarWidth - scrollbarGap).coerceAtLeast(0)
         } else {
-            textLength
+            base
         }
     }
 
-    private fun caretLineAndColumn(source: String, caret: Int, starts: IntArray = lineStarts(source)): Pair<Int, Int> {
-        if (starts.isEmpty()) return 0 to 0
-        val safeCaret = caret.coerceIn(0, source.length)
-        var line = 0
-        while (line + 1 < starts.size && starts[line + 1] <= safeCaret) {
-            line++
-        }
-        val lineStart = starts[line]
-        val lineEnd = lineEndIndex(starts, line, source.length)
-        val column = (safeCaret - lineStart).coerceIn(0, (lineEnd - lineStart).coerceAtLeast(0))
-        return line to column
+    private fun currentMeasure(): (String) -> Int {
+        return lastMeasureText ?: { value: String -> value.length * 6 }
+    }
+
+    private fun layoutForText(
+        source: String,
+        contentWidth: Int?,
+        fontHeight: Int,
+        measureText: (String) -> Int
+    ): TextLayoutEngine.Layout {
+        val wrapMode = if (this@TextAreaNode.textWrap == TextWrap.Wrap) TextWrap.Wrap else TextWrap.NoWrap
+        val maxWidth = if (wrapMode == TextWrap.Wrap) contentWidth else null
+        return TextLayoutEngine.layout(
+            text = source,
+            maxWidth = maxWidth,
+            wrap = wrapMode,
+            fontHeight = fontHeight.coerceAtLeast(1),
+            measureText = measureText
+        )
+    }
+
+    private fun caretLineAndColumn(caret: Int, layout: TextLayoutEngine.Layout): Pair<Int, Int> {
+        val safeCaret = caret.coerceIn(0, text.length)
+        val lineIndex = layout.lineForCaret(safeCaret).coerceIn(0, layout.lines.lastIndex)
+        val line = layout.lines[lineIndex]
+        val column = (safeCaret - line.startIndex).coerceIn(0, line.text.length)
+        return lineIndex to column
     }
 }
