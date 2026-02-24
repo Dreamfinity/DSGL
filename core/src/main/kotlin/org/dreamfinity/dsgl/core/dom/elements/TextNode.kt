@@ -21,8 +21,17 @@ class TextNode(
     var text: String = textSource.resolve()
         private set
 
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measureWithConstraint(ctx, availableOuterWidth)
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
-        val wrapWidth = if (textWrap == TextWrap.Wrap) width else null
+        return measureWithConstraint(ctx, null)
+    }
+
+    private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        val contentLimit = resolvedContentLimit(availableOuterWidth)
+        val wrapWidth = if (textWrap == TextWrap.Wrap) contentLimit else null
         val layout = TextLayoutEngine.layout(
             text = this@TextNode.text,
             maxWidth = wrapWidth,
@@ -30,11 +39,19 @@ class TextNode(
             fontHeight = ctx.fontHeight,
             measureText = ctx::measureText
         )
-        val contentWidth = width ?: layout.maxLineWidth
+        val naturalContentWidth = width ?: layout.maxLineWidth
+        val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
         val contentHeight = height ?: layout.totalHeight
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
+    }
+
+    private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
+        if (width != null) return width
+        if (availableOuterWidth == null) return null
+        val extras = margin.horizontal + padding.horizontal + border.horizontal
+        return (availableOuterWidth - extras).coerceAtLeast(0)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {

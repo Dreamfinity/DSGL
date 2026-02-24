@@ -15,6 +15,7 @@ import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
+import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
@@ -63,6 +64,9 @@ class ShowcaseWindow : DsglWindow() {
     internal var styleUseBorder by state(true)
     internal var styleLargeGap by state(false)
     internal var styleFixedSize by state(false)
+    internal var layoutDebugStrict by state(LayoutDebug.strictBounds)
+    internal var layoutDebugDraw by state(LayoutDebug.drawBounds)
+    internal var layoutDebugWrapWidth by state(148L)
     internal var displayBlockLargeGap by state(false)
     internal var displayInlineWidth by state(132L)
     internal var displayShowHidden by state(true)
@@ -214,6 +218,8 @@ class ShowcaseWindow : DsglWindow() {
         prepareDemoStylesheet()
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
+        LayoutDebug.strictBounds = layoutDebugStrict
+        LayoutDebug.drawBounds = layoutDebugDraw
         appendInfo("Showcase opened")
     }
 
@@ -312,6 +318,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.LAYOUT_STYLE -> renderLayoutStyleSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.LAYOUT_DEBUG -> renderLayoutDebugSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30

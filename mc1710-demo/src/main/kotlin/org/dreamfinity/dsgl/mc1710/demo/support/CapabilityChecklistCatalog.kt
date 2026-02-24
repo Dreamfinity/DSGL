@@ -58,6 +58,7 @@ enum class CapabilityId(
     EVENT_INSPECTOR("Event Inspector panel", CapabilityGroup.SHOWCASE_FEATURES),
     CAPABILITY_CHECKLIST("Capability Checklist panel", CapabilityGroup.SHOWCASE_FEATURES),
     EVENT_CANCELLATION("Event cancellation/bubbling demo", CapabilityGroup.SHOWCASE_FEATURES),
+    LAYOUT_VALIDATOR("Layout validator strict bounds", CapabilityGroup.SHOWCASE_FEATURES),
     DISPLAY_BLOCK("Display: block", CapabilityGroup.SHOWCASE_FEATURES),
     DISPLAY_INLINE("Display: inline", CapabilityGroup.SHOWCASE_FEATURES),
     DISPLAY_NONE("Display: none", CapabilityGroup.SHOWCASE_FEATURES),
@@ -114,6 +115,14 @@ object CapabilityChecklistCatalog {
             CapabilityId.LAYOUT_GAP_FIXED,
             CapabilityId.STYLE_MARGIN_PADDING_BORDER,
             CapabilityId.OVERLAY_BEHAVIOR
+        )
+
+        DemoSection.LAYOUT_DEBUG -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.LAYOUT_VALIDATOR
         )
 
         DemoSection.DISPLAY -> setOf(

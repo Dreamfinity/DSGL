@@ -1,6 +1,9 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
+import org.dreamfinity.dsgl.core.dom.debug.LayoutValidator
+import org.dreamfinity.dsgl.core.dom.debug.LayoutViolation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
@@ -22,6 +25,8 @@ class DomTree(var root: DOMNode) {
     private var laidOut: Boolean = false
     private val paintBuffer: MutableList<RenderCommand> = ArrayList(256)
     private val refManager: RefManager = RefManager()
+    private var lastViolations: List<LayoutViolation> = emptyList()
+    private var strictInvalidLayout: Boolean = false
 
     /** Measures and lays out the tree for the given viewport. */
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
@@ -29,6 +34,7 @@ class DomTree(var root: DOMNode) {
         lastHeight = height
         StyleEngine.applyStylesRecursively(root)
         root.render(ctx, 0, 0, width, height)
+        validateLayout(ctx)
         refManager.commit(root)
         laidOut = true
     }
@@ -42,11 +48,15 @@ class DomTree(var root: DOMNode) {
         }
         if ((!laidOut || layoutDirtyFromStyles) && lastWidth > 0 && lastHeight > 0) {
             root.render(ctx, 0, 0, lastWidth, lastHeight)
+            validateLayout(ctx)
             refManager.commit(root)
             laidOut = true
         }
         paintBuffer.clear()
-        root.appendRenderCommands(ctx, paintBuffer)
+        if (!strictInvalidLayout) {
+            root.appendRenderCommands(ctx, paintBuffer)
+        }
+        LayoutValidator.appendDebugCommands(root, lastViolations, paintBuffer)
         return paintBuffer
     }
 
@@ -65,11 +75,33 @@ class DomTree(var root: DOMNode) {
         if (lastWidth <= 0 || lastHeight <= 0) {
             return false
         }
+        if (strictInvalidLayout) {
+            return false
+        }
 
         return dispatchClick(root, event)
     }
 
     fun clearRefs() {
         refManager.clear()
+    }
+
+    private fun validateLayout(ctx: UiMeasureContext) {
+        if (!LayoutDebug.validateLayouts) {
+            lastViolations = emptyList()
+            LayoutDebug.lastViolationCount = 0
+            strictInvalidLayout = false
+            return
+        }
+        val violations = LayoutValidator.validate(root, ctx)
+        lastViolations = violations
+        strictInvalidLayout = violations.isNotEmpty() && LayoutDebug.strictBounds
+        if (strictInvalidLayout) {
+            val first = violations.first()
+            println(
+                "[DSGL-Layout] strict mode invalidated paint/hit-test due to ${first.code} " +
+                    "key=${first.nodeKey} parent=${first.parentKey}: ${first.message}"
+            )
+        }
     }
 }

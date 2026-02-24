@@ -285,6 +285,11 @@ abstract class DOMNode(
         }
 
     /** Measures the node's desired size. */
+    internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measure(ctx)
+    }
+
+    /** Measures the node's desired size. */
     open fun measure(ctx: UiMeasureContext): Size {
         if (display == Display.None) {
             return Size(0, 0)

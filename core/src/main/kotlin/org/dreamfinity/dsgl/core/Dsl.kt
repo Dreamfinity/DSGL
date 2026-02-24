@@ -207,6 +207,12 @@ class UiScope internal constructor(private val parent: DOMNode) {
     }
 
     fun text(
+        value: () -> String
+    ) {
+        text(value = value, ref = null, block = null)
+    }
+
+    fun text(
         value: () -> String,
         ref: RefTarget<ElementHandle>? = null,
         block: (TextProps.() -> Unit)? = null

@@ -30,6 +30,15 @@ class ContainerNode(
         return measureWithConstraint(ctx, null)
     }
 
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        val constrainedContentWidth = if (availableOuterWidth != null) {
+            constrainContentWidthForOuterLimit(availableOuterWidth, this@ContainerNode)
+        } else {
+            null
+        }
+        return measureWithConstraint(ctx, constrainedContentWidth)
+    }
+
     private fun measureWithConstraint(ctx: UiMeasureContext, constrainedContentWidth: Int?): Size {
         if (display == Display.None) {
             return Size(0, 0)
@@ -47,7 +56,7 @@ class ContainerNode(
 
         val contentSize = when {
             stackLayout -> measureStack(ctx, visibleChildren)
-            display == Display.Flex -> measureFlex(ctx, visibleChildren)
+            display == Display.Flex -> measureFlex(ctx, visibleChildren, resolvedWrapWidth)
             display == Display.Grid -> measureGrid(ctx, visibleChildren, resolvedWrapWidth)
             display == Display.Inline -> measureInline(ctx, visibleChildren, resolvedWrapWidth)
             else -> measureBlock(ctx, visibleChildren, resolvedWrapWidth)
@@ -123,7 +132,7 @@ class ContainerNode(
             val childHeight = size.height
             val childX = alignedChildX(child, cx, cw, childWidth)
             val childY = alignedChildY(child, cy, ch, childHeight)
-            child.render(ctx, childX, childY, childWidth, childHeight)
+            renderContainedChild(ctx, child, cx, cy, cw, ch, childX, childY, childWidth, childHeight)
         }
     }
 
@@ -188,6 +197,7 @@ class ContainerNode(
         val cx = contentX()
         val cy = contentY()
         val cw = contentWidth()
+        val ch = contentHeight()
         var cursorY = cy
         var hasRows = false
 
@@ -210,7 +220,7 @@ class ContainerNode(
                 val child = placement.child
                 val x = cx + placement.relX + child.margin.left
                 val y = cursorY + child.margin.top
-                child.render(ctx, x, y, placement.width, placement.height)
+                renderContainedChild(ctx, child, cx, cy, cw, ch, x, y, placement.width, placement.height)
             }
             cursorY += lineHeight
             line.clear()
@@ -256,7 +266,7 @@ class ContainerNode(
                 val heightToRender = measured.height
                 val childX = alignedChildX(child, cx, cw, widthToRender)
                 val childY = cursorY + child.margin.top
-                child.render(ctx, childX, childY, widthToRender, heightToRender)
+                renderContainedChild(ctx, child, cx, cy, cw, ch, childX, childY, widthToRender, heightToRender)
                 cursorY += heightToRender + child.margin.vertical
                 hasRows = true
             }
@@ -313,6 +323,7 @@ class ContainerNode(
         val cx = contentX()
         val cy = contentY()
         val cw = contentWidth()
+        val ch = contentHeight()
         var cursorX = cx
         var cursorY = cy
         var lineHeight = 0
@@ -335,7 +346,7 @@ class ContainerNode(
             if (lineHasItems) cursorX += gap
             val childX = cursorX + child.margin.left
             val childY = cursorY + child.margin.top
-            child.render(ctx, childX, childY, measured.width, measured.height)
+            renderContainedChild(ctx, child, cx, cy, cw, ch, childX, childY, measured.width, measured.height)
             cursorX += outerWidth
             lineHeight = maxOf(lineHeight, outerHeight)
             lineHasItems = true
@@ -354,12 +365,12 @@ class ContainerNode(
         val explicitCross: Int?
     )
 
-    private fun measureFlex(ctx: UiMeasureContext, children: List<DOMNode>): Size {
+    private fun measureFlex(ctx: UiMeasureContext, children: List<DOMNode>, wrapWidth: Int?): Size {
         val isRow = flexDirection == FlexDirection.Row
         var totalMain = 0
         var maxCross = 0
         children.forEachIndexed { index, child ->
-            val measured = child.measure(ctx)
+            val measured = measureChildForLayout(ctx, child, wrapWidth)
             val main = if (isRow) measured.width else measured.height
             val cross = if (isRow) measured.height else measured.width
             val outerMain = main + if (isRow) child.margin.horizontal else child.margin.vertical
@@ -381,11 +392,12 @@ class ContainerNode(
         val cy = contentY()
         val availableMain = if (isRow) contentWidth() else contentHeight()
         val availableCross = if (isRow) contentHeight() else contentWidth()
+        val availableOuterWidth = contentWidth()
 
         if (children.isEmpty()) return
 
         val items = children.map { child ->
-            val measured = child.measure(ctx)
+            val measured = measureChildForLayout(ctx, child, availableOuterWidth)
             FlexItem(
                 child = child,
                 measuredMain = if (isRow) measured.width else measured.height,
@@ -466,7 +478,18 @@ class ContainerNode(
             }
             val childWidth = if (isRow) mainSize else crossSize
             val childHeight = if (isRow) crossSize else mainSize
-            item.child.render(ctx, childX, childY, childWidth, childHeight)
+            renderContainedChild(
+                ctx = ctx,
+                child = item.child,
+                parentContentX = cx,
+                parentContentY = cy,
+                parentContentWidth = if (isRow) availableMain else availableCross,
+                parentContentHeight = if (isRow) availableCross else availableMain,
+                desiredX = childX,
+                desiredY = childY,
+                desiredWidth = childWidth,
+                desiredHeight = childHeight
+            )
 
             cursorMain += mainSize + item.mainMarginEnd
         }
@@ -550,7 +573,6 @@ class ContainerNode(
 
         placements.forEach { placement ->
             val child = placement.child
-            val measured = child.measure(ctx)
             val cellX = cx + placement.column * (colWidth + gap)
             val cellY = cy + rowOffsets[placement.row]
             val cellWidth = placement.columnSpan * colWidth + (placement.columnSpan - 1) * gap
@@ -558,6 +580,11 @@ class ContainerNode(
 
             val availableCellWidth = (cellWidth - child.margin.horizontal).coerceAtLeast(0)
             val availableCellHeight = (cellHeight - child.margin.vertical).coerceAtLeast(0)
+            val measured = measureChildForLayout(
+                ctx = ctx,
+                child = child,
+                availableOuterWidth = cellWidth.coerceAtLeast(0)
+            )
 
             val childWidth = when {
                 child.width != null -> child.width!!.coerceAtMost(availableCellWidth)
@@ -585,7 +612,7 @@ class ContainerNode(
 
             val childX = cellX + child.margin.left + xOffset
             val childY = cellY + child.margin.top + yOffset
-            child.render(ctx, childX, childY, childWidth, childHeight)
+            renderContainedChild(ctx, child, cellX, cellY, cellWidth, cellHeight, childX, childY, childWidth, childHeight)
         }
     }
 
@@ -726,13 +753,14 @@ class ContainerNode(
         child: DOMNode,
         availableOuterWidth: Int?
     ): Size {
-        return if (child is ContainerNode) {
-            val constrainedContentWidth = availableOuterWidth?.let { limit ->
-                constrainContentWidthForOuterLimit(limit, child)
-            }
-            child.measureWithConstraint(ctx, constrainedContentWidth)
+        val measured = child.measureForLayout(ctx, availableOuterWidth)
+        val maxChildWidth = availableOuterWidth?.let { limit ->
+            (limit - child.margin.horizontal).coerceAtLeast(0)
+        }
+        return if (maxChildWidth != null && measured.width > maxChildWidth) {
+            Size(maxChildWidth, measured.height)
         } else {
-            child.measure(ctx)
+            measured
         }
     }
 
@@ -768,5 +796,32 @@ class ContainerNode(
             StyleAlign.END -> interactableHeight - childHeight
         }
         return contentY + child.margin.top + verticalOffset.coerceAtLeast(0)
+    }
+
+    private fun renderContainedChild(
+        ctx: UiMeasureContext,
+        child: DOMNode,
+        parentContentX: Int,
+        parentContentY: Int,
+        parentContentWidth: Int,
+        parentContentHeight: Int,
+        desiredX: Int,
+        desiredY: Int,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ) {
+        val maxWidth = (parentContentWidth - child.margin.horizontal).coerceAtLeast(0)
+        val maxHeight = (parentContentHeight - child.margin.vertical).coerceAtLeast(0)
+        val width = desiredWidth.coerceAtMost(maxWidth).coerceAtLeast(0)
+        val height = desiredHeight.coerceAtMost(maxHeight).coerceAtLeast(0)
+
+        val minX = parentContentX + child.margin.left
+        val maxX = parentContentX + parentContentWidth - child.margin.right - width
+        val minY = parentContentY + child.margin.top
+        val maxY = parentContentY + parentContentHeight - child.margin.bottom - height
+
+        val x = desiredX.coerceIn(minX, maxX.coerceAtLeast(minX))
+        val y = desiredY.coerceIn(minY, maxY.coerceAtLeast(minY))
+        child.render(ctx, x, y, width, height)
     }
 }
