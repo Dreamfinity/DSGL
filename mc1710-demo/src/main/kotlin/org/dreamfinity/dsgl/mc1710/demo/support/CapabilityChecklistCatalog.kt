@@ -108,6 +108,13 @@ object CapabilityChecklistCatalog {
             CapabilityId.CAPABILITY_CHECKLIST
         )
 
+        DemoSection.INSPECTOR -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT
+        )
+
         DemoSection.LAYOUT_STYLE -> setOf(
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_OVERLAY,

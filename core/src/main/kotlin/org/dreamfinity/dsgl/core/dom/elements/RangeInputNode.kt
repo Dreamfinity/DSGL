@@ -90,12 +90,33 @@ class RangeInputNode(
         }
     }
 
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measureWithConstraint(availableOuterWidth)
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
+        return measureWithConstraint(null)
+    }
+
+    private fun measureWithConstraint(availableOuterWidth: Int?): Size {
+        val contentLimit = resolvedContentLimit(availableOuterWidth)
         val contentWidth = width ?: 120
+        val resolvedWidth = contentLimit?.let { minOf(it, contentWidth) } ?: contentWidth
         val contentHeight = height ?: 12
-        val totalWidth = contentWidth + padding.horizontal + border.horizontal
+        val totalWidth = resolvedWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
+    }
+
+    private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
+        val explicit = width
+        val extras = margin.horizontal + padding.horizontal + border.horizontal
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {

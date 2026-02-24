@@ -15,6 +15,7 @@ import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
@@ -56,9 +57,14 @@ abstract class DsglScreenHost(
     private var dragCaptureKey: Any? = null
     private var dragCaptureClass: Class<out DOMNode>? = null
     private var dragCaptureFocusKey: Any? = null
+    private var inspectorPointerCaptured: Boolean = false
+    private var inspectorOwnedMouseButton: Int = -1
+    private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
+    private val inspector: InspectorController = InspectorController()
+    private val inspectorInputDebug: Boolean = false
     private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
         override fun readText(): String {
             return try {
@@ -79,6 +85,11 @@ abstract class DsglScreenHost(
     override fun initGui() {
         adapter = Mc1710UiAdapter(mc)
         ClipboardBridge.install(clipboardAccess)
+        inspector.deactivate()
+        inspectorPointerCaptured = false
+        inspectorOwnedMouseButton = -1
+        layoutRevision = 0L
+        StyleEngine.clearAllInspectorOverrides()
         StyleEngine.setStylesDirectory(File(mc.mcDataDir, "dsgl/styles"))
         StyleEngine.forceReloadStylesheets()
         window = windowFactory()
@@ -106,25 +117,40 @@ abstract class DsglScreenHost(
         var stylesAlreadyApplied = false
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
+            layoutRevision++
+            inspector.onLayoutCommitted(tree.root, layoutRevision)
             needsLayout = false
             stylesAlreadyApplied = true
         }
+        inspector.onLayoutCommitted(tree.root, layoutRevision)
+        inspector.onCursorMoved(mouseX, mouseY)
+        if (inspectorPointerCaptured) {
+            inspector.onCapturedPointerMove(mouseX, mouseY, lastWidth, lastHeight)
+        }
+        val inspectorBlocks = inspectorPointerCaptured || inspector.shouldConsumePointer(mouseX, mouseY)
         val commands = tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
-        DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
+        if (!inspectorBlocks) {
+            DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
+        }
         DndRuntime.engine.onFrame(tree.root, dtSeconds)
         val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
         val dx = mouseX - prevX
         val dy = mouseY - prevY
-        updateHover(tree.root, hoverChain, mouseX, mouseY, dx, dy)
-        hoverTarget = hoverChain.lastOrNull()
-        if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
-            releaseDragCapture()
-        }
-        if (dx != 0 || dy != 0) {
-            val moveEvent = MouseMoveEvent(mouseX, mouseY, prevX, prevY)
-            moveEvent.target = dragCaptureTarget ?: hoverTarget
-            EventBus.post(moveEvent)
+        if (inspectorBlocks) {
+            clearHoverChainStates()
+            hoverTarget = null
+        } else {
+            updateHover(tree.root, hoverChain, mouseX, mouseY, dx, dy)
+            hoverTarget = hoverChain.lastOrNull()
+            if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
+                releaseDragCapture()
+            }
+            if (dx != 0 || dy != 0) {
+                val moveEvent = MouseMoveEvent(mouseX, mouseY, prevX, prevY)
+                moveEvent.target = dragCaptureTarget ?: hoverTarget
+                EventBus.post(moveEvent)
+            }
         }
         lastMoveX = mouseX
         lastMoveY = mouseY
@@ -132,6 +158,7 @@ abstract class DsglScreenHost(
         composedCommands.addAll(commands)
         DndRuntime.engine.appendPlaceholderCommands(composedCommands)
         DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
+        inspector.appendOverlayCommands(lastWidth, lastHeight, composedCommands)
         adapter.paint(composedCommands)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
@@ -147,6 +174,12 @@ abstract class DsglScreenHost(
         DndRuntime.engine.cancelActiveDrag()
         clearActiveTarget()
         flushPendingCleanup()
+        clearHoverChainStates()
+        inspector.deactivate()
+        inspectorPointerCaptured = false
+        inspectorOwnedMouseButton = -1
+        layoutRevision = 0L
+        StyleEngine.clearAllInspectorOverrides()
         domTree?.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
@@ -219,7 +252,40 @@ abstract class DsglScreenHost(
         )
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
+        val inspectorMouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX
+        val inspectorMouseY = if (lastMoveY == Int.MIN_VALUE) lastMouseY else lastMoveY
         if (Keyboard.getEventKeyState()) {
+            if (keyCode == Keyboard.KEY_F8) {
+                inspector.toggle()
+                inspectorPointerCaptured = false
+                if (inspector.active) {
+                    DndRuntime.engine.cancelActiveDrag()
+                    releaseDragCapture()
+                    clearActiveTarget()
+                    clearHoverChainStates()
+                }
+                mc.dispatchKeypresses()
+                return
+            }
+            if (keyCode == Keyboard.KEY_F9 && inspector.active) {
+                inspector.toggleMode()
+                mc.dispatchKeypresses()
+                return
+            }
+            if (keyCode == Keyboard.KEY_ESCAPE && inspector.cancelPickMode()) {
+                logInspectorInput("escape cancelled inspector pick mode")
+                mc.dispatchKeypresses()
+                return
+            }
+            val keyboardBlocked = inspector.active && (
+                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                            inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
+                    )
+            if (keyboardBlocked) {
+                logInspectorInput("keyboard down consumed keyCode=$keyCode")
+                mc.dispatchKeypresses()
+                return
+            }
             if (keyCode == Keyboard.KEY_F6) {
                 StyleEngine.forceReloadStylesheets()
                 requestRebuild("style reload")
@@ -235,6 +301,16 @@ abstract class DsglScreenHost(
                 }
             }
         } else {
+            val keyboardBlocked = inspector.active && (
+                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                            inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
+                    )
+            if (keyboardBlocked) {
+                pressedKeys.remove(keyCode)
+                logInspectorInput("keyboard up consumed keyCode=$keyCode")
+                mc.dispatchKeypresses()
+                return
+            }
             if (pressedKeys.remove(keyCode)) {
                 EventBus.post(KeyboardKeyUpEvent(keyChar, keyCode))
             }
@@ -249,6 +325,8 @@ abstract class DsglScreenHost(
         val tree = domTree ?: return
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
+            layoutRevision++
+            inspector.onLayoutCommitted(tree.root, layoutRevision)
             needsLayout = false
         }
 
@@ -256,6 +334,102 @@ abstract class DsglScreenHost(
         val mouseY = height - Mouse.getEventY() * height / mc.displayHeight - 1
         val dWheel = Mouse.getDWheel()
         val mouseButton = Mouse.getEventButton()
+        inspector.onCursorMoved(mouseX, mouseY)
+
+        if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            inspector.markPointerHandled("wheel in inspector")
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            logInspectorInput("wheel consumed by inspector delta=$dWheel")
+            return
+        }
+
+        if (inspectorPointerCaptured) {
+            if (!Mouse.getEventButtonState() && mouseButton != -1) {
+                mapButton(mouseButton)?.let { mappedButton ->
+                    inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                inspector.markPointerHandled("captured release")
+                inspectorPointerCaptured = false
+                inspectorOwnedMouseButton = -1
+            }
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            logInspectorInput("pointer captured event consumed button=$mouseButton")
+            return
+        }
+
+        if (Mouse.getEventButtonState() && mouseButton != -1) {
+            mapButton(mouseButton)?.let { mappedButton ->
+                if (inspector.handleMouseDown(mouseX, mouseY, mappedButton)) {
+                    inspectorPointerCaptured = inspector.isDraggingPanel
+                    inspectorOwnedMouseButton = mouseButton
+                    inspector.markPointerHandled("down in inspector")
+                    eventButton = -1
+                    clearActiveTarget()
+                    releaseDragCapture()
+                    lastMouseX = mouseX
+                    lastMouseY = mouseY
+                    logInspectorInput("mouse down consumed by inspector button=$mouseButton")
+                    return
+                }
+            }
+        }
+
+        if (!Mouse.getEventButtonState() && mouseButton != -1 && inspectorOwnedMouseButton == mouseButton) {
+            mapButton(mouseButton)?.let { mappedButton ->
+                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            inspector.markPointerHandled("owned press release")
+            inspectorPointerCaptured = false
+            inspectorOwnedMouseButton = -1
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            logInspectorInput("mouse up consumed by inspector ownership button=$mouseButton")
+            return
+        }
+
+        if (mouseButton != -1 && !Mouse.getEventButtonState()) {
+            mapButton(mouseButton)?.let { mappedButton ->
+                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+        }
+
+        val inspectorConsumesPointer = inspector.shouldConsumePointer(mouseX, mouseY)
+        if (inspectorConsumesPointer) {
+            if (mouseButton != -1 && Mouse.getEventButtonState()) {
+                // If inspector consumed the press via bounds gating, keep ownership until release.
+                inspectorOwnedMouseButton = mouseButton
+            }
+            if (mouseButton != -1 && !Mouse.getEventButtonState()) {
+                inspectorPointerCaptured = false
+                inspectorOwnedMouseButton = -1
+            }
+            inspector.markPointerHandled(
+                when {
+                    dWheel != 0 -> "wheel in inspector"
+                    mouseButton != -1 && Mouse.getEventButtonState() -> "down in inspector bounds"
+                    mouseButton != -1 && !Mouse.getEventButtonState() -> "up in inspector bounds"
+                    else -> "move in inspector bounds"
+                }
+            )
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            logInspectorInput("pointer event consumed by inspector bounds button=$mouseButton wheel=$dWheel")
+            return
+        }
 
         refreshHoverTarget(mouseX, mouseY)
 
@@ -434,6 +608,8 @@ abstract class DsglScreenHost(
         val tree = domTree ?: return
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
+            layoutRevision++
+            inspector.onLayoutCommitted(tree.root, layoutRevision)
             needsLayout = false
         }
         val chain = collectHoverChain(tree.root, mouseX, mouseY)
@@ -458,5 +634,17 @@ abstract class DsglScreenHost(
             current = current.parent
         }
         return false
+    }
+
+    private fun clearHoverChainStates() {
+        hoverChain.forEach { node ->
+            node.setHoveredState(false)
+        }
+        hoverChain.clear()
+    }
+
+    private fun logInspectorInput(message: String) {
+        if (!inspectorInputDebug) return
+        println("[DSGL-InspectorInput] $message")
     }
 }

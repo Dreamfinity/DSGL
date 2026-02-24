@@ -44,9 +44,12 @@ class ContainerNode(
             return Size(0, 0)
         }
         val visibleChildren = layoutChildren()
-        val resolvedWrapWidth = width ?: constrainedContentWidth?.coerceAtLeast(0)
+        val resolvedWrapWidth = resolvedContentLimit(constrainedContentWidth)
+        val boundedExplicitWidth = width?.let { explicit ->
+            resolvedWrapWidth?.let { minOf(explicit, it) } ?: explicit
+        }
         if (visibleChildren.isEmpty()) {
-            val contentWidth = width ?: constrainedContentWidth?.coerceAtLeast(0) ?: 0
+            val contentWidth = boundedExplicitWidth ?: 0
             val contentHeight = height ?: 0
             return Size(
                 contentWidth + padding.horizontal + border.horizontal,
@@ -61,7 +64,11 @@ class ContainerNode(
             display == Display.Inline -> measureInline(ctx, visibleChildren, resolvedWrapWidth)
             else -> measureBlock(ctx, visibleChildren, resolvedWrapWidth)
         }
-        val contentWidth = width ?: contentSize.width
+        val contentWidth = when {
+            boundedExplicitWidth != null -> boundedExplicitWidth
+            resolvedWrapWidth != null -> minOf(contentSize.width, resolvedWrapWidth)
+            else -> contentSize.width
+        }
         val contentHeight = height ?: contentSize.height
         return Size(
             contentWidth + padding.horizontal + border.horizontal,
@@ -753,20 +760,21 @@ class ContainerNode(
         child: DOMNode,
         availableOuterWidth: Int?
     ): Size {
-        val measured = child.measureForLayout(ctx, availableOuterWidth)
-        val maxChildWidth = availableOuterWidth?.let { limit ->
-            (limit - child.margin.horizontal).coerceAtLeast(0)
-        }
-        return if (maxChildWidth != null && measured.width > maxChildWidth) {
-            Size(maxChildWidth, measured.height)
-        } else {
-            measured
-        }
+        return child.measureForLayout(ctx, availableOuterWidth)
     }
 
     private fun constrainContentWidthForOuterLimit(outerLimit: Int, child: DOMNode): Int {
         val extrasX = child.margin.horizontal + child.padding.horizontal + child.border.horizontal
         return (outerLimit - extrasX).coerceAtLeast(0)
+    }
+
+    private fun resolvedContentLimit(constrainedContentWidth: Int?): Int? {
+        val boundedExplicit = width?.let { explicit ->
+            constrainedContentWidth?.let { limit ->
+                minOf(explicit, limit.coerceAtLeast(0))
+            } ?: explicit
+        }
+        return boundedExplicit ?: constrainedContentWidth?.coerceAtLeast(0)
     }
 
     private fun rowSpanHeight(rowHeights: IntArray, row: Int, rowSpan: Int): Int {
@@ -810,18 +818,19 @@ class ContainerNode(
         desiredWidth: Int,
         desiredHeight: Int
     ) {
-        val maxWidth = (parentContentWidth - child.margin.horizontal).coerceAtLeast(0)
-        val maxHeight = (parentContentHeight - child.margin.vertical).coerceAtLeast(0)
-        val width = desiredWidth.coerceAtMost(maxWidth).coerceAtLeast(0)
-        val height = desiredHeight.coerceAtMost(maxHeight).coerceAtLeast(0)
-
         val minX = parentContentX + child.margin.left
-        val maxX = parentContentX + parentContentWidth - child.margin.right - width
         val minY = parentContentY + child.margin.top
-        val maxY = parentContentY + parentContentHeight - child.margin.bottom - height
+        val maxRight = parentContentX + parentContentWidth - child.margin.right
+        val maxBottom = parentContentY + parentContentHeight - child.margin.bottom
 
-        val x = desiredX.coerceIn(minX, maxX.coerceAtLeast(minX))
-        val y = desiredY.coerceIn(minY, maxY.coerceAtLeast(minY))
+        val x = desiredX.coerceAtLeast(minX)
+        val y = desiredY.coerceAtLeast(minY)
+
+        val maxWidth = (maxRight - x).coerceAtLeast(0)
+        val maxHeight = (maxBottom - y).coerceAtLeast(0)
+        val width = desiredWidth.coerceAtLeast(0).coerceAtMost(maxWidth)
+        val height = desiredHeight.coerceAtLeast(0).coerceAtMost(maxHeight)
+
         child.render(ctx, x, y, width, height)
     }
 }

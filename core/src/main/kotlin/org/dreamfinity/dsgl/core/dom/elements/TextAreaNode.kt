@@ -195,10 +195,14 @@ class TextAreaNode(
     }
 
     private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
-        if (width != null) return width
-        if (availableOuterWidth == null) return null
+        val explicit = width
         val extras = margin.horizontal + padding.horizontal + border.horizontal
-        return (availableOuterWidth - extras).coerceAtLeast(0)
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
@@ -324,6 +328,10 @@ class TextAreaNode(
 
     fun shouldCaptureAnyDrag(mouseX: Int, mouseY: Int): Boolean {
         return shouldCaptureScrollbarDrag(mouseX, mouseY) || shouldCaptureTextSelectionDrag(mouseX, mouseY)
+    }
+
+    override fun inspectorScrollOffset(): Pair<Int, Int>? {
+        return 0 to editState.scrollY
     }
 
     private fun handleKey(event: KeyboardKeyDownEvent) {

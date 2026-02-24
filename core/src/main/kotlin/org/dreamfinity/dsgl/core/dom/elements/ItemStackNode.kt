@@ -18,13 +18,34 @@ class ItemStackNode(
 ) : DOMNode(key) {
     override val styleType: String = "itemstack"
 
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measureWithConstraint(ctx, availableOuterWidth)
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
+        return measureWithConstraint(ctx, null)
+    }
+
+    private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        val contentLimit = resolvedContentLimit(availableOuterWidth)
         val contentWidth = width ?: size
+        val resolvedWidth = contentLimit?.let { minOf(it, contentWidth) } ?: contentWidth
         val nameHeight = ctx.fontHeight + 2
         val contentHeight = height ?: (size + nameHeight)
-        val totalWidth = contentWidth + padding.horizontal + border.horizontal
+        val totalWidth = resolvedWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
+    }
+
+    private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
+        val explicit = width
+        val extras = margin.horizontal + padding.horizontal + border.horizontal
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {

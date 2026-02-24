@@ -48,15 +48,36 @@ class CheckboxGroupNode(
 
     fun selected(): Set<String> = selectedIds.toSet()
 
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measureWithConstraint(ctx, availableOuterWidth)
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
+        return measureWithConstraint(ctx, null)
+    }
+
+    private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         boxSize = maxOf(10, ctx.fontHeight - 2)
         lineHeight = ctx.fontHeight + 4
+        val contentLimit = resolvedContentLimit(availableOuterWidth)
         val maxLabelWidth = variants.maxOfOrNull { ctx.measureText(it.label) } ?: 0
-        val contentWidth = width ?: (boxSize + 6 + maxLabelWidth)
+        val naturalWidth = width ?: (boxSize + 6 + maxLabelWidth)
+        val contentWidth = contentLimit?.let { minOf(it, naturalWidth) } ?: naturalWidth
         val contentHeight = height ?: (lineHeight * variants.size)
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
         return Size(totalWidth, totalHeight)
+    }
+
+    private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
+        val explicit = width
+        val extras = margin.horizontal + padding.horizontal + border.horizontal
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {

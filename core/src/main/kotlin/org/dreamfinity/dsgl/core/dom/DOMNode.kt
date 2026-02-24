@@ -612,6 +612,11 @@ abstract class DOMNode(
     protected fun contentHeight(): Int =
         (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
 
+    /**
+     * Optional scroll offsets exposed for tooling overlays (e.g., inspector).
+     */
+    open fun inspectorScrollOffset(): Pair<Int, Int>? = null
+
     /** Adds border render commands when a border is present. */
     protected fun addBorderCommands(out: MutableList<RenderCommand>) {
         if (border.top <= 0 && border.right <= 0 && border.bottom <= 0 && border.left <= 0) return

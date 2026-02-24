@@ -163,6 +163,7 @@ class ShowcaseWindow : DsglWindow() {
     internal var refsCallbackAttachCount by state(0)
     internal var refsCallbackDetachCount by state(0)
     internal var refsCallbackLast by state("none")
+    internal var inspectorBehindClickCounter by state(0)
     internal var dndItems by state(
         defaultDndItems()
     )
@@ -312,6 +313,12 @@ class ShowcaseWindow : DsglWindow() {
                             text(TextProps(selectedSection.subtitle).apply { color = DEMO_MUTED })
                             when (selectedSection) {
                                 DemoSection.OVERVIEW -> renderOverviewSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.INSPECTOR -> renderInspectorSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30

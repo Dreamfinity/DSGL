@@ -4,11 +4,14 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import java.util.*
 
 object StyleEngine {
+    private data class AnonymousInspectorTarget(val path: String)
+
     private data class CacheKey(
         val typeName: String,
         val nodeId: String?,
         val classesHash: Int,
         val inlineHash: Int,
+        val inspectorHash: Int,
         val hovered: Boolean,
         val active: Boolean,
         val focused: Boolean,
@@ -25,7 +28,12 @@ object StyleEngine {
 
     private val cache: MutableMap<DOMNode, CachedStyle> = WeakHashMap()
     private val themeVariables: MutableMap<String, String> = linkedMapOf()
+    private val inspectorOverrides: MutableMap<Any, StyleDeclarations> = linkedMapOf()
     private var themeVersion: Long = 0L
+
+    fun inspectorOverrideTarget(node: DOMNode): Any {
+        return node.key ?: AnonymousInspectorTarget(anonymousInspectorPath(node))
+    }
 
     fun setThemeVariables(values: Map<String, String>) {
         themeVariables.clear()
@@ -52,6 +60,139 @@ object StyleEngine {
         StylesheetManager.pollForChanges()
     }
 
+    fun setInspectorOverride(nodeKey: Any, property: StyleProperty, expression: StyleExpression) {
+        if (expression is StyleExpression.Literal) {
+            validateLiteralForProperty(property, expression.value)
+        }
+        val perNode = inspectorOverrides.getOrPut(nodeKey) { StyleDeclarations() }
+        perNode.set(property, expression)
+        cache.clear()
+    }
+
+    fun setInspectorOverride(node: DOMNode, property: StyleProperty, expression: StyleExpression) {
+        setInspectorOverride(inspectorOverrideTarget(node), property, expression)
+    }
+
+    fun setInspectorOverrideLiteral(nodeKey: Any, property: StyleProperty, literal: String): Result<Unit> {
+        return runCatching {
+            validateLiteralForProperty(property, literal)
+            setInspectorOverride(nodeKey, property, StyleExpression.Literal(literal))
+        }
+    }
+
+    fun setInspectorOverrideLiteral(node: DOMNode, property: StyleProperty, literal: String): Result<Unit> {
+        return setInspectorOverrideLiteral(inspectorOverrideTarget(node), property, literal)
+    }
+
+    fun clearInspectorOverride(nodeKey: Any, property: StyleProperty? = null) {
+        val existing = inspectorOverrides[nodeKey] ?: return
+        if (property == null) {
+            inspectorOverrides.remove(nodeKey)
+        } else {
+            existing.values.remove(property)
+            if (existing.values.isEmpty()) {
+                inspectorOverrides.remove(nodeKey)
+            }
+        }
+        cache.clear()
+    }
+
+    fun clearInspectorOverride(node: DOMNode, property: StyleProperty? = null) {
+        clearInspectorOverride(inspectorOverrideTarget(node), property)
+    }
+
+    fun clearAllInspectorOverrides() {
+        if (inspectorOverrides.isEmpty()) return
+        inspectorOverrides.clear()
+        cache.clear()
+    }
+
+    fun inspectorOverridesFor(nodeKey: Any?): StyleDeclarations? {
+        if (nodeKey == null) return null
+        return inspectorOverrides[nodeKey]?.let(::copyStyleDeclarations)
+    }
+
+    fun inspectorOverridesFor(node: DOMNode): StyleDeclarations? {
+        return inspectorOverridesFor(inspectorOverrideTarget(node))
+    }
+
+    fun inspectorOverrideFor(nodeKey: Any?, property: StyleProperty): StyleExpression? {
+        if (nodeKey == null) return null
+        return inspectorOverrides[nodeKey]?.get(property)
+    }
+
+    fun inspectorOverrideFor(node: DOMNode, property: StyleProperty): StyleExpression? {
+        return inspectorOverrideFor(inspectorOverrideTarget(node), property)
+    }
+
+    fun inspect(node: DOMNode): StyleInspection {
+        val snapshot = StylesheetManager.snapshot()
+        val defaults = node.captureStyleDefaults()
+        val variables = resolvedVariables(snapshot)
+        val candidates = matchingCandidates(node, snapshot.index)
+        val merged = StyleDeclarations()
+        val sources = linkedMapOf<StyleProperty, StylePropertySource>()
+        val matchedRules = ArrayList<String>(candidates.size)
+
+        StyleProperty.entries.forEach { property ->
+            sources[property] = StylePropertySource(
+                property = property,
+                kind = StyleSourceKind.Default,
+                source = "default"
+            )
+        }
+
+        candidates.forEach { rule ->
+            merged.mergeFrom(rule.declarations)
+            rule.declarations.values.keys.forEach { property ->
+                sources[property] = StylePropertySource(
+                    property = property,
+                    kind = StyleSourceKind.Selector,
+                    source = "${selectorLabel(rule.selector)} @ ${rule.fileName}"
+                )
+            }
+            matchedRules += "${selectorLabel(rule.selector)} @ ${rule.fileName}"
+        }
+
+        node.inlineStyleDeclarations.values.keys.forEach { property ->
+            sources[property] = StylePropertySource(
+                property = property,
+                kind = StyleSourceKind.Inline,
+                source = "inline"
+            )
+        }
+        merged.mergeFrom(node.inlineStyleDeclarations)
+        val inspector = inspectorOverrides[inspectorOverrideTarget(node)]
+        inspector?.values?.keys?.forEach { property ->
+            sources[property] = StylePropertySource(
+                property = property,
+                kind = StyleSourceKind.InspectorOverride,
+                source = "inspector"
+            )
+        }
+        if (inspector != null) {
+            merged.mergeFrom(inspector)
+        }
+
+        var result = defaults.toComputedStyle()
+        merged.values.forEach { (property, expr) ->
+            val applied = runCatching {
+                applyProperty(result, property, expr, variables)
+            }.onFailure { error ->
+                println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
+            }.getOrNull()
+            if (applied != null) {
+                result = applied
+            }
+        }
+
+        return StyleInspection(
+            computed = result,
+            propertySources = sources.toMap(),
+            matchedRules = matchedRules
+        )
+    }
+
     fun applyStylesRecursively(root: DOMNode): Boolean {
         val snapshot = StylesheetManager.snapshot()
         return applyStylesRecursively(root, snapshot)
@@ -72,6 +213,7 @@ object StyleEngine {
             nodeId = node.styleId,
             classesHash = node.styleClasses.hashCode(),
             inlineHash = node.inlineStyleDeclarations.toStableHash(),
+            inspectorHash = inspectorOverrideHash(node),
             hovered = node.styleHovered,
             active = node.styleActive,
             focused = node.styleFocused,
@@ -101,19 +243,13 @@ object StyleEngine {
         snapshot: StylesheetSnapshot
     ): ComputedStyle {
         val merged = StyleDeclarations()
-        val candidates = gatherCandidates(node, snapshot.index)
-            .filter { selectorMatches(node, it.selector) }
-            .sortedWith(
-                compareBy<StyleRule> { it.selector.precedenceBucket() }
-                    .thenBy { it.sourceOrder }
-            )
+        val candidates = matchingCandidates(node, snapshot.index)
 
         candidates.forEach { merged.mergeFrom(it.declarations) }
         merged.mergeFrom(node.inlineStyleDeclarations)
+        inspectorOverrides[inspectorOverrideTarget(node)]?.let { merged.mergeFrom(it) }
 
-        val variables = linkedMapOf<String, String>()
-        variables.putAll(snapshot.rootVariables)
-        variables.putAll(themeVariables)
+        val variables = resolvedVariables(snapshot)
 
         var result = defaults.toComputedStyle()
         merged.values.forEach { (property, expr) ->
@@ -127,6 +263,22 @@ object StyleEngine {
             }
         }
         return result
+    }
+
+    private fun matchingCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
+        return gatherCandidates(node, index)
+            .filter { selectorMatches(node, it.selector) }
+            .sortedWith(
+                compareBy<StyleRule> { it.selector.precedenceBucket() }
+                    .thenBy { it.sourceOrder }
+            )
+    }
+
+    private fun resolvedVariables(snapshot: StylesheetSnapshot): Map<String, String> {
+        val variables = linkedMapOf<String, String>()
+        variables.putAll(snapshot.rootVariables)
+        variables.putAll(themeVariables)
+        return variables
     }
 
     private fun gatherCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
@@ -154,6 +306,24 @@ object StyleEngine {
             StylePseudoState.FOCUS -> node.styleFocused && !node.styleDisabled
             StylePseudoState.DISABLED -> node.styleDisabled
         }
+    }
+
+    private fun selectorLabel(selector: StyleSelector): String {
+        val base = when {
+            selector.id != null -> "#${selector.id}"
+            selector.typeName != null && selector.className != null -> "${selector.typeName}.${selector.className}"
+            selector.className != null -> ".${selector.className}"
+            selector.typeName != null -> selector.typeName
+            else -> "*"
+        }
+        val pseudo = when (selector.pseudoState) {
+            StylePseudoState.HOVER -> ":hover"
+            StylePseudoState.ACTIVE -> ":active"
+            StylePseudoState.FOCUS -> ":focus"
+            StylePseudoState.DISABLED -> ":disabled"
+            null -> ""
+        }
+        return base + pseudo
     }
 
     private fun applyProperty(
@@ -192,5 +362,32 @@ object StyleEngine {
             StyleProperty.GRID_ROW_SPAN -> current.copy(gridRowSpan = parseIntLike(literal).coerceAtLeast(1))
             StyleProperty.TEXT_WRAP -> current.copy(textWrap = parseTextWrap(literal))
         }
+    }
+
+    private fun inspectorOverrideHash(node: DOMNode): Int {
+        return inspectorOverrides[inspectorOverrideTarget(node)]?.toStableHash() ?: 0
+    }
+
+    private fun anonymousInspectorPath(node: DOMNode): String {
+        val parts = ArrayList<String>(8)
+        var current: DOMNode? = node
+        while (current != null) {
+            val parent = current.parent
+            val index = if (parent == null) {
+                0
+            } else {
+                parent.children.indexOf(current).coerceAtLeast(0)
+            }
+            parts += "${current.styleType}[$index]"
+            current = parent
+        }
+        parts.reverse()
+        return parts.joinToString(separator = "/")
+    }
+
+    private fun copyStyleDeclarations(value: StyleDeclarations): StyleDeclarations {
+        val copy = StyleDeclarations()
+        copy.values.putAll(value.values)
+        return copy
     }
 }

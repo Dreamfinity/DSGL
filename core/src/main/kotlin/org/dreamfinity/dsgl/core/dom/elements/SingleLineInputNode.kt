@@ -194,10 +194,14 @@ open class SingleLineInputNode(
     }
 
     private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
-        if (width != null) return width
-        if (availableOuterWidth == null) return null
+        val explicit = width
         val extras = margin.horizontal + padding.horizontal + border.horizontal
-        return (availableOuterWidth - extras).coerceAtLeast(0)
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
