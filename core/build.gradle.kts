@@ -1,7 +1,6 @@
-import java.io.File
-
 plugins {
     id("dsgl-core.conventions")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10"
 }
 
 val fontsRootDir: File = rootProject.file("fonts")
@@ -28,7 +27,7 @@ tasks.register("generateMsdfAtlases") {
 
     doLast {
         if (!msdfGeneratorExe.exists()) {
-            throw org.gradle.api.GradleException("MSDF generator not found: ${msdfGeneratorExe.path}")
+            throw GradleException("MSDF generator not found: ${msdfGeneratorExe.path}")
         }
         val fonts = ttfTree.files.sortedBy { it.relativeTo(fontsRootDir).invariantSeparatorsPath }
         if (fonts.isEmpty()) {
@@ -47,15 +46,16 @@ tasks.register("generateMsdfAtlases") {
             val atlasOutArg = "core/src/main/resources/fonts/${base}-mtsdf.png"
             val jsonOutArg = "core/src/main/resources/fonts/${base}-meta.json"
             val fontArg = "./fonts/$relative"
+            val charsetFile = "./fonts/charset.txt"
 
             val result = exec {
                 workingDir = rootProject.projectDir
                 commandLine(
                     msdfGeneratorExe.absolutePath,
                     "-font", fontArg,
-                    "--allglyphs",
+                    "-charset", charsetFile,
                     "-type", "mtsdf",
-                    "-pxrange", "4",
+                    "-pxrange", "8",
                     "-format", "png",
                     "-imageout", atlasOutArg,
                     "-json", jsonOutArg
@@ -63,9 +63,9 @@ tasks.register("generateMsdfAtlases") {
                 isIgnoreExitValue = true
             }
             if (result.exitValue != 0) {
-                throw org.gradle.api.GradleException(
+                throw GradleException(
                     "msdf-atlas-gen failed for '$fontArg' with exit code ${result.exitValue}. " +
-                        "Expected outputs: '$atlasOutArg', '$jsonOutArg'"
+                            "Expected outputs: '$atlasOutArg', '$jsonOutArg'"
                 )
             }
         }
@@ -77,6 +77,7 @@ tasks.register("generateMsdfAtlases") {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))
 }
