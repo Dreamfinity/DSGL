@@ -3,6 +3,9 @@ package org.dreamfinity.dsgl.core.dom
 import org.dreamfinity.dsgl.core.ComponentProps
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.StyleScope
+import org.dreamfinity.dsgl.core.animation.AnimationSpec
+import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.animation.TransitionSpec
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
@@ -10,6 +13,7 @@ import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
+import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 
 /**
  * Base class for all DOM nodes in the retained UI tree.
@@ -55,6 +59,11 @@ abstract class DOMNode(
     var gridColumnSpan: Int = 1
     var gridRowSpan: Int = 1
     var textWrap: TextWrap = TextWrap.Wrap
+    var transform: UiTransform = UiTransform.IDENTITY
+    var transformOrigin: TransformOrigin = TransformOrigin.CENTER
+    var opacity: Float = 1f
+    var transitionSpec: TransitionSpec = TransitionSpec.NONE
+    var animationSpecs: List<AnimationSpec> = emptyList()
     var styleId: String? = null
     val styleClasses: MutableSet<String> = linkedSetOf()
     var inlineStyleDeclarations: StyleDeclarations = StyleDeclarations()
@@ -93,6 +102,10 @@ abstract class DOMNode(
     private var styledBackgroundImage: String? = null
     private var styleDefaultsSnapshot: ComputedStyleDefaults? = null
     private var appliedComputedStyle: ComputedStyle? = null
+    private var baseForegroundColor: Int = DsglColors.TEXT
+    private var animatedTransform: UiTransform? = null
+    private var animatedOpacity: Float? = null
+    private var animatedColor: Int? = null
 
     private var onMouseDownHandler: ((MouseDownEvent) -> Unit)? = null
     private var onMouseUpHandler: ((MouseUpEvent) -> Unit)? = null
@@ -329,7 +342,33 @@ abstract class DOMNode(
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (dragRenderHidden || display == Display.None) return
+        val activeTransform = effectiveTransform()
+        val activeOpacity = effectiveOpacity()
+        val transformPushed = !activeTransform.isIdentity()
+        val opacityPushed = activeOpacity < 0.999f
+        if (transformPushed) {
+            val ox = bounds.x + bounds.width * transformOrigin.originX
+            val oy = bounds.y + bounds.height * transformOrigin.originY
+            out += RenderCommand.PushTransform(
+                originX = ox,
+                originY = oy,
+                translateX = activeTransform.translateX,
+                translateY = activeTransform.translateY,
+                scaleX = activeTransform.scaleX,
+                scaleY = activeTransform.scaleY,
+                rotateDeg = activeTransform.rotateDeg
+            )
+        }
+        if (opacityPushed) {
+            out += RenderCommand.PushOpacity(activeOpacity)
+        }
         buildRenderCommands(ctx, out)
+        if (opacityPushed) {
+            out += RenderCommand.PopOpacity
+        }
+        if (transformPushed) {
+            out += RenderCommand.PopTransform
+        }
     }
 
     /** Handles a click; return true when consumed. */
@@ -337,12 +376,12 @@ abstract class DOMNode(
 
     /** Dispatches a click through this node and its subtree. */
     fun dispatchClick(event: MouseClickEvent): Boolean {
-        return dispatchClickInternal(this, event)
+        return dispatchClickInternal(this, event, AffineTransform2D.IDENTITY)
     }
 
     /** Returns true if the mouse event is within current bounds. */
     fun hovered(event: MouseEvent): Boolean {
-        return isHitTestVisible() && bounds.contains(event.mouseX, event.mouseY)
+        return isHitTestVisible() && containsGlobalPoint(event.mouseX, event.mouseY)
     }
 
     fun isHitTestVisible(): Boolean {
@@ -424,7 +463,7 @@ abstract class DOMNode(
      * Default behavior enables capture for nodes with explicit external onMouseDrag handlers.
      */
     open fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean {
-        return onMouseDrag != null && bounds.contains(mouseX, mouseY)
+        return onMouseDrag != null && containsGlobalPoint(mouseX, mouseY)
     }
 
     internal fun syncBaseFrom(template: DOMNode) {
@@ -451,6 +490,11 @@ abstract class DOMNode(
         gridColumnSpan = template.gridColumnSpan
         gridRowSpan = template.gridRowSpan
         textWrap = template.textWrap
+        transform = template.transform
+        transformOrigin = template.transformOrigin
+        opacity = template.opacity
+        transitionSpec = template.transitionSpec
+        animationSpecs = template.animationSpecs
         styleId = template.styleId
         styleClasses.clear()
         styleClasses.addAll(template.styleClasses)
@@ -519,7 +563,10 @@ abstract class DOMNode(
             gridAutoFlow = gridAutoFlow,
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
-            textWrap = textWrap
+            textWrap = textWrap,
+            transform = transform,
+            transformOrigin = transformOrigin,
+            opacity = opacity
         )
         styleDefaultsSnapshot = computed
         return computed
@@ -528,6 +575,7 @@ abstract class DOMNode(
     internal fun applyComputedStyle(style: ComputedStyle): Boolean {
         val previous = appliedComputedStyle
         if (previous == style) {
+            StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
             return false
         }
         margin = style.margin
@@ -552,11 +600,16 @@ abstract class DOMNode(
         gridColumnSpan = style.gridColumnSpan
         gridRowSpan = style.gridRowSpan
         textWrap = style.textWrap
+        transform = style.transform
+        transformOrigin = style.transformOrigin
+        opacity = style.opacity
         applyBackgroundColor(style.backgroundColor)
         applyBackgroundImage(style.backgroundImage)
+        baseForegroundColor = style.foregroundColor
         applyForegroundColor(style.foregroundColor)
         applyFontSize(style.fontSize)
         appliedComputedStyle = style
+        StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
 
         if (previous == null) return true
         return previous.margin != style.margin ||
@@ -582,6 +635,54 @@ abstract class DOMNode(
                 previous.gridColumnSpan != style.gridColumnSpan ||
                 previous.gridRowSpan != style.gridRowSpan ||
                 previous.textWrap != style.textWrap
+    }
+
+    internal fun applyAnimationVisuals(transform: UiTransform?, opacity: Float?, color: Int?) {
+        animatedTransform = transform
+        animatedOpacity = opacity?.coerceIn(0f, 1f)
+        animatedColor = color
+        applyForegroundColor(animatedColor ?: baseForegroundColor)
+    }
+
+    fun effectiveTransform(): UiTransform = animatedTransform ?: transform
+
+    fun effectiveOpacity(): Float = (animatedOpacity ?: opacity).coerceIn(0f, 1f)
+
+    fun animationColorOverride(): Int? = animatedColor
+
+    fun localTransformMatrix(): AffineTransform2D {
+        val active = effectiveTransform()
+        if (active.isIdentity()) return AffineTransform2D.IDENTITY
+
+        val ox = bounds.x + bounds.width * transformOrigin.originX
+        val oy = bounds.y + bounds.height * transformOrigin.originY
+        val origin = AffineTransform2D.translation(ox, oy)
+        val originBack = AffineTransform2D.translation(-ox, -oy)
+        val translate = AffineTransform2D.translation(active.translateX, active.translateY)
+        val rotate = AffineTransform2D.rotation(active.rotateDeg)
+        val scale = AffineTransform2D.scale(active.scaleX, active.scaleY)
+        return translate.times(origin).times(rotate).times(scale).times(originBack)
+    }
+
+    fun worldTransformMatrix(): AffineTransform2D {
+        val chain = ArrayList<DOMNode>(8)
+        var current: DOMNode? = this
+        while (current != null) {
+            chain += current
+            current = current.parent
+        }
+        chain.reverse()
+        var result = AffineTransform2D.IDENTITY
+        chain.forEach { node ->
+            result = result.times(node.localTransformMatrix())
+        }
+        return result
+    }
+
+    fun containsGlobalPoint(x: Int, y: Int): Boolean {
+        val inverse = worldTransformMatrix().inverseOrNull() ?: return false
+        val local = inverse.transform(x.toFloat(), y.toFloat())
+        return bounds.contains(local.first, local.second)
     }
 
     protected open fun defaultBackgroundColor(): Int? = null

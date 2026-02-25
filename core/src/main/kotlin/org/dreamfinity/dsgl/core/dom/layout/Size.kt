@@ -8,4 +8,11 @@ data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
     fun contains(px: Int, py: Int): Boolean {
         return px >= x && py >= y && px < x + width && py < y + height
     }
+
+    fun contains(px: Float, py: Float): Boolean {
+        return px >= x.toFloat() &&
+                py >= y.toFloat() &&
+                px < (x + width).toFloat() &&
+                py < (y + height).toFloat()
+    }
 }

@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 
 private const val HOVER_DEBUG = false
 
@@ -9,7 +10,7 @@ private const val HOVER_DEBUG = false
  */
 fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
     val out = ArrayList<DOMNode>(8)
-    collectHoverChain(root, mouseX, mouseY, out)
+    collectHoverChain(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
     return out
 }
 
@@ -17,15 +18,19 @@ internal fun collectHoverChain(
     root: DOMNode,
     mouseX: Int,
     mouseY: Int,
+    parentTransform: AffineTransform2D,
     out: MutableList<DOMNode>
 ): Boolean {
     if (root.styleDisabled) return false
     if (!root.isHitTestVisible()) return false
-    if (!root.bounds.contains(mouseX, mouseY)) return false
+    val worldTransform = parentTransform.times(root.localTransformMatrix())
+    val inverse = worldTransform.inverseOrNull() ?: return false
+    val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
+    if (!root.bounds.contains(local.first, local.second)) return false
     out.add(root)
     for (i in root.children.size - 1 downTo 0) {
         val child = root.children[i]
-        if (collectHoverChain(child, mouseX, mouseY, out)) return true
+        if (collectHoverChain(child, mouseX, mouseY, worldTransform, out)) return true
     }
     return true
 }
@@ -42,7 +47,7 @@ fun updateHover(
     mouseDY: Int
 ) {
     val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
-    collectHoverChain(root, mouseX, mouseY, currHoverChain)
+    collectHoverChain(root, mouseX, mouseY, AffineTransform2D.IDENTITY, currHoverChain)
 
     val minSize = minOf(prevHoverChain.size, currHoverChain.size)
     var commonPrefixLen = 0

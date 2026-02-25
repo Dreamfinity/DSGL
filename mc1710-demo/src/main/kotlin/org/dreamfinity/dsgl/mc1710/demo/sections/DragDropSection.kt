@@ -1,9 +1,13 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.ButtonProps
+import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.ItemStackProps
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dnd.*
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
+import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private const val LEFT_PANEL_PERCENT = 58

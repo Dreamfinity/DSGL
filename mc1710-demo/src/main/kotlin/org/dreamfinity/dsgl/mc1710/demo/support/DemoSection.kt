@@ -10,6 +10,7 @@ enum class DemoSection(
     LAYOUT_DEBUG("Layout Debug", "Strict bounds validator and diagnostics"),
     DISPLAY("Display", "block/inline/none/flex/grid layout behaviors"),
     TEXT_WRAP("Text Wrap", "wrap/nowrap behavior for text rendering"),
+    ANIMATIONS("Animations & Transforms", "Transform hit-testing, transitions, keyframes, easing"),
     STYLESHEETS("Stylesheets", "Selectors, variables, pseudo-states, inline override"),
     MODALS("Modals", "Declarative stacked modal host (RB-inspired)"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),

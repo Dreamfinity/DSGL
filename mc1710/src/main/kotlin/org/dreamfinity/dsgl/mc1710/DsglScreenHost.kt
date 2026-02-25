@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
@@ -90,6 +91,7 @@ abstract class DsglScreenHost(
         inspectorOwnedMouseButton = -1
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
+        StyleAnimationEngine.clear()
         StyleEngine.setStylesDirectory(File(mc.mcDataDir, "dsgl/styles"))
         StyleEngine.forceReloadStylesheets()
         window = windowFactory()
@@ -114,6 +116,8 @@ abstract class DsglScreenHost(
             ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
         }
         lastFrameNanos = nowNanos
+        window.tick(dtSeconds.toFloat(), partialTicks)
+        StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
         var stylesAlreadyApplied = false
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
@@ -180,6 +184,7 @@ abstract class DsglScreenHost(
         inspectorOwnedMouseButton = -1
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
+        StyleAnimationEngine.clear()
         domTree?.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }

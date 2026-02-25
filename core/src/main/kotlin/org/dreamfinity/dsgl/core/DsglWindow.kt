@@ -76,6 +76,12 @@ abstract class DsglWindow {
     open fun onFrame(frameTimeMs: Long) {}
 
     /**
+     * Called every render frame with delta-time in seconds.
+     * [dtSeconds] is the primary timing source; [partialTicks] is host-provided interpolation hint.
+     */
+    open fun tick(dtSeconds: Float, partialTicks: Float?) {}
+
+    /**
      * When true, the host will rebuild the tree on resize.
      */
     open val rebuildOnResize: Boolean

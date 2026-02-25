@@ -74,7 +74,7 @@ open class SingleLineInputNode(
             this@SingleLineInputNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
-                if (!this@SingleLineInputNode.bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
+                if (!this@SingleLineInputNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 handlePointerDown(event.mouseX)
             }
             this@SingleLineInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
@@ -255,7 +255,7 @@ open class SingleLineInputNode(
 
     fun shouldCaptureTextSelectionDrag(mouseX: Int, mouseY: Int): Boolean {
         if (styleDisabled) return false
-        return bounds.contains(mouseX, mouseY)
+        return containsGlobalPoint(mouseX, mouseY)
     }
 
     private fun handlePointerDown(mouseX: Int) {

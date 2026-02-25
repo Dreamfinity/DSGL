@@ -1,6 +1,11 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.ButtonProps
+import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.InputProps
+import org.dreamfinity.dsgl.core.TextAreaProps
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED

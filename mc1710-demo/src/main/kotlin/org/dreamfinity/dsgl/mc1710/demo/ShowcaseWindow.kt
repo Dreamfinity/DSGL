@@ -6,6 +6,7 @@ import net.minecraft.init.Items
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
@@ -77,6 +78,18 @@ class ShowcaseWindow : DsglWindow() {
     internal var displayNoneClicks by state(0)
     internal var textWrapNoWrap by state(false)
     internal var textWrapWidth by state(176L)
+    internal var animationsToggle by state(false)
+    internal var animationsHover by state(false)
+    internal var animationsPaused by state(false)
+    internal var animationsDurationMs by state(1400L)
+    internal var animationsUseInfinite by state(true)
+    internal var animationsEasingIndex by state(0)
+    internal var animationsDirectionIndex by state(0)
+    internal var animationsFillModeIndex by state(0)
+    internal var animationsBezierX1 by state(17L)
+    internal var animationsBezierY1 by state(67L)
+    internal var animationsBezierX2 by state(83L)
+    internal var animationsBezierY2 by state(67L)
     internal var modalBackgroundCounter by state(0)
     internal var modalPromptValue by state("hello")
     internal var demoModals by state(emptyList<ModalSpec>())
@@ -217,6 +230,7 @@ class ShowcaseWindow : DsglWindow() {
     override fun onOpen() {
         prepareDemoMedia()
         prepareDemoStylesheet()
+        registerAnimationKeyframes()
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
         LayoutDebug.strictBounds = layoutDebugStrict
@@ -343,6 +357,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.TEXT_WRAP -> renderTextWrapSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.ANIMATIONS -> renderAnimationsSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30
@@ -1150,7 +1170,6 @@ class ShowcaseWindow : DsglWindow() {
         if (currentTargetId != null &&
             currentTargetId == proposed.targetId &&
             !dndReorderHoverLaneAppend &&
-            proposed.targetId != null &&
             proposed.insertAfter != dndReorderHoverInsertAfter
         ) {
             val currentNode = cards.firstOrNull { (id, _) -> id == currentTargetId }?.second
@@ -1309,6 +1328,26 @@ class ShowcaseWindow : DsglWindow() {
             }
         } catch (ex: Exception) {
             appendLog("Stylesheet prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+        }
+    }
+
+    private fun registerAnimationKeyframes() {
+        keyframes("showcase.spinFade") {
+            at(0f) {
+                transform { rotate(0f) }
+                opacity = 0.35f
+                color = 0xFFFF6B6B.toInt()
+            }
+            at(50f) {
+                transform { rotate(180f); scale(1.08f) }
+                opacity = 1f
+                color = 0xFF6BCB77.toInt()
+            }
+            at(100f) {
+                transform { rotate(360f) }
+                opacity = 0.35f
+                color = 0xFF4D96FF.toInt()
+            }
         }
     }
 

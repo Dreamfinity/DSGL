@@ -46,7 +46,7 @@ class RangeInputNode(
             this@RangeInputNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
-                if (!bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
+                if (!containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 activeDragIdentity = dragIdentity()
                 activeDragStartValue = this@RangeInputNode.value
                 val before = this@RangeInputNode.value

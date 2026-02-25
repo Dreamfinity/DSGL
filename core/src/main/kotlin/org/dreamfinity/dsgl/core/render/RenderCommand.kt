@@ -51,4 +51,26 @@ sealed class RenderCommand {
 
     /** Pops the current clipping rectangle. */
     object PopClip : RenderCommand()
+
+    /** Pushes transform for subsequent commands. */
+    data class PushTransform(
+        val originX: Float,
+        val originY: Float,
+        val translateX: Float,
+        val translateY: Float,
+        val scaleX: Float,
+        val scaleY: Float,
+        val rotateDeg: Float
+    ) : RenderCommand()
+
+    /** Pops current transform. */
+    object PopTransform : RenderCommand()
+
+    /** Multiplies current alpha by opacity (0..1). */
+    data class PushOpacity(
+        val opacity: Float
+    ) : RenderCommand()
+
+    /** Pops current opacity multiplier. */
+    object PopOpacity : RenderCommand()
 }

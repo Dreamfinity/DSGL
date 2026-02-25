@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -490,6 +491,34 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.TEXT_WRAP, value.toCssLiteral())
         }
 
+    var opacity: Float
+        get() = 1f
+        set(value) {
+            setLiteral(StyleProperty.OPACITY, value.coerceIn(0f, 1f).toString())
+        }
+
+    fun transform(value: UiTransform) {
+        setLiteral(StyleProperty.TRANSFORM, value.toCssLiteral())
+    }
+
+    fun transform(block: UiTransformBuilder.() -> Unit) {
+        transform(UiTransformBuilder().apply(block).build())
+    }
+
+    fun transformOrigin(originX: Float, originY: Float) {
+        val x = originX.coerceIn(0f, 1f)
+        val y = originY.coerceIn(0f, 1f)
+        setLiteral(StyleProperty.TRANSFORM_ORIGIN, "$x $y")
+    }
+
+    fun transition(block: TransitionBuilder.() -> Unit) {
+        node.transitionSpec = TransitionBuilder().apply(block).build()
+    }
+
+    fun animation(block: AnimationListBuilder.() -> Unit) {
+        node.animationSpecs = AnimationListBuilder().apply(block).build()
+    }
+
     fun margin(all: Int) {
         setSpacing(StyleProperty.MARGIN, Insets.all(all))
     }
@@ -678,6 +707,25 @@ class StyleScope internal constructor(private val node: DOMNode) {
     private fun TextWrap.toCssLiteral(): String = when (this) {
         TextWrap.Wrap -> "wrap"
         TextWrap.NoWrap -> "nowrap"
+    }
+
+    private fun UiTransform.toCssLiteral(): String {
+        if (isIdentity()) return "none"
+        return buildString {
+            append("translate(")
+            append(translateX)
+            append(",")
+            append(translateY)
+            append(") ")
+            append("scale(")
+            append(scaleX)
+            append(",")
+            append(scaleY)
+            append(") ")
+            append("rotate(")
+            append(rotateDeg)
+            append("deg)")
+        }
     }
 }
 

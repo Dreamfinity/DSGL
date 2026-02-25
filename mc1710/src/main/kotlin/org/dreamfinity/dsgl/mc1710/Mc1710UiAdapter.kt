@@ -27,6 +27,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     private val itemRenderer: RenderItem = RenderItem()
+    private val opacityStack: MutableList<Float> = ArrayList(8)
+    private var opacityMultiplier: Float = 1f
 
     override fun measureText(text: String): Int = mc.fontRendererObj.getStringWidth(text)
     override val fontHeight: Int
@@ -39,6 +41,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     /** Executes DSGL render commands using Minecraft rendering APIs. */
     override fun paint(commands: List<RenderCommand>) {
         paintsCount++
+        opacityStack.clear()
+        opacityMultiplier = 1f
         try {
             for (command in commands) {
                 when (command) {
@@ -48,18 +52,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                             command.y,
                             command.x + command.width,
                             command.y + command.height,
-                            command.color
+                            applyOpacity(command.color)
                         )
                     }
 
                     is RenderCommand.DrawText -> {
-                        mc.fontRendererObj.drawString(command.text, command.x, command.y, command.color)
+                        mc.fontRendererObj.drawString(command.text, command.x, command.y, applyOpacity(command.color))
                     }
 
                     is RenderCommand.DrawImage -> {
                         val location = resolveImage(command.resource) ?: continue
                         mc.textureManager.bindTexture(location)
-                        GL11.glColor3d(1.0, 1.0, 1.0)
+                        GL11.glColor4f(1f, 1f, 1f, opacityMultiplier.coerceIn(0f, 1f))
                         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
                         Gui.drawModalRectWithCustomSizedTexture(
                             command.x,
@@ -76,6 +80,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     is RenderCommand.DrawItemStack -> {
                         val stack = (command.stack as? McItemStackRef)?.stack ?: continue
                         withStack(attributesBitMask = GL11.GL_ALL_ATTRIB_BITS) {
+                            GL11.glColor4f(1f, 1f, 1f, opacityMultiplier.coerceIn(0f, 1f))
                             if (isBlockStack(stack)) {
                                 draw3DItem(stack, command.x, command.y, command.size, command.rotYDeg, command.rotXDeg)
                             } else {
@@ -91,11 +96,42 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     is RenderCommand.PopClip -> {
                         ScissorContext.pop()
                     }
+
+                    is RenderCommand.PushTransform -> {
+                        GL11.glPushMatrix()
+                        GL11.glTranslatef(command.originX, command.originY, 0f)
+                        GL11.glTranslatef(command.translateX, command.translateY, 0f)
+                        GL11.glRotatef(command.rotateDeg, 0f, 0f, 1f)
+                        GL11.glScalef(command.scaleX, command.scaleY, 1f)
+                        GL11.glTranslatef(-command.originX, -command.originY, 0f)
+                    }
+
+                    is RenderCommand.PopTransform -> {
+                        GL11.glPopMatrix()
+                    }
+
+                    is RenderCommand.PushOpacity -> {
+                        opacityStack.add(opacityMultiplier)
+                        opacityMultiplier = (opacityMultiplier * command.opacity).coerceIn(0f, 1f)
+                    }
+
+                    is RenderCommand.PopOpacity -> {
+                        opacityMultiplier = if (opacityStack.isEmpty()) 1f else opacityStack.removeAt(opacityStack.lastIndex)
+                    }
                 }
             }
         } finally {
             ScissorContext.clear()
+            opacityStack.clear()
+            opacityMultiplier = 1f
         }
+    }
+
+    private fun applyOpacity(color: Int): Int {
+        if (opacityMultiplier >= 0.999f) return color
+        val alpha = ((color ushr 24) and 0xFF)
+        val scaled = (alpha * opacityMultiplier).toInt().coerceIn(0, 255)
+        return (color and 0x00FF_FFFF) or (scaled shl 24)
     }
 
     private fun pushClip(guiX: Int, guiY: Int, guiWidth: Int, guiHeight: Int) {

@@ -630,6 +630,13 @@ object DefaultDndEngine : DndEngine {
             )
 
             RenderCommand.PopClip -> RenderCommand.PopClip
+            is RenderCommand.PushTransform -> command.copy(
+                originX = command.originX + dx,
+                originY = command.originY + dy
+            )
+            RenderCommand.PopTransform -> RenderCommand.PopTransform
+            is RenderCommand.PushOpacity -> command
+            RenderCommand.PopOpacity -> RenderCommand.PopOpacity
         }
     }
 

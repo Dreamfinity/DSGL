@@ -361,6 +361,9 @@ object StyleEngine {
             StyleProperty.GRID_COLUMN_SPAN -> current.copy(gridColumnSpan = parseIntLike(literal).coerceAtLeast(1))
             StyleProperty.GRID_ROW_SPAN -> current.copy(gridRowSpan = parseIntLike(literal).coerceAtLeast(1))
             StyleProperty.TEXT_WRAP -> current.copy(textWrap = parseTextWrap(literal))
+            StyleProperty.TRANSFORM -> current.copy(transform = parseTransform(literal))
+            StyleProperty.TRANSFORM_ORIGIN -> current.copy(transformOrigin = parseTransformOrigin(literal))
+            StyleProperty.OPACITY -> current.copy(opacity = parseOpacity(literal))
         }
     }
 
@@ -373,11 +376,7 @@ object StyleEngine {
         var current: DOMNode? = node
         while (current != null) {
             val parent = current.parent
-            val index = if (parent == null) {
-                0
-            } else {
-                parent.children.indexOf(current).coerceAtLeast(0)
-            }
+            val index = parent?.children?.indexOf(current)?.coerceAtLeast(0) ?: 0
             parts += "${current.styleType}[$index]"
             current = parent
         }

@@ -1,6 +1,10 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.ButtonProps
+import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.InputProps
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -46,8 +50,7 @@ fun UiScope.renderFocusRebuildSection(window: ShowcaseWindow, contentWidth: Int,
                         window.requestManualInvalidate("stable input Enter")
                         window.logHook("focus.stable.onKeyDown", event, "manual rebuild")
                     } else {
-                        window.focusStableValue =
-                            window.applyTextMutation(window.focusStableValue, event, maxLength = 28)
+                        window.focusStableValue = window.applyTextMutation(window.focusStableValue, event, maxLength = 28)
                         window.logHook("focus.stable.onKeyDown", event)
                     }
                 }
@@ -67,8 +70,7 @@ fun UiScope.renderFocusRebuildSection(window: ShowcaseWindow, contentWidth: Int,
                 key = "focus.unstable.input.${window.focusKeyVersion}"
                 width = contentWidth - 10
                 onKeyDown = { event ->
-                    window.focusUnstableValue =
-                        window.applyTextMutation(window.focusUnstableValue, event, maxLength = 28)
+                    window.focusUnstableValue = window.applyTextMutation(window.focusUnstableValue, event, maxLength = 28)
                     window.logHook("focus.unstable.onKeyDown", event)
                 }
             }

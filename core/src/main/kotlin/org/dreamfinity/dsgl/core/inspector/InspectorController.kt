@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.inspector
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -702,7 +703,10 @@ class InspectorController {
             StyleProperty.GRID_ROWS to (computed.gridRows?.toString() ?: "auto"),
             StyleProperty.GRID_COLUMN_SPAN to computed.gridColumnSpan.toString(),
             StyleProperty.GRID_ROW_SPAN to computed.gridRowSpan.toString(),
-            StyleProperty.TEXT_WRAP to computed.textWrap.name
+            StyleProperty.TEXT_WRAP to computed.textWrap.name,
+            StyleProperty.TRANSFORM to "tx=${computed.transform.translateX},ty=${computed.transform.translateY},sx=${computed.transform.scaleX},sy=${computed.transform.scaleY},rot=${computed.transform.rotateDeg}",
+            StyleProperty.TRANSFORM_ORIGIN to "${computed.transformOrigin.originX} ${computed.transformOrigin.originY}",
+            StyleProperty.OPACITY to formatFloatLiteral(computed.opacity)
         )
         values.forEach { (property, value) ->
             val source = inspection.propertySources[property]
@@ -1081,6 +1085,21 @@ class InspectorController {
             StyleProperty.GRID_COLUMN_SPAN -> style.gridColumnSpan.toString()
             StyleProperty.GRID_ROW_SPAN -> style.gridRowSpan.toString()
             StyleProperty.TEXT_WRAP -> if (style.textWrap == TextWrap.Wrap) "wrap" else "nowrap"
+            StyleProperty.TRANSFORM -> buildString {
+                append("translate(")
+                append(style.transform.translateX)
+                append(",")
+                append(style.transform.translateY)
+                append(") scale(")
+                append(style.transform.scaleX)
+                append(",")
+                append(style.transform.scaleY)
+                append(") rotate(")
+                append(style.transform.rotateDeg)
+                append("deg)")
+            }
+            StyleProperty.TRANSFORM_ORIGIN -> "${style.transformOrigin.originX} ${style.transformOrigin.originY}"
+            StyleProperty.OPACITY -> formatFloatLiteral(style.opacity)
         }
     }
 
@@ -1221,7 +1240,7 @@ class InspectorController {
 
     private fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
         val out = ArrayList<DOMNode>(8)
-        collectHoverChain(root, mouseX, mouseY, out)
+        collectHoverChain(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
         return out
     }
 
@@ -1229,15 +1248,19 @@ class InspectorController {
         node: DOMNode,
         mouseX: Int,
         mouseY: Int,
+        parentTransform: AffineTransform2D,
         out: MutableList<DOMNode>
     ): Boolean {
         if (node.styleDisabled) return false
         if (!node.isHitTestVisible()) return false
-        if (!node.bounds.contains(mouseX, mouseY)) return false
+        val world = parentTransform.times(node.localTransformMatrix())
+        val inverse = world.inverseOrNull() ?: return false
+        val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
+        if (!node.bounds.contains(local.first, local.second)) return false
         out += node
         for (index in node.children.lastIndex downTo 0) {
             val child = node.children[index]
-            if (collectHoverChain(child, mouseX, mouseY, out)) {
+            if (collectHoverChain(child, mouseX, mouseY, world, out)) {
                 return true
             }
         }

@@ -65,6 +65,9 @@ enum class CapabilityId(
     DISPLAY_FLEX("Display: flex", CapabilityGroup.SHOWCASE_FEATURES),
     DISPLAY_GRID("Display: grid", CapabilityGroup.SHOWCASE_FEATURES),
     TEXT_WRAP("Text wrap style demo", CapabilityGroup.SHOWCASE_FEATURES),
+    ANIMATION_TRANSFORM("Transform animation demo", CapabilityGroup.SHOWCASE_FEATURES),
+    ANIMATION_OPACITY("Opacity animation demo", CapabilityGroup.SHOWCASE_FEATURES),
+    ANIMATION_KEYFRAMES("Keyframes animation demo", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_HOST("Modal host overlay", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_STACKING("Modal deterministic stacking", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_BACKDROP("Modal backdrop behaviors", CapabilityGroup.SHOWCASE_FEATURES),
@@ -150,6 +153,19 @@ object CapabilityChecklistCatalog {
             CapabilityId.BUILDER_BUTTON,
             CapabilityId.BUILDER_INPUT,
             CapabilityId.TEXT_WRAP
+        )
+
+        DemoSection.ANIMATIONS -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.HOOK_MOUSE_ENTER,
+            CapabilityId.HOOK_MOUSE_LEAVE,
+            CapabilityId.ANIMATION_TRANSFORM,
+            CapabilityId.ANIMATION_OPACITY,
+            CapabilityId.ANIMATION_KEYFRAMES
         )
 
         DemoSection.MODALS -> setOf(

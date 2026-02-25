@@ -62,6 +62,44 @@ enum class TextWrap {
     NoWrap
 }
 
+data class UiTransform(
+    val translateX: Float = 0f,
+    val translateY: Float = 0f,
+    val scaleX: Float = 1f,
+    val scaleY: Float = 1f,
+    val rotateDeg: Float = 0f
+) {
+    fun translated(x: Float, y: Float): UiTransform = copy(translateX = translateX + x, translateY = translateY + y)
+    fun scaled(x: Float, y: Float = x): UiTransform = copy(scaleX = scaleX * x, scaleY = scaleY * y)
+    fun rotated(deg: Float): UiTransform = copy(rotateDeg = rotateDeg + deg)
+
+    fun isIdentity(): Boolean {
+        return translateX == 0f &&
+                translateY == 0f &&
+                scaleX == 1f &&
+                scaleY == 1f &&
+                rotateDeg == 0f
+    }
+
+    companion object {
+        val IDENTITY: UiTransform = UiTransform()
+    }
+}
+
+data class TransformOrigin(
+    val originX: Float = 0.5f,
+    val originY: Float = 0.5f
+) {
+    init {
+        require(originX in 0f..1f) { "transform originX must be in [0..1]" }
+        require(originY in 0f..1f) { "transform originY must be in [0..1]" }
+    }
+
+    companion object {
+        val CENTER: TransformOrigin = TransformOrigin(0.5f, 0.5f)
+    }
+}
+
 enum class StyleProperty(val key: String) {
     MARGIN("margin"),
     PADDING("padding"),
@@ -89,7 +127,10 @@ enum class StyleProperty(val key: String) {
     GRID_AUTO_FLOW("grid-auto-flow"),
     GRID_COLUMN_SPAN("grid-column-span"),
     GRID_ROW_SPAN("grid-row-span"),
-    TEXT_WRAP("text-wrap");
+    TEXT_WRAP("text-wrap"),
+    TRANSFORM("transform"),
+    TRANSFORM_ORIGIN("transform-origin"),
+    OPACITY("opacity");
 
     companion object {
         private val byName: Map<String, StyleProperty> = entries.associateBy { it.key.lowercase() } +
@@ -134,7 +175,11 @@ enum class StyleProperty(val key: String) {
             "gridrowspan" to GRID_ROW_SPAN,
             "grid-row-span" to GRID_ROW_SPAN,
             "textwrap" to TEXT_WRAP,
-            "text-wrap" to TEXT_WRAP
+            "text-wrap" to TEXT_WRAP,
+            "transform" to TRANSFORM,
+            "transformorigin" to TRANSFORM_ORIGIN,
+            "transform-origin" to TRANSFORM_ORIGIN,
+            "opacity" to OPACITY
         )
 
         fun fromKeyOrNull(name: String): StyleProperty? = byName[name.trim().lowercase()]
@@ -200,7 +245,10 @@ data class ComputedStyle(
     val gridAutoFlow: GridAutoFlow,
     val gridColumnSpan: Int,
     val gridRowSpan: Int,
-    val textWrap: TextWrap
+    val textWrap: TextWrap,
+    val transform: UiTransform,
+    val transformOrigin: TransformOrigin,
+    val opacity: Float
 )
 
 data class ComputedStyleDefaults(
@@ -230,7 +278,10 @@ data class ComputedStyleDefaults(
     val gridAutoFlow: GridAutoFlow = GridAutoFlow.Row,
     val gridColumnSpan: Int = 1,
     val gridRowSpan: Int = 1,
-    val textWrap: TextWrap = TextWrap.Wrap
+    val textWrap: TextWrap = TextWrap.Wrap,
+    val transform: UiTransform = UiTransform.IDENTITY,
+    val transformOrigin: TransformOrigin = TransformOrigin.CENTER,
+    val opacity: Float = 1f
 ) {
     fun toComputedStyle(): ComputedStyle {
         return ComputedStyle(
@@ -260,7 +311,10 @@ data class ComputedStyleDefaults(
             gridAutoFlow = gridAutoFlow,
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
-            textWrap = textWrap
+            textWrap = textWrap,
+            transform = transform,
+            transformOrigin = transformOrigin,
+            opacity = opacity
         )
     }
 }

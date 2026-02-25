@@ -93,7 +93,7 @@ class TextAreaNode(
                     event.cancelled = true
                     return@addEventListener
                 }
-                if (!this@TextAreaNode.bounds.contains(event.mouseX, event.mouseY)) return@addEventListener
+                if (!this@TextAreaNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 handleTextPointerDown(event.mouseX, event.mouseY)
             }
             this@TextAreaNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
@@ -175,7 +175,7 @@ class TextAreaNode(
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         lastMeasureText = { value -> ctx.measureText(value) }
         lastLineHeight = ctx.fontHeight.coerceAtLeast(1)
-        val display = if (text.isNotEmpty()) text else placeholder
+        val display = text.ifEmpty { placeholder }
         val contentLimit = resolvedContentLimit(availableOuterWidth)
         val naturalContentWidth = width ?: maxOf(
             layoutForText(display, null, ctx.fontHeight, ctx::measureText).maxLineWidth,
@@ -323,7 +323,7 @@ class TextAreaNode(
 
     fun shouldCaptureTextSelectionDrag(mouseX: Int, mouseY: Int): Boolean {
         if (styleDisabled) return false
-        return bounds.contains(mouseX, mouseY)
+        return containsGlobalPoint(mouseX, mouseY)
     }
 
     fun shouldCaptureAnyDrag(mouseX: Int, mouseY: Int): Boolean {

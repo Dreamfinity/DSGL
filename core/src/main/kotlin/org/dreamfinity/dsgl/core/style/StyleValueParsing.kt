@@ -5,6 +5,7 @@ import kotlin.math.roundToInt
 
 private val varRegex = Regex("""^var\(\s*(--[a-zA-Z0-9_-]+)\s*\)$""")
 private val numberRegex = Regex("""^-?\d+(\.\d+)?$""")
+private val functionCallRegex = Regex("""([a-zA-Z-]+)\(([^)]*)\)""")
 
 fun parseExpression(rawValue: String): StyleExpression {
     val trimmed = rawValue.trim()
@@ -127,6 +128,71 @@ fun parseTextWrap(raw: String): TextWrap {
     }
 }
 
+fun parseTransform(raw: String): UiTransform {
+    val input = raw.trim()
+    if (input.isBlank() || input.equals("none", ignoreCase = true)) {
+        return UiTransform.IDENTITY
+    }
+
+    var transform = UiTransform.IDENTITY
+    val matches = functionCallRegex.findAll(input).toList()
+    require(matches.isNotEmpty()) { "Expected transform functions, got '$raw'." }
+
+    matches.forEach { match ->
+        val fn = match.groupValues[1].trim().lowercase()
+        val args = match.groupValues[2]
+            .split(Regex("[,\\s]+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        transform = when (fn) {
+            "translate" -> {
+                require(args.size in 1..2) { "translate expects 1 or 2 arguments." }
+                val tx = parseFloatLike(args[0])
+                val ty = if (args.size >= 2) parseFloatLike(args[1]) else 0f
+                transform.translated(tx, ty)
+            }
+
+            "scale" -> {
+                require(args.size in 1..2) { "scale expects 1 or 2 arguments." }
+                val sx = parseFloatLike(args[0])
+                val sy = if (args.size >= 2) parseFloatLike(args[1]) else sx
+                transform.scaled(sx, sy)
+            }
+
+            "rotate" -> {
+                require(args.size == 1) { "rotate expects 1 argument." }
+                val normalized = args[0].removeSuffix("deg").trim()
+                transform.rotated(parseFloatLike(normalized))
+            }
+
+            else -> error("Unsupported transform function '$fn'.")
+        }
+    }
+    return transform
+}
+
+fun parseTransformOrigin(raw: String): TransformOrigin {
+    val parts = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    require(parts.size == 2) { "transform-origin expects exactly two values." }
+    val ox = parseOriginComponent(parts[0])
+    val oy = parseOriginComponent(parts[1])
+    return TransformOrigin(ox, oy)
+}
+
+private fun parseOriginComponent(raw: String): Float {
+    val value = raw.trim()
+    return if (value.endsWith("%")) {
+        val number = parseFloatLike(value.removeSuffix("%"))
+        (number / 100f).coerceIn(0f, 1f)
+    } else {
+        parseFloatLike(value).coerceIn(0f, 1f)
+    }
+}
+
+fun parseOpacity(raw: String): Float {
+    return parseFloatLike(raw).coerceIn(0f, 1f)
+}
+
 fun parseIntLike(raw: String): Int {
     val trimmed = raw.trim()
     require(numberRegex.matches(trimmed)) { "Expected number but got '$raw'." }
@@ -188,6 +254,9 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.GRID_COLUMN_SPAN -> parseIntLike(literal)
         StyleProperty.GRID_ROW_SPAN -> parseIntLike(literal)
         StyleProperty.TEXT_WRAP -> parseTextWrap(literal)
+        StyleProperty.TRANSFORM -> parseTransform(literal)
+        StyleProperty.TRANSFORM_ORIGIN -> parseTransformOrigin(literal)
+        StyleProperty.OPACITY -> parseOpacity(literal)
     }
 }
 

@@ -58,7 +58,10 @@ object StylePropertyRegistry {
         StylePropertyDescriptor(StyleProperty.GRID_AUTO_FLOW, StyleEditorValueType.EnumChoice, enumOptions = listOf("row", "column")),
         StylePropertyDescriptor(StyleProperty.GRID_COLUMN_SPAN, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
         StylePropertyDescriptor(StyleProperty.GRID_ROW_SPAN, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
-        StylePropertyDescriptor(StyleProperty.TEXT_WRAP, StyleEditorValueType.EnumChoice, enumOptions = listOf("wrap", "nowrap"))
+        StylePropertyDescriptor(StyleProperty.TEXT_WRAP, StyleEditorValueType.EnumChoice, enumOptions = listOf("wrap", "nowrap")),
+        StylePropertyDescriptor(StyleProperty.TRANSFORM, StyleEditorValueType.StringPreset, enumOptions = listOf("none", "translate(12, 0)", "scale(1.2)", "rotate(15deg)")),
+        StylePropertyDescriptor(StyleProperty.TRANSFORM_ORIGIN, StyleEditorValueType.StringPreset, enumOptions = listOf("0 0", "0.5 0.5", "1 1", "50% 50%")),
+        StylePropertyDescriptor(StyleProperty.OPACITY, StyleEditorValueType.FloatNumber, numericStep = 0.05f, minFloat = 0f)
     )
 
     private val byProperty: Map<StyleProperty, StylePropertyDescriptor> = all.associateBy { it.property }
