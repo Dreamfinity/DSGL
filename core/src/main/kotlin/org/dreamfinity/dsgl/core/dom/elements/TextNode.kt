@@ -7,6 +7,8 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
+import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
 /**
  * Static text node.
@@ -30,14 +32,32 @@ class TextNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        val lineHeight = resolveFontSize(ctx)
+        val parsed = parseTextForFormatting(this@TextNode.text)
+        val plainText = parsed.plainText
+        val baseFlags = baseTextStyleFlags()
+        val measureRange: (Int, Int) -> Int = { start, end ->
+            val safeStart = start.coerceIn(0, plainText.length)
+            val safeEnd = end.coerceIn(safeStart, plainText.length)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val extra = TextStyleMetrics.boldExtraPxForRange(
+                plainText = plainText,
+                spans = parsed.spans,
+                baseFlags = baseFlags,
+                rangeStart = safeStart,
+                rangeEnd = safeEnd
+            )
+            baseWidth + extra
+        }
         val contentLimit = resolvedContentLimit(availableOuterWidth)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentLimit else null
         val layout = TextLayoutEngine.layout(
-            text = this@TextNode.text,
+            text = plainText,
             maxWidth = wrapWidth,
             wrap = textWrap,
-            fontHeight = ctx.fontHeight,
-            measureText = ctx::measureText
+            fontHeight = lineHeight,
+            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureRange = measureRange
         )
         val naturalContentWidth = width ?: layout.maxLineWidth
         val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
@@ -59,19 +79,55 @@ class TextNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        val lineHeight = resolveFontSize(ctx)
+        val parsed = parseTextForFormatting(this@TextNode.text)
+        val plainText = parsed.plainText
+        val baseFlags = baseTextStyleFlags()
+        val measureRange: (Int, Int) -> Int = { start, end ->
+            val safeStart = start.coerceIn(0, plainText.length)
+            val safeEnd = end.coerceIn(safeStart, plainText.length)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val extra = TextStyleMetrics.boldExtraPxForRange(
+                plainText = plainText,
+                spans = parsed.spans,
+                baseFlags = baseFlags,
+                rangeStart = safeStart,
+                rangeEnd = safeEnd
+            )
+            baseWidth + extra
+        }
         addBorderCommands(out)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentWidth() else null
         val layout = TextLayoutEngine.layout(
-            text = this@TextNode.text,
+            text = plainText,
             maxWidth = wrapWidth,
             wrap = textWrap,
-            fontHeight = ctx.fontHeight,
-            measureText = ctx::measureText
+            fontHeight = lineHeight,
+            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureRange = measureRange
         )
         val baseX = contentX()
         var lineY = contentY()
         layout.lines.forEach { line ->
-            out.add(RenderCommand.DrawText(line.text, baseX, lineY, color))
+            val spans = MinecraftFormattingParser.resolveStyleSpans(
+                parsed = parsed,
+                baseColor = color,
+                baseFlags = baseFlags,
+                rangeStart = line.startIndex,
+                rangeEnd = line.endIndexExclusive
+            ).map { span ->
+                RenderCommand.TextStyleSpan(
+                    start = span.start,
+                    end = span.end,
+                    color = span.color,
+                    bold = span.flags.bold,
+                    italic = span.flags.italic,
+                    underline = span.flags.underline,
+                    strikethrough = span.flags.strikethrough,
+                    obfuscated = span.flags.obfuscated
+                )
+            }
+            out.add(drawTextCommand(line.text, baseX, lineY, color, spans))
             lineY += layout.lineHeight
         }
     }

@@ -1,5 +1,7 @@
 package org.dreamfinity.dsgl.core.render
 
+import org.dreamfinity.dsgl.core.style.TextFormatting
+
 /**
  * Platform-agnostic render commands emitted by the UI tree.
  */
@@ -18,8 +20,52 @@ sealed class RenderCommand {
         val text: String,
         val x: Int,
         val y: Int,
-        val color: Int
-    ) : RenderCommand()
+        val color: Int,
+        val fontId: String? = null,
+        val fontSize: Int? = null,
+        val textFormatting: TextFormatting = TextFormatting.None,
+        val bold: Boolean = false,
+        val italic: Boolean = false,
+        val underline: Boolean = false,
+        val strikethrough: Boolean = false,
+        val obfuscated: Boolean = false,
+        val textStyleSpans: List<TextStyleSpan> = emptyList(),
+        val sourceKey: String? = null
+    ) : RenderCommand() {
+        /**
+         * Returns a DrawText command with replaced color while preserving
+         * all other fields. This avoids relying on Kotlin synthetic copy$default ABI.
+         */
+        fun withColor(newColor: Int): DrawText {
+            return DrawText(
+                text = text,
+                x = x,
+                y = y,
+                color = newColor,
+                fontId = fontId,
+                fontSize = fontSize,
+                textFormatting = textFormatting,
+                bold = bold,
+                italic = italic,
+                underline = underline,
+                strikethrough = strikethrough,
+                obfuscated = obfuscated,
+                textStyleSpans = textStyleSpans,
+                sourceKey = sourceKey
+            )
+        }
+    }
+
+    data class TextStyleSpan(
+        val start: Int,
+        val end: Int,
+        val color: Int,
+        val bold: Boolean,
+        val italic: Boolean,
+        val underline: Boolean,
+        val strikethrough: Boolean,
+        val obfuscated: Boolean
+    )
 
     /** Image draw command. */
     data class DrawImage(

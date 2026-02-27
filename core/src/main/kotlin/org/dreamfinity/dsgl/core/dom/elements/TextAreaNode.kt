@@ -77,7 +77,8 @@ class TextAreaNode(
     private var scrollbarThumbFocusedColor: Int = 0xCCB7C3D1.toInt()
     private var scrollbarDragAnchorY: Int = 0
     private var lastMeasureText: ((String) -> Int)? = null
-    private var lastTextLayout: TextLayoutEngine.Layout = TextLayoutEngine.layout("", null, TextWrap.Wrap, 1) { 0 }
+    private var lastTextLayout: TextLayoutEngine.Layout =
+        TextLayoutEngine.layout(text = "", maxWidth = null, wrap = TextWrap.Wrap, fontHeight = 1, measureText = { 0 })
     private var lastTextLayoutWidth: Int? = null
 
     init {
@@ -173,20 +174,22 @@ class TextAreaNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        lastMeasureText = { value -> ctx.measureText(value) }
-        lastLineHeight = ctx.fontHeight.coerceAtLeast(1)
+        val lineHeight = resolveFontSize(ctx)
+        val measure: (String) -> Int = { value -> measureText(ctx, value) }
+        lastMeasureText = measure
+        lastLineHeight = lineHeight
         val display = text.ifEmpty { placeholder }
         val contentLimit = resolvedContentLimit(availableOuterWidth)
         val naturalContentWidth = width ?: maxOf(
-            layoutForText(display, null, ctx.fontHeight, ctx::measureText).maxLineWidth,
+            layoutForText(display, null, lineHeight, measure).maxLineWidth,
             minContentWidth
         )
         val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
         val textLayout = layoutForText(
             source = display,
             contentWidth = if (textWrap == TextWrap.Wrap) contentWidth else null,
-            fontHeight = ctx.fontHeight,
-            measureText = ctx::measureText
+            fontHeight = lineHeight,
+            measureText = measure
         )
         val contentHeight = height ?: maxOf(textLayout.totalHeight, minContentHeight)
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
@@ -206,6 +209,8 @@ class TextAreaNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        val lineHeight = resolveFontSize(ctx)
+        val measure: (String) -> Int = { value -> measureText(ctx, value) }
         val focused = FocusManager.isFocused(this)
         val bg = if (focused && !styleDisabled) focusedBackgroundColor else backgroundColor
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, bg))
@@ -216,19 +221,19 @@ class TextAreaNode(
         val innerY = contentY()
         val innerWidth = contentWidth()
         val innerHeight = contentHeight()
-        lastMeasureText = { value -> ctx.measureText(value) }
-        lastLineHeight = ctx.fontHeight.coerceAtLeast(1)
+        lastMeasureText = measure
+        lastLineHeight = lineHeight
         lastVisibleHeight = innerHeight.coerceAtLeast(lastLineHeight)
         editState.clampToLength(text.length)
         var textInnerWidth = innerWidth.coerceAtLeast(0)
-        var textLayout = layoutForText(text, textInnerWidth, ctx.fontHeight, ctx::measureText)
+        var textLayout = layoutForText(text, textInnerWidth, lineHeight, measure)
         var maxScroll = (textLayout.totalHeight - innerHeight).coerceAtLeast(0)
         hasVerticalOverflow = maxScroll > 0 && innerHeight > 0
         if (hasVerticalOverflow) {
             val constrainedWidth = (innerWidth - scrollbarWidth - scrollbarGap).coerceAtLeast(0)
             if (constrainedWidth != textInnerWidth) {
                 textInnerWidth = constrainedWidth
-                textLayout = layoutForText(text, textInnerWidth, ctx.fontHeight, ctx::measureText)
+                textLayout = layoutForText(text, textInnerWidth, lineHeight, measure)
                 maxScroll = (textLayout.totalHeight - innerHeight).coerceAtLeast(0)
             }
         }
@@ -239,7 +244,7 @@ class TextAreaNode(
 
         val showPlaceholder = text.isEmpty() && !focused && placeholder.isNotEmpty()
         val drawLayout = if (showPlaceholder) {
-            layoutForText(placeholder, textInnerWidth, ctx.fontHeight, ctx::measureText)
+            layoutForText(placeholder, textInnerWidth, lineHeight, measure)
         } else {
             textLayout
         }
@@ -260,14 +265,14 @@ class TextAreaNode(
         for (lineIndex in firstVisibleLine..lastVisibleLine) {
             val line = drawLayout.lines[lineIndex]
             val lineY = innerY - effectiveScroll + lineIndex * lastLineHeight
-            out.add(RenderCommand.DrawText(line.text, innerX, lineY, color))
+            out.add(drawTextCommand(line.text, innerX, lineY, color))
         }
 
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {
             val caret = caretLineAndColumn(editState.caretIndex, textLayout)
             val caretLine = textLayout.lines[caret.first]
             val caretPrefix = caretLine.text.substring(0, caret.second.coerceIn(0, caretLine.text.length))
-            val caretX = innerX + ctx.measureText(caretPrefix)
+            val caretX = innerX + measure(caretPrefix)
             val caretY = innerY - effectiveScroll + caret.first * lastLineHeight
             out.add(RenderCommand.DrawRect(caretX, caretY, 1, lastLineHeight, textColor))
         }

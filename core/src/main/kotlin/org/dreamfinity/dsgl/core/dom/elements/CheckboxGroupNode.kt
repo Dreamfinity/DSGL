@@ -57,10 +57,11 @@ class CheckboxGroupNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        boxSize = maxOf(10, ctx.fontHeight - 2)
-        lineHeight = ctx.fontHeight + 4
+        val fontHeight = resolveFontSize(ctx)
+        boxSize = maxOf(10, fontHeight - 2)
+        lineHeight = fontHeight + 4
         val contentLimit = resolvedContentLimit(availableOuterWidth)
-        val maxLabelWidth = variants.maxOfOrNull { ctx.measureText(it.label) } ?: 0
+        val maxLabelWidth = variants.maxOfOrNull { measureText(ctx, it.label) } ?: 0
         val naturalWidth = width ?: (boxSize + 6 + maxLabelWidth)
         val contentWidth = contentLimit?.let { minOf(it, naturalWidth) } ?: naturalWidth
         val contentHeight = height ?: (lineHeight * variants.size)
@@ -82,11 +83,13 @@ class CheckboxGroupNode(
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        boxSize = maxOf(10, ctx.fontHeight - 2)
-        lineHeight = ctx.fontHeight + 4
+        val fontHeight = resolveFontSize(ctx)
+        boxSize = maxOf(10, fontHeight - 2)
+        lineHeight = fontHeight + 4
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        val fontHeight = resolveFontSize(ctx)
         addBorderCommands(out)
         val startX = contentX()
         var cursorY = contentY()
@@ -97,8 +100,8 @@ class CheckboxGroupNode(
                 out.add(RenderCommand.DrawRect(startX + 2, boxY + 2, boxSize - 4, boxSize - 4, checkColor))
             }
             val textX = startX + boxSize + 6
-            val textY = cursorY + (lineHeight - ctx.fontHeight) / 2
-            out.add(RenderCommand.DrawText(option.label, textX, textY, textColor))
+            val textY = cursorY + (lineHeight - fontHeight) / 2
+            out.add(drawTextCommand(option.label, textX, textY, textColor))
             cursorY += lineHeight
         }
     }

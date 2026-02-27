@@ -12,6 +12,12 @@ interface UiMeasureContext {
     /** Measures text width in pixels. */
     fun measureText(text: String): Int
 
+    /** Font height for a specific font/style combination. */
+    fun fontHeight(fontId: String?, fontSize: Int?): Int = fontHeight
+
+    /** Measures text width for a specific font/style combination. */
+    fun measureText(text: String, fontId: String?, fontSize: Int?): Int = measureText(text)
+
     /** Executes render commands on the host. */
     fun paint(commands: List<RenderCommand>)
 }

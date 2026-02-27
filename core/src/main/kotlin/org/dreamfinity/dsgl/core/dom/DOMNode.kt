@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
@@ -14,6 +15,10 @@ import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
+import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
+import org.dreamfinity.dsgl.core.text.ParsedText
+import org.dreamfinity.dsgl.core.text.TextStyleFlags
+import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
 /**
  * Base class for all DOM nodes in the retained UI tree.
@@ -59,6 +64,13 @@ abstract class DOMNode(
     var gridColumnSpan: Int = 1
     var gridRowSpan: Int = 1
     var textWrap: TextWrap = TextWrap.Wrap
+    var textFormatting: TextFormatting = TextFormatting.None
+    var fontWeight: FontWeight = FontWeight.Normal
+    var fontStyle: org.dreamfinity.dsgl.core.style.FontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Normal
+    var textDecoration: TextDecoration = TextDecoration.None
+    var textObfuscated: Boolean = false
+    var fontId: String? = FontRegistry.DEFAULT_FONT_ID
+    var fontSize: Int? = null
     var transform: UiTransform = UiTransform.IDENTITY
     var transformOrigin: TransformOrigin = TransformOrigin.CENTER
     var opacity: Float = 1f
@@ -490,6 +502,13 @@ abstract class DOMNode(
         gridColumnSpan = template.gridColumnSpan
         gridRowSpan = template.gridRowSpan
         textWrap = template.textWrap
+        textFormatting = template.textFormatting
+        fontWeight = template.fontWeight
+        fontStyle = template.fontStyle
+        textDecoration = template.textDecoration
+        textObfuscated = template.textObfuscated
+        fontId = template.fontId
+        fontSize = template.fontSize
         transform = template.transform
         transformOrigin = template.transformOrigin
         opacity = template.opacity
@@ -545,7 +564,12 @@ abstract class DOMNode(
             borderWidth = maxOf(border.top, border.right, border.bottom, border.left),
             borderRadius = borderRadius,
             foregroundColor = defaultForegroundColor(),
+            fontId = defaultFontId(),
             fontSize = defaultFontSize(),
+            fontWeight = fontWeight,
+            fontStyle = fontStyle,
+            textDecoration = textDecoration,
+            obfuscated = textObfuscated,
             width = width,
             height = height,
             align = align,
@@ -564,6 +588,7 @@ abstract class DOMNode(
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
             textWrap = textWrap,
+            textFormatting = textFormatting,
             transform = transform,
             transformOrigin = transformOrigin,
             opacity = opacity
@@ -600,6 +625,13 @@ abstract class DOMNode(
         gridColumnSpan = style.gridColumnSpan
         gridRowSpan = style.gridRowSpan
         textWrap = style.textWrap
+        textFormatting = style.textFormatting
+        fontWeight = style.fontWeight
+        fontStyle = style.fontStyle
+        textDecoration = style.textDecoration
+        textObfuscated = style.obfuscated
+        fontId = style.fontId
+        fontSize = style.fontSize
         transform = style.transform
         transformOrigin = style.transformOrigin
         opacity = style.opacity
@@ -607,6 +639,7 @@ abstract class DOMNode(
         applyBackgroundImage(style.backgroundImage)
         baseForegroundColor = style.foregroundColor
         applyForegroundColor(style.foregroundColor)
+        applyFontId(style.fontId)
         applyFontSize(style.fontSize)
         appliedComputedStyle = style
         StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
@@ -634,7 +667,14 @@ abstract class DOMNode(
                 previous.gridAutoFlow != style.gridAutoFlow ||
                 previous.gridColumnSpan != style.gridColumnSpan ||
                 previous.gridRowSpan != style.gridRowSpan ||
-                previous.textWrap != style.textWrap
+                previous.textWrap != style.textWrap ||
+                previous.textFormatting != style.textFormatting ||
+                previous.fontWeight != style.fontWeight ||
+                previous.fontStyle != style.fontStyle ||
+                previous.textDecoration != style.textDecoration ||
+                previous.obfuscated != style.obfuscated ||
+                previous.fontId != style.fontId ||
+                previous.fontSize != style.fontSize
     }
 
     internal fun applyAnimationVisuals(transform: UiTransform?, opacity: Float?, color: Int?) {
@@ -691,6 +731,8 @@ abstract class DOMNode(
 
     protected open fun defaultForegroundColor(): Int = DsglColors.TEXT
 
+    protected open fun defaultFontId(): String? = FontRegistry.DEFAULT_FONT_ID
+
     protected open fun defaultFontSize(): Int? = null
 
     protected open fun applyBackgroundColor(value: Int?) {}
@@ -701,7 +743,67 @@ abstract class DOMNode(
 
     protected open fun applyForegroundColor(value: Int) {}
 
+    protected open fun applyFontId(value: String?) {}
+
     protected open fun applyFontSize(value: Int?) {}
+
+    protected fun resolveFontSize(ctx: UiMeasureContext): Int {
+        return ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
+    }
+
+    protected fun parseTextForFormatting(rawText: String): ParsedText {
+        return MinecraftFormattingParser.parse(rawText, textFormatting)
+    }
+
+    protected fun baseTextStyleFlags(): TextStyleFlags {
+        return TextStyleFlags(
+            bold = fontWeight == FontWeight.Bold,
+            italic = fontStyle == FontStyle.Italic,
+            underline = textDecoration == TextDecoration.Underline ||
+                    textDecoration == TextDecoration.UnderlineStrikethrough,
+            strikethrough = textDecoration == TextDecoration.Strikethrough ||
+                    textDecoration == TextDecoration.UnderlineStrikethrough,
+            obfuscated = textObfuscated
+        )
+    }
+
+    protected fun measureText(ctx: UiMeasureContext, text: String): Int {
+        val parsed = parseTextForFormatting(text)
+        val plainText = parsed.plainText
+        val base = ctx.measureText(plainText, fontId, fontSize)
+        val extraBold = TextStyleMetrics.boldExtraPxForRange(
+            plainText = plainText,
+            spans = parsed.spans,
+            baseFlags = baseTextStyleFlags()
+        )
+        return base + extraBold
+    }
+
+    protected fun drawTextCommand(
+        text: String,
+        x: Int,
+        y: Int,
+        color: Int,
+        styleSpans: List<RenderCommand.TextStyleSpan> = emptyList()
+    ): RenderCommand.DrawText {
+        val baseFlags = baseTextStyleFlags()
+        return RenderCommand.DrawText(
+            text = text,
+            x = x,
+            y = y,
+            color = color,
+            fontId = fontId,
+            fontSize = fontSize,
+            textFormatting = textFormatting,
+            bold = baseFlags.bold,
+            italic = baseFlags.italic,
+            underline = baseFlags.underline,
+            strikethrough = baseFlags.strikethrough,
+            obfuscated = baseFlags.obfuscated,
+            textStyleSpans = styleSpans,
+            sourceKey = key?.toString()
+        )
+    }
 
     protected fun contentX(): Int = bounds.x + border.left + padding.left
 

@@ -78,6 +78,13 @@ class ShowcaseWindow : DsglWindow() {
     internal var displayNoneClicks by state(0)
     internal var textWrapNoWrap by state(false)
     internal var textWrapWidth by state(176L)
+    internal var msdfFontIndex by state(0)
+    internal var msdfOpacityPercent by state(100L)
+    internal var msdfFontSizePx by state(9L)
+    internal var msdfWrapWidth by state(220L)
+    internal var msdfColorIndex by state(0)
+    internal var msdfParseMinecraftFormatting by state(true)
+    internal var msdfShowBaselineGuides by state(java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations"))
     internal var animationsToggle by state(false)
     internal var animationsHover by state(false)
     internal var animationsPaused by state(false)
@@ -357,6 +364,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.TEXT_WRAP -> renderTextWrapSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.MSDF_FONTS -> renderMsdfFontsSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30

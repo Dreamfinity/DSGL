@@ -8,9 +8,11 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
+import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
 import java.io.File
@@ -27,12 +29,22 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     private val itemRenderer: RenderItem = RenderItem()
+    private val textRenderer: MsdfTextRenderer = MsdfTextRenderer()
     private val opacityStack: MutableList<Float> = ArrayList(8)
     private var opacityMultiplier: Float = 1f
+    private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
 
-    override fun measureText(text: String): Int = mc.fontRendererObj.getStringWidth(text)
+    override fun measureText(text: String): Int = textRenderer.measureText(text, null, null)
+    override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
+        return textRenderer.measureText(text, fontId, fontSize)
+    }
+
     override val fontHeight: Int
-        get() = mc.fontRendererObj.FONT_HEIGHT
+        get() = textRenderer.lineHeight(FontRegistry.DEFAULT_FONT_ID, null)
+
+    override fun fontHeight(fontId: String?, fontSize: Int?): Int {
+        return textRenderer.lineHeight(fontId, fontSize)
+    }
 
     /** Returns the scaled resolution for the current Minecraft window. */
     fun scaledResolution(): ScaledResolution =
@@ -57,7 +69,22 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     }
 
                     is RenderCommand.DrawText -> {
-                        mc.fontRendererObj.drawString(command.text, command.x, command.y, applyOpacity(command.color))
+                        try {
+                            textRenderer.draw(
+                                command = command,
+                                opacityMultiplier = opacityMultiplier
+                            )
+                        } catch (error: LinkageError) {
+                            logRateLimited(
+                                key = "drawText:linkage",
+                                message = "[DSGL] Skipping DrawText due linkage error in text renderer: ${error.message}"
+                            )
+                        } catch (error: Throwable) {
+                            logRateLimited(
+                                key = "drawText:runtime",
+                                message = "[DSGL] Skipping DrawText due renderer error: ${error.message}"
+                            )
+                        }
                     }
 
                     is RenderCommand.DrawImage -> {
@@ -132,6 +159,14 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val alpha = ((color ushr 24) and 0xFF)
         val scaled = (alpha * opacityMultiplier).toInt().coerceIn(0, 255)
         return (color and 0x00FF_FFFF) or (scaled shl 24)
+    }
+
+    private fun logRateLimited(key: String, message: String) {
+        val now = System.currentTimeMillis()
+        val previous = errorLogTimes[key] ?: 0L
+        if (now - previous < 3_000L) return
+        errorLogTimes[key] = now
+        println(message)
     }
 
     private fun pushClip(guiX: Int, guiY: Int, guiWidth: Int, guiHeight: Int) {

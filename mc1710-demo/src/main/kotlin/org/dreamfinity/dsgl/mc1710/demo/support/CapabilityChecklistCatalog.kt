@@ -65,6 +65,9 @@ enum class CapabilityId(
     DISPLAY_FLEX("Display: flex", CapabilityGroup.SHOWCASE_FEATURES),
     DISPLAY_GRID("Display: grid", CapabilityGroup.SHOWCASE_FEATURES),
     TEXT_WRAP("Text wrap style demo", CapabilityGroup.SHOWCASE_FEATURES),
+    MSDF_FONT_SWITCH("MSDF font switching", CapabilityGroup.SHOWCASE_FEATURES),
+    MSDF_OPACITY("MSDF opacity rendering", CapabilityGroup.SHOWCASE_FEATURES),
+    MSDF_WRAP("MSDF wrapping + measurement", CapabilityGroup.SHOWCASE_FEATURES),
     ANIMATION_TRANSFORM("Transform animation demo", CapabilityGroup.SHOWCASE_FEATURES),
     ANIMATION_OPACITY("Opacity animation demo", CapabilityGroup.SHOWCASE_FEATURES),
     ANIMATION_KEYFRAMES("Keyframes animation demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -153,6 +156,16 @@ object CapabilityChecklistCatalog {
             CapabilityId.BUILDER_BUTTON,
             CapabilityId.BUILDER_INPUT,
             CapabilityId.TEXT_WRAP
+        )
+
+        DemoSection.MSDF_FONTS -> setOf(
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.MSDF_FONT_SWITCH,
+            CapabilityId.MSDF_OPACITY,
+            CapabilityId.MSDF_WRAP
         )
 
         DemoSection.ANIMATIONS -> setOf(

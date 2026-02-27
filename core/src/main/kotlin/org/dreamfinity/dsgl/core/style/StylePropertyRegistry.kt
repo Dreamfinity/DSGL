@@ -39,7 +39,20 @@ object StylePropertyRegistry {
         StylePropertyDescriptor(StyleProperty.BORDER_WIDTH, StyleEditorValueType.IntNumber, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.BORDER_RADIUS, StyleEditorValueType.IntNumber, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.FOREGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
+        StylePropertyDescriptor(
+            StyleProperty.FONT_ID,
+            StyleEditorValueType.StringPreset,
+            enumOptions = listOf("minecraft", "ubuntu", "JetBrains Mono")
+        ),
         StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
+        StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold")),
+        StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic")),
+        StylePropertyDescriptor(
+            StyleProperty.TEXT_DECORATION,
+            StyleEditorValueType.EnumChoice,
+            enumOptions = listOf("none", "underline", "strikethrough", "underline-strikethrough")
+        ),
+        StylePropertyDescriptor(StyleProperty.OBFUSCATED, StyleEditorValueType.EnumChoice, enumOptions = listOf("false", "true")),
         StylePropertyDescriptor(StyleProperty.ALIGN, StyleEditorValueType.EnumChoice, enumOptions = listOf("start", "center", "end")),
         StylePropertyDescriptor(StyleProperty.FLEX_DIRECTION, StyleEditorValueType.EnumChoice, enumOptions = listOf("row", "column")),
         StylePropertyDescriptor(
@@ -59,6 +72,7 @@ object StylePropertyRegistry {
         StylePropertyDescriptor(StyleProperty.GRID_COLUMN_SPAN, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
         StylePropertyDescriptor(StyleProperty.GRID_ROW_SPAN, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
         StylePropertyDescriptor(StyleProperty.TEXT_WRAP, StyleEditorValueType.EnumChoice, enumOptions = listOf("wrap", "nowrap")),
+        StylePropertyDescriptor(StyleProperty.TEXT_FORMATTING, StyleEditorValueType.EnumChoice, enumOptions = listOf("none", "minecraft")),
         StylePropertyDescriptor(StyleProperty.TRANSFORM, StyleEditorValueType.StringPreset, enumOptions = listOf("none", "translate(12, 0)", "scale(1.2)", "rotate(15deg)")),
         StylePropertyDescriptor(StyleProperty.TRANSFORM_ORIGIN, StyleEditorValueType.StringPreset, enumOptions = listOf("0 0", "0.5 0.5", "1 1", "50% 50%")),
         StylePropertyDescriptor(StyleProperty.OPACITY, StyleEditorValueType.FloatNumber, numericStep = 0.05f, minFloat = 0f)

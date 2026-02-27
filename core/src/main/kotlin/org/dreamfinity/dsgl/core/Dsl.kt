@@ -208,6 +208,24 @@ class UiScope internal constructor(private val parent: DOMNode) {
     }
 
     fun text(
+        value: String,
+        minecraftFormatting: Boolean,
+        ref: RefTarget<ElementHandle>? = null,
+        block: (TextProps.() -> Unit)? = null
+    ) {
+        val props = TextProps(value)
+        block?.invoke(props)
+        if (minecraftFormatting) {
+            val previous = props.style
+            props.style = {
+                textFormatting = TextFormatting.Minecraft
+                previous()
+            }
+        }
+        text(props, ref)
+    }
+
+    fun text(
         value: () -> String
     ) {
         text(value = value, ref = null, block = null)
@@ -220,6 +238,24 @@ class UiScope internal constructor(private val parent: DOMNode) {
     ) {
         val props = TextProps(value)
         block?.invoke(props)
+        text(props, ref)
+    }
+
+    fun text(
+        value: () -> String,
+        minecraftFormatting: Boolean,
+        ref: RefTarget<ElementHandle>? = null,
+        block: (TextProps.() -> Unit)? = null
+    ) {
+        val props = TextProps(value)
+        block?.invoke(props)
+        if (minecraftFormatting) {
+            val previous = props.style
+            props.style = {
+                textFormatting = TextFormatting.Minecraft
+                previous()
+            }
+        }
         text(props, ref)
     }
 
@@ -491,6 +527,36 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.TEXT_WRAP, value.toCssLiteral())
         }
 
+    var textFormatting: TextFormatting
+        get() = TextFormatting.None
+        set(value) {
+            setLiteral(StyleProperty.TEXT_FORMATTING, value.toCssLiteral())
+        }
+
+    var fontWeight: FontWeight
+        get() = FontWeight.Normal
+        set(value) {
+            setLiteral(StyleProperty.FONT_WEIGHT, value.toCssLiteral())
+        }
+
+    var fontStyle: org.dreamfinity.dsgl.core.style.FontStyle
+        get() = org.dreamfinity.dsgl.core.style.FontStyle.Normal
+        set(value) {
+            setLiteral(StyleProperty.FONT_STYLE, value.toCssLiteral())
+        }
+
+    var textDecoration: TextDecoration
+        get() = TextDecoration.None
+        set(value) {
+            setLiteral(StyleProperty.TEXT_DECORATION, value.toCssLiteral())
+        }
+
+    var obfuscated: Boolean
+        get() = false
+        set(value) {
+            setLiteral(StyleProperty.OBFUSCATED, value.toString())
+        }
+
     var opacity: Float
         get() = 1f
         set(value) {
@@ -609,6 +675,14 @@ class StyleScope internal constructor(private val node: DOMNode) {
         setExpression(StyleProperty.FOREGROUND_COLOR, variable)
     }
 
+    fun fontId(value: String) {
+        setLiteral(StyleProperty.FONT_ID, "\"${value.trim()}\"")
+    }
+
+    fun fontId(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.FONT_ID, variable)
+    }
+
     fun fontSize(value: Int) {
         setLiteral(StyleProperty.FONT_SIZE, value.toString())
     }
@@ -707,6 +781,28 @@ class StyleScope internal constructor(private val node: DOMNode) {
     private fun TextWrap.toCssLiteral(): String = when (this) {
         TextWrap.Wrap -> "wrap"
         TextWrap.NoWrap -> "nowrap"
+    }
+
+    private fun TextFormatting.toCssLiteral(): String = when (this) {
+        TextFormatting.None -> "none"
+        TextFormatting.Minecraft -> "minecraft"
+    }
+
+    private fun FontWeight.toCssLiteral(): String = when (this) {
+        FontWeight.Normal -> "normal"
+        FontWeight.Bold -> "bold"
+    }
+
+    private fun org.dreamfinity.dsgl.core.style.FontStyle.toCssLiteral(): String = when (this) {
+        org.dreamfinity.dsgl.core.style.FontStyle.Normal -> "normal"
+        org.dreamfinity.dsgl.core.style.FontStyle.Italic -> "italic"
+    }
+
+    private fun TextDecoration.toCssLiteral(): String = when (this) {
+        TextDecoration.None -> "none"
+        TextDecoration.Underline -> "underline"
+        TextDecoration.Strikethrough -> "strikethrough"
+        TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
     }
 
     private fun UiTransform.toCssLiteral(): String {

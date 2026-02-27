@@ -128,6 +128,51 @@ fun parseTextWrap(raw: String): TextWrap {
     }
 }
 
+fun parseTextFormatting(raw: String): TextFormatting {
+    return when (raw.trim().lowercase()) {
+        "none" -> TextFormatting.None
+        "minecraft" -> TextFormatting.Minecraft
+        else -> error("Unsupported text-formatting value '$raw'.")
+    }
+}
+
+fun parseFontWeight(raw: String): FontWeight {
+    return when (raw.trim().lowercase()) {
+        "normal" -> FontWeight.Normal
+        "bold" -> FontWeight.Bold
+        else -> error("Unsupported font-weight value '$raw'.")
+    }
+}
+
+fun parseFontStyle(raw: String): FontStyle {
+    return when (raw.trim().lowercase()) {
+        "normal" -> FontStyle.Normal
+        "italic" -> FontStyle.Italic
+        else -> error("Unsupported font-style value '$raw'.")
+    }
+}
+
+fun parseTextDecoration(raw: String): TextDecoration {
+    return when (raw.trim().lowercase()) {
+        "none" -> TextDecoration.None
+        "underline" -> TextDecoration.Underline
+        "strikethrough", "line-through" -> TextDecoration.Strikethrough
+        "underline-strikethrough", "underline line-through", "line-through underline" -> {
+            TextDecoration.UnderlineStrikethrough
+        }
+
+        else -> error("Unsupported text-decoration value '$raw'.")
+    }
+}
+
+fun parseBooleanLike(raw: String): Boolean {
+    return when (raw.trim().lowercase()) {
+        "true", "1", "yes", "on" -> true
+        "false", "0", "no", "off" -> false
+        else -> error("Expected boolean but got '$raw'.")
+    }
+}
+
 fun parseTransform(raw: String): UiTransform {
     val input = raw.trim()
     if (input.isBlank() || input.equals("none", ignoreCase = true)) {
@@ -231,6 +276,7 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.FOREGROUND_COLOR -> parseColor(literal)
 
         StyleProperty.BACKGROUND_IMAGE -> parseStringLiteral(literal)
+        StyleProperty.FONT_ID -> parseStringLiteral(literal)
 
         StyleProperty.BORDER_WIDTH,
         StyleProperty.BORDER_RADIUS,
@@ -254,6 +300,11 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.GRID_COLUMN_SPAN -> parseIntLike(literal)
         StyleProperty.GRID_ROW_SPAN -> parseIntLike(literal)
         StyleProperty.TEXT_WRAP -> parseTextWrap(literal)
+        StyleProperty.TEXT_FORMATTING -> parseTextFormatting(literal)
+        StyleProperty.FONT_WEIGHT -> parseFontWeight(literal)
+        StyleProperty.FONT_STYLE -> parseFontStyle(literal)
+        StyleProperty.TEXT_DECORATION -> parseTextDecoration(literal)
+        StyleProperty.OBFUSCATED -> parseBooleanLike(literal)
         StyleProperty.TRANSFORM -> parseTransform(literal)
         StyleProperty.TRANSFORM_ORIGIN -> parseTransformOrigin(literal)
         StyleProperty.OPACITY -> parseOpacity(literal)

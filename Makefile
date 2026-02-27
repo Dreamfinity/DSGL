@@ -1,0 +1,39 @@
+.\bin\msdf-atlas-gen.exe `
+    -font './fonts/noto/Noto_Sans/NotoSans-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Mono/NotoSansMono-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font './fonts/noto/Noto_Sans_Arabic/NotoSansArabic-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font './fonts/noto/Noto_Sans_Armenian/NotoSansArmenian-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Georgian/NotoSansGeorgian-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Hebrew/NotoSansHebrew-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Kannada/NotoSansKannada-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Lao/NotoSansLao-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Malayalam/NotoSansMalayalam-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Old_Hungarian/NotoSansOldHungarian-Regular.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Old_Persian/NotoSansOldPersian-Regular.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_KR/NotoSansKR-VariableFont_wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_SC/NotoSansSC-VariableFont_wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_TC/NotoSansTC-VariableFont_wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Symbols/NotoSansSymbols-VariableFont_wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Symbols_2/NotoSansSymbols2-Regular.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Tamil/NotoSansTamil-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "./fonts/noto/Noto_Sans_Thai/NotoSansThai-VariableFont_wdth,wght.ttf" -allglyphs `
+    -imageout "noto.png" -json "noto.json" -type mtsdf -threads 16
+
+.\bin\msdf-atlas-gen.exe `
+    -font 'Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans\NotoSans-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Mono\NotoSansMono-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font 'Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Arabic\NotoSansArabic-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font 'Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Armenian\NotoSansArmenian-VariableFont_wdth,wght.ttf' -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Georgian\NotoSansGeorgian-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Hebrew\NotoSansHebrew-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Kannada\NotoSansKannada-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Lao\NotoSansLao-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Malayalam\NotoSansMalayalam-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Old_Hungarian\NotoSansOldHungarian-Regular.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Old_Persian\NotoSansOldPersian-Regular.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Symbols\NotoSansSymbols-VariableFont_wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Symbols_2\NotoSansSymbols2-Regular.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Tamil\NotoSansTamil-VariableFont_wdth,wght.ttf" -allglyphs `
+    -and -font "Y:\DreamfinityProject\mods\dsgl\fonts\noto\Noto_Sans_Thai\NotoSansThai-VariableFont_wdth,wght.ttf" -allglyphs `
+    -imageout "noto.png" -json "noto.json" -type mtsdf -threads 16

@@ -23,6 +23,7 @@ tasks.register("generateMsdfAtlases") {
         val base = relative.removeSuffix(".ttf")
         outputs.file(File(generatedFontsResourcesDir, "$base-mtsdf.png"))
         outputs.file(File(generatedFontsResourcesDir, "$base-meta.json"))
+        outputs.file(File(generatedFontsResourcesDir, "$base.ttf"))
     }
 
     doLast {
@@ -40,23 +41,27 @@ tasks.register("generateMsdfAtlases") {
             val base = relative.removeSuffix(".ttf")
             val outputPng = File(generatedFontsResourcesDir, "$base-mtsdf.png")
             val outputJson = File(generatedFontsResourcesDir, "$base-meta.json")
+            val outputTtf = File(generatedFontsResourcesDir, "$base.ttf")
             outputPng.parentFile?.mkdirs()
             outputJson.parentFile?.mkdirs()
+            outputTtf.parentFile?.mkdirs()
 
             val atlasOutArg = "core/src/main/resources/fonts/${base}-mtsdf.png"
             val jsonOutArg = "core/src/main/resources/fonts/${base}-meta.json"
             val fontArg = "./fonts/$relative"
             val charsetFile = "./fonts/charset.txt"
+            val size = 64
 
             val result = exec {
                 workingDir = rootProject.projectDir
                 commandLine(
                     msdfGeneratorExe.absolutePath,
                     "-font", fontArg,
-                    "-charset", charsetFile,
+                    "-allglyphs",
                     "-type", "mtsdf",
-                    "-pxrange", "8",
+                    "-pxrange", "4",
                     "-format", "png",
+                    "-size", "$size",
                     "-imageout", atlasOutArg,
                     "-json", jsonOutArg
                 )
@@ -68,6 +73,8 @@ tasks.register("generateMsdfAtlases") {
                             "Expected outputs: '$atlasOutArg', '$jsonOutArg'"
                 )
             }
+
+            ttf.copyTo(outputTtf, overwrite = true)
         }
 
         val registryLines = fonts.map { it.relativeTo(fontsRootDir).invariantSeparatorsPath }

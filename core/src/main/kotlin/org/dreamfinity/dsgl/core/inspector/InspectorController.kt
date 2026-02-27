@@ -695,6 +695,12 @@ class InspectorController {
             StyleProperty.BORDER_COLOR to colorLabel(computed.borderColor),
             StyleProperty.BACKGROUND_COLOR to (computed.backgroundColor?.let(::colorLabel) ?: "none"),
             StyleProperty.FOREGROUND_COLOR to colorLabel(computed.foregroundColor),
+            StyleProperty.FONT_ID to (computed.fontId ?: "minecraft"),
+            StyleProperty.FONT_SIZE to (computed.fontSize?.toString() ?: "auto"),
+            StyleProperty.FONT_WEIGHT to computed.fontWeight.name.lowercase(),
+            StyleProperty.FONT_STYLE to computed.fontStyle.name.lowercase(),
+            StyleProperty.TEXT_DECORATION to computed.textDecoration.name,
+            StyleProperty.OBFUSCATED to computed.obfuscated.toString(),
             StyleProperty.GAP to computed.gap.toString(),
             StyleProperty.FLEX_DIRECTION to computed.flexDirection.name,
             StyleProperty.JUSTIFY_CONTENT to computed.justifyContent.name,
@@ -704,6 +710,7 @@ class InspectorController {
             StyleProperty.GRID_COLUMN_SPAN to computed.gridColumnSpan.toString(),
             StyleProperty.GRID_ROW_SPAN to computed.gridRowSpan.toString(),
             StyleProperty.TEXT_WRAP to computed.textWrap.name,
+            StyleProperty.TEXT_FORMATTING to computed.textFormatting.name,
             StyleProperty.TRANSFORM to "tx=${computed.transform.translateX},ty=${computed.transform.translateY},sx=${computed.transform.scaleX},sy=${computed.transform.scaleY},rot=${computed.transform.rotateDeg}",
             StyleProperty.TRANSFORM_ORIGIN to "${computed.transformOrigin.originX} ${computed.transformOrigin.originY}",
             StyleProperty.OPACITY to formatFloatLiteral(computed.opacity)
@@ -942,6 +949,7 @@ class InspectorController {
 
         val priority = listOf(
             StyleProperty.FOREGROUND_COLOR,
+            StyleProperty.FONT_ID,
             StyleProperty.FONT_SIZE,
             StyleProperty.TEXT_WRAP,
             StyleProperty.ALIGN
@@ -1064,7 +1072,17 @@ class InspectorController {
             StyleProperty.BORDER_WIDTH -> style.borderWidth.toString()
             StyleProperty.BORDER_RADIUS -> style.borderRadius.toString()
             StyleProperty.FOREGROUND_COLOR -> colorLabel(style.foregroundColor)
+            StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
             StyleProperty.FONT_SIZE -> style.fontSize?.toString() ?: "auto"
+            StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
+            StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
+            StyleProperty.TEXT_DECORATION -> when (style.textDecoration) {
+                TextDecoration.None -> "none"
+                TextDecoration.Underline -> "underline"
+                TextDecoration.Strikethrough -> "strikethrough"
+                TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
+            }
+            StyleProperty.OBFUSCATED -> style.obfuscated.toString()
             StyleProperty.WIDTH -> style.width?.toString() ?: "auto"
             StyleProperty.HEIGHT -> style.height?.toString() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
@@ -1085,6 +1103,10 @@ class InspectorController {
             StyleProperty.GRID_COLUMN_SPAN -> style.gridColumnSpan.toString()
             StyleProperty.GRID_ROW_SPAN -> style.gridRowSpan.toString()
             StyleProperty.TEXT_WRAP -> if (style.textWrap == TextWrap.Wrap) "wrap" else "nowrap"
+            StyleProperty.TEXT_FORMATTING -> when (style.textFormatting) {
+                TextFormatting.None -> "none"
+                TextFormatting.Minecraft -> "minecraft"
+            }
             StyleProperty.TRANSFORM -> buildString {
                 append("translate(")
                 append(style.transform.translateX)

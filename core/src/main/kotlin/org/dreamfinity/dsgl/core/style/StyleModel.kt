@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.style
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.layout.Insets
+import org.dreamfinity.dsgl.core.font.FontRegistry
 
 enum class StylePseudoState {
     HOVER,
@@ -62,6 +63,28 @@ enum class TextWrap {
     NoWrap
 }
 
+enum class TextFormatting {
+    None,
+    Minecraft
+}
+
+enum class FontWeight {
+    Normal,
+    Bold
+}
+
+enum class FontStyle {
+    Normal,
+    Italic
+}
+
+enum class TextDecoration {
+    None,
+    Underline,
+    Strikethrough,
+    UnderlineStrikethrough
+}
+
 data class UiTransform(
     val translateX: Float = 0f,
     val translateY: Float = 0f,
@@ -109,7 +132,12 @@ enum class StyleProperty(val key: String) {
     BORDER_WIDTH("border-width"),
     BORDER_RADIUS("border-radius"),
     FOREGROUND_COLOR("color"),
+    FONT_ID("font-id"),
     FONT_SIZE("font-size"),
+    FONT_WEIGHT("font-weight"),
+    FONT_STYLE("font-style"),
+    TEXT_DECORATION("text-decoration"),
+    OBFUSCATED("obfuscated"),
     WIDTH("width"),
     HEIGHT("height"),
     ALIGN("align"),
@@ -128,6 +156,7 @@ enum class StyleProperty(val key: String) {
     GRID_COLUMN_SPAN("grid-column-span"),
     GRID_ROW_SPAN("grid-row-span"),
     TEXT_WRAP("text-wrap"),
+    TEXT_FORMATTING("text-formatting"),
     TRANSFORM("transform"),
     TRANSFORM_ORIGIN("transform-origin"),
     OPACITY("opacity");
@@ -147,8 +176,15 @@ enum class StyleProperty(val key: String) {
                     "border-radius" to BORDER_RADIUS,
                     "foregroundcolor" to FOREGROUND_COLOR,
                     "foreground-color" to FOREGROUND_COLOR,
+                    "fontid" to FONT_ID,
+                    "font-id" to FONT_ID,
+                    "font" to FONT_ID,
                     "fontsize" to FONT_SIZE,
-                    "font-size" to FONT_SIZE
+                    "font-size" to FONT_SIZE,
+                    "fontweight" to FONT_WEIGHT,
+                    "font-weight" to FONT_WEIGHT,
+                    "fontstyle" to FONT_STYLE,
+                    "font-style" to FONT_STYLE
                 ) + mapOf(
             "flexdirection" to FLEX_DIRECTION,
             "flex-direction" to FLEX_DIRECTION,
@@ -176,6 +212,11 @@ enum class StyleProperty(val key: String) {
             "grid-row-span" to GRID_ROW_SPAN,
             "textwrap" to TEXT_WRAP,
             "text-wrap" to TEXT_WRAP,
+            "textformatting" to TEXT_FORMATTING,
+            "text-formatting" to TEXT_FORMATTING,
+            "textdecoration" to TEXT_DECORATION,
+            "text-decoration" to TEXT_DECORATION,
+            "obfuscated" to OBFUSCATED,
             "transform" to TRANSFORM,
             "transformorigin" to TRANSFORM_ORIGIN,
             "transform-origin" to TRANSFORM_ORIGIN,
@@ -227,7 +268,12 @@ data class ComputedStyle(
     val borderWidth: Int,
     val borderRadius: Int,
     val foregroundColor: Int,
+    val fontId: String?,
     val fontSize: Int?,
+    val fontWeight: FontWeight,
+    val fontStyle: FontStyle,
+    val textDecoration: TextDecoration,
+    val obfuscated: Boolean,
     val width: Int?,
     val height: Int?,
     val align: StyleAlign,
@@ -246,6 +292,7 @@ data class ComputedStyle(
     val gridColumnSpan: Int,
     val gridRowSpan: Int,
     val textWrap: TextWrap,
+    val textFormatting: TextFormatting,
     val transform: UiTransform,
     val transformOrigin: TransformOrigin,
     val opacity: Float
@@ -260,7 +307,12 @@ data class ComputedStyleDefaults(
     val borderWidth: Int = 0,
     val borderRadius: Int = 0,
     val foregroundColor: Int = DsglColors.TEXT,
+    val fontId: String? = FontRegistry.DEFAULT_FONT_ID,
     val fontSize: Int? = null,
+    val fontWeight: FontWeight = FontWeight.Normal,
+    val fontStyle: FontStyle = FontStyle.Normal,
+    val textDecoration: TextDecoration = TextDecoration.None,
+    val obfuscated: Boolean = false,
     val width: Int? = null,
     val height: Int? = null,
     val align: StyleAlign = StyleAlign.START,
@@ -279,6 +331,7 @@ data class ComputedStyleDefaults(
     val gridColumnSpan: Int = 1,
     val gridRowSpan: Int = 1,
     val textWrap: TextWrap = TextWrap.Wrap,
+    val textFormatting: TextFormatting = TextFormatting.None,
     val transform: UiTransform = UiTransform.IDENTITY,
     val transformOrigin: TransformOrigin = TransformOrigin.CENTER,
     val opacity: Float = 1f
@@ -293,7 +346,12 @@ data class ComputedStyleDefaults(
             borderWidth = borderWidth,
             borderRadius = borderRadius,
             foregroundColor = foregroundColor,
+            fontId = fontId,
             fontSize = fontSize,
+            fontWeight = fontWeight,
+            fontStyle = fontStyle,
+            textDecoration = textDecoration,
+            obfuscated = obfuscated,
             width = width,
             height = height,
             align = align,
@@ -312,6 +370,7 @@ data class ComputedStyleDefaults(
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
             textWrap = textWrap,
+            textFormatting = textFormatting,
             transform = transform,
             transformOrigin = transformOrigin,
             opacity = opacity

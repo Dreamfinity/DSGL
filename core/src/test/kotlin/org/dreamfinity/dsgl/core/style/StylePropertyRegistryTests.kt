@@ -32,6 +32,7 @@ class StylePropertyRegistryTests {
         assertTrue(StyleProperty.FOREGROUND_COLOR in properties)
         assertTrue(StyleProperty.FONT_SIZE in properties)
         assertTrue(StyleProperty.TEXT_WRAP in properties)
+        assertTrue(StyleProperty.TEXT_FORMATTING in properties)
         assertTrue(StyleProperty.ALIGN in properties)
     }
 }

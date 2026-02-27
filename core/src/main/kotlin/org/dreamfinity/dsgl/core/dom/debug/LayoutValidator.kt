@@ -159,13 +159,13 @@ object LayoutValidator {
         out: MutableList<LayoutViolation>
     ) {
         val maxWidth = if (wrap == TextWrap.Wrap) rect.width.coerceAtLeast(0) else null
-        val lineHeight = ctx.fontHeight.coerceAtLeast(1)
+        val lineHeight = ctx.fontHeight(node.fontId, node.fontSize).coerceAtLeast(1)
         val layout = TextLayoutEngine.layout(
             text = text,
             maxWidth = maxWidth,
             wrap = wrap,
             fontHeight = lineHeight,
-            measureText = ctx::measureText
+            measureText = { value -> ctx.measureText(value, node.fontId, node.fontSize) }
         )
 
         var previousBottom = 0
