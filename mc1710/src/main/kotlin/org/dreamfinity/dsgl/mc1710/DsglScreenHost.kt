@@ -84,6 +84,7 @@ abstract class DsglScreenHost(
     }
 
     override fun initGui() {
+        DsglFonts.ensureInitialized(mc.mcDataDir, javaClass.classLoader)
         adapter = Mc1710UiAdapter(mc)
         ClipboardBridge.install(clipboardAccess)
         inspector.deactivate()

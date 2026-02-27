@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.font
+﻿package org.dreamfinity.dsgl.core.font
 
 import kotlinx.serialization.json.Json
 
@@ -31,30 +31,72 @@ object MsdfFontMetaParser {
             underlineThickness = parsed.metrics.underlineThickness
         )
 
-        val glyphs = parsed.glyphs.associateTo(linkedMapOf()) { glyph ->
-            glyph.codepoint to MsdfGlyph(
-                codepoint = glyph.codepoint,
+        val anyExplicitGlyphIndex = parsed.glyphs.any { it.glyphIndex >= 0 }
+        val glyphsByIndex = linkedMapOf<Int, MsdfGlyph>()
+        val glyphsByCodepoint = linkedMapOf<Int, MsdfGlyph>()
+
+        parsed.glyphs.forEachIndexed { listIndex, glyph ->
+            val resolvedGlyphIndex = when {
+                glyph.glyphIndex >= 0 -> glyph.glyphIndex
+                !anyExplicitGlyphIndex -> listIndex
+                else -> throw IllegalArgumentException(
+                    "Glyph metadata has mixed explicit/implicit glyph indices. " +
+                        "Provide a stable glyph index field for every glyph entry."
+                )
+            }
+
+            val runtimeGlyph = MsdfGlyph(
+                glyphIndex = resolvedGlyphIndex,
+                codepoint = glyph.unicodeCodepoint,
                 advance = glyph.advance,
                 planeBounds = glyph.planeBounds?.toRuntime(),
                 atlasBounds = glyph.atlasBounds?.toRuntime()
             )
+
+            val previous = glyphsByIndex.putIfAbsent(resolvedGlyphIndex, runtimeGlyph)
+            if (previous != null) {
+                throw IllegalArgumentException("Duplicate glyph index $resolvedGlyphIndex in metadata")
+            }
+
+            val codepoint = runtimeGlyph.codepoint
+            if (codepoint != null && !glyphsByCodepoint.containsKey(codepoint)) {
+                glyphsByCodepoint[codepoint] = runtimeGlyph
+            }
         }
 
-        val kerning = parsed.kerning.associateTo(linkedMapOf()) { pair ->
-            MsdfFontMeta.kerningKey(pair.leftCodepoint, pair.rightCodepoint) to pair.advance
+        val kerningByIndex = linkedMapOf<Long, Float>()
+        val kerningByCodepoint = linkedMapOf<Long, Float>()
+        parsed.kerning.forEach { pair ->
+            kerningByIndex[MsdfFontMeta.kerningKey(pair.leftGlyphIndex, pair.rightGlyphIndex)] = pair.advance
+
+            val leftFromIndex = glyphsByIndex[pair.leftGlyphIndex]?.codepoint
+            val rightFromIndex = glyphsByIndex[pair.rightGlyphIndex]?.codepoint
+            val leftCodepoint = leftFromIndex ?: pair.leftGlyphIndex.takeIf { glyphsByCodepoint.containsKey(it) }
+            val rightCodepoint = rightFromIndex ?: pair.rightGlyphIndex.takeIf { glyphsByCodepoint.containsKey(it) }
+            if (leftCodepoint != null && rightCodepoint != null) {
+                kerningByCodepoint[MsdfFontMeta.kerningKey(leftCodepoint, rightCodepoint)] = pair.advance
+            }
         }
 
         val replacementCodepoint = when {
-            glyphs.containsKey('?'.code) -> '?'.code
-            glyphs.containsKey(0xFFFD) -> 0xFFFD
-            else -> glyphs.keys.firstOrNull()
+            glyphsByCodepoint.containsKey(0xFFFD) -> 0xFFFD
+            glyphsByCodepoint.containsKey('?'.code) -> '?'.code
+            else -> glyphsByCodepoint.keys.firstOrNull()
+        }
+        val replacementGlyphIndex = when {
+            replacementCodepoint != null -> glyphsByCodepoint[replacementCodepoint]?.glyphIndex
+            glyphsByIndex.containsKey(0) -> 0
+            else -> glyphsByIndex.keys.firstOrNull()
         }
 
         return MsdfFontMeta(
             atlas = atlas,
             metrics = metrics,
-            glyphsByCodepoint = glyphs,
-            kerningPairs = kerning,
+            glyphsByIndex = glyphsByIndex,
+            glyphsByCodepoint = glyphsByCodepoint,
+            kerningPairsByIndex = kerningByIndex,
+            kerningPairsByCodepoint = kerningByCodepoint,
+            replacementGlyphIndex = replacementGlyphIndex,
             replacementCodepoint = replacementCodepoint
         )
     }
@@ -89,3 +131,4 @@ object MsdfFontMetaParser {
         )
     }
 }
+

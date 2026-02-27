@@ -1,12 +1,12 @@
-package org.dreamfinity.dsgl.core.font
+﻿package org.dreamfinity.dsgl.core.font
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
@@ -56,7 +56,8 @@ internal data class MsdfMetricsJson(
 
 @Serializable(with = MsdfGlyphJsonSerializer::class)
 internal data class MsdfGlyphJson(
-    val codepoint: Int = 0,
+    val glyphIndex: Int = -1,
+    val unicodeCodepoint: Int? = null,
     @Serializable(with = NumberAsFloatSerializer::class)
     val advance: Float = 0f,
     val planeBounds: MsdfPlaneBoundsJson? = null,
@@ -91,10 +92,10 @@ internal data class MsdfAtlasBoundsJson(
 internal data class MsdfKerningJson(
     @SerialName("index1")
     @Serializable(with = NumberAsIntSerializer::class)
-    val leftCodepoint: Int = 0,
+    val leftGlyphIndex: Int = 0,
     @SerialName("index2")
     @Serializable(with = NumberAsIntSerializer::class)
-    val rightCodepoint: Int = 0,
+    val rightGlyphIndex: Int = 0,
     @Serializable(with = NumberAsFloatSerializer::class)
     val advance: Float = 0f
 )
@@ -139,7 +140,8 @@ private fun JsonPrimitive.toFloatStrict(): Float {
 
 internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<MsdfGlyphJson> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("MsdfGlyphJson") {
-        element<Int>("codepoint", isOptional = true)
+        element<Int>("glyphIndex", isOptional = true)
+        element<Int>("unicodeCodepoint", isOptional = true)
         element<Float>("advance", isOptional = true)
         element<MsdfPlaneBoundsJson?>("planeBounds", isOptional = true)
         element<MsdfAtlasBoundsJson?>("atlasBounds", isOptional = true)
@@ -149,7 +151,8 @@ internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<Msdf
         val jsonDecoder = decoder as? JsonDecoder
             ?: throw IllegalArgumentException("MsdfGlyphJsonSerializer requires JsonDecoder")
         val obj = jsonDecoder.decodeJsonElement().jsonObject
-        val codepoint = resolveCodepoint(obj)
+        val glyphIndex = resolveGlyphIndex(obj)
+        val unicodeCodepoint = resolveUnicodeCodepoint(obj)
         val advance = obj["advance"]?.jsonPrimitive?.toFloatStrict() ?: 0f
         val plane = obj["planeBounds"]?.let {
             jsonDecoder.json.decodeFromJsonElement(MsdfPlaneBoundsJson.serializer(), it)
@@ -158,7 +161,8 @@ internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<Msdf
             jsonDecoder.json.decodeFromJsonElement(MsdfAtlasBoundsJson.serializer(), it)
         }
         return MsdfGlyphJson(
-            codepoint = codepoint,
+            glyphIndex = glyphIndex,
+            unicodeCodepoint = unicodeCodepoint,
             advance = advance,
             planeBounds = plane,
             atlasBounds = atlas
@@ -168,10 +172,14 @@ internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<Msdf
     override fun serialize(encoder: Encoder, value: MsdfGlyphJson) {
         val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
             ?: throw IllegalArgumentException("MsdfGlyphJsonSerializer requires JsonEncoder")
-        val map = linkedMapOf<String, JsonElement>(
-            "index" to JsonPrimitive(value.codepoint),
-            "advance" to JsonPrimitive(value.advance)
-        )
+        val map = linkedMapOf<String, JsonElement>()
+        if (value.glyphIndex >= 0) {
+            map["index"] = JsonPrimitive(value.glyphIndex)
+        }
+        value.unicodeCodepoint?.let { cp ->
+            map["unicode"] = JsonPrimitive(cp)
+        }
+        map["advance"] = JsonPrimitive(value.advance)
         value.planeBounds?.let {
             map["planeBounds"] = jsonEncoder.json.encodeToJsonElement(MsdfPlaneBoundsJson.serializer(), it)
         }
@@ -181,19 +189,30 @@ internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<Msdf
         jsonEncoder.encodeJsonElement(JsonObject(map))
     }
 
-    private fun resolveCodepoint(obj: JsonObject): Int {
-        val numericKeys = listOf("unicode", "codepoint", "index", "id", "glyphIndex")
+    private fun resolveGlyphIndex(obj: JsonObject): Int {
+        val numericKeys = listOf("glyphIndex", "index", "id")
         numericKeys.forEach { key ->
             val value = obj[key]?.jsonPrimitive ?: return@forEach
             return value.toIntStrict()
         }
+        return -1
+    }
+
+    private fun resolveUnicodeCodepoint(obj: JsonObject): Int? {
+        val numericKeys = listOf("unicode", "codepoint")
+        numericKeys.forEach { key ->
+            val value = obj[key]?.jsonPrimitive ?: return@forEach
+            return value.toIntStrict()
+        }
+
         val stringKeys = listOf("char", "character", "glyph")
         stringKeys.forEach { key ->
             val value = obj[key]?.jsonPrimitive?.content ?: return@forEach
             if (value.isEmpty()) return@forEach
             return Character.codePointAt(value, 0)
         }
-        return 0
+
+        return null
     }
 }
 
@@ -210,3 +229,4 @@ private fun JsonPrimitive.floatOrNull(): Float? {
     if (direct != null) return direct
     return doubleOrNull?.toFloat()
 }
+

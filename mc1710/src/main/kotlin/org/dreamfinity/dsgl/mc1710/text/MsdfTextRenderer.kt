@@ -1,33 +1,28 @@
-package org.dreamfinity.dsgl.mc1710.text
+﻿package org.dreamfinity.dsgl.mc1710.text
 
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.font.LoadedMsdfFont
 import org.dreamfinity.dsgl.core.font.MsdfGlyph
-import org.dreamfinity.dsgl.core.font.forEachCodepoint
-import org.dreamfinity.dsgl.core.font.forEachCodepointIndexed
-import org.dreamfinity.dsgl.core.font.toCodepointList
+import org.dreamfinity.dsgl.core.font.ShapedGlyph
+import org.dreamfinity.dsgl.core.font.ShapedText
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextFormatting
+import org.dreamfinity.dsgl.core.text.BOLD_ADVANCE_EXTRA_PX
 import org.dreamfinity.dsgl.core.text.DecorationFontMetrics
-import org.dreamfinity.dsgl.core.text.DecorationType
-import org.dreamfinity.dsgl.core.text.GlyphDecorationSample
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ObfuscationTextSelector
-import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextDecorationLayout
+import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 import org.dreamfinity.dsgl.core.text.TextVisualLine
-import org.dreamfinity.dsgl.core.text.BOLD_ADVANCE_EXTRA_PX
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.ARBFragmentShader
 import org.lwjgl.opengl.ARBShaderObjects
 import org.lwjgl.opengl.ARBVertexShader
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL13
-import java.awt.image.BufferedImage
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
-import javax.imageio.ImageIO
 
 internal class MsdfTextRenderer {
     private data class PreparedText(
@@ -35,13 +30,100 @@ internal class MsdfTextRenderer {
         val styleSpans: List<RenderCommand.TextStyleSpan>
     )
 
-    private data class EffectiveGlyphStyle(
+    private data class LayoutCacheKey(
+        val text: String,
+        val primaryFontId: String,
+        val fontSize: Int,
+        val textFormatting: TextFormatting,
         val color: Int,
-        val bold: Boolean,
-        val italic: Boolean,
-        val underline: Boolean,
-        val strikethrough: Boolean,
-        val obfuscated: Boolean
+        val baseFlagsMask: Int,
+        val styleSpansHash: Int
+    )
+
+    private data class CachedLineLayout(
+        val start: Int,
+        val shaped: ShapedText
+    )
+
+    private data class LayoutCacheEntry(
+        val prepared: PreparedText,
+        val lines: List<CachedLineLayout>
+    )
+
+    private class SegmentBuffer(initialCapacity: Int = 64) {
+        private var startX = FloatArray(initialCapacity)
+        private var endX = FloatArray(initialCapacity)
+        private var y = FloatArray(initialCapacity)
+        private var thickness = FloatArray(initialCapacity)
+        private var color = IntArray(initialCapacity)
+        private var kind = IntArray(initialCapacity)
+
+        var size: Int = 0
+            private set
+
+        fun clear() {
+            size = 0
+        }
+
+        fun appendMerged(
+            segmentKind: Int,
+            segmentStartX: Float,
+            segmentEndX: Float,
+            segmentY: Float,
+            segmentThickness: Float,
+            segmentColor: Int
+        ) {
+            if (segmentEndX <= segmentStartX) return
+            val last = size - 1
+            if (last >= 0 &&
+                kind[last] == segmentKind &&
+                color[last] == segmentColor &&
+                kotlin.math.abs(endX[last] - segmentStartX) <= 0.51f &&
+                kotlin.math.abs(y[last] - segmentY) <= 0.51f &&
+                kotlin.math.abs(thickness[last] - segmentThickness) <= 0.1f
+            ) {
+                endX[last] = segmentEndX
+                return
+            }
+            ensureCapacity(size + 1)
+            kind[size] = segmentKind
+            startX[size] = segmentStartX
+            endX[size] = segmentEndX
+            y[size] = segmentY
+            thickness[size] = segmentThickness
+            color[size] = segmentColor
+            size += 1
+        }
+
+        fun kindAt(index: Int): Int = kind[index]
+        fun startXAt(index: Int): Float = startX[index]
+        fun endXAt(index: Int): Float = endX[index]
+        fun yAt(index: Int): Float = y[index]
+        fun thicknessAt(index: Int): Float = thickness[index]
+        fun colorAt(index: Int): Int = color[index]
+
+        private fun ensureCapacity(required: Int) {
+            if (required <= startX.size) return
+            var next = startX.size
+            while (next < required) {
+                next = (next * 2).coerceAtLeast(required)
+            }
+            startX = startX.copyOf(next)
+            endX = endX.copyOf(next)
+            y = y.copyOf(next)
+            thickness = thickness.copyOf(next)
+            color = color.copyOf(next)
+            kind = kind.copyOf(next)
+        }
+    }
+
+    private data class RendererDebugCounters(
+        var drawCalls: Long = 0L,
+        var layoutCacheHits: Long = 0L,
+        var layoutCacheMisses: Long = 0L,
+        var glyphVectorRequests: Long = 0L,
+        var textureUploads: Long = 0L,
+        var textureUploadBytes: Long = 0L
     )
 
     private data class DecorationSegment(
@@ -65,7 +147,18 @@ internal class MsdfTextRenderer {
         val height: Int
     )
 
+    private data class LineSlice(
+        val start: Int,
+        val endExclusive: Int
+    )
+
     private val textures: MutableMap<String, TextureHandle> = linkedMapOf()
+    private val layoutCache: MutableMap<LayoutCacheKey, LayoutCacheEntry> =
+        object : LinkedHashMap<LayoutCacheKey, LayoutCacheEntry>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LayoutCacheKey, LayoutCacheEntry>?): Boolean {
+                return size > MAX_LAYOUT_CACHE_ENTRIES
+            }
+        }
     private var programId: Int = 0
     private var uniformAtlas: Int = -1
     private var uniformPxRange: Int = -1
@@ -76,6 +169,10 @@ internal class MsdfTextRenderer {
     private var obfuscationLastNano: Long = System.nanoTime()
     private var obfuscationAccumSec: Double = 0.0
     private var obfuscationTimeSlice: Long = 0
+    private val segmentBuffer = SegmentBuffer(96)
+    private val debugCounters = RendererDebugCounters()
+    private val debugPerformanceEnabled: Boolean = java.lang.Boolean.getBoolean("dsgl.msdf.debug.performance")
+    private var debugLastLogMs: Long = 0L
 
     fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return FontRegistry.measureText(text, fontId, fontSize)
@@ -86,257 +183,273 @@ internal class MsdfTextRenderer {
     }
 
     fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float) {
-        val font = FontRegistry.get(command.fontId) ?: return
-        val texture = textureFor(font) ?: return
+        debugCounters.drawCalls += 1
+        val primaryFont = FontRegistry.get(command.fontId) ?: return
+        val runtimeFallbackFont = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
+            ?.takeIf { it.descriptor.fontId != primaryFont.descriptor.fontId }
         val fontSize = FontRegistry.resolveFontSize(command.fontSize)
-        val prepared = prepareText(command)
-        if (prepared.text.isEmpty()) return
+        val layoutEntry = getOrBuildLayoutCacheEntry(command, primaryFont, fontSize)
+        val prepared = layoutEntry.prepared
+        if (prepared.text.isEmpty() || layoutEntry.lines.isEmpty()) return
+
         val debugDecorationGuidesEnabled = isDebugDecorationGuidesEnabled()
         updateObfuscationClock()
+        segmentBuffer.clear()
+
         val depthWasEnabled = GL11.glIsEnabled(GL11.GL_DEPTH_TEST)
         if (depthWasEnabled) {
             GL11.glDisable(GL11.GL_DEPTH_TEST)
         }
 
         try {
-            val fontScalePx = TextDecorationLayout.scalePx(fontSize, font.meta.metrics.emSize)
-            val lineHeight = font.meta.lineHeightPx(fontSize).toFloat().coerceAtLeast(1f)
+            val primaryScalePx = TextDecorationLayout.scalePx(fontSize, primaryFont.meta.metrics.emSize)
+            val lineHeight = primaryFont.meta.lineHeightPx(fontSize).toFloat().coerceAtLeast(1f)
             val fontDecorationMetrics = DecorationFontMetrics(
-                emSize = font.meta.metrics.emSize,
-                lineHeightEm = font.meta.metrics.lineHeight,
-                ascenderEm = font.meta.metrics.ascender,
-                descenderEm = font.meta.metrics.descender,
-                underlineYEm = font.meta.metrics.underlineY,
-                underlineThicknessEm = font.meta.metrics.underlineThickness
+                emSize = primaryFont.meta.metrics.emSize,
+                lineHeightEm = primaryFont.meta.metrics.lineHeight,
+                ascenderEm = primaryFont.meta.metrics.ascender,
+                descenderEm = primaryFont.meta.metrics.descender,
+                underlineYEm = primaryFont.meta.metrics.underlineY,
+                underlineThicknessEm = primaryFont.meta.metrics.underlineThickness
             )
-
-            var lineTop = command.y.toFloat()
-            var baselineY = TextDecorationLayout.baselineY(
-                lineTopY = lineTop,
-                ascenderEm = font.meta.metrics.ascender,
-                scalePx = fontScalePx
-            )
-            var cursorX = command.x.toFloat()
-            var previousCodepoint: Int? = null
-            val visualLines = ArrayList<TextVisualLine>(8)
-            val glyphDecorationSamples = ArrayList<GlyphDecorationSample>(64)
-            val underlineSegments = ArrayList<DecorationSegment>(24)
-            val strikeSegments = ArrayList<DecorationSegment>(24)
-            val baselineGuides = ArrayList<DecorationSegment>(8)
-            val underlineGuides = ArrayList<DecorationSegment>(8)
-            val strikeGuides = ArrayList<DecorationSegment>(8)
-            var lineIndex = 0
-            var glyphIndexInLine = 0
-            var globalGlyphIndex = 0
-            var lineGlyphStart = 0
-            var lineStartX = command.x.toFloat()
-            var lastObfuscatedCodepoint: Int? = null
-
-            debugGlyphResolution(prepared.text, font)
+            debugGlyphResolution(prepared.text, primaryFont)
 
             if (!useProgram()) return
+
             GL11.glEnable(GL11.GL_BLEND)
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-            GL13.glActiveTexture(GL13.GL_TEXTURE0)
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture.textureId)
-            ARBShaderObjects.glUniform1iARB(uniformAtlas, 0)
-            ARBShaderObjects.glUniform1fARB(uniformPxRange, font.meta.atlas.distanceRange)
 
-            val spans = prepared.styleSpans
+            var lineTop = command.y.toFloat()
+            var lineIndex = 0
             var spanIndex = 0
-            var currentStyle: EffectiveGlyphStyle? = null
+            var globalGlyphIndex = 0
+            var activeFontId: String? = null
+            var activeTexture: TextureHandle? = null
+            var glBegun = false
+            var currentDrawColor: Int = Int.MIN_VALUE
+            var activeResolvedSpanIndex = Int.MIN_VALUE
+            var activeStyleColor = withOpacity(command.color, opacityMultiplier)
+            var activeStyleFlags = baseFlagsMask(command)
 
-            GL11.glBegin(GL11.GL_QUADS)
-            try {
-                forEachCodepointIndexed(prepared.text) { codePoint, startIndex, _ ->
-                    if (codePoint == '\n'.code) {
-                        val line = TextVisualLine(
-                            lineIndex = lineIndex,
-                            lineTopY = lineTop,
-                            baselineY = baselineY,
-                            lineHeightPx = lineHeight,
-                            glyphStartIndex = lineGlyphStart,
-                            glyphEndIndexExclusive = globalGlyphIndex
-                        )
-                        visualLines += line
-                        if (debugDecorationGuidesEnabled && cursorX > lineStartX) {
-                            appendDecorationDebugGuides(
-                                baselineGuides = baselineGuides,
-                                underlineGuides = underlineGuides,
-                                strikeGuides = strikeGuides,
-                                startX = lineStartX,
-                                endX = cursorX,
-                                line = line,
-                                lineMetrics = TextDecorationLayout.resolveLineMetrics(
-                                    line = line,
-                                    fontMetrics = fontDecorationMetrics,
-                                    fontPx = fontSize
-                                )
-                            )
-                        }
-                        cursorX = command.x.toFloat()
-                        lineTop += lineHeight
-                        baselineY = TextDecorationLayout.baselineY(
-                            lineTopY = lineTop,
-                            ascenderEm = font.meta.metrics.ascender,
-                            scalePx = fontScalePx
-                        )
-                        previousCodepoint = null
-                        lineIndex += 1
-                        glyphIndexInLine = 0
-                        lineGlyphStart = globalGlyphIndex
-                        lineStartX = cursorX
-                        lastObfuscatedCodepoint = null
-                        return@forEachCodepointIndexed
-                    }
-
-                    val runItem = font.meta.resolveGlyphRun(codePoint, fontSize) ?: run {
-                        previousCodepoint = null
-                        glyphIndexInLine += 1
-                        return@forEachCodepointIndexed
-                    }
-                    val previous = previousCodepoint
-                    if (previous != null) {
-                        cursorX += font.meta.kerningPx(previous, runItem.kerningCodepoint, fontSize)
-                    }
-
-                    while (spanIndex < spans.size && startIndex >= spans[spanIndex].end) {
-                        spanIndex += 1
-                    }
-                    val style = resolveGlyphStyle(command, spans, spanIndex, startIndex, opacityMultiplier)
-                    if (style != currentStyle) {
-                        val r = ((style.color ushr 16) and 0xFF) / 255f
-                        val g = ((style.color ushr 8) and 0xFF) / 255f
-                        val b = (style.color and 0xFF) / 255f
-                        val a = ((style.color ushr 24) and 0xFF) / 255f
-                        GL11.glColor4f(r, g, b, a)
-                        currentStyle = style
-                    }
-
-                    val drawGlyph = if (style.obfuscated && ObfuscationTextSelector.shouldObfuscateCodepoint(codePoint)) {
-                        resolveObfuscatedGlyph(
-                            font = font,
-                            sourceKey = command.sourceKey ?: command.text,
-                            runItem = runItem,
-                            lineIndex = lineIndex,
-                            glyphIndexInLine = glyphIndexInLine,
-                            avoidCodepoint = lastObfuscatedCodepoint
-                        )
-                    } else {
-                        runItem.glyph
-                    }
-
-                    val boldAdvance = if (style.bold && !TextStyleMetrics.isWhitespaceCodepoint(codePoint)) {
-                        BOLD_ADVANCE_EXTRA_PX.toFloat()
-                    } else {
-                        0f
-                    }
-                    val glyphAdvance = runItem.advancePx + boldAdvance
-
-                    if (runItem.draw) {
-                        val glyph = drawGlyph
-                        if (glyph != null) {
-                            emitGlyphQuad(
-                                glyph = glyph,
-                                baselineY = baselineY,
-                                cursorX = cursorX,
-                                atlasWidth = texture.width,
-                                atlasHeight = texture.height,
-                                fontScalePx = fontScalePx,
-                                italic = style.italic,
-                                italicSkewPx = fontScalePx * 0.2f
-                            )
-                            if (style.bold) {
-                                emitGlyphQuad(
-                                    glyph = glyph,
-                                    baselineY = baselineY,
-                                    cursorX = cursorX + 0.75f,
-                                    atlasWidth = texture.width,
-                                    atlasHeight = texture.height,
-                                    fontScalePx = fontScalePx,
-                                    italic = style.italic,
-                                    italicSkewPx = fontScalePx * 0.2f
-                                )
-                            }
-                        }
-                    }
-
-                    val glyphStartX = cursorX
-                    val glyphEndX = glyphStartX + glyphAdvance
-                    if (glyphEndX > glyphStartX) {
-                        glyphDecorationSamples += GlyphDecorationSample(
-                            lineIndex = lineIndex,
-                            glyphIndex = globalGlyphIndex,
-                            xStart = glyphStartX,
-                            xEnd = glyphEndX,
-                            color = style.color,
-                            underline = style.underline,
-                            strikethrough = style.strikethrough
-                        )
-                    }
-
-                    cursorX += glyphAdvance
-                    previousCodepoint = runItem.kerningCodepoint
-                    glyphIndexInLine += 1
-                    globalGlyphIndex += 1
-                    lastObfuscatedCodepoint = if (style.obfuscated) drawGlyph?.codepoint else null
+            fun beginForFont(font: LoadedMsdfFont, texture: TextureHandle) {
+                if (activeFontId == font.descriptor.fontId && activeTexture === texture && glBegun) return
+                if (glBegun) {
+                    GL11.glEnd()
+                    glBegun = false
                 }
-            } finally {
-                GL11.glEnd()
-                ARBShaderObjects.glUseProgramObjectARB(0)
+                GL13.glActiveTexture(GL13.GL_TEXTURE0)
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture.textureId)
+                ARBShaderObjects.glUniform1iARB(uniformAtlas, 0)
+                ARBShaderObjects.glUniform1fARB(uniformPxRange, font.meta.atlas.distanceRange)
+                GL11.glBegin(GL11.GL_QUADS)
+                glBegun = true
+                activeFontId = font.descriptor.fontId
+                activeTexture = texture
+                currentDrawColor = Int.MIN_VALUE
             }
 
-            val lastLine = TextVisualLine(
-                lineIndex = lineIndex,
-                lineTopY = lineTop,
-                baselineY = baselineY,
-                lineHeightPx = lineHeight,
-                glyphStartIndex = lineGlyphStart,
-                glyphEndIndexExclusive = globalGlyphIndex
-            )
-            visualLines += lastLine
-            if (debugDecorationGuidesEnabled && cursorX > lineStartX) {
-                appendDecorationDebugGuides(
-                    baselineGuides = baselineGuides,
-                    underlineGuides = underlineGuides,
-                    strikeGuides = strikeGuides,
-                    startX = lineStartX,
-                    endX = cursorX,
-                    line = lastLine,
-                    lineMetrics = TextDecorationLayout.resolveLineMetrics(
-                        line = lastLine,
+            try {
+                layoutEntry.lines.forEach { line ->
+                    val baselineY = TextDecorationLayout.baselineY(
+                        lineTopY = lineTop,
+                        ascenderEm = primaryFont.meta.metrics.ascender,
+                        scalePx = primaryScalePx
+                    )
+                    val shaped = line.shaped
+                    val lineRecord = TextVisualLine(
+                        lineIndex = lineIndex,
+                        lineTopY = lineTop,
+                        baselineY = baselineY,
+                        lineHeightPx = lineHeight,
+                        glyphStartIndex = globalGlyphIndex,
+                        glyphEndIndexExclusive = globalGlyphIndex + shaped.glyphs.size
+                    )
+                    val lineMetrics = TextDecorationLayout.resolveLineMetrics(
+                        line = lineRecord,
                         fontMetrics = fontDecorationMetrics,
                         fontPx = fontSize
                     )
-                )
-            }
+                    var lineStartX = command.x.toFloat()
+                    var lineEndX = lineStartX
+                    var glyphIndexInLine = 0
+                    var lastObfuscatedGlyphIndex: Int? = null
 
-            TextDecorationLayout.buildDecorationQuads(
-                lines = visualLines,
-                glyphs = glyphDecorationSamples,
-                fontMetrics = fontDecorationMetrics,
-                fontPx = fontSize
-            ).forEach { quad ->
-                val segment = DecorationSegment(
-                    startX = quad.xStart,
-                    endX = quad.xEnd,
-                    y = quad.y,
-                    thickness = quad.thickness,
-                    color = quad.color
-                )
-                when (quad.type) {
-                    DecorationType.Underline -> underlineSegments += segment
-                    DecorationType.Strikethrough -> strikeSegments += segment
+                    shaped.glyphs.forEach { shapedGlyph ->
+                        val globalCharStart = line.start + shapedGlyph.charStart
+                        while (spanIndex < prepared.styleSpans.size && globalCharStart >= prepared.styleSpans[spanIndex].end) {
+                            spanIndex += 1
+                        }
+                        val resolvedSpanIndex = if (
+                            spanIndex < prepared.styleSpans.size &&
+                            globalCharStart >= prepared.styleSpans[spanIndex].start &&
+                            globalCharStart < prepared.styleSpans[spanIndex].end
+                        ) {
+                            spanIndex
+                        } else {
+                            -1
+                        }
+                        if (resolvedSpanIndex != activeResolvedSpanIndex) {
+                            activeResolvedSpanIndex = resolvedSpanIndex
+                            if (resolvedSpanIndex >= 0) {
+                                val span = prepared.styleSpans[resolvedSpanIndex]
+                                activeStyleColor = withOpacity(span.color, opacityMultiplier)
+                                activeStyleFlags = flagsMask(
+                                    bold = span.bold,
+                                    italic = span.italic,
+                                    underline = span.underline,
+                                    strikethrough = span.strikethrough,
+                                    obfuscated = span.obfuscated
+                                )
+                            } else {
+                                activeStyleColor = withOpacity(command.color, opacityMultiplier)
+                                activeStyleFlags = baseFlagsMask(command)
+                            }
+                        }
+
+                        val shapedFont = FontRegistry.get(shapedGlyph.fontId) ?: primaryFont
+                        val (glyphFont, glyph) = resolveRenderableGlyph(
+                            shapedFont = shapedFont,
+                            fallbackFont = runtimeFallbackFont,
+                            shapedGlyph = shapedGlyph
+                        )
+                        val texture = textureFor(glyphFont)
+
+                        val styleBold = (activeStyleFlags and STYLE_FLAG_BOLD) != 0
+                        val styleItalic = (activeStyleFlags and STYLE_FLAG_ITALIC) != 0
+                        val styleUnderline = (activeStyleFlags and STYLE_FLAG_UNDERLINE) != 0
+                        val styleStrikethrough = (activeStyleFlags and STYLE_FLAG_STRIKETHROUGH) != 0
+                        val styleObfuscated = (activeStyleFlags and STYLE_FLAG_OBFUSCATED) != 0
+
+                        val boldAdvance = if (styleBold && !TextStyleMetrics.isWhitespaceCodepoint(shapedGlyph.sourceCodepoint)) {
+                            BOLD_ADVANCE_EXTRA_PX.toFloat()
+                        } else {
+                            0f
+                        }
+                        val glyphAdvance = shapedGlyph.advance + boldAdvance
+                        val glyphStartX = command.x + shapedGlyph.x
+                        val glyphEndX = glyphStartX + glyphAdvance
+                        if (glyphStartX < lineStartX) lineStartX = glyphStartX
+                        if (glyphEndX > lineEndX) lineEndX = glyphEndX
+
+                        if (glyph != null && glyph.drawable && texture != null) {
+                            beginForFont(glyphFont, texture)
+                            if (activeStyleColor != currentDrawColor) {
+                                val r = ((activeStyleColor ushr 16) and 0xFF) / 255f
+                                val g = ((activeStyleColor ushr 8) and 0xFF) / 255f
+                                val b = (activeStyleColor and 0xFF) / 255f
+                                val a = ((activeStyleColor ushr 24) and 0xFF) / 255f
+                                GL11.glColor4f(r, g, b, a)
+                                currentDrawColor = activeStyleColor
+                            }
+
+                            val drawGlyph = if (styleObfuscated && ObfuscationTextSelector.shouldObfuscateCodepoint(shapedGlyph.sourceCodepoint)) {
+                                resolveObfuscatedGlyph(
+                                    font = glyphFont,
+                                    sourceKey = command.sourceKey ?: command.text,
+                                    original = glyph,
+                                    lineIndex = lineIndex,
+                                    glyphIndexInLine = glyphIndexInLine,
+                                    avoidGlyphIndex = lastObfuscatedGlyphIndex
+                                )
+                            } else {
+                                glyph
+                            }
+
+                            val effectiveGlyph = drawGlyph ?: glyph
+                            val glyphScale = TextDecorationLayout.scalePx(fontSize, glyphFont.meta.metrics.emSize)
+                            emitGlyphQuad(
+                                glyph = effectiveGlyph,
+                                baselineY = baselineY + shapedGlyph.y,
+                                cursorX = glyphStartX,
+                                atlasWidth = texture.width,
+                                atlasHeight = texture.height,
+                                fontScalePx = glyphScale,
+                                italic = styleItalic,
+                                italicSkewPx = glyphScale * 0.2f
+                            )
+                            if (styleBold) {
+                                emitGlyphQuad(
+                                    glyph = effectiveGlyph,
+                                    baselineY = baselineY + shapedGlyph.y,
+                                    cursorX = glyphStartX + 0.75f,
+                                    atlasWidth = texture.width,
+                                    atlasHeight = texture.height,
+                                    fontScalePx = glyphScale,
+                                    italic = styleItalic,
+                                    italicSkewPx = glyphScale * 0.2f
+                                )
+                            }
+                            lastObfuscatedGlyphIndex = if (styleObfuscated) effectiveGlyph.glyphIndex else null
+                        } else {
+                            lastObfuscatedGlyphIndex = null
+                        }
+
+                        if (glyphEndX > glyphStartX) {
+                            if (styleUnderline) {
+                                segmentBuffer.appendMerged(
+                                    segmentKind = SEGMENT_UNDERLINE,
+                                    segmentStartX = glyphStartX,
+                                    segmentEndX = glyphEndX,
+                                    segmentY = lineMetrics.underlineY,
+                                    segmentThickness = lineMetrics.underlineThickness,
+                                    segmentColor = activeStyleColor
+                                )
+                            }
+                            if (styleStrikethrough) {
+                                segmentBuffer.appendMerged(
+                                    segmentKind = SEGMENT_STRIKETHROUGH,
+                                    segmentStartX = glyphStartX,
+                                    segmentEndX = glyphEndX,
+                                    segmentY = lineMetrics.strikethroughY,
+                                    segmentThickness = lineMetrics.strikethroughThickness,
+                                    segmentColor = activeStyleColor
+                                )
+                            }
+                        }
+
+                        globalGlyphIndex += 1
+                        glyphIndexInLine += 1
+                    }
+
+                    if (debugDecorationGuidesEnabled && lineEndX > lineStartX) {
+                        segmentBuffer.appendMerged(
+                            segmentKind = SEGMENT_DEBUG_BASELINE,
+                            segmentStartX = lineStartX,
+                            segmentEndX = lineEndX,
+                            segmentY = lineRecord.baselineY.coerceIn(lineRecord.lineTopY, lineRecord.lineTopY + lineRecord.lineHeightPx),
+                            segmentThickness = 1f,
+                            segmentColor = 0x66FFAA00
+                        )
+                        segmentBuffer.appendMerged(
+                            segmentKind = SEGMENT_DEBUG_UNDERLINE,
+                            segmentStartX = lineStartX,
+                            segmentEndX = lineEndX,
+                            segmentY = lineMetrics.underlineY,
+                            segmentThickness = lineMetrics.underlineThickness,
+                            segmentColor = 0x6600FF00
+                        )
+                        segmentBuffer.appendMerged(
+                            segmentKind = SEGMENT_DEBUG_STRIKE,
+                            segmentStartX = lineStartX,
+                            segmentEndX = lineEndX,
+                            segmentY = lineMetrics.strikethroughY,
+                            segmentThickness = lineMetrics.strikethroughThickness,
+                            segmentColor = 0x66FF00FF
+                        )
+                    }
+
+                    lineTop += lineHeight
+                    lineIndex += 1
                 }
+            } finally {
+                if (glBegun) {
+                    GL11.glEnd()
+                }
+                ARBShaderObjects.glUseProgramObjectARB(0)
             }
 
-            drawDecorationSegments(underlineSegments)
-            drawDecorationSegments(strikeSegments)
-            if (debugDecorationGuidesEnabled) {
-                drawDecorationSegments(baselineGuides)
-                drawDecorationSegments(underlineGuides)
-                drawDecorationSegments(strikeGuides)
-            }
+            drawDecorationSegments(segmentBuffer, debugDecorationGuidesEnabled)
+            maybeLogPerformance()
         } finally {
             if (depthWasEnabled) {
                 GL11.glEnable(GL11.GL_DEPTH_TEST)
@@ -388,6 +501,46 @@ internal class MsdfTextRenderer {
         )
     }
 
+    private fun splitLines(text: String): List<LineSlice> {
+        if (text.isEmpty()) return listOf(LineSlice(0, 0))
+        val lines = ArrayList<LineSlice>(4)
+        var start = 0
+        var index = 0
+        while (index < text.length) {
+            if (text[index] == '\n') {
+                lines += LineSlice(start = start, endExclusive = index)
+                start = index + 1
+            }
+            index += 1
+        }
+        lines += LineSlice(start = start, endExclusive = text.length)
+        return lines
+    }
+
+    private fun resolveRenderableGlyph(
+        shapedFont: LoadedMsdfFont,
+        fallbackFont: LoadedMsdfFont?,
+        shapedGlyph: ShapedGlyph
+    ): Pair<LoadedMsdfFont, MsdfGlyph?> {
+        val byIndex = shapedFont.meta.glyphByIndex(shapedGlyph.glyphIndex)
+        if (byIndex != null) return shapedFont to byIndex
+
+        val byCodepoint = shapedFont.meta.glyph(shapedGlyph.sourceCodepoint)
+        if (byCodepoint != null) return shapedFont to byCodepoint
+
+        val localFallback = shapedFont.meta.fallbackGlyph()
+        if (localFallback != null) return shapedFont to localFallback
+
+        if (fallbackFont != null) {
+            val fallbackByCodepoint = fallbackFont.meta.glyph(shapedGlyph.sourceCodepoint)
+            if (fallbackByCodepoint != null) return fallbackFont to fallbackByCodepoint
+            val fallbackDefault = fallbackFont.meta.fallbackGlyph()
+            if (fallbackDefault != null) return fallbackFont to fallbackDefault
+        }
+
+        return shapedFont to null
+    }
+
     private fun emitGlyphQuad(
         glyph: MsdfGlyph,
         baselineY: Float,
@@ -422,102 +575,63 @@ internal class MsdfTextRenderer {
         GL11.glVertex2f(x0 + skew, y0)
     }
 
-    private fun resolveGlyphStyle(
+    private fun getOrBuildLayoutCacheEntry(
         command: RenderCommand.DrawText,
-        spans: List<RenderCommand.TextStyleSpan>,
-        spanIndex: Int,
-        charStartIndex: Int,
-        opacityMultiplier: Float
-    ): EffectiveGlyphStyle {
-        if (spanIndex < spans.size) {
-            val span = spans[spanIndex]
-            if (charStartIndex >= span.start && charStartIndex < span.end) {
-                return EffectiveGlyphStyle(
-                    color = withOpacity(span.color, opacityMultiplier),
-                    bold = span.bold,
-                    italic = span.italic,
-                    underline = span.underline,
-                    strikethrough = span.strikethrough,
-                    obfuscated = span.obfuscated
-                )
+        primaryFont: LoadedMsdfFont,
+        fontSize: Int
+    ): LayoutCacheEntry {
+        val key = LayoutCacheKey(
+            text = command.text,
+            primaryFontId = primaryFont.descriptor.fontId,
+            fontSize = fontSize,
+            textFormatting = command.textFormatting,
+            color = command.color,
+            baseFlagsMask = baseFlagsMask(command),
+            styleSpansHash = styleSpansFingerprint(command.textStyleSpans)
+        )
+        synchronized(layoutCache) {
+            val cached = layoutCache[key]
+            if (cached != null) {
+                debugCounters.layoutCacheHits += 1
+                return cached
             }
         }
-        return EffectiveGlyphStyle(
-            color = withOpacity(command.color, opacityMultiplier),
-            bold = command.bold,
-            italic = command.italic,
-            underline = command.underline,
-            strikethrough = command.strikethrough,
-            obfuscated = command.obfuscated
-        )
-    }
 
-    private fun appendDecorationDebugGuides(
-        baselineGuides: MutableList<DecorationSegment>,
-        underlineGuides: MutableList<DecorationSegment>,
-        strikeGuides: MutableList<DecorationSegment>,
-        startX: Float,
-        endX: Float,
-        line: TextVisualLine,
-        lineMetrics: org.dreamfinity.dsgl.core.text.ResolvedLineDecorationMetrics
-    ) {
-        if (endX <= startX) return
-        appendDecorationSegment(
-            list = baselineGuides,
-            startX = startX,
-            endX = endX,
-            y = line.baselineY.coerceIn(line.lineTopY, line.lineTopY + line.lineHeightPx),
-            thickness = 1f,
-            color = 0x66FFAA00
-        )
-        appendDecorationSegment(
-            list = underlineGuides,
-            startX = startX,
-            endX = endX,
-            y = lineMetrics.underlineY,
-            thickness = lineMetrics.underlineThickness,
-            color = 0x6600FF00
-        )
-        appendDecorationSegment(
-            list = strikeGuides,
-            startX = startX,
-            endX = endX,
-            y = lineMetrics.strikethroughY,
-            thickness = lineMetrics.strikethroughThickness,
-            color = 0x66FF00FF
-        )
-    }
-
-    private fun appendDecorationSegment(
-        list: MutableList<DecorationSegment>,
-        startX: Float,
-        endX: Float,
-        y: Float,
-        thickness: Float,
-        color: Int
-    ) {
-        if (endX <= startX) return
-        val last = list.lastOrNull()
-        if (last != null &&
-            kotlin.math.abs(last.endX - startX) <= 0.51f &&
-            kotlin.math.abs(last.y - y) <= 0.51f &&
-            kotlin.math.abs(last.thickness - thickness) <= 0.1f &&
-            last.color == color
-        ) {
-            last.endX = endX
-            return
+        debugCounters.layoutCacheMisses += 1
+        val prepared = prepareText(command)
+        val slices = splitLines(prepared.text)
+        val lines = ArrayList<CachedLineLayout>(slices.size)
+        slices.forEach { slice ->
+            val lineText = if (slice.start < slice.endExclusive) {
+                prepared.text.substring(slice.start, slice.endExclusive)
+            } else {
+                ""
+            }
+            debugCounters.glyphVectorRequests += 1
+            val shaped = FontRegistry.shapeText(
+                text = lineText,
+                fontId = command.fontId,
+                fontSize = fontSize,
+                formattingMode = command.textFormatting.name
+            )
+            lines += CachedLineLayout(
+                start = slice.start,
+                shaped = shaped
+            )
         }
-        list += DecorationSegment(
-            startX = startX,
-            endX = endX,
-            y = y,
-            thickness = thickness,
-            color = color
+
+        val built = LayoutCacheEntry(
+            prepared = prepared,
+            lines = lines
         )
+        synchronized(layoutCache) {
+            layoutCache[key] = built
+        }
+        return built
     }
 
-    private fun drawDecorationSegments(segments: List<DecorationSegment>) {
-        if (segments.isEmpty()) return
+    private fun drawDecorationSegments(segments: SegmentBuffer, includeDebug: Boolean) {
+        if (segments.size == 0) return
         val texture2dWasEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D)
         val blendWasEnabled = GL11.glIsEnabled(GL11.GL_BLEND)
         val alphaTestWasEnabled = GL11.glIsEnabled(GL11.GL_ALPHA_TEST)
@@ -533,22 +647,32 @@ internal class MsdfTextRenderer {
         if (texture2dWasEnabled) GL11.glDisable(GL11.GL_TEXTURE_2D)
         GL11.glBegin(GL11.GL_QUADS)
         try {
-            segments.forEach { segment ->
-                val color = segment.color
+            var index = 0
+            while (index < segments.size) {
+                val kind = segments.kindAt(index)
+                val isDebug = kind == SEGMENT_DEBUG_BASELINE ||
+                    kind == SEGMENT_DEBUG_UNDERLINE ||
+                    kind == SEGMENT_DEBUG_STRIKE
+                if (isDebug && !includeDebug) {
+                    index += 1
+                    continue
+                }
+                val color = segments.colorAt(index)
                 val r = ((color ushr 16) and 0xFF) / 255f
                 val g = ((color ushr 8) and 0xFF) / 255f
                 val b = (color and 0xFF) / 255f
                 val a = ((color ushr 24) and 0xFF) / 255f
                 GL11.glColor4f(r, g, b, a)
-                val y0 = segment.y
+                val y0 = segments.yAt(index)
                 val y1 = maxOf(
                     y0 + 0.5f,
-                    segment.y + segment.thickness
+                    y0 + segments.thicknessAt(index)
                 )
-                GL11.glVertex2f(segment.startX, y0)
-                GL11.glVertex2f(segment.endX, y0)
-                GL11.glVertex2f(segment.endX, y1)
-                GL11.glVertex2f(segment.startX, y1)
+                GL11.glVertex2f(segments.startXAt(index), y0)
+                GL11.glVertex2f(segments.endXAt(index), y0)
+                GL11.glVertex2f(segments.endXAt(index), y1)
+                GL11.glVertex2f(segments.startXAt(index), y1)
+                index += 1
             }
         } finally {
             GL11.glEnd()
@@ -560,15 +684,56 @@ internal class MsdfTextRenderer {
         }
     }
 
+    private fun baseFlagsMask(command: RenderCommand.DrawText): Int {
+        return flagsMask(
+            bold = command.bold,
+            italic = command.italic,
+            underline = command.underline,
+            strikethrough = command.strikethrough,
+            obfuscated = command.obfuscated
+        )
+    }
+
+    private fun flagsMask(
+        bold: Boolean,
+        italic: Boolean,
+        underline: Boolean,
+        strikethrough: Boolean,
+        obfuscated: Boolean
+    ): Int {
+        var mask = 0
+        if (bold) mask = mask or STYLE_FLAG_BOLD
+        if (italic) mask = mask or STYLE_FLAG_ITALIC
+        if (underline) mask = mask or STYLE_FLAG_UNDERLINE
+        if (strikethrough) mask = mask or STYLE_FLAG_STRIKETHROUGH
+        if (obfuscated) mask = mask or STYLE_FLAG_OBFUSCATED
+        return mask
+    }
+
+    private fun styleSpansFingerprint(spans: List<RenderCommand.TextStyleSpan>): Int {
+        if (spans.isEmpty()) return 0
+        var hash = 1
+        spans.forEach { span ->
+            hash = 31 * hash + span.start
+            hash = 31 * hash + span.end
+            hash = 31 * hash + span.color
+            hash = 31 * hash + if (span.bold) 1 else 0
+            hash = 31 * hash + if (span.italic) 1 else 0
+            hash = 31 * hash + if (span.underline) 1 else 0
+            hash = 31 * hash + if (span.strikethrough) 1 else 0
+            hash = 31 * hash + if (span.obfuscated) 1 else 0
+        }
+        return hash
+    }
+
     private fun resolveObfuscatedGlyph(
         font: LoadedMsdfFont,
         sourceKey: String,
-        runItem: org.dreamfinity.dsgl.core.font.MsdfGlyphRunItem,
+        original: MsdfGlyph,
         lineIndex: Int,
         glyphIndexInLine: Int,
-        avoidCodepoint: Int?
+        avoidGlyphIndex: Int?
     ): MsdfGlyph? {
-        val original = runItem.glyph ?: return null
         val buckets = obfuscationBuckets.getOrPut(font.descriptor.fontId) {
             buildObfuscationBuckets(font)
         }
@@ -578,28 +743,31 @@ internal class MsdfTextRenderer {
             ?: nearestExpandedCandidates(buckets, baseBucket)
             ?: buckets.allGlyphs
         if (candidates.isEmpty()) return original
+
+        val originalKey = original.codepoint ?: original.glyphIndex
         val primaryIndex = ObfuscationTextSelector.selectCandidateIndex(
             sourceKey = sourceKey,
-            lineIndex,
+            lineIndex = lineIndex,
             glyphIndexInLine = glyphIndexInLine,
             timeSlice = obfuscationTimeSlice,
-            originalCodepoint = original.codepoint,
+            originalCodepoint = originalKey,
             candidateCount = candidates.size
         )
         val primary = candidates[primaryIndex]
-        if (avoidCodepoint == null || candidates.size <= 1 || primary.codepoint != avoidCodepoint) {
+        if (avoidGlyphIndex == null || candidates.size <= 1 || primary.glyphIndex != avoidGlyphIndex) {
             return primary
         }
         val secondaryIndex = (primaryIndex + 1 + (obfuscationTimeSlice.toInt() and 3)) % candidates.size
         val secondary = candidates[secondaryIndex]
-        if (secondary.codepoint != avoidCodepoint) return secondary
-        return candidates.firstOrNull { it.codepoint != avoidCodepoint } ?: primary
+        if (secondary.glyphIndex != avoidGlyphIndex) return secondary
+        return candidates.firstOrNull { it.glyphIndex != avoidGlyphIndex } ?: primary
     }
 
     private fun buildObfuscationBuckets(font: LoadedMsdfFont): ObfuscationBuckets {
-        val glyphs = font.meta.glyphsByCodepoint.values
+        val glyphs = font.meta.glyphsByIndex.values
             .filter { glyph ->
-                glyph.drawable && !TextStyleMetrics.isWhitespaceCodepoint(glyph.codepoint)
+                val codepoint = glyph.codepoint
+                glyph.drawable && (codepoint == null || !TextStyleMetrics.isWhitespaceCodepoint(codepoint))
             }
         if (glyphs.isEmpty()) {
             return ObfuscationBuckets(
@@ -683,37 +851,23 @@ internal class MsdfTextRenderer {
     }
 
     private fun textureFor(font: LoadedMsdfFont): TextureHandle? {
-        val atlasPath = font.descriptor.atlasResourcePath
-        textures[atlasPath]?.let { return it }
+        val fontId = font.descriptor.fontId
+        textures[fontId]?.let { return it }
         return runCatching {
-            val image = readImage(atlasPath) ?: return null
-            val handle = uploadTexture(image)
-            textures[atlasPath] = handle
+            val handle = uploadTexture(font)
+            textures[fontId] = handle
             handle
         }.onFailure { error ->
-            logRateLimited("texture:$atlasPath", "[DSGL-MSDF] Failed to load atlas '$atlasPath': ${error.message}")
+            logRateLimited("texture:$fontId", "[DSGL-MSDF] Failed to load atlas '$fontId': ${error.message}")
         }.getOrNull()
     }
 
-    private fun readImage(resourcePath: String): BufferedImage? {
-        val stream = javaClass.classLoader.getResourceAsStream(resourcePath) ?: return null
-        return stream.use { input -> ImageIO.read(input) }
-    }
-
-    private fun uploadTexture(image: BufferedImage): TextureHandle {
-        val width = image.width.coerceAtLeast(1)
-        val height = image.height.coerceAtLeast(1)
+    private fun uploadTexture(font: LoadedMsdfFont): TextureHandle {
+        val bitmap = font.atlasPayload.ensureDecoded()
+        val width = bitmap.width.coerceAtLeast(1)
+        val height = bitmap.height.coerceAtLeast(1)
         val buffer = BufferUtils.createByteBuffer(width * height * 4)
-
-        for (y in (height - 1) downTo 0) {
-            for (x in 0 until width) {
-                val argb = image.getRGB(x, y)
-                buffer.put(((argb shr 16) and 0xFF).toByte())
-                buffer.put(((argb shr 8) and 0xFF).toByte())
-                buffer.put((argb and 0xFF).toByte())
-                buffer.put(((argb ushr 24) and 0xFF).toByte())
-            }
-        }
+        buffer.put(bitmap.rgbaBytes)
         buffer.flip()
 
         val textureId = GL11.glGenTextures()
@@ -733,6 +887,8 @@ internal class MsdfTextRenderer {
             GL11.GL_UNSIGNED_BYTE,
             buffer
         )
+        debugCounters.textureUploads += 1
+        debugCounters.textureUploadBytes += (width.toLong() * height.toLong() * 4L)
         return TextureHandle(textureId = textureId, width = width, height = height)
     }
 
@@ -810,41 +966,59 @@ internal class MsdfTextRenderer {
         return java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations")
     }
 
+    private fun maybeLogPerformance() {
+        if (!debugPerformanceEnabled) return
+        val now = System.currentTimeMillis()
+        if (now - debugLastLogMs < 1_000L) return
+        debugLastLogMs = now
+        val layoutSize = synchronized(layoutCache) { layoutCache.size }
+        println(
+            "[DSGL-MSDF] drawCalls=${debugCounters.drawCalls} " +
+                "layoutCache hit=${debugCounters.layoutCacheHits} miss=${debugCounters.layoutCacheMisses} size=$layoutSize " +
+                "glyphVectors=${debugCounters.glyphVectorRequests} textureUploads=${debugCounters.textureUploads} " +
+                "textureUploadBytes=${debugCounters.textureUploadBytes}"
+        )
+    }
+
     private fun debugGlyphResolution(text: String, font: LoadedMsdfFont) {
         if (!debugGlyphResolutionEnabled) return
         val sample = text.take(64)
         val key = "${font.descriptor.fontId}|$sample"
         if (!debugLogKeys.add(key)) return
-        val codepoints = sample.toCodepointList()
-        println(
-            "[DSGL-MSDF] text='$sample' codepoints=" +
-                codepoints.joinToString(",") { "U+%04X".format(it) }
-        )
 
-        codepoints.forEach { codepoint ->
-            val direct = font.meta.glyph(codepoint)
-            val runItem = font.meta.resolveGlyphRun(codepoint, FontRegistry.DEFAULT_FONT_SIZE)
-            val resolved = runItem?.glyph
-            val resolvedCp = runItem?.kerningCodepoint?.let { "U+%04X".format(it) } ?: "null"
-            val uv = resolved?.atlasBounds?.let { "[${it.left},${it.bottom},${it.right},${it.top}]" } ?: "null"
-            val plane = resolved?.planeBounds?.let { "[${it.left},${it.bottom},${it.right},${it.top}]" } ?: "null"
+        val shaped = FontRegistry.shapeText(
+            text = sample,
+            fontId = font.descriptor.fontId,
+            fontSize = FontRegistry.DEFAULT_FONT_SIZE,
+            formattingMode = "debug"
+        )
+        println("[DSGL-MSDF] text='$sample' glyphs=${shaped.glyphs.size} runs=${shaped.runs.size}")
+        shaped.glyphs.take(32).forEach { glyph ->
+            val loaded = FontRegistry.get(glyph.fontId)
+            val atlasGlyph = loaded?.meta?.glyphByIndex(glyph.glyphIndex)
             println(
-                "[DSGL-MSDF] cp=U+%04X found=%s resolved=%s draw=%s fallback=%s uv=%s plane=%s".format(
-                    codepoint,
-                    direct != null,
-                    resolvedCp,
-                    runItem?.draw ?: false,
-                    runItem?.usedFallback ?: false,
-                    uv,
-                    plane
+                "[DSGL-MSDF] font=${glyph.fontId} glyphIndex=${glyph.glyphIndex} sourceCp=U+%04X found=%s".format(
+                    glyph.sourceCodepoint,
+                    atlasGlyph != null
                 )
             )
         }
     }
 
     companion object {
+        private const val MAX_LAYOUT_CACHE_ENTRIES: Int = 512
         private const val MIN_OBFUSCATION_CANDIDATES: Int = 24
         private const val OBFUSCATION_TIME_STEP_SEC: Double = 0.05
+        private const val STYLE_FLAG_BOLD: Int = 1 shl 0
+        private const val STYLE_FLAG_ITALIC: Int = 1 shl 1
+        private const val STYLE_FLAG_UNDERLINE: Int = 1 shl 2
+        private const val STYLE_FLAG_STRIKETHROUGH: Int = 1 shl 3
+        private const val STYLE_FLAG_OBFUSCATED: Int = 1 shl 4
+        private const val SEGMENT_UNDERLINE: Int = 1
+        private const val SEGMENT_STRIKETHROUGH: Int = 2
+        private const val SEGMENT_DEBUG_BASELINE: Int = 3
+        private const val SEGMENT_DEBUG_UNDERLINE: Int = 4
+        private const val SEGMENT_DEBUG_STRIKE: Int = 5
 
         private const val VERTEX_SHADER_SOURCE: String = """
             #version 120
@@ -879,3 +1053,4 @@ internal class MsdfTextRenderer {
         """
     }
 }
+

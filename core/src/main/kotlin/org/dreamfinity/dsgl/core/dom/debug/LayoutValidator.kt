@@ -199,8 +199,8 @@ object LayoutValidator {
 
     private fun walkDraw(node: DOMNode, violatingKeys: Set<Any>, out: MutableList<RenderCommand>) {
         if (node.display == Display.None) return
-        addOutline(out, contentRect(node), 0x7700AEEF.toInt())
-        addOutline(out, outerRect(node), 0x6688C15B.toInt())
+        addOutline(out, contentRect(node), 0x7700AEEF)
+        addOutline(out, outerRect(node), 0x6688C15B)
         val key = node.key
         if (key != null && key in violatingKeys) {
             addOutline(out, outerRect(node), 0xCCFF3B30.toInt())

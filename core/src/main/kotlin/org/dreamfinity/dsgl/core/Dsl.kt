@@ -539,8 +539,8 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.FONT_WEIGHT, value.toCssLiteral())
         }
 
-    var fontStyle: org.dreamfinity.dsgl.core.style.FontStyle
-        get() = org.dreamfinity.dsgl.core.style.FontStyle.Normal
+    var fontStyle: FontStyle
+        get() = FontStyle.Normal
         set(value) {
             setLiteral(StyleProperty.FONT_STYLE, value.toCssLiteral())
         }
@@ -793,9 +793,9 @@ class StyleScope internal constructor(private val node: DOMNode) {
         FontWeight.Bold -> "bold"
     }
 
-    private fun org.dreamfinity.dsgl.core.style.FontStyle.toCssLiteral(): String = when (this) {
-        org.dreamfinity.dsgl.core.style.FontStyle.Normal -> "normal"
-        org.dreamfinity.dsgl.core.style.FontStyle.Italic -> "italic"
+    private fun FontStyle.toCssLiteral(): String = when (this) {
+        FontStyle.Normal -> "normal"
+        FontStyle.Italic -> "italic"
     }
 
     private fun TextDecoration.toCssLiteral(): String = when (this) {

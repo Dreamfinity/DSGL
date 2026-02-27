@@ -4,6 +4,7 @@ import cpw.mods.fml.common.FMLCommonHandler
 import cpw.mods.fml.common.Mod
 import cpw.mods.fml.common.event.FMLInitializationEvent
 import cpw.mods.fml.common.event.FMLPreInitializationEvent
+import net.minecraft.client.Minecraft
 
 /**
  * Minimal Forge mod container so FML can discover and load the DSGL MC 1.7.10 adapter module.
@@ -23,6 +24,7 @@ class DsglMc1710ModContainer {
     @Mod.EventHandler
     fun onInit(event: FMLInitializationEvent) {
         if (FMLCommonHandler.instance().side.isClient) {
+            DsglFonts.ensureInitialized(Minecraft.getMinecraft().mcDataDir, javaClass.classLoader)
             DsglClientHotkeys.register()
         }
     }
