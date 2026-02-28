@@ -130,6 +130,13 @@ class InspectorController {
     private var hoverPickEnabled: Boolean = true
     private var panelScrollY: Int = 0
     private var panelContentHeight: Int = 0
+    private var hoverDirty: Boolean = true
+    private var lastHoverMouseX: Int = Int.MIN_VALUE
+    private var lastHoverMouseY: Int = Int.MIN_VALUE
+    private var lastHoverLayoutVersion: Long = Long.MIN_VALUE
+    private var tooltipNodeRef: DOMNode? = null
+    private var tooltipNodeBounds: Rect = Rect(0, 0, 0, 0)
+    private var tooltipLabelCache: String = ""
 
     private val minPanelWidth: Int = 240
     private val minPanelHeight: Int = 160
@@ -220,18 +227,26 @@ class InspectorController {
     }
 
     fun onLayoutCommitted(root: DOMNode, layoutVersion: Long) {
+        val layoutChanged = this.layoutVersion != layoutVersion
         this.root = root
         this.layoutVersion = layoutVersion
         rebindSelection()
         updateHoverGate()
+        if (layoutChanged) {
+            hoverDirty = true
+            tooltipNodeRef = null
+        }
         if (hoverPickEnabled) {
-            refreshHover()
+            refreshHoverIfNeeded()
         } else {
             clearHoveredState()
         }
     }
 
     fun onCursorMoved(mouseX: Int, mouseY: Int) {
+        if (this.mouseX != mouseX || this.mouseY != mouseY) {
+            hoverDirty = true
+        }
         this.mouseX = mouseX
         this.mouseY = mouseY
         updateHoverGate()
@@ -239,7 +254,7 @@ class InspectorController {
             clearHoveredState()
             return
         }
-        refreshHover()
+        refreshHoverIfNeeded()
     }
 
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
@@ -368,7 +383,7 @@ class InspectorController {
         clampMinimizedPosition(viewportWidth, viewportHeight)
         updateHoverGate()
         if (hoverPickEnabled) {
-            refreshHover()
+            refreshHoverIfNeeded()
         } else {
             clearHoveredState()
         }
@@ -404,6 +419,9 @@ class InspectorController {
         panelState = InspectorPanelState.Expanded
         hoveredPath = emptyList()
         hoveredNode = null
+        hoverDirty = true
+        tooltipNodeRef = null
+        tooltipLabelCache = ""
         panelActions.clear()
         panelBounds = Rect(0, 0, 0, 0)
         minimizedBounds = Rect(0, 0, 0, 0)
@@ -451,14 +469,26 @@ class InspectorController {
         }
     }
 
-    private fun refreshHover() {
+    private fun refreshHoverIfNeeded() {
+        if (!hoverDirty &&
+            lastHoverMouseX == mouseX &&
+            lastHoverMouseY == mouseY &&
+            lastHoverLayoutVersion == layoutVersion
+        ) {
+            return
+        }
         val currentRoot = root ?: run {
             hoveredPath = emptyList()
             hoveredNode = null
+            hoverDirty = false
             return
         }
         hoveredPath = collectHoverChain(currentRoot, mouseX, mouseY)
         hoveredNode = hoveredPath.lastOrNull()
+        lastHoverMouseX = mouseX
+        lastHoverMouseY = mouseY
+        lastHoverLayoutVersion = layoutVersion
+        hoverDirty = false
     }
 
     private fun appendHighlightCommands(
@@ -491,13 +521,24 @@ class InspectorController {
     ) {
         if (!hoverPickEnabled) return
         val node = hoveredNode ?: return
-        val label = "${nodeLabel(node)} ${node.bounds.width}x${node.bounds.height} @ ${node.bounds.x},${node.bounds.y}"
+        val label = resolveTooltipLabel(node)
         val boxW = (label.length * 6 + 8).coerceIn(96, viewportWidth - 8)
         val boxH = 14
         val tooltipRect = resolveTooltipRect(viewportWidth, viewportHeight, boxW, boxH)
         addFill(out, tooltipRect, 0xDD11151A.toInt())
         addOutline(out, tooltipRect, 0xCC3F4A57.toInt())
         out += RenderCommand.DrawText(label, tooltipRect.x + 4, tooltipRect.y + 3, 0xFFE6EDF6.toInt())
+    }
+
+    private fun resolveTooltipLabel(node: DOMNode): String {
+        val bounds = node.bounds
+        if (tooltipNodeRef === node && tooltipNodeBounds == bounds && tooltipLabelCache.isNotEmpty()) {
+            return tooltipLabelCache
+        }
+        tooltipNodeRef = node
+        tooltipNodeBounds = bounds
+        tooltipLabelCache = "${nodeLabel(node)} ${bounds.width}x${bounds.height} @ ${bounds.x},${bounds.y}"
+        return tooltipLabelCache
     }
 
     private fun appendPanel(
@@ -1418,6 +1459,9 @@ class InspectorController {
     private fun clearHoveredState() {
         hoveredPath = emptyList()
         hoveredNode = null
+        hoverDirty = false
+        tooltipNodeRef = null
+        tooltipLabelCache = ""
     }
 
     private fun resolveTooltipRect(

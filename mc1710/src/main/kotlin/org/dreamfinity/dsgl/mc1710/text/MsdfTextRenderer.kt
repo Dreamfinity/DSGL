@@ -35,7 +35,6 @@ internal class MsdfTextRenderer {
         val primaryFontId: String,
         val fontSize: Int,
         val textFormatting: TextFormatting,
-        val color: Int,
         val baseFlagsMask: Int,
         val styleSpansHash: Int
     )
@@ -45,10 +44,7 @@ internal class MsdfTextRenderer {
         val shaped: ShapedText
     )
 
-    private data class LayoutCacheEntry(
-        val prepared: PreparedText,
-        val lines: List<CachedLineLayout>
-    )
+    private data class LayoutCacheEntry(val lines: List<CachedLineLayout>)
 
     private class SegmentBuffer(initialCapacity: Int = 64) {
         private var startX = FloatArray(initialCapacity)
@@ -122,6 +118,7 @@ internal class MsdfTextRenderer {
         var layoutCacheHits: Long = 0L,
         var layoutCacheMisses: Long = 0L,
         var glyphVectorRequests: Long = 0L,
+        var glyphResolutionRequests: Long = 0L,
         var textureUploads: Long = 0L,
         var textureUploadBytes: Long = 0L
     )
@@ -188,8 +185,13 @@ internal class MsdfTextRenderer {
         val runtimeFallbackFont = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
             ?.takeIf { it.descriptor.fontId != primaryFont.descriptor.fontId }
         val fontSize = FontRegistry.resolveFontSize(command.fontSize)
-        val layoutEntry = getOrBuildLayoutCacheEntry(command, primaryFont, fontSize)
-        val prepared = layoutEntry.prepared
+        val prepared = prepareText(command)
+        val layoutEntry = getOrBuildLayoutCacheEntry(
+            command = command,
+            prepared = prepared,
+            primaryFont = primaryFont,
+            fontSize = fontSize
+        )
         if (prepared.text.isEmpty() || layoutEntry.lines.isEmpty()) return
 
         val debugDecorationGuidesEnabled = isDebugDecorationGuidesEnabled()
@@ -273,6 +275,8 @@ internal class MsdfTextRenderer {
                     var lineEndX = lineStartX
                     var glyphIndexInLine = 0
                     var lastObfuscatedGlyphIndex: Int? = null
+                    var cachedShapedFontId: String? = null
+                    var cachedShapedFont: LoadedMsdfFont = primaryFont
 
                     shaped.glyphs.forEach { shapedGlyph ->
                         val globalCharStart = line.start + shapedGlyph.charStart
@@ -306,13 +310,36 @@ internal class MsdfTextRenderer {
                             }
                         }
 
-                        val shapedFont = FontRegistry.get(shapedGlyph.fontId) ?: primaryFont
-                        val (glyphFont, glyph) = resolveRenderableGlyph(
-                            shapedFont = shapedFont,
-                            fallbackFont = runtimeFallbackFont,
-                            shapedGlyph = shapedGlyph
-                        )
+                        val shapedFont = if (shapedGlyph.fontId == cachedShapedFontId) {
+                            cachedShapedFont
+                        } else {
+                            (FontRegistry.get(shapedGlyph.fontId) ?: primaryFont).also { resolved ->
+                                cachedShapedFontId = shapedGlyph.fontId
+                                cachedShapedFont = resolved
+                            }
+                        }
+                        var glyphFont = shapedFont
+                        var glyph = shapedFont.meta.glyphByIndex(shapedGlyph.glyphIndex)
+                        if (glyph == null) {
+                            glyph = shapedFont.meta.glyph(shapedGlyph.sourceCodepoint)
+                        }
+                        if (glyph == null) {
+                            glyph = shapedFont.meta.fallbackGlyph()
+                        }
+                        if (glyph == null && runtimeFallbackFont != null) {
+                            val fallbackByCodepoint = runtimeFallbackFont.meta.glyph(shapedGlyph.sourceCodepoint)
+                            if (fallbackByCodepoint != null) {
+                                glyphFont = runtimeFallbackFont
+                                glyph = fallbackByCodepoint
+                            } else {
+                                runtimeFallbackFont.meta.fallbackGlyph()?.let { fallbackDefault ->
+                                    glyphFont = runtimeFallbackFont
+                                    glyph = fallbackDefault
+                                }
+                            }
+                        }
                         val texture = textureFor(glyphFont)
+                        debugCounters.glyphResolutionRequests += 1
 
                         val styleBold = (activeStyleFlags and STYLE_FLAG_BOLD) != 0
                         val styleItalic = (activeStyleFlags and STYLE_FLAG_ITALIC) != 0
@@ -331,7 +358,8 @@ internal class MsdfTextRenderer {
                         if (glyphStartX < lineStartX) lineStartX = glyphStartX
                         if (glyphEndX > lineEndX) lineEndX = glyphEndX
 
-                        if (glyph != null && glyph.drawable && texture != null) {
+                        val resolvedGlyph = glyph
+                        if (resolvedGlyph != null && resolvedGlyph.drawable && texture != null) {
                             beginForFont(glyphFont, texture)
                             if (activeStyleColor != currentDrawColor) {
                                 val r = ((activeStyleColor ushr 16) and 0xFF) / 255f
@@ -346,16 +374,16 @@ internal class MsdfTextRenderer {
                                 resolveObfuscatedGlyph(
                                     font = glyphFont,
                                     sourceKey = command.sourceKey ?: command.text,
-                                    original = glyph,
+                                    original = resolvedGlyph,
                                     lineIndex = lineIndex,
                                     glyphIndexInLine = glyphIndexInLine,
                                     avoidGlyphIndex = lastObfuscatedGlyphIndex
                                 )
                             } else {
-                                glyph
+                                resolvedGlyph
                             }
 
-                            val effectiveGlyph = drawGlyph ?: glyph
+                            val effectiveGlyph = drawGlyph ?: resolvedGlyph
                             val glyphScale = TextDecorationLayout.scalePx(fontSize, glyphFont.meta.metrics.emSize)
                             emitGlyphQuad(
                                 glyph = effectiveGlyph,
@@ -517,30 +545,6 @@ internal class MsdfTextRenderer {
         return lines
     }
 
-    private fun resolveRenderableGlyph(
-        shapedFont: LoadedMsdfFont,
-        fallbackFont: LoadedMsdfFont?,
-        shapedGlyph: ShapedGlyph
-    ): Pair<LoadedMsdfFont, MsdfGlyph?> {
-        val byIndex = shapedFont.meta.glyphByIndex(shapedGlyph.glyphIndex)
-        if (byIndex != null) return shapedFont to byIndex
-
-        val byCodepoint = shapedFont.meta.glyph(shapedGlyph.sourceCodepoint)
-        if (byCodepoint != null) return shapedFont to byCodepoint
-
-        val localFallback = shapedFont.meta.fallbackGlyph()
-        if (localFallback != null) return shapedFont to localFallback
-
-        if (fallbackFont != null) {
-            val fallbackByCodepoint = fallbackFont.meta.glyph(shapedGlyph.sourceCodepoint)
-            if (fallbackByCodepoint != null) return fallbackFont to fallbackByCodepoint
-            val fallbackDefault = fallbackFont.meta.fallbackGlyph()
-            if (fallbackDefault != null) return fallbackFont to fallbackDefault
-        }
-
-        return shapedFont to null
-    }
-
     private fun emitGlyphQuad(
         glyph: MsdfGlyph,
         baselineY: Float,
@@ -577,15 +581,15 @@ internal class MsdfTextRenderer {
 
     private fun getOrBuildLayoutCacheEntry(
         command: RenderCommand.DrawText,
+        prepared: PreparedText,
         primaryFont: LoadedMsdfFont,
         fontSize: Int
     ): LayoutCacheEntry {
         val key = LayoutCacheKey(
-            text = command.text,
+            text = prepared.text,
             primaryFontId = primaryFont.descriptor.fontId,
             fontSize = fontSize,
             textFormatting = command.textFormatting,
-            color = command.color,
             baseFlagsMask = baseFlagsMask(command),
             styleSpansHash = styleSpansFingerprint(command.textStyleSpans)
         )
@@ -598,7 +602,6 @@ internal class MsdfTextRenderer {
         }
 
         debugCounters.layoutCacheMisses += 1
-        val prepared = prepareText(command)
         val slices = splitLines(prepared.text)
         val lines = ArrayList<CachedLineLayout>(slices.size)
         slices.forEach { slice ->
@@ -620,10 +623,7 @@ internal class MsdfTextRenderer {
             )
         }
 
-        val built = LayoutCacheEntry(
-            prepared = prepared,
-            lines = lines
-        )
+        val built = LayoutCacheEntry(lines = lines)
         synchronized(layoutCache) {
             layoutCache[key] = built
         }
@@ -716,7 +716,6 @@ internal class MsdfTextRenderer {
         spans.forEach { span ->
             hash = 31 * hash + span.start
             hash = 31 * hash + span.end
-            hash = 31 * hash + span.color
             hash = 31 * hash + if (span.bold) 1 else 0
             hash = 31 * hash + if (span.italic) 1 else 0
             hash = 31 * hash + if (span.underline) 1 else 0
@@ -975,7 +974,8 @@ internal class MsdfTextRenderer {
         println(
             "[DSGL-MSDF] drawCalls=${debugCounters.drawCalls} " +
                 "layoutCache hit=${debugCounters.layoutCacheHits} miss=${debugCounters.layoutCacheMisses} size=$layoutSize " +
-                "glyphVectors=${debugCounters.glyphVectorRequests} textureUploads=${debugCounters.textureUploads} " +
+                "glyphVectors=${debugCounters.glyphVectorRequests} glyphResolves=${debugCounters.glyphResolutionRequests} " +
+                "textureUploads=${debugCounters.textureUploads} " +
                 "textureUploadBytes=${debugCounters.textureUploadBytes}"
         )
     }

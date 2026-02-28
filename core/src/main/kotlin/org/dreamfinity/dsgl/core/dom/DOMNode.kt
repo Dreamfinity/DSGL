@@ -20,6 +20,11 @@ import org.dreamfinity.dsgl.core.text.ParsedText
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
+data class NodeStyleApplyResult(
+    val visualDirty: Boolean,
+    val layoutDirty: Boolean
+)
+
 /**
  * Base class for all DOM nodes in the retained UI tree.
  *
@@ -87,6 +92,7 @@ abstract class DOMNode(
         private set
     var styleDisabled: Boolean = false
         set(value) {
+            val changed = field != value
             field = value
             if (value) {
                 styleHovered = false
@@ -95,6 +101,9 @@ abstract class DOMNode(
                 if (FocusManager.isFocused(this)) {
                     FocusManager.clearFocus()
                 }
+            }
+            if (changed) {
+                StyleEngine.markPseudoStateChanged()
             }
         }
     var draggable: Boolean = false
@@ -459,15 +468,24 @@ abstract class DOMNode(
     }
 
     fun setHoveredState(value: Boolean) {
-        styleHovered = value && !styleDisabled
+        val normalized = value && !styleDisabled
+        if (styleHovered == normalized) return
+        styleHovered = normalized
+        StyleEngine.markPseudoStateChanged()
     }
 
     fun setActiveState(value: Boolean) {
-        styleActive = value && !styleDisabled
+        val normalized = value && !styleDisabled
+        if (styleActive == normalized) return
+        styleActive = normalized
+        StyleEngine.markPseudoStateChanged()
     }
 
     fun setFocusedState(value: Boolean) {
-        styleFocused = value && !styleDisabled
+        val normalized = value && !styleDisabled
+        if (styleFocused == normalized) return
+        styleFocused = normalized
+        StyleEngine.markPseudoStateChanged()
     }
 
     /**
@@ -597,11 +615,14 @@ abstract class DOMNode(
         return computed
     }
 
-    internal fun applyComputedStyle(style: ComputedStyle): Boolean {
+    internal fun applyComputedStyle(style: ComputedStyle): NodeStyleApplyResult {
         val previous = appliedComputedStyle
         if (previous == style) {
             StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
-            return false
+            return NodeStyleApplyResult(
+                visualDirty = false,
+                layoutDirty = false
+            )
         }
         margin = style.margin
         padding = style.padding
@@ -644,8 +665,13 @@ abstract class DOMNode(
         appliedComputedStyle = style
         StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
 
-        if (previous == null) return true
-        return previous.margin != style.margin ||
+        if (previous == null) {
+            return NodeStyleApplyResult(
+                visualDirty = true,
+                layoutDirty = true
+            )
+        }
+        val layoutDirty = previous.margin != style.margin ||
                 previous.padding != style.padding ||
                 previous.borderWidth != style.borderWidth ||
                 previous.borderColor != style.borderColor ||
@@ -675,13 +701,23 @@ abstract class DOMNode(
                 previous.obfuscated != style.obfuscated ||
                 previous.fontId != style.fontId ||
                 previous.fontSize != style.fontSize
+        return NodeStyleApplyResult(
+            visualDirty = true,
+            layoutDirty = layoutDirty
+        )
     }
 
-    internal fun applyAnimationVisuals(transform: UiTransform?, opacity: Float?, color: Int?) {
+    internal fun applyAnimationVisuals(transform: UiTransform?, opacity: Float?, color: Int?): Boolean {
+        val normalizedOpacity = opacity?.coerceIn(0f, 1f)
+        val changed =
+            animatedTransform != transform ||
+                animatedOpacity != normalizedOpacity ||
+                animatedColor != color
         animatedTransform = transform
-        animatedOpacity = opacity?.coerceIn(0f, 1f)
+        animatedOpacity = normalizedOpacity
         animatedColor = color
         applyForegroundColor(animatedColor ?: baseForegroundColor)
+        return changed
     }
 
     fun effectiveTransform(): UiTransform = animatedTransform ?: transform

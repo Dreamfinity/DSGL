@@ -5,6 +5,18 @@ import java.util.*
 
 object StyleEngine {
     private data class AnonymousInspectorTarget(val path: String)
+    data class StyleApplyReport(
+        val layoutDirty: Boolean,
+        val visualDirty: Boolean,
+        val visitedNodes: Int,
+        val cacheHits: Int,
+        val recomputedNodes: Int
+    )
+    private data class MutableApplyMetrics(
+        var visitedNodes: Int = 0,
+        var cacheHits: Int = 0,
+        var recomputedNodes: Int = 0
+    )
 
     private data class CacheKey(
         val typeName: String,
@@ -29,10 +41,26 @@ object StyleEngine {
     private val cache: MutableMap<DOMNode, CachedStyle> = WeakHashMap()
     private val themeVariables: MutableMap<String, String> = linkedMapOf()
     private val inspectorOverrides: MutableMap<Any, StyleDeclarations> = linkedMapOf()
+    private val inspectorOverrideVersions: MutableMap<Any, Int> = linkedMapOf()
+    private val anonymousTargetCache: MutableMap<DOMNode, Any> = WeakHashMap()
     private var themeVersion: Long = 0L
+    private var inspectorOverridesVersion: Long = 0L
+    private var pseudoStateVersion: Long = 0L
+    private var lastApplyReport: StyleApplyReport = StyleApplyReport(
+        layoutDirty = false,
+        visualDirty = false,
+        visitedNodes = 0,
+        cacheHits = 0,
+        recomputedNodes = 0
+    )
 
     fun inspectorOverrideTarget(node: DOMNode): Any {
-        return node.key ?: AnonymousInspectorTarget(anonymousInspectorPath(node))
+        node.key?.let { return it }
+        val cached = anonymousTargetCache[node]
+        if (cached != null) return cached
+        val created = AnonymousInspectorTarget(anonymousInspectorPath(node))
+        anonymousTargetCache[node] = created
+        return created
     }
 
     fun setThemeVariables(values: Map<String, String>) {
@@ -66,6 +94,7 @@ object StyleEngine {
         }
         val perNode = inspectorOverrides.getOrPut(nodeKey) { StyleDeclarations() }
         perNode.set(property, expression)
+        bumpInspectorOverrideVersion(nodeKey)
         cache.clear()
     }
 
@@ -94,6 +123,7 @@ object StyleEngine {
                 inspectorOverrides.remove(nodeKey)
             }
         }
+        bumpInspectorOverrideVersion(nodeKey)
         cache.clear()
     }
 
@@ -104,6 +134,8 @@ object StyleEngine {
     fun clearAllInspectorOverrides() {
         if (inspectorOverrides.isEmpty()) return
         inspectorOverrides.clear()
+        inspectorOverrideVersions.clear()
+        inspectorOverridesVersion += 1
         cache.clear()
     }
 
@@ -194,19 +226,64 @@ object StyleEngine {
     }
 
     fun applyStylesRecursively(root: DOMNode): Boolean {
+        return applyStylesRecursivelyDetailed(root).layoutDirty
+    }
+
+    fun applyStylesRecursivelyDetailed(root: DOMNode): StyleApplyReport {
         val snapshot = StylesheetManager.snapshot()
-        return applyStylesRecursively(root, snapshot)
+        val metrics = MutableApplyMetrics()
+        val result = applyStylesRecursively(root, snapshot, metrics)
+        val report = StyleApplyReport(
+            layoutDirty = result.layoutDirty,
+            visualDirty = result.visualDirty,
+            visitedNodes = metrics.visitedNodes,
+            cacheHits = metrics.cacheHits,
+            recomputedNodes = metrics.recomputedNodes
+        )
+        lastApplyReport = report
+        return report
     }
 
-    private fun applyStylesRecursively(root: DOMNode, snapshot: StylesheetSnapshot): Boolean {
-        var layoutDirty = applyStyleToNode(root, snapshot)
+    fun lastStyleApplyReport(): StyleApplyReport = lastApplyReport
+
+    fun currentStyleRevision(): Long {
+        return (StylesheetManager.snapshot().version shl 2) xor
+            (themeVersion shl 1) xor
+            inspectorOverridesVersion xor
+            (pseudoStateVersion shl 3)
+    }
+
+    fun markPseudoStateChanged() {
+        pseudoStateVersion += 1L
+    }
+
+    private data class NodeApplyFlags(
+        val layoutDirty: Boolean,
+        val visualDirty: Boolean
+    )
+
+    private fun applyStylesRecursively(
+        root: DOMNode,
+        snapshot: StylesheetSnapshot,
+        metrics: MutableApplyMetrics
+    ): NodeApplyFlags {
+        var flags = applyStyleToNode(root, snapshot, metrics)
         root.children.forEach { child ->
-            layoutDirty = applyStylesRecursively(child, snapshot) || layoutDirty
+            val childFlags = applyStylesRecursively(child, snapshot, metrics)
+            flags = NodeApplyFlags(
+                layoutDirty = flags.layoutDirty || childFlags.layoutDirty,
+                visualDirty = flags.visualDirty || childFlags.visualDirty
+            )
         }
-        return layoutDirty
+        return flags
     }
 
-    private fun applyStyleToNode(node: DOMNode, snapshot: StylesheetSnapshot): Boolean {
+    private fun applyStyleToNode(
+        node: DOMNode,
+        snapshot: StylesheetSnapshot,
+        metrics: MutableApplyMetrics
+    ): NodeApplyFlags {
+        metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
         val key = CacheKey(
             typeName = node.styleType,
@@ -225,7 +302,12 @@ object StyleEngine {
 
         val cached = cache[node]
         if (cached != null && cached.key == key) {
-            return node.applyComputedStyle(cached.style)
+            metrics.cacheHits += 1
+            val result = node.applyComputedStyle(cached.style)
+            return NodeApplyFlags(
+                layoutDirty = result.layoutDirty,
+                visualDirty = result.visualDirty
+            )
         }
 
         val computed = computeStyle(
@@ -234,7 +316,12 @@ object StyleEngine {
             snapshot = snapshot
         )
         cache[node] = CachedStyle(key = key, style = computed)
-        return node.applyComputedStyle(computed)
+        metrics.recomputedNodes += 1
+        val result = node.applyComputedStyle(computed)
+        return NodeApplyFlags(
+            layoutDirty = result.layoutDirty,
+            visualDirty = result.visualDirty
+        )
     }
 
     private fun computeStyle(
@@ -374,7 +461,7 @@ object StyleEngine {
     }
 
     private fun inspectorOverrideHash(node: DOMNode): Int {
-        return inspectorOverrides[inspectorOverrideTarget(node)]?.toStableHash() ?: 0
+        return inspectorOverrideVersions[inspectorOverrideTarget(node)] ?: 0
     }
 
     private fun anonymousInspectorPath(node: DOMNode): String {
@@ -394,5 +481,11 @@ object StyleEngine {
         val copy = StyleDeclarations()
         copy.values.putAll(value.values)
         return copy
+    }
+
+    private fun bumpInspectorOverrideVersion(nodeKey: Any) {
+        val next = ((inspectorOverrideVersions[nodeKey] ?: 0) + 1).coerceAtLeast(1)
+        inspectorOverrideVersions[nodeKey] = next
+        inspectorOverridesVersion += 1
     }
 }

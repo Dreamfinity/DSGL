@@ -74,17 +74,41 @@ data class MsdfFontMeta(
     val replacementCodepoint: Int?
 ) {
     private val tabWidthInSpaces: Int = 4
+    private val denseGlyphsByIndex: Array<MsdfGlyph?> = run {
+        val maxIndex = glyphsByIndex.keys.maxOrNull() ?: -1
+        if (maxIndex < 0) {
+            emptyArray()
+        } else {
+            arrayOfNulls<MsdfGlyph>(maxIndex + 1).also { dense ->
+                glyphsByIndex.forEach { (index, glyph) ->
+                    if (index >= 0 && index < dense.size) {
+                        dense[index] = glyph
+                    }
+                }
+            }
+        }
+    }
+    private val cachedFallbackGlyph: MsdfGlyph? = run {
+        val replacementByIndex = replacementGlyphIndex
+            ?.takeIf { it >= 0 && it < denseGlyphsByIndex.size }
+            ?.let { denseGlyphsByIndex[it] }
+        if (replacementByIndex != null) return@run replacementByIndex
+        val replacementByCodepoint = replacementCodepoint?.let(glyphsByCodepoint::get)
+        if (replacementByCodepoint != null) return@run replacementByCodepoint
+        glyphsByIndex.values.firstOrNull() ?: glyphsByCodepoint.values.firstOrNull()
+    }
 
-    fun glyphByIndex(glyphIndex: Int): MsdfGlyph? = glyphsByIndex[glyphIndex]
+    fun glyphByIndex(glyphIndex: Int): MsdfGlyph? {
+        if (glyphIndex >= 0 && glyphIndex < denseGlyphsByIndex.size) {
+            return denseGlyphsByIndex[glyphIndex]
+        }
+        return glyphsByIndex[glyphIndex]
+    }
 
     fun glyph(codepoint: Int): MsdfGlyph? = glyphsByCodepoint[codepoint]
 
     fun fallbackGlyph(): MsdfGlyph? {
-        val replacementByIndex = replacementGlyphIndex?.let(glyphsByIndex::get)
-        if (replacementByIndex != null) return replacementByIndex
-        val replacementByCodepoint = replacementCodepoint?.let(glyphsByCodepoint::get)
-        if (replacementByCodepoint != null) return replacementByCodepoint
-        return glyphsByIndex.values.firstOrNull() ?: glyphsByCodepoint.values.firstOrNull()
+        return cachedFallbackGlyph
     }
 
     fun glyphOrFallback(codepoint: Int): MsdfGlyph? {

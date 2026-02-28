@@ -101,12 +101,13 @@ object StyleAnimationEngine {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun tickAndApply(root: DOMNode, dtSeconds: Double, partialTicks: Float?) {
+    fun tickAndApply(root: DOMNode, dtSeconds: Double, partialTicks: Float?): Boolean {
         val safeDt = dtSeconds.coerceAtLeast(0.0)
         nowSec += safeDt
         frameCounter += 1
-        applyRecursive(root)
+        val visualsChanged = applyRecursive(root)
         cleanupStaleStates()
+        return visualsChanged
     }
 
     fun clear() {
@@ -151,11 +152,14 @@ object StyleAnimationEngine {
         )
     }
 
-    private fun applyRecursive(node: DOMNode) {
+    private fun applyRecursive(node: DOMNode): Boolean {
+        var changed = false
         val token = animationToken(node)
         val state = states[token]
         if (state == null) {
-            node.applyAnimationVisuals(transform = null, opacity = null, color = null)
+            if (node.applyAnimationVisuals(transform = null, opacity = null, color = null)) {
+                changed = true
+            }
         } else {
             state.lastSeenFrame = frameCounter
             runCatching {
@@ -181,16 +185,20 @@ object StyleAnimationEngine {
                     }
                 }
 
-                node.applyAnimationVisuals(
+                if (node.applyAnimationVisuals(
                     transform = resolvedTransform,
                     opacity = resolvedOpacity,
                     color = resolvedColor
-                )
+                )) {
+                    changed = true
+                }
                 state.effectiveTransform = node.effectiveTransform()
                 state.effectiveOpacity = node.effectiveOpacity()
                 state.effectiveColor = node.animationColorOverride()
             }.onFailure { error ->
-                node.applyAnimationVisuals(transform = null, opacity = null, color = null)
+                if (node.applyAnimationVisuals(transform = null, opacity = null, color = null)) {
+                    changed = true
+                }
                 state.effectiveTransform = node.effectiveTransform()
                 state.effectiveOpacity = node.effectiveOpacity()
                 state.effectiveColor = node.animationColorOverride()
@@ -201,7 +209,12 @@ object StyleAnimationEngine {
             }
         }
 
-        node.children.forEach { child -> applyRecursive(child) }
+        node.children.forEach { child ->
+            if (applyRecursive(child)) {
+                changed = true
+            }
+        }
+        return changed
     }
 
     private fun cleanupStaleStates() {

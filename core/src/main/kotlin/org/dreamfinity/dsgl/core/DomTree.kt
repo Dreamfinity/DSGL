@@ -20,6 +20,14 @@ import org.dreamfinity.dsgl.core.style.StyleEngine
  * and [paint] every frame to obtain render commands.
  */
 class DomTree(var root: DOMNode) {
+    data class PaintStats(
+        val frames: Long,
+        val commandRebuilds: Long,
+        val styledNodesLastFrame: Int,
+        val styleCacheHitsLastFrame: Int,
+        val styleRecomputedLastFrame: Int
+    )
+
     private var lastWidth: Int = 0
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
@@ -27,36 +35,67 @@ class DomTree(var root: DOMNode) {
     private val refManager: RefManager = RefManager()
     private var lastViolations: List<LayoutViolation> = emptyList()
     private var strictInvalidLayout: Boolean = false
+    private var commandsDirty: Boolean = true
+    private var lastStyleRevision: Long = Long.MIN_VALUE
+    private var frames: Long = 0L
+    private var commandRebuilds: Long = 0L
+    private var lastStyleReport: StyleEngine.StyleApplyReport = StyleEngine.StyleApplyReport(
+        layoutDirty = false,
+        visualDirty = false,
+        visitedNodes = 0,
+        cacheHits = 0,
+        recomputedNodes = 0
+    )
 
     /** Measures and lays out the tree for the given viewport. */
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         lastWidth = width
         lastHeight = height
-        StyleEngine.applyStylesRecursively(root)
+        lastStyleReport = StyleEngine.applyStylesRecursivelyDetailed(root)
+        lastStyleRevision = StyleEngine.currentStyleRevision()
         root.render(ctx, 0, 0, width, height)
         validateLayout(ctx)
         refManager.commit(root)
         laidOut = true
+        commandsDirty = true
     }
 
     /** Builds render commands for the current layout. */
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
-        val layoutDirtyFromStyles = if (applyStyles) {
-            StyleEngine.applyStylesRecursively(root)
+        frames += 1
+        val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision() else lastStyleRevision
+        val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
+            StyleEngine.applyStylesRecursivelyDetailed(root).also {
+                lastStyleReport = it
+                lastStyleRevision = styleRevision
+            }
         } else {
-            false
+            StyleEngine.StyleApplyReport(
+                layoutDirty = false,
+                visualDirty = false,
+                visitedNodes = 0,
+                cacheHits = 0,
+                recomputedNodes = 0
+            )
         }
-        if ((!laidOut || layoutDirtyFromStyles) && lastWidth > 0 && lastHeight > 0) {
+        if ((!laidOut || styleReport.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
             root.render(ctx, 0, 0, lastWidth, lastHeight)
             validateLayout(ctx)
             refManager.commit(root)
             laidOut = true
+            commandsDirty = true
+        } else if (styleReport.visualDirty) {
+            commandsDirty = true
         }
-        paintBuffer.clear()
-        if (!strictInvalidLayout) {
-            root.appendRenderCommands(ctx, paintBuffer)
+        if (commandsDirty) {
+            paintBuffer.clear()
+            if (!strictInvalidLayout) {
+                root.appendRenderCommands(ctx, paintBuffer)
+            }
+            LayoutValidator.appendDebugCommands(root, lastViolations, paintBuffer)
+            commandsDirty = false
+            commandRebuilds += 1
         }
-        LayoutValidator.appendDebugCommands(root, lastViolations, paintBuffer)
         return paintBuffer
     }
 
@@ -68,7 +107,22 @@ class DomTree(var root: DOMNode) {
         val result = DomReconciler.reconcile(root, next.root)
         root = result.root
         laidOut = false
+        commandsDirty = true
         return result
+    }
+
+    fun paintStats(): PaintStats {
+        return PaintStats(
+            frames = frames,
+            commandRebuilds = commandRebuilds,
+            styledNodesLastFrame = lastStyleReport.visitedNodes,
+            styleCacheHitsLastFrame = lastStyleReport.cacheHits,
+            styleRecomputedLastFrame = lastStyleReport.recomputedNodes
+        )
+    }
+
+    fun markVisualDirty() {
+        commandsDirty = true
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {
@@ -87,15 +141,22 @@ class DomTree(var root: DOMNode) {
     }
 
     private fun validateLayout(ctx: UiMeasureContext) {
+        val previousStrict = strictInvalidLayout
         if (!LayoutDebug.validateLayouts) {
             lastViolations = emptyList()
             LayoutDebug.lastViolationCount = 0
             strictInvalidLayout = false
+            if (previousStrict != strictInvalidLayout) {
+                commandsDirty = true
+            }
             return
         }
         val violations = LayoutValidator.validate(root, ctx)
         lastViolations = violations
         strictInvalidLayout = violations.isNotEmpty() && LayoutDebug.strictBounds
+        if (previousStrict != strictInvalidLayout) {
+            commandsDirty = true
+        }
         if (strictInvalidLayout) {
             val first = violations.first()
             println(

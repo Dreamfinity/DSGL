@@ -36,6 +36,11 @@ abstract class DsglScreenHost(
     private val windowFactory: () -> DsglWindow,
     var rendersCount: Long = 0
 ) : GuiScreen(), DsglWindowHost {
+    companion object {
+        @Volatile
+        private var stylesPreloadedOnce: Boolean = false
+    }
+
     constructor(window: DsglWindow) : this({ window })
 
     override lateinit var window: DsglWindow
@@ -62,10 +67,13 @@ abstract class DsglScreenHost(
     private var inspectorOwnedMouseButton: Int = -1
     private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
+    private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
     private val inspectorInputDebug: Boolean = false
+    private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
+    private var lastPerfLogMs: Long = 0L
     private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
         override fun readText(): String {
             return try {
@@ -94,7 +102,10 @@ abstract class DsglScreenHost(
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
         StyleEngine.setStylesDirectory(File(mc.mcDataDir, "dsgl/styles"))
-        StyleEngine.forceReloadStylesheets()
+        if (!stylesPreloadedOnce) {
+            StyleEngine.forceReloadStylesheets()
+            stylesPreloadedOnce = true
+        }
         window = windowFactory()
         window.attachHost(this)
         window.markOpened(Instant.now(), ZoneId.systemDefault())
@@ -118,7 +129,10 @@ abstract class DsglScreenHost(
         }
         lastFrameNanos = nowNanos
         window.tick(dtSeconds.toFloat(), partialTicks)
-        StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
+        val animationVisualsChanged = StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
+        if (animationVisualsChanged) {
+            tree.markVisualDirty()
+        }
         var stylesAlreadyApplied = false
         if (needsLayout) {
             tree.render(adapter, lastWidth, lastHeight)
@@ -159,12 +173,13 @@ abstract class DsglScreenHost(
         }
         lastMoveX = mouseX
         lastMoveY = mouseY
-        val composedCommands = ArrayList<RenderCommand>(commands.size + 48)
-        composedCommands.addAll(commands)
-        DndRuntime.engine.appendPlaceholderCommands(composedCommands)
-        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommands)
-        inspector.appendOverlayCommands(lastWidth, lastHeight, composedCommands)
-        adapter.paint(composedCommands)
+        composedCommandsBuffer.clear()
+        composedCommandsBuffer.addAll(commands)
+        DndRuntime.engine.appendPlaceholderCommands(composedCommandsBuffer)
+        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommandsBuffer)
+        inspector.appendOverlayCommands(lastWidth, lastHeight, composedCommandsBuffer)
+        adapter.paint(composedCommandsBuffer)
+        maybeLogPerf(tree)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
     }
@@ -652,5 +667,18 @@ abstract class DsglScreenHost(
     private fun logInspectorInput(message: String) {
         if (!inspectorInputDebug) return
         println("[DSGL-InspectorInput] $message")
+    }
+
+    private fun maybeLogPerf(tree: DomTree) {
+        if (!perfDebug) return
+        val now = System.currentTimeMillis()
+        if (now - lastPerfLogMs < 2_000L) return
+        lastPerfLogMs = now
+        val paintStats = tree.paintStats()
+        val styleStats = StyleEngine.lastStyleApplyReport()
+        println(
+            "[DSGL-PERF] frames=${paintStats.frames} commandRebuilds=${paintStats.commandRebuilds} " +
+                "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} styleRecomputed=${styleStats.recomputedNodes}"
+        )
     }
 }
