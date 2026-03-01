@@ -16,7 +16,11 @@ class GlyphsTests {
         val frc = FontRenderContext(null, true, true)
         val font = Font.createFont(Font.TRUETYPE_FONT, fontInputStream).deriveFont(14f)
         val gv = font.createGlyphVector(frc, "Hello, Minecraft!") as StandardGlyphVector
-        gv.glyphInfo
+        val usedGlyphs = mutableListOf<Int>()
+        for (i in 0 until gv.numGlyphs) {
+            val glyph = gv.getGlyphCode(i)
+            usedGlyphs.add(glyph)
+        }
         val x = 1
     }
 }

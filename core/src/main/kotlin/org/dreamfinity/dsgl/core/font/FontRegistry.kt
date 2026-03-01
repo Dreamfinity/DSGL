@@ -3,7 +3,6 @@ package org.dreamfinity.dsgl.core.font
 import java.awt.Font
 import java.awt.font.FontRenderContext
 import java.awt.geom.AffineTransform
-import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -28,17 +27,24 @@ data class MsdfFontResource(
     val ttfPath: String?
 )
 
+data class FontTextureHandle(
+    val textureId: Int,
+    val width: Int,
+    val height: Int
+)
+
 data class LoadedMsdfFont(
     val descriptor: MsdfFontResource,
     val meta: MsdfFontMeta,
     val awtBaseFont: Font?,
-    val atlasPayload: AtlasPayload
+    val atlasPayload: AtlasPayload,
+    var handle: FontTextureHandle? = null
 )
 
 data class AtlasBitmap(
     val width: Int,
     val height: Int,
-    val rgbaBytes: ByteArray
+    var rgbaBytes: ByteArray
 )
 
 class AtlasPayload internal constructor(
@@ -46,6 +52,12 @@ class AtlasPayload internal constructor(
 ) {
     @Volatile
     private var decodedBitmap: AtlasBitmap? = null
+    var isLoadedToGPUTexture: Boolean = false
+
+    fun markLoadedToGPUTexture() {
+        isLoadedToGPUTexture = true
+        decodedBitmap = null
+    }
 
     fun ensureDecoded(): AtlasBitmap {
         decodedBitmap?.let { return it }
@@ -67,11 +79,15 @@ class AtlasPayload internal constructor(
         } ?: throw IllegalStateException("Unable to decode atlas PNG")
         val width = image.width.coerceAtLeast(1)
         val height = image.height.coerceAtLeast(1)
+
         val out = ByteArray(width * height * 4)
         var index = 0
+        val bytesBucket = ByteArray(image.raster.getNumDataElements())
+
+
         for (y in (height - 1) downTo 0) {
-            for (x in 0 until width) {
-                val argb = image.getRGB(x, y)
+            for (x in 0..<width) {
+                val argb = image.colorModel.getRGB(image.raster.getDataElements(x, y, bytesBucket))
                 out[index++] = ((argb shr 16) and 0xFF).toByte()
                 out[index++] = ((argb shr 8) and 0xFF).toByte()
                 out[index++] = (argb and 0xFF).toByte()
@@ -739,9 +755,9 @@ object FontRegistry {
             } else {
                 '?'.code
             }
-            val x = (penX + positions[i * 2]).toFloat()
-            val y = positions[i * 2 + 1].toFloat()
-            val advance = (positions[(i + 1) * 2] - positions[i * 2]).toFloat()
+            val x = (penX + positions[i * 2])
+            val y = positions[i * 2 + 1]
+            val advance = (positions[(i + 1) * 2] - positions[i * 2])
             runGlyphs += ShapedGlyph(
                 fontId = segment.font.descriptor.fontId,
                 glyphIndex = glyphVector.getGlyphCode(i),
@@ -753,7 +769,7 @@ object FontRegistry {
                 sourceCodepoint = sourceCp
             )
         }
-        val runAdvance = positions[glyphCount * 2].toFloat().coerceAtLeast(0f)
+        val runAdvance = positions[glyphCount * 2].coerceAtLeast(0f)
         return ShapedTextRun(
             fontId = segment.font.descriptor.fontId,
             charStart = if (segment.charStart == Int.MAX_VALUE) 0 else segment.charStart,

@@ -1,27 +1,13 @@
 ﻿package org.dreamfinity.dsgl.mc1710.text
 
-import org.dreamfinity.dsgl.core.font.FontRegistry
-import org.dreamfinity.dsgl.core.font.LoadedMsdfFont
-import org.dreamfinity.dsgl.core.font.MsdfGlyph
-import org.dreamfinity.dsgl.core.font.ShapedGlyph
-import org.dreamfinity.dsgl.core.font.ShapedText
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextFormatting
-import org.dreamfinity.dsgl.core.text.BOLD_ADVANCE_EXTRA_PX
-import org.dreamfinity.dsgl.core.text.DecorationFontMetrics
-import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
-import org.dreamfinity.dsgl.core.text.ObfuscationTextSelector
-import org.dreamfinity.dsgl.core.text.TextDecorationLayout
-import org.dreamfinity.dsgl.core.text.TextStyleFlags
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
-import org.dreamfinity.dsgl.core.text.TextVisualLine
+import org.dreamfinity.dsgl.core.text.*
 import org.lwjgl.BufferUtils
-import org.lwjgl.opengl.ARBFragmentShader
-import org.lwjgl.opengl.ARBShaderObjects
-import org.lwjgl.opengl.ARBVertexShader
-import org.lwjgl.opengl.GL11
-import org.lwjgl.opengl.GL13
-import java.util.Collections
+import org.lwjgl.opengl.*
+import java.nio.ByteBuffer
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 internal class MsdfTextRenderer {
@@ -138,18 +124,12 @@ internal class MsdfTextRenderer {
         val allGlyphs: List<MsdfGlyph>
     )
 
-    private data class TextureHandle(
-        val textureId: Int,
-        val width: Int,
-        val height: Int
-    )
-
     private data class LineSlice(
         val start: Int,
         val endExclusive: Int
     )
 
-    private val textures: MutableMap<String, TextureHandle> = linkedMapOf()
+    private val textures: MutableMap<String, FontTextureHandle> = linkedMapOf()
     private val layoutCache: MutableMap<LayoutCacheKey, LayoutCacheEntry> =
         object : LinkedHashMap<LayoutCacheKey, LayoutCacheEntry>(64, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LayoutCacheKey, LayoutCacheEntry>?): Boolean {
@@ -161,15 +141,22 @@ internal class MsdfTextRenderer {
     private var uniformPxRange: Int = -1
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
     private val debugLogKeys: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
-    private val debugGlyphResolutionEnabled: Boolean = java.lang.Boolean.getBoolean("dsgl.msdf.debug")
+    private val debugGlyphResolutionEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {
+        java.lang.Boolean.getBoolean("dsgl.msdf.debug")
+    }
     private val obfuscationBuckets: MutableMap<String, ObfuscationBuckets> = linkedMapOf()
     private var obfuscationLastNano: Long = System.nanoTime()
     private var obfuscationAccumSec: Double = 0.0
     private var obfuscationTimeSlice: Long = 0
     private val segmentBuffer = SegmentBuffer(96)
     private val debugCounters = RendererDebugCounters()
-    private val debugPerformanceEnabled: Boolean = java.lang.Boolean.getBoolean("dsgl.msdf.debug.performance")
+    private val debugPerformanceEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {
+        java.lang.Boolean.getBoolean("dsgl.msdf.debug.performance")
+    }
     private var debugLastLogMs: Long = 0L
+    val isDebugDecorationGuidesEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {
+        java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations")
+    }
 
     fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return FontRegistry.measureText(text, fontId, fontSize)
@@ -194,7 +181,7 @@ internal class MsdfTextRenderer {
         )
         if (prepared.text.isEmpty() || layoutEntry.lines.isEmpty()) return
 
-        val debugDecorationGuidesEnabled = isDebugDecorationGuidesEnabled()
+        val debugDecorationGuidesEnabled = isDebugDecorationGuidesEnabled
         updateObfuscationClock()
         segmentBuffer.clear()
 
@@ -226,14 +213,14 @@ internal class MsdfTextRenderer {
             var spanIndex = 0
             var globalGlyphIndex = 0
             var activeFontId: String? = null
-            var activeTexture: TextureHandle? = null
+            var activeTexture: FontTextureHandle? = null
             var glBegun = false
             var currentDrawColor: Int = Int.MIN_VALUE
             var activeResolvedSpanIndex = Int.MIN_VALUE
             var activeStyleColor = withOpacity(command.color, opacityMultiplier)
             var activeStyleFlags = baseFlagsMask(command)
 
-            fun beginForFont(font: LoadedMsdfFont, texture: TextureHandle) {
+            fun beginForFont(font: LoadedMsdfFont, texture: FontTextureHandle) {
                 if (activeFontId == font.descriptor.fontId && activeTexture === texture && glBegun) return
                 if (glBegun) {
                     GL11.glEnd()
@@ -347,11 +334,12 @@ internal class MsdfTextRenderer {
                         val styleStrikethrough = (activeStyleFlags and STYLE_FLAG_STRIKETHROUGH) != 0
                         val styleObfuscated = (activeStyleFlags and STYLE_FLAG_OBFUSCATED) != 0
 
-                        val boldAdvance = if (styleBold && !TextStyleMetrics.isWhitespaceCodepoint(shapedGlyph.sourceCodepoint)) {
-                            BOLD_ADVANCE_EXTRA_PX.toFloat()
-                        } else {
-                            0f
-                        }
+                        val boldAdvance =
+                            if (styleBold && !TextStyleMetrics.isWhitespaceCodepoint(shapedGlyph.sourceCodepoint)) {
+                                BOLD_ADVANCE_EXTRA_PX.toFloat()
+                            } else {
+                                0f
+                            }
                         val glyphAdvance = shapedGlyph.advance + boldAdvance
                         val glyphStartX = command.x + shapedGlyph.x
                         val glyphEndX = glyphStartX + glyphAdvance
@@ -370,18 +358,19 @@ internal class MsdfTextRenderer {
                                 currentDrawColor = activeStyleColor
                             }
 
-                            val drawGlyph = if (styleObfuscated && ObfuscationTextSelector.shouldObfuscateCodepoint(shapedGlyph.sourceCodepoint)) {
-                                resolveObfuscatedGlyph(
-                                    font = glyphFont,
-                                    sourceKey = command.sourceKey ?: command.text,
-                                    original = resolvedGlyph,
-                                    lineIndex = lineIndex,
-                                    glyphIndexInLine = glyphIndexInLine,
-                                    avoidGlyphIndex = lastObfuscatedGlyphIndex
-                                )
-                            } else {
-                                resolvedGlyph
-                            }
+                            val drawGlyph =
+                                if (styleObfuscated && ObfuscationTextSelector.shouldObfuscateCodepoint(shapedGlyph.sourceCodepoint)) {
+                                    resolveObfuscatedGlyph(
+                                        font = glyphFont,
+                                        sourceKey = command.sourceKey ?: command.text,
+                                        original = resolvedGlyph,
+                                        lineIndex = lineIndex,
+                                        glyphIndexInLine = glyphIndexInLine,
+                                        avoidGlyphIndex = lastObfuscatedGlyphIndex
+                                    )
+                                } else {
+                                    resolvedGlyph
+                                }
 
                             val effectiveGlyph = drawGlyph ?: resolvedGlyph
                             val glyphScale = TextDecorationLayout.scalePx(fontSize, glyphFont.meta.metrics.emSize)
@@ -444,7 +433,10 @@ internal class MsdfTextRenderer {
                             segmentKind = SEGMENT_DEBUG_BASELINE,
                             segmentStartX = lineStartX,
                             segmentEndX = lineEndX,
-                            segmentY = lineRecord.baselineY.coerceIn(lineRecord.lineTopY, lineRecord.lineTopY + lineRecord.lineHeightPx),
+                            segmentY = lineRecord.baselineY.coerceIn(
+                                lineRecord.lineTopY,
+                                lineRecord.lineTopY + lineRecord.lineHeightPx
+                            ),
                             segmentThickness = 1f,
                             segmentColor = 0x66FFAA00
                         )
@@ -651,8 +643,8 @@ internal class MsdfTextRenderer {
             while (index < segments.size) {
                 val kind = segments.kindAt(index)
                 val isDebug = kind == SEGMENT_DEBUG_BASELINE ||
-                    kind == SEGMENT_DEBUG_UNDERLINE ||
-                    kind == SEGMENT_DEBUG_STRIKE
+                        kind == SEGMENT_DEBUG_UNDERLINE ||
+                        kind == SEGMENT_DEBUG_STRIKE
                 if (isDebug && !includeDebug) {
                     index += 1
                     continue
@@ -849,24 +841,30 @@ internal class MsdfTextRenderer {
         }
     }
 
-    private fun textureFor(font: LoadedMsdfFont): TextureHandle? {
+    private fun textureFor(font: LoadedMsdfFont): FontTextureHandle? {
         val fontId = font.descriptor.fontId
         textures[fontId]?.let { return it }
+        font.handle?.let { return it }
+
         return runCatching {
             val handle = uploadTexture(font)
             textures[fontId] = handle
             handle
+        }.onSuccess {
+            font.handle = it
+            font.atlasPayload.markLoadedToGPUTexture()
+            System.gc()
         }.onFailure { error ->
             logRateLimited("texture:$fontId", "[DSGL-MSDF] Failed to load atlas '$fontId': ${error.message}")
         }.getOrNull()
     }
 
-    private fun uploadTexture(font: LoadedMsdfFont): TextureHandle {
+    private fun uploadTexture(font: LoadedMsdfFont): FontTextureHandle {
         val bitmap = font.atlasPayload.ensureDecoded()
         val width = bitmap.width.coerceAtLeast(1)
         val height = bitmap.height.coerceAtLeast(1)
         val buffer = BufferUtils.createByteBuffer(width * height * 4)
-        buffer.put(bitmap.rgbaBytes)
+        buffer.put(ByteBuffer.wrap(bitmap.rgbaBytes))
         buffer.flip()
 
         val textureId = GL11.glGenTextures()
@@ -888,7 +886,7 @@ internal class MsdfTextRenderer {
         )
         debugCounters.textureUploads += 1
         debugCounters.textureUploadBytes += (width.toLong() * height.toLong() * 4L)
-        return TextureHandle(textureId = textureId, width = width, height = height)
+        return FontTextureHandle(textureId = textureId, width = width, height = height)
     }
 
     private fun useProgram(): Boolean {
@@ -961,10 +959,6 @@ internal class MsdfTextRenderer {
         println(message)
     }
 
-    private fun isDebugDecorationGuidesEnabled(): Boolean {
-        return java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations")
-    }
-
     private fun maybeLogPerformance() {
         if (!debugPerformanceEnabled) return
         val now = System.currentTimeMillis()
@@ -973,10 +967,10 @@ internal class MsdfTextRenderer {
         val layoutSize = synchronized(layoutCache) { layoutCache.size }
         println(
             "[DSGL-MSDF] drawCalls=${debugCounters.drawCalls} " +
-                "layoutCache hit=${debugCounters.layoutCacheHits} miss=${debugCounters.layoutCacheMisses} size=$layoutSize " +
-                "glyphVectors=${debugCounters.glyphVectorRequests} glyphResolves=${debugCounters.glyphResolutionRequests} " +
-                "textureUploads=${debugCounters.textureUploads} " +
-                "textureUploadBytes=${debugCounters.textureUploadBytes}"
+                    "layoutCache hit=${debugCounters.layoutCacheHits} miss=${debugCounters.layoutCacheMisses} size=$layoutSize " +
+                    "glyphVectors=${debugCounters.glyphVectorRequests} glyphResolves=${debugCounters.glyphResolutionRequests} " +
+                    "textureUploads=${debugCounters.textureUploads} " +
+                    "textureUploadBytes=${debugCounters.textureUploadBytes}"
         )
     }
 

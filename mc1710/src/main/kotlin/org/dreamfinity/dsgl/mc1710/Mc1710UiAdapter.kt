@@ -8,8 +8,8 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
-import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
 import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
@@ -143,7 +143,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     }
 
                     is RenderCommand.PopOpacity -> {
-                        opacityMultiplier = if (opacityStack.isEmpty()) 1f else opacityStack.removeAt(opacityStack.lastIndex)
+                        opacityMultiplier =
+                            if (opacityStack.isEmpty()) 1f else opacityStack.removeAt(opacityStack.lastIndex)
                     }
                 }
             }
