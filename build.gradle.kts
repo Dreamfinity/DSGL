@@ -1,11 +1,96 @@
-import org.gradle.api.GradleException
-import org.gradle.api.publish.PublishingExtension
-import org.gradle.api.publish.maven.MavenPublication
-import java.io.File
-
 plugins {
     `java-library`
 }
+
+
+val fontsRootDir: File = rootProject.file("fonts")
+val msdfGeneratorExe: File = rootProject.file("bin/msdf-atlas-gen.exe")
+val generatedFontsResourcesDir: File = project.file("precompiled_fonts")
+
+tasks.register("generateMsdfAtlases") {
+    group = "assets"
+    description = "Generate MTSDF atlases and metadata for fonts/**/*.ttf using bin/msdf-atlas-gen.exe."
+
+    val ttfTree = fileTree(fontsRootDir) {
+        include("**/*.ttf")
+    }
+
+    inputs.files(ttfTree)
+    val registryFile = File(generatedFontsResourcesDir, "generated-fonts.txt")
+    println("Fonts registry file: ${registryFile.path}")
+    outputs.file(registryFile)
+    ttfTree.files.forEach { ttf ->
+        val relative = ttf.relativeTo(fontsRootDir).invariantSeparatorsPath
+        val base = relative.removeSuffix(".ttf")
+        outputs.file(File(generatedFontsResourcesDir, "$base-mtsdf.png"))
+        outputs.file(File(generatedFontsResourcesDir, "$base-meta.json"))
+        outputs.file(File(generatedFontsResourcesDir, "$base.ttf"))
+    }
+
+    doLast {
+        if (!msdfGeneratorExe.exists()) {
+            throw GradleException("MSDF generator not found: ${msdfGeneratorExe.path}")
+        }
+        val fonts = ttfTree.files.sortedBy { it.relativeTo(fontsRootDir).invariantSeparatorsPath }
+        if (fonts.isEmpty()) {
+            logger.lifecycle("No .ttf fonts found in ${fontsRootDir.path}")
+            return@doLast
+        }
+
+        fonts.forEach { ttf ->
+            val relative = ttf.relativeTo(fontsRootDir).invariantSeparatorsPath
+            val base = relative.removeSuffix(".ttf")
+            val outputPng = File(generatedFontsResourcesDir, "$base-mtsdf.png")
+            val outputJson = File(generatedFontsResourcesDir, "$base-meta.json")
+            val outputTtf = File(generatedFontsResourcesDir, "$base.ttf")
+            outputPng.parentFile?.mkdirs()
+            outputJson.parentFile?.mkdirs()
+            outputTtf.parentFile?.mkdirs()
+
+            val pngAtlasOutArg = "precompiled_fonts/${base}-mtsdf.png"
+            val rgbaAtlasOutArg = "precompiled_fonts/${base}-mtsdf.rgba"
+            val jsonOutArg = "precompiled_fonts/${base}-meta.json"
+            val fontArg = "./fonts/$relative"
+            val charsetFile = "./fonts/charset.txt"
+            val pxrange = 4
+            val size = 64
+            val commonArgs = listOf(
+                msdfGeneratorExe.absolutePath,
+                "-font", fontArg,
+                "-allglyphs",
+                "-type", "mtsdf",
+                "-size", "$size",
+                "-pxrange", "$pxrange",
+            )
+            val pngArgs = commonArgs + listOf(
+                "-format", "png",
+                "-imageout", pngAtlasOutArg,
+            )
+
+            println("Generating png atlas for $fontArg")
+            println("Command is: '${pngArgs.joinToString(" ")}'")
+
+            val genPNGResult = exec {
+                workingDir = rootProject.projectDir
+                commandLine(pngArgs)
+                isIgnoreExitValue = true
+            }
+            if (genPNGResult.exitValue != 0) {
+                throw GradleException(
+                    "msdf-atlas-gen failed for '$fontArg' with exit code ${genPNGResult.exitValue}. " +
+                            "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'"
+                )
+            }
+
+            ttf.copyTo(outputTtf, overwrite = true)
+        }
+
+        val registryLines = fonts.map { it.relativeTo(fontsRootDir).invariantSeparatorsPath }
+        registryFile.parentFile?.mkdirs()
+        registryFile.writeText(registryLines.joinToString(System.lineSeparator()))
+    }
+}
+
 
 group = property("group") as String
 version = property("version") as String
@@ -122,7 +207,7 @@ fun ensurePublishTaskConfigured(config: BumpConfig) {
     if (project == null || project.tasks.findByName(taskName) == null) {
         throw GradleException(
             "Publishing is not configured for '${config.publishTaskPath}'. " +
-                "Ensure maven-publish and publishToMavenLocal are configured for ${config.projectPath}."
+                    "Ensure maven-publish and publishToMavenLocal are configured for ${config.projectPath}."
         )
     }
 }
@@ -184,7 +269,7 @@ fun registerBumpTask(taskName: String, part: VersionPart, config: BumpConfig) {
             }
             val hadTrailingNewline = originalText.endsWith("\n") || originalText.endsWith("\r\n")
             val updatedText = lines.joinToString(System.lineSeparator()) +
-                if (hadTrailingNewline) System.lineSeparator() else ""
+                    if (hadTrailingNewline) System.lineSeparator() else ""
             config.versionFile.writeText(updatedText)
 
             val (modules, coords) = applyRuntimeVersion(config, newVersion)
@@ -204,7 +289,8 @@ fun registerBumpTask(taskName: String, part: VersionPart, config: BumpConfig) {
 
     tasks.register(taskName) {
         group = "release"
-        description = "Bump ${config.target.name.lowercase()} ${part.name.lowercase()} version and publish to Maven Local."
+        description =
+            "Bump ${config.target.name.lowercase()} ${part.name.lowercase()} version and publish to Maven Local."
         dependsOn(prepareTask)
         dependsOn(config.publishTaskPath)
         doLast {
