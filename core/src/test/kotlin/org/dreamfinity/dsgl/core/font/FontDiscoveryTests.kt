@@ -43,12 +43,12 @@ class FontDiscoveryTests {
             validBase.parent.createDirectories()
             validBase.resolveSibling("Ubuntu.ttf").createFile()
             validBase.resolveSibling("Ubuntu-meta.json").createFile()
-            validBase.resolveSibling("Ubuntu-mtsdf.png").createFile()
+            validBase.resolveSibling("Ubuntu-mtsdf.rgba.deflate").createFile()
 
             val invalidBase = root.resolve("broken/MissingMeta")
             invalidBase.parent.createDirectories()
             invalidBase.resolveSibling("MissingMeta.ttf").createFile()
-            invalidBase.resolveSibling("MissingMeta-mtsdf.png").createFile()
+            invalidBase.resolveSibling("MissingMeta-mtsdf.rgba.deflate").createFile()
 
             val discovered = FontDiscovery.discoverExternalPackages(root)
             val valid = discovered.first { it.fontId == "ui/Ubuntu" }

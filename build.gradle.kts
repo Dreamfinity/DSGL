@@ -1,3 +1,11 @@
+import java.io.BufferedOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.zip.Deflater
+import java.util.zip.DeflaterOutputStream
+
 plugins {
     `java-library`
 }
@@ -66,6 +74,11 @@ tasks.register("generateMsdfAtlases") {
                 "-format", "png",
                 "-imageout", pngAtlasOutArg,
             )
+            val rgbaArgs = commonArgs + listOf(
+                "-format", "rgba",
+                "-imageout", rgbaAtlasOutArg,
+                "-json", jsonOutArg
+            )
 
             println("Generating png atlas for $fontArg")
             println("Command is: '${pngArgs.joinToString(" ")}'")
@@ -82,12 +95,104 @@ tasks.register("generateMsdfAtlases") {
                 )
             }
 
+            println("Generating rgba (binary) atlas for $fontArg")
+            println("Command is: '${rgbaArgs.joinToString(" ")}'")
+
+            val genGRBAResult = exec {
+                workingDir = rootProject.projectDir
+                commandLine(rgbaArgs)
+                isIgnoreExitValue = true
+            }
+            if (genGRBAResult.exitValue != 0) {
+                throw GradleException(
+                    "msdf-atlas-gen failed for '$fontArg' with exit code ${genGRBAResult.exitValue}. " +
+                            "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'"
+                )
+            }
+
             ttf.copyTo(outputTtf, overwrite = true)
         }
 
         val registryLines = fonts.map { it.relativeTo(fontsRootDir).invariantSeparatorsPath }
         registryFile.parentFile?.mkdirs()
         registryFile.writeText(registryLines.joinToString(System.lineSeparator()))
+    }
+
+    finalizedBy("compressMsdfRgbaAtlases")
+}
+
+
+tasks.register("compressMsdfRgbaAtlases") {
+    group = "assets"
+    description = "Vertically flip custom *.rgba atlases in-memory and deflate-compress to *.rgba.deflate (no deps)."
+    dependsOn("generateMsdfAtlases")
+
+    val rgbaTree = fileTree(generatedFontsResourcesDir) { include("**/*-mtsdf.rgba") }
+
+    inputs.files(rgbaTree)
+    rgbaTree.files.forEach { rgba ->
+        outputs.file(File(rgba.parentFile, rgba.name + ".deflate"))
+    }
+
+    fun readInt32BE(bytes: ByteArray, offset: Int): Int =
+        ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.BIG_ENDIAN).int
+
+    fun flipVerticallyInPlace(bytes: ByteArray) {
+        val headerBytes = 12
+        val width = readInt32BE(bytes, 4)
+        val height = readInt32BE(bytes, 8)
+
+        require(width > 0 && height > 0) { "Invalid atlas size: $width x $height" }
+
+        val rowBytes = Math.multiplyExact(width, 4)
+        val pixelBytes = Math.multiplyExact(rowBytes, height)
+        val expectedTotal = headerBytes + pixelBytes
+        require(bytes.size == expectedTotal) {
+            "Size mismatch: got ${bytes.size}, expected $expectedTotal (w=$width h=$height)"
+        }
+
+        val tmp = ByteArray(rowBytes)
+        var top = headerBytes
+        var bottom = headerBytes + (height - 1) * rowBytes
+
+        while (top < bottom) {
+            System.arraycopy(bytes, top, tmp, 0, rowBytes)
+            System.arraycopy(bytes, bottom, bytes, top, rowBytes)
+            System.arraycopy(tmp, 0, bytes, bottom, rowBytes)
+            top += rowBytes
+            bottom -= rowBytes
+        }
+    }
+
+    doLast {
+        val files = rgbaTree.files.sortedBy { it.invariantSeparatorsPath }
+        if (files.isEmpty()) return@doLast
+
+        files.forEach { rgba ->
+            val out = File(rgba.parentFile, rgba.name + ".deflate")
+            out.parentFile?.mkdirs()
+            val tmpOut = File(out.parentFile, out.name + ".tmp")
+
+            val raw = Files.readAllBytes(rgba.toPath())
+
+            flipVerticallyInPlace(raw)
+
+            val deflater = Deflater(Deflater.BEST_SPEED, true)
+            BufferedOutputStream(Files.newOutputStream(tmpOut.toPath()), 256 * 1024).use { fileOut ->
+                DeflaterOutputStream(fileOut, deflater, 256 * 1024).use { defOut ->
+                    defOut.write(raw)
+                }
+            }
+
+            Files.move(
+                tmpOut.toPath(),
+                out.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+            )
+
+            logger.lifecycle("Flip+deflate: ${rgba.name} -> ${out.name} (${rgba.length()} -> ${out.length()} bytes)")
+        }
     }
 }
 

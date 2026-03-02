@@ -59,10 +59,10 @@ internal object FontDiscovery {
                     val fontId = fontIdFromRelativeTtfPath(relative)
                     val baseRelative = relative.removeSuffix(".ttf")
                     val meta = root.resolve("$baseRelative-meta.json")
-                    val atlas = root.resolve("$baseRelative-mtsdf.png")
+                    val atlas = root.resolve("$baseRelative-mtsdf.rgba.deflate")
                     val missing = mutableListOf<String>()
                     if (!meta.isRegularFile()) missing += "$fontId-meta.json"
-                    if (!atlas.isRegularFile()) missing += "$fontId-mtsdf.png"
+                    if (!atlas.isRegularFile()) missing += "$fontId-mtsdf.rgba.deflate"
                     candidates += FontPackageCandidate(
                         fontId = fontId,
                         ttfPath = ttfPath.toAbsolutePath().normalize(),

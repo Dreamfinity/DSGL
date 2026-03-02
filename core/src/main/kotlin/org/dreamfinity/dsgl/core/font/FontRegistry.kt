@@ -4,6 +4,7 @@ import java.awt.Font
 import java.awt.font.FontRenderContext
 import java.awt.geom.AffineTransform
 import java.io.ByteArrayInputStream
+import java.io.DataInputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -12,6 +13,8 @@ import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
+import java.util.zip.Inflater
+import java.util.zip.InflaterInputStream
 
 enum class FontPathMode {
     Resource,
@@ -74,27 +77,51 @@ class AtlasPayload internal constructor(
     fun encodedByteSize(): Int = encodedPngBytes?.size ?: 0
 
     private fun decodeAtlasBitmap(atlasPngBytes: ByteArray): AtlasBitmap {
-        val image = ByteArrayInputStream(atlasPngBytes).use { input ->
+        decodeDeflatedRgba(atlasPngBytes)?.let { return it }
+        return decodePng(atlasPngBytes)
+    }
+
+    private fun decodeDeflatedRgba(bytes: ByteArray): AtlasBitmap? {
+        val inflater = Inflater(true)
+        return try {
+            ByteArrayInputStream(bytes).use { input ->
+                InflaterInputStream(input, inflater).use { zipped ->
+                    DataInputStream(zipped).use { data ->
+                        data.readInt()
+                        val width = data.readInt()
+                        val height = data.readInt()
+                        if (width <= 0 || height <= 0) return null
+                        val rgbaBytes = ByteArray(width * height * 4)
+                        data.readFully(rgbaBytes)
+                        AtlasBitmap(width = width, height = height, rgbaBytes = rgbaBytes)
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            null
+        } finally {
+            inflater.end()
+        }
+    }
+
+    private fun decodePng(bytes: ByteArray): AtlasBitmap {
+        val image = ByteArrayInputStream(bytes).use { input ->
             ImageIO.read(input)
-        } ?: throw IllegalStateException("Unable to decode atlas PNG")
+        } ?: throw IllegalStateException("Atlas payload is neither deflated rgba nor PNG")
+
         val width = image.width.coerceAtLeast(1)
         val height = image.height.coerceAtLeast(1)
-
-        val out = ByteArray(width * height * 4)
-        var index = 0
-        val bytesBucket = ByteArray(image.raster.getNumDataElements())
-
-
-        for (y in (height - 1) downTo 0) {
-            for (x in 0..<width) {
-                val argb = image.colorModel.getRGB(image.raster.getDataElements(x, y, bytesBucket))
-                out[index++] = ((argb shr 16) and 0xFF).toByte()
-                out[index++] = ((argb shr 8) and 0xFF).toByte()
-                out[index++] = (argb and 0xFF).toByte()
-                out[index++] = ((argb ushr 24) and 0xFF).toByte()
-            }
+        val argb = IntArray(width * height)
+        image.getRGB(0, 0, width, height, argb, 0, width)
+        val rgba = ByteArray(width * height * 4)
+        var out = 0
+        argb.forEach { pixel ->
+            rgba[out++] = ((pixel ushr 16) and 0xFF).toByte()
+            rgba[out++] = ((pixel ushr 8) and 0xFF).toByte()
+            rgba[out++] = (pixel and 0xFF).toByte()
+            rgba[out++] = ((pixel ushr 24) and 0xFF).toByte()
         }
-        return AtlasBitmap(width = width, height = height, rgbaBytes = out)
+        return AtlasBitmap(width = width, height = height, rgbaBytes = rgba)
     }
 }
 
@@ -321,7 +348,7 @@ object FontRegistry {
         registerMsdf(
             fontId = fontId,
             metaResourcePath = "fonts/$base-meta.json",
-            atlasResourcePath = "fonts/$base-mtsdf.png",
+            atlasResourcePath = "fonts/$base-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/$normalized",
             source = FontAssetSource.Jar
         )
@@ -488,35 +515,35 @@ object FontRegistry {
         registerMsdf(
             fontId = FONT_MINECRAFT,
             metaResourcePath = "fonts/minecraft/MinecraftDefault-Regular-meta.json",
-            atlasResourcePath = "fonts/minecraft/MinecraftDefault-Regular-mtsdf.png",
+            atlasResourcePath = "fonts/minecraft/MinecraftDefault-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/minecraft/MinecraftDefault-Regular.ttf",
             source = FontAssetSource.Jar
         )
         registerMsdf(
             fontId = FONT_UBUNTU,
             metaResourcePath = "fonts/ubuntu/Ubuntu-Regular-meta.json",
-            atlasResourcePath = "fonts/ubuntu/Ubuntu-Regular-mtsdf.png",
+            atlasResourcePath = "fonts/ubuntu/Ubuntu-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/ubuntu/Ubuntu-Regular.ttf",
             source = FontAssetSource.Jar
         )
         registerMsdf(
             fontId = FONT_NOTO_SANS,
             metaResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular-meta.json",
-            atlasResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular-mtsdf.png",
+            atlasResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular.ttf",
             source = FontAssetSource.Jar
         )
         registerMsdf(
             fontId = FONT_JB_MONO,
             metaResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular-meta.json",
-            atlasResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular-mtsdf.png",
+            atlasResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular.ttf",
             source = FontAssetSource.Jar
         )
         registerMsdf(
             fontId = TELEGRAFICO,
             metaResourcePath = "fonts/telegrafico/telegrafico-meta.json",
-            atlasResourcePath = "fonts/telegrafico/telegrafico-mtsdf.png",
+            atlasResourcePath = "fonts/telegrafico/telegrafico-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/telegrafico/telegrafico.ttf",
             source = FontAssetSource.Jar
         )
