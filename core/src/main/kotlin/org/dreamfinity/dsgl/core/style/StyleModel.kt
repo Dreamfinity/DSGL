@@ -250,10 +250,14 @@ data class StyleDeclarations(
     }
 
     fun toStableHash(): Int {
+        if (values.isEmpty()) {
+            return 1
+        }
         var result = 1
-        values.entries.sortedBy { it.key.ordinal }.forEach { entry ->
-            result = 31 * result + entry.key.ordinal
-            result = 31 * result + entry.value.hashCode()
+        for (property in StyleProperty.entries) {
+            val expression = values[property] ?: continue
+            result = 31 * result + property.ordinal
+            result = 31 * result + expression.hashCode()
         }
         return result
     }
