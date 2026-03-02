@@ -850,7 +850,6 @@ internal class MsdfTextRenderer {
         }.onSuccess {
             font.handle = it
             font.atlasPayload.markLoadedToGPUTexture()
-            System.gc()
         }.onFailure { error ->
             logRateLimited("texture:$fontId", "[DSGL-MSDF] Failed to load atlas '$fontId': ${error.message}")
         }.getOrNull()
