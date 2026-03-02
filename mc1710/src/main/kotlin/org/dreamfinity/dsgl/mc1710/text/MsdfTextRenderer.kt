@@ -583,7 +583,7 @@ internal class MsdfTextRenderer {
             fontSize = fontSize,
             textFormatting = command.textFormatting,
             baseFlagsMask = baseFlagsMask(command),
-            styleSpansHash = styleSpansFingerprint(command.textStyleSpans)
+            styleSpansHash = styleSpansFingerprint(prepared.styleSpans)
         )
         synchronized(layoutCache) {
             val cached = layoutCache[key]
