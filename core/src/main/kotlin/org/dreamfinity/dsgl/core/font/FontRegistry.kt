@@ -191,6 +191,8 @@ object FontRegistry {
         val fallbackFontId: FontId?,
         val fontPx: Int,
         val text: String,
+        val rangeStart: Int,
+        val rangeEnd: Int,
         val directionFlags: Int,
         val formattingMode: String
     )
@@ -420,7 +422,26 @@ object FontRegistry {
         fontSize: Int?,
         formattingMode: String = "plain"
     ): ShapedText {
-        if (text.isEmpty()) {
+        return shapeTextRange(
+            text = text,
+            startIndex = 0,
+            endIndexExclusive = text.length,
+            fontId = fontId,
+            fontSize = fontSize,
+            formattingMode = formattingMode
+        )
+    }
+
+    fun shapeTextRange(
+        text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        fontId: FontId?,
+        fontSize: Int?,
+        formattingMode: String = "plain"
+    ): ShapedText {
+        val (safeStart, safeEnd) = normalizeRange(text, startIndex, endIndexExclusive)
+        if (safeEnd <= safeStart) {
             return ShapedText(glyphs = emptyList(), runs = emptyList(), width = 0f)
         }
         ensureDefaults()
@@ -440,6 +461,8 @@ object FontRegistry {
             fallbackFontId = fallback?.descriptor?.fontId,
             fontPx = fontPx,
             text = text,
+            rangeStart = safeStart,
+            rangeEnd = safeEnd,
             directionFlags = Font.LAYOUT_LEFT_TO_RIGHT,
             formattingMode = formattingMode
         )
@@ -453,6 +476,8 @@ object FontRegistry {
         shapeCacheMisses.incrementAndGet()
         val shaped = shapeSingleLine(
             text = text,
+            startIndex = safeStart,
+            endIndexExclusive = safeEnd,
             primary = primary,
             fallback = fallback,
             fontPx = fontPx
@@ -679,21 +704,30 @@ object FontRegistry {
 
     private fun shapeSingleLine(
         text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
         primary: LoadedMsdfFont,
         fallback: LoadedMsdfFont?,
         fontPx: Int
     ): ShapedText {
-        val segments = buildShapingSegments(text, primary, fallback)
+        val segments = buildShapingSegments(
+            text = text,
+            startIndex = startIndex,
+            endIndexExclusive = endIndexExclusive,
+            primary = primary,
+            fallback = fallback
+        )
         if (segments.isEmpty()) {
             return ShapedText(glyphs = emptyList(), runs = emptyList(), width = 0f)
         }
-        val allGlyphs = ArrayList<ShapedGlyph>(text.length.coerceAtLeast(8))
+        val allGlyphs = ArrayList<ShapedGlyph>((endIndexExclusive - startIndex).coerceAtLeast(8))
         val runs = ArrayList<ShapedTextRun>(segments.size)
         var penX = 0f
 
         segments.forEach { segment ->
             val shapedRun = shapeSegment(
                 sourceText = text,
+                sourceRangeStart = startIndex,
                 segment = segment,
                 fontPx = fontPx,
                 penX = penX
@@ -711,17 +745,21 @@ object FontRegistry {
 
     private fun buildShapingSegments(
         text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
         primary: LoadedMsdfFont,
         fallback: LoadedMsdfFont?
     ): List<MutableShapingSegment> {
         val out = ArrayList<MutableShapingSegment>(4)
         var segment: MutableShapingSegment? = null
-        var index = 0
-        while (index < text.length) {
+        var index = startIndex
+        while (index < endIndexExclusive) {
             val start = index
             val codepoint = Character.codePointAt(text, index)
             index += Character.charCount(codepoint)
             val end = index
+            val localStart = start - startIndex
+            val localEnd = end - startIndex
 
             val selectedFont = when {
                 canDisplay(primary, codepoint) -> primary
@@ -730,18 +768,24 @@ object FontRegistry {
                 else -> primary
             }
             val replacementNeeded = !canDisplay(selectedFont, codepoint)
-            val append = if (replacementNeeded) "\uFFFD" else text.substring(start, end)
 
             if (segment == null || segment.font.descriptor.fontId != selectedFont.descriptor.fontId) {
                 segment = MutableShapingSegment(font = selectedFont)
                 out += segment
             }
-            if (start < segment.charStart) segment.charStart = start
-            if (end > segment.charEnd) segment.charEnd = end
-            segment.text.append(append)
-            repeat(append.length) {
-                segment.sourceStartByChar += start
-                segment.sourceEndByChar += end
+            if (localStart < segment.charStart) segment.charStart = localStart
+            if (localEnd > segment.charEnd) segment.charEnd = localEnd
+            if (replacementNeeded) {
+                segment.text.append('\uFFFD')
+                segment.sourceStartByChar += localStart
+                segment.sourceEndByChar += localEnd
+            } else {
+                segment.text.appendCodePoint(codepoint)
+                val charCount = Character.charCount(codepoint)
+                repeat(charCount) {
+                    segment.sourceStartByChar += localStart
+                    segment.sourceEndByChar += localEnd
+                }
             }
         }
         return out
@@ -749,6 +793,7 @@ object FontRegistry {
 
     private fun shapeSegment(
         sourceText: String,
+        sourceRangeStart: Int,
         segment: MutableShapingSegment,
         fontPx: Int,
         penX: Float
@@ -783,8 +828,9 @@ object FontRegistry {
                 .coerceIn(0, (segment.sourceStartByChar.size - 1).coerceAtLeast(0))
             val sourceStart = segment.sourceStartByChar.getOrElse(charIndex) { 0 }
             val sourceEnd = segment.sourceEndByChar.getOrElse(charIndex) { sourceStart + 1 }
-            val sourceCp = if (sourceStart in sourceText.indices) {
-                Character.codePointAt(sourceText, sourceStart)
+            val sourceGlobalStart = sourceRangeStart + sourceStart
+            val sourceCodepoint = if (sourceGlobalStart in sourceText.indices) {
+                Character.codePointAt(sourceText, sourceGlobalStart)
             } else {
                 '?'.code
             }
@@ -799,7 +845,7 @@ object FontRegistry {
                 advance = advance,
                 charStart = sourceStart,
                 charEnd = sourceEnd,
-                sourceCodepoint = sourceCp
+                sourceCodepoint = sourceCodepoint
             )
         }
         val runAdvance = positions[glyphCount * 2].coerceAtLeast(0f)
@@ -829,6 +875,26 @@ object FontRegistry {
         return ByteArrayInputStream(ttfBytes).use { input ->
             Font.createFont(Font.TRUETYPE_FONT, input)
         }
+    }
+
+    private fun normalizeRange(text: String, startIndex: Int, endIndexExclusive: Int): Pair<Int, Int> {
+        var start = startIndex.coerceIn(0, text.length)
+        var end = endIndexExclusive.coerceIn(start, text.length)
+        if (start > 0 &&
+            start < text.length &&
+            Character.isLowSurrogate(text[start]) &&
+            Character.isHighSurrogate(text[start - 1])
+        ) {
+            start -= 1
+        }
+        if (end > start &&
+            end < text.length &&
+            Character.isLowSurrogate(text[end]) &&
+            Character.isHighSurrogate(text[end - 1])
+        ) {
+            end -= 1
+        }
+        return start to end
     }
 
     private fun getExact(fontId: FontId): LoadedMsdfFont? {

@@ -206,7 +206,7 @@ data class MsdfFontMeta(
         val size = fontSizePx.coerceAtLeast(1)
         var total = 0f
         var previousKerningCodepoint: Int? = null
-        org.dreamfinity.dsgl.core.font.forEachCodepoint(text) loop@{ cp ->
+        forEachCodepoint(text) loop@{ cp ->
             if (cp == '\n'.code || cp == '\r'.code) {
                 previousKerningCodepoint = null
                 return@loop

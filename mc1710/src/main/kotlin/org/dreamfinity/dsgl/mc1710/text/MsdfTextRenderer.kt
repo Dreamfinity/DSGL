@@ -597,14 +597,11 @@ internal class MsdfTextRenderer {
         val slices = splitLines(prepared.text)
         val lines = ArrayList<CachedLineLayout>(slices.size)
         slices.forEach { slice ->
-            val lineText = if (slice.start < slice.endExclusive) {
-                prepared.text.substring(slice.start, slice.endExclusive)
-            } else {
-                ""
-            }
             debugCounters.glyphVectorRequests += 1
-            val shaped = FontRegistry.shapeText(
-                text = lineText,
+            val shaped = FontRegistry.shapeTextRange(
+                text = prepared.text,
+                startIndex = slice.start,
+                endIndexExclusive = slice.endExclusive,
                 fontId = command.fontId,
                 fontSize = fontSize,
                 formattingMode = command.textFormatting.name
@@ -1047,4 +1044,3 @@ internal class MsdfTextRenderer {
         """
     }
 }
-

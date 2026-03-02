@@ -243,6 +243,63 @@ class MsdfFontTests {
     }
 
     @Test
+    fun `shapeTextRange matches shapeText on equivalent substring`() {
+        val source = "A\uD83D\uDE00B\u0416C"
+        val start = source.indexOf('B')
+        val end = source.length
+        val range = FontRegistry.shapeTextRange(
+            text = source,
+            startIndex = start,
+            endIndexExclusive = end,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSize = 16,
+            formattingMode = "plain"
+        )
+        val plain = FontRegistry.shapeText(
+            text = source.substring(start, end),
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSize = 16,
+            formattingMode = "plain"
+        )
+        assertEquals(plain.glyphs.size, range.glyphs.size)
+        assertEquals(plain.runs.size, range.runs.size)
+        assertTrue(abs(plain.width - range.width) <= 0.01f)
+        plain.glyphs.zip(range.glyphs).forEach { (a, b) ->
+            assertEquals(a.fontId, b.fontId)
+            assertEquals(a.glyphIndex, b.glyphIndex)
+            assertTrue(abs(a.x - b.x) <= 0.01f)
+            assertTrue(abs(a.advance - b.advance) <= 0.01f)
+            assertEquals(a.charStart, b.charStart)
+            assertEquals(a.charEnd, b.charEnd)
+        }
+    }
+
+    @Test
+    fun `shapeTextRange returns empty for empty or inverted range`() {
+        val source = "Hello"
+        val empty = FontRegistry.shapeTextRange(
+            text = source,
+            startIndex = 2,
+            endIndexExclusive = 2,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSize = 14,
+            formattingMode = "plain"
+        )
+        val inverted = FontRegistry.shapeTextRange(
+            text = source,
+            startIndex = 4,
+            endIndexExclusive = 1,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSize = 14,
+            formattingMode = "plain"
+        )
+        assertTrue(empty.glyphs.isEmpty())
+        assertTrue(inverted.glyphs.isEmpty())
+        assertEquals(0f, empty.width)
+        assertEquals(0f, inverted.width)
+    }
+
+    @Test
     fun `png atlas fallback decode preserves bottom-origin row order`() {
         val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)
         image.setRGB(0, 0, 0xFFFF0000.toInt())
@@ -319,5 +376,4 @@ class MsdfFontTests {
         return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
     }
 }
-
 
