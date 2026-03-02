@@ -115,11 +115,17 @@ class AtlasPayload internal constructor(
         image.getRGB(0, 0, width, height, argb, 0, width)
         val rgba = ByteArray(width * height * 4)
         var out = 0
-        argb.forEach { pixel ->
-            rgba[out++] = ((pixel ushr 16) and 0xFF).toByte()
-            rgba[out++] = ((pixel ushr 8) and 0xFF).toByte()
-            rgba[out++] = (pixel and 0xFF).toByte()
-            rgba[out++] = ((pixel ushr 24) and 0xFF).toByte()
+        // Renderer UVs sample atlas bounds in bottom-origin convention.
+        // Preserve previous PNG compatibility by writing rows bottom -> top.
+        for (srcY in (height - 1) downTo 0) {
+            val rowStart = srcY * width
+            for (x in 0 until width) {
+                val pixel = argb[rowStart + x]
+                rgba[out++] = ((pixel ushr 16) and 0xFF).toByte()
+                rgba[out++] = ((pixel ushr 8) and 0xFF).toByte()
+                rgba[out++] = (pixel and 0xFF).toByte()
+                rgba[out++] = ((pixel ushr 24) and 0xFF).toByte()
+            }
         }
         return AtlasBitmap(width = width, height = height, rgbaBytes = rgba)
     }

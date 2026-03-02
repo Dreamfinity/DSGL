@@ -3,6 +3,12 @@
 import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.style.TextWrap
 import java.awt.Font
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.util.zip.Deflater
+import java.util.zip.DeflaterOutputStream
+import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -234,6 +240,66 @@ class MsdfFontTests {
         assertTrue(layout.lines.isNotEmpty())
         assertTrue(layout.lines.all { it.width <= maxWidth + 1 })
         assertEquals(layout.lines.size * layout.lineHeight, layout.totalHeight)
+    }
+
+    @Test
+    fun `png atlas fallback decode preserves bottom-origin row order`() {
+        val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)
+        image.setRGB(0, 0, 0xFFFF0000.toInt())
+        image.setRGB(1, 0, 0xFF00FF00.toInt())
+        image.setRGB(0, 1, 0xFF0000FF.toInt())
+        image.setRGB(1, 1, 0xFFFFFFFF.toInt())
+
+        val pngBytes = ByteArrayOutputStream().use { output ->
+            ImageIO.write(image, "png", output)
+            output.toByteArray()
+        }
+        val decoded = AtlasPayload(pngBytes).ensureDecoded()
+        assertEquals(2, decoded.width)
+        assertEquals(2, decoded.height)
+
+        fun argbAt(index: Int): Int {
+            val offset = index * 4
+            val r = decoded.rgbaBytes[offset].toInt() and 0xFF
+            val g = decoded.rgbaBytes[offset + 1].toInt() and 0xFF
+            val b = decoded.rgbaBytes[offset + 2].toInt() and 0xFF
+            val a = decoded.rgbaBytes[offset + 3].toInt() and 0xFF
+            return (a shl 24) or (r shl 16) or (g shl 8) or b
+        }
+
+        assertEquals(0xFF0000FF.toInt(), argbAt(0))
+        assertEquals(0xFFFFFFFF.toInt(), argbAt(1))
+        assertEquals(0xFFFF0000.toInt(), argbAt(2))
+        assertEquals(0xFF00FF00.toInt(), argbAt(3))
+    }
+
+    @Test
+    fun `deflated atlas decode path remains supported`() {
+        val expected = byteArrayOf(
+            0x01, 0x02, 0x03, 0x04
+        )
+        val rawPayload = ByteArrayOutputStream().use { rawOut ->
+            DataOutputStream(rawOut).use { data ->
+                data.writeInt(0x4453474C)
+                data.writeInt(1)
+                data.writeInt(1)
+                data.write(expected)
+            }
+            rawOut.toByteArray()
+        }
+        val deflated = ByteArrayOutputStream().use { compressedOut ->
+            val deflater = Deflater(Deflater.BEST_SPEED, true)
+            DeflaterOutputStream(compressedOut, deflater).use { zipOut ->
+                zipOut.write(rawPayload)
+            }
+            deflater.end()
+            compressedOut.toByteArray()
+        }
+
+        val decoded = AtlasPayload(deflated).ensureDecoded()
+        assertEquals(1, decoded.width)
+        assertEquals(1, decoded.height)
+        assertTrue(decoded.rgbaBytes.contentEquals(expected))
     }
 
     private fun findFallbackOnlyCodepoint(primary: Font, fallback: Font): Int? {
