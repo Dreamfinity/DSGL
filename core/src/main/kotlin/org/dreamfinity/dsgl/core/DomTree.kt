@@ -32,6 +32,7 @@ class DomTree(var root: DOMNode) {
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
     private val paintBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val stagingPaintBuffer: MutableList<RenderCommand> = ArrayList(256)
     private val refManager: RefManager = RefManager()
     private var lastViolations: List<LayoutViolation> = emptyList()
     private var strictInvalidLayout: Boolean = false
@@ -39,6 +40,7 @@ class DomTree(var root: DOMNode) {
     private var lastStyleRevision: Long = Long.MIN_VALUE
     private var frames: Long = 0L
     private var commandRebuilds: Long = 0L
+    private var lastPaintBuildErrorMs: Long = 0L
     private var lastStyleReport: StyleEngine.StyleApplyReport = StyleEngine.StyleApplyReport(
         layoutDirty = false,
         visualDirty = false,
@@ -88,13 +90,9 @@ class DomTree(var root: DOMNode) {
             commandsDirty = true
         }
         if (commandsDirty) {
-            paintBuffer.clear()
-            if (!strictInvalidLayout) {
-                root.appendRenderCommands(ctx, paintBuffer)
+            if (rebuildPaintCommands(ctx)) {
+                commandRebuilds += 1
             }
-            LayoutValidator.appendDebugCommands(root, lastViolations, paintBuffer)
-            commandsDirty = false
-            commandRebuilds += 1
         }
         return paintBuffer
     }
@@ -123,6 +121,27 @@ class DomTree(var root: DOMNode) {
 
     fun markVisualDirty() {
         commandsDirty = true
+    }
+
+    private fun rebuildPaintCommands(ctx: UiMeasureContext): Boolean {
+        return try {
+            stagingPaintBuffer.clear()
+            if (!strictInvalidLayout) {
+                root.appendRenderCommands(ctx, stagingPaintBuffer)
+            }
+            LayoutValidator.appendDebugCommands(root, lastViolations, stagingPaintBuffer)
+            paintBuffer.clear()
+            paintBuffer.addAll(stagingPaintBuffer)
+            commandsDirty = false
+            true
+        } catch (error: Throwable) {
+            val now = System.currentTimeMillis()
+            if (now - lastPaintBuildErrorMs >= 2_000L) {
+                lastPaintBuildErrorMs = now
+                println("[DSGL-DomTree] Paint command rebuild failed; keeping previous frame commands: ${error.message}")
+            }
+            false
+        }
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {

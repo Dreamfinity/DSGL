@@ -1,10 +1,13 @@
 package org.dreamfinity.dsgl.core.style
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.*
+import java.util.Collections
+import java.util.EnumMap
+import java.util.WeakHashMap
 
 object StyleEngine {
     private data class AnonymousInspectorTarget(val path: String)
+
     data class StyleApplyReport(
         val layoutDirty: Boolean,
         val visualDirty: Boolean,
@@ -12,6 +15,7 @@ object StyleEngine {
         val cacheHits: Int,
         val recomputedNodes: Int
     )
+
     private data class MutableApplyMetrics(
         var visitedNodes: Int = 0,
         var cacheHits: Int = 0,
@@ -30,7 +34,10 @@ object StyleEngine {
         val disabled: Boolean,
         val stylesheetVersion: Long,
         val themeVersion: Long,
-        val defaultsHash: Int
+        val defaultsHash: Int,
+        val parentInheritedHash: Int,
+        val ancestorSelectorHash: Int,
+        val siblingSelectorHash: Int
     )
 
     private data class CachedStyle(
@@ -38,14 +45,48 @@ object StyleEngine {
         val style: ComputedStyle
     )
 
+    private enum class StyleOrigin(val precedence: Int) {
+        Stylesheet(0),
+        Inline(1),
+        Inspector(2)
+    }
+
+    private data class CascadeWinner(
+        val expression: StyleExpression,
+        val important: Boolean,
+        val specificity: StyleSpecificity,
+        val sourceOrder: Int,
+        val origin: StyleOrigin,
+        val sourceKind: StyleSourceKind,
+        val sourceLabel: String
+    )
+
+    private data class NodeApplyFlags(
+        val layoutDirty: Boolean,
+        val visualDirty: Boolean
+    )
+
     private val cache: MutableMap<DOMNode, CachedStyle> = WeakHashMap()
     private val themeVariables: MutableMap<String, String> = linkedMapOf()
     private val inspectorOverrides: MutableMap<Any, StyleDeclarations> = linkedMapOf()
     private val inspectorOverrideVersions: MutableMap<Any, Int> = linkedMapOf()
     private val anonymousTargetCache: MutableMap<DOMNode, Any> = WeakHashMap()
+    private val pseudoDirtyNodes: MutableSet<DOMNode> =
+        Collections.newSetFromMap(WeakHashMap<DOMNode, Boolean>())
+    private val selectorDirtyNodes: MutableSet<DOMNode> =
+        Collections.newSetFromMap(WeakHashMap<DOMNode, Boolean>())
+
     private var themeVersion: Long = 0L
     private var inspectorOverridesVersion: Long = 0L
     private var pseudoStateVersion: Long = 0L
+    private var selectorStateVersion: Long = 0L
+    private var pseudoDirtyGlobal: Boolean = false
+    private var selectorDirtyGlobal: Boolean = false
+    private var lastAppliedStylesheetVersion: Long = Long.MIN_VALUE
+    private var lastAppliedThemeVersion: Long = Long.MIN_VALUE
+    private var lastAppliedInspectorOverridesVersion: Long = Long.MIN_VALUE
+    private var lastAppliedPseudoStateVersion: Long = Long.MIN_VALUE
+    private var lastAppliedSelectorStateVersion: Long = Long.MIN_VALUE
     private var lastApplyReport: StyleApplyReport = StyleApplyReport(
         layoutDirty = false,
         visualDirty = false,
@@ -118,7 +159,7 @@ object StyleEngine {
         if (property == null) {
             inspectorOverrides.remove(nodeKey)
         } else {
-            existing.values.remove(property)
+            existing.remove(property)
             if (existing.values.isEmpty()) {
                 inspectorOverrides.remove(nodeKey)
             }
@@ -162,10 +203,17 @@ object StyleEngine {
         val defaults = node.captureStyleDefaults()
         val variables = resolvedVariables(snapshot)
         val candidates = matchingCandidates(node, snapshot.index)
-        val merged = StyleDeclarations()
-        val sources = linkedMapOf<StyleProperty, StylePropertySource>()
-        val matchedRules = ArrayList<String>(candidates.size)
+        val matchedRules = candidates.map { "${selectorLabel(it.selector)} @ ${it.fileName}" }
+        val inspector = inspectorOverrides[inspectorOverrideTarget(node)]
+        val parentComputed = node.parent?.appliedComputedStyleSnapshot()
+        val winners = resolveCascadeWinners(
+            node = node,
+            candidates = candidates,
+            inline = node.inlineStyleDeclarations,
+            inspector = inspector
+        )
 
+        val sources = linkedMapOf<StyleProperty, StylePropertySource>()
         StyleProperty.entries.forEach { property ->
             sources[property] = StylePropertySource(
                 property = property,
@@ -174,47 +222,30 @@ object StyleEngine {
             )
         }
 
-        candidates.forEach { rule ->
-            merged.mergeFrom(rule.declarations)
-            rule.declarations.values.keys.forEach { property ->
+        var result = defaults.toComputedStyle()
+        for (property in StyleProperty.entries) {
+            val winner = winners[property]
+            if (winner != null) {
+                val applied = runCatching {
+                    applyProperty(result, property, winner.expression, variables)
+                }.onFailure { error ->
+                    println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
+                }.getOrNull()
+                if (applied != null) {
+                    result = applied
+                }
                 sources[property] = StylePropertySource(
                     property = property,
-                    kind = StyleSourceKind.Selector,
-                    source = "${selectorLabel(rule.selector)} @ ${rule.fileName}"
+                    kind = winner.sourceKind,
+                    source = winner.sourceLabel
                 )
-            }
-            matchedRules += "${selectorLabel(rule.selector)} @ ${rule.fileName}"
-        }
-
-        node.inlineStyleDeclarations.values.keys.forEach { property ->
-            sources[property] = StylePropertySource(
-                property = property,
-                kind = StyleSourceKind.Inline,
-                source = "inline"
-            )
-        }
-        merged.mergeFrom(node.inlineStyleDeclarations)
-        val inspector = inspectorOverrides[inspectorOverrideTarget(node)]
-        inspector?.values?.keys?.forEach { property ->
-            sources[property] = StylePropertySource(
-                property = property,
-                kind = StyleSourceKind.InspectorOverride,
-                source = "inspector"
-            )
-        }
-        if (inspector != null) {
-            merged.mergeFrom(inspector)
-        }
-
-        var result = defaults.toComputedStyle()
-        merged.values.forEach { (property, expr) ->
-            val applied = runCatching {
-                applyProperty(result, property, expr, variables)
-            }.onFailure { error ->
-                println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
-            }.getOrNull()
-            if (applied != null) {
-                result = applied
+            } else if (StylePropertyRegistry.isInherited(property) && parentComputed != null) {
+                result = inheritProperty(result, parentComputed, property)
+                sources[property] = StylePropertySource(
+                    property = property,
+                    kind = StyleSourceKind.Inherited,
+                    source = "inherited"
+                )
             }
         }
 
@@ -232,7 +263,28 @@ object StyleEngine {
     fun applyStylesRecursivelyDetailed(root: DOMNode): StyleApplyReport {
         val snapshot = StylesheetManager.snapshot()
         val metrics = MutableApplyMetrics()
-        val result = applyStylesRecursively(root, snapshot, metrics)
+        val variables = resolvedVariables(snapshot)
+        val result = if (shouldApplyTargetedPseudoPass(snapshot)) {
+            applyStylesToDirtySubtrees(root, snapshot, variables, metrics)
+        } else {
+            applyStylesRecursively(
+                root = root,
+                snapshot = snapshot,
+                variables = variables,
+                metrics = metrics,
+                parentComputed = null
+            )
+        }
+        pseudoDirtyNodes.clear()
+        selectorDirtyNodes.clear()
+        pseudoDirtyGlobal = false
+        selectorDirtyGlobal = false
+        lastAppliedStylesheetVersion = snapshot.version
+        lastAppliedThemeVersion = themeVersion
+        lastAppliedInspectorOverridesVersion = inspectorOverridesVersion
+        lastAppliedPseudoStateVersion = pseudoStateVersion
+        lastAppliedSelectorStateVersion = selectorStateVersion
+
         val report = StyleApplyReport(
             layoutDirty = result.layoutDirty,
             visualDirty = result.visualDirty,
@@ -250,26 +302,106 @@ object StyleEngine {
         return (StylesheetManager.snapshot().version shl 2) xor
             (themeVersion shl 1) xor
             inspectorOverridesVersion xor
-            (pseudoStateVersion shl 3)
+            (pseudoStateVersion shl 3) xor
+            (selectorStateVersion shl 4)
     }
 
-    fun markPseudoStateChanged() {
+    fun markPseudoStateChanged(node: DOMNode? = null) {
         pseudoStateVersion += 1L
+        if (node == null) {
+            pseudoDirtyGlobal = true
+            pseudoDirtyNodes.clear()
+        } else {
+            pseudoDirtyNodes += node
+        }
     }
 
-    private data class NodeApplyFlags(
-        val layoutDirty: Boolean,
-        val visualDirty: Boolean
-    )
+    fun markSelectorStateChanged(node: DOMNode? = null) {
+        selectorStateVersion += 1L
+        if (node == null) {
+            selectorDirtyGlobal = true
+            selectorDirtyNodes.clear()
+        } else {
+            selectorDirtyNodes += node
+        }
+    }
+
+    private fun shouldApplyTargetedPseudoPass(snapshot: StylesheetSnapshot): Boolean {
+        if (pseudoDirtyGlobal || selectorDirtyGlobal) return false
+        if (pseudoDirtyNodes.isEmpty() && selectorDirtyNodes.isEmpty()) return false
+        return snapshot.version == lastAppliedStylesheetVersion &&
+            themeVersion == lastAppliedThemeVersion &&
+            inspectorOverridesVersion == lastAppliedInspectorOverridesVersion &&
+            (pseudoStateVersion != lastAppliedPseudoStateVersion ||
+                selectorStateVersion != lastAppliedSelectorStateVersion)
+    }
+
+    private fun applyStylesToDirtySubtrees(
+        root: DOMNode,
+        snapshot: StylesheetSnapshot,
+        variables: Map<String, String>,
+        metrics: MutableApplyMetrics
+    ): NodeApplyFlags {
+        val dirty = expandDirtyNodesForCombinators(
+            root = root,
+            snapshot = snapshot,
+            rawDirty = pseudoDirtyNodes + selectorDirtyNodes
+        )
+            .filter { it.isDescendantOfOrSame(root) }
+            .sortedBy { it.depth() }
+        if (dirty.isEmpty()) {
+            // Dirty markers may reference detached/template nodes after reconcile.
+            // Fall back to full tree style application to keep frame output deterministic.
+            return applyStylesRecursively(
+                root = root,
+                snapshot = snapshot,
+                variables = variables,
+                metrics = metrics,
+                parentComputed = null
+            )
+        }
+
+        val effectiveRoots = ArrayList<DOMNode>(dirty.size)
+        dirty.forEach { candidate ->
+            if (effectiveRoots.none { candidate.isDescendantOfOrSame(it) }) {
+                effectiveRoots += candidate
+            }
+        }
+
+        var flags = NodeApplyFlags(layoutDirty = false, visualDirty = false)
+        effectiveRoots.forEach { subtreeRoot ->
+            val subtreeFlags = applyStylesRecursively(
+                root = subtreeRoot,
+                snapshot = snapshot,
+                variables = variables,
+                metrics = metrics,
+                parentComputed = subtreeRoot.parent?.appliedComputedStyleSnapshot()
+            )
+            flags = NodeApplyFlags(
+                layoutDirty = flags.layoutDirty || subtreeFlags.layoutDirty,
+                visualDirty = flags.visualDirty || subtreeFlags.visualDirty
+            )
+        }
+        return flags
+    }
 
     private fun applyStylesRecursively(
         root: DOMNode,
         snapshot: StylesheetSnapshot,
-        metrics: MutableApplyMetrics
+        variables: Map<String, String>,
+        metrics: MutableApplyMetrics,
+        parentComputed: ComputedStyle?
     ): NodeApplyFlags {
-        var flags = applyStyleToNode(root, snapshot, metrics)
+        var flags = applyStyleToNode(root, snapshot, variables, metrics, parentComputed)
+        val nodeComputed = root.appliedComputedStyleSnapshot()
         root.children.forEach { child ->
-            val childFlags = applyStylesRecursively(child, snapshot, metrics)
+            val childFlags = applyStylesRecursively(
+                root = child,
+                snapshot = snapshot,
+                variables = variables,
+                metrics = metrics,
+                parentComputed = nodeComputed
+            )
             flags = NodeApplyFlags(
                 layoutDirty = flags.layoutDirty || childFlags.layoutDirty,
                 visualDirty = flags.visualDirty || childFlags.visualDirty
@@ -281,13 +413,15 @@ object StyleEngine {
     private fun applyStyleToNode(
         node: DOMNode,
         snapshot: StylesheetSnapshot,
-        metrics: MutableApplyMetrics
+        variables: Map<String, String>,
+        metrics: MutableApplyMetrics,
+        parentComputed: ComputedStyle?
     ): NodeApplyFlags {
         metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
         val key = CacheKey(
             typeName = node.styleType,
-            nodeId = node.styleId,
+            nodeId = selectorNodeId(node),
             classesHash = node.styleClasses.hashCode(),
             inlineHash = node.inlineStyleDeclarations.toStableHash(),
             inspectorHash = inspectorOverrideHash(node),
@@ -297,7 +431,16 @@ object StyleEngine {
             disabled = node.styleDisabled,
             stylesheetVersion = snapshot.version,
             themeVersion = themeVersion,
-            defaultsHash = defaults.hashCode()
+            defaultsHash = defaults.hashCode(),
+            parentInheritedHash = inheritedHash(parentComputed),
+            ancestorSelectorHash = if (snapshot.index.hasAncestorDependentSelectors) ancestorSelectorHash(node) else 0,
+            siblingSelectorHash = if (
+                snapshot.index.hasAdjacentSiblingCombinators || snapshot.index.hasGeneralSiblingCombinators
+            ) {
+                previousSiblingSelectorHash(node)
+            } else {
+                0
+            }
         )
 
         val cached = cache[node]
@@ -313,7 +456,9 @@ object StyleEngine {
         val computed = computeStyle(
             node = node,
             defaults = defaults,
-            snapshot = snapshot
+            snapshot = snapshot,
+            variables = variables,
+            parentComputed = parentComputed
         )
         cache[node] = CachedStyle(key = key, style = computed)
         metrics.recomputedNodes += 1
@@ -327,38 +472,118 @@ object StyleEngine {
     private fun computeStyle(
         node: DOMNode,
         defaults: ComputedStyleDefaults,
-        snapshot: StylesheetSnapshot
+        snapshot: StylesheetSnapshot,
+        variables: Map<String, String>,
+        parentComputed: ComputedStyle?
     ): ComputedStyle {
-        val merged = StyleDeclarations()
         val candidates = matchingCandidates(node, snapshot.index)
-
-        candidates.forEach { merged.mergeFrom(it.declarations) }
-        merged.mergeFrom(node.inlineStyleDeclarations)
-        inspectorOverrides[inspectorOverrideTarget(node)]?.let { merged.mergeFrom(it) }
-
-        val variables = resolvedVariables(snapshot)
-
+        val winners = resolveCascadeWinners(
+            node = node,
+            candidates = candidates,
+            inline = node.inlineStyleDeclarations,
+            inspector = inspectorOverrides[inspectorOverrideTarget(node)]
+        )
         var result = defaults.toComputedStyle()
-        merged.values.forEach { (property, expr) ->
-            val applied = runCatching {
-                applyProperty(result, property, expr, variables)
-            }.onFailure { error ->
-                println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
-            }.getOrNull()
-            if (applied != null) {
-                result = applied
+        for (property in StyleProperty.entries) {
+            val winner = winners[property]
+            if (winner != null) {
+                val applied = runCatching {
+                    applyProperty(result, property, winner.expression, variables)
+                }.onFailure { error ->
+                    println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
+                }.getOrNull()
+                if (applied != null) {
+                    result = applied
+                }
+            } else if (StylePropertyRegistry.isInherited(property) && parentComputed != null) {
+                result = inheritProperty(result, parentComputed, property)
             }
         }
         return result
     }
 
-    private fun matchingCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
-        return gatherCandidates(node, index)
-            .filter { selectorMatches(node, it.selector) }
-            .sortedWith(
-                compareBy<StyleRule> { it.selector.precedenceBucket() }
-                    .thenBy { it.sourceOrder }
+    private fun resolveCascadeWinners(
+        node: DOMNode,
+        candidates: List<StyleRule>,
+        inline: StyleDeclarations,
+        inspector: StyleDeclarations?
+    ): EnumMap<StyleProperty, CascadeWinner> {
+        val winners = EnumMap<StyleProperty, CascadeWinner>(StyleProperty::class.java)
+
+        candidates.forEach { rule ->
+            rule.declarations.values.forEach { (property, expression) ->
+                val important = rule.declarations.isImportant(property)
+                val candidate = CascadeWinner(
+                    expression = expression,
+                    important = important,
+                    specificity = rule.selector.specificity,
+                    sourceOrder = rule.sourceOrder,
+                    origin = StyleOrigin.Stylesheet,
+                    sourceKind = StyleSourceKind.Selector,
+                    sourceLabel = buildString {
+                        append(selectorLabel(rule.selector))
+                        append(" @ ")
+                        append(rule.fileName)
+                        if (important) append(" !important")
+                    }
+                )
+                if (shouldReplace(winners[property], candidate)) {
+                    winners[property] = candidate
+                }
+            }
+        }
+
+        inline.values.forEach { (property, expression) ->
+            val important = inline.isImportant(property)
+            val candidate = CascadeWinner(
+                expression = expression,
+                important = important,
+                specificity = StyleSpecificity(idCount = 1, classLikeCount = 0, typeCount = 0),
+                sourceOrder = Int.MAX_VALUE - 1,
+                origin = StyleOrigin.Inline,
+                sourceKind = StyleSourceKind.Inline,
+                sourceLabel = if (important) "inline !important" else "inline"
             )
+            if (shouldReplace(winners[property], candidate)) {
+                winners[property] = candidate
+            }
+        }
+
+        inspector?.values?.forEach { (property, expression) ->
+            val important = inspector.isImportant(property)
+            val candidate = CascadeWinner(
+                expression = expression,
+                important = important,
+                specificity = StyleSpecificity(idCount = 1, classLikeCount = 0, typeCount = 0),
+                sourceOrder = Int.MAX_VALUE,
+                origin = StyleOrigin.Inspector,
+                sourceKind = StyleSourceKind.InspectorOverride,
+                sourceLabel = if (important) "inspector !important" else "inspector"
+            )
+            if (shouldReplace(winners[property], candidate)) {
+                winners[property] = candidate
+            }
+        }
+
+        return winners
+    }
+
+    private fun shouldReplace(current: CascadeWinner?, candidate: CascadeWinner): Boolean {
+        if (current == null) return true
+        if (candidate.origin.precedence != current.origin.precedence) {
+            return candidate.origin.precedence > current.origin.precedence
+        }
+        if (candidate.important != current.important) {
+            return candidate.important
+        }
+        val specificityCmp = candidate.specificity.compareTo(current.specificity)
+        if (specificityCmp != 0) {
+            return specificityCmp > 0
+        }
+        if (candidate.sourceOrder != current.sourceOrder) {
+            return candidate.sourceOrder > current.sourceOrder
+        }
+        return true
     }
 
     private fun resolvedVariables(snapshot: StylesheetSnapshot): Map<String, String> {
@@ -368,25 +593,77 @@ object StyleEngine {
         return variables
     }
 
+    private fun matchingCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
+        return gatherCandidates(node, index)
+            .filter { selectorMatches(node, it.selector) }
+            .sortedBy { it.sourceOrder }
+    }
+
     private fun gatherCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
-        val out = ArrayList<StyleRule>(16)
-        node.styleId?.let { id ->
+        val out = linkedSetOf<StyleRule>()
+        out.addAll(index.universalIndex)
+        selectorNodeId(node)?.let { id ->
             index.idIndex[id]?.let { out.addAll(it) }
         }
         index.typeIndex[node.styleType]?.let { out.addAll(it) }
         node.styleClasses.forEach { className ->
             index.classIndex[className]?.let { out.addAll(it) }
-            val key = node.styleType + "|" + className
-            index.typeClassIndex[key]?.let { out.addAll(it) }
         }
-        return out
+        return out.toList()
     }
 
     private fun selectorMatches(node: DOMNode, selector: StyleSelector): Boolean {
-        if (selector.id != null && selector.id != node.styleId) return false
-        if (selector.typeName != null && selector.typeName != node.styleType) return false
-        if (selector.className != null && selector.className !in node.styleClasses) return false
-        val pseudo = selector.pseudoState ?: return true
+        var current: DOMNode? = node
+        val steps = selector.steps
+        for (index in steps.indices.reversed()) {
+            val step = steps[index]
+            val targetNode = current ?: return false
+            if (!selectorPartMatches(targetNode, step.part)) return false
+            if (index == 0) return true
+            current = when (step.combinatorToLeft ?: StyleCombinator.Descendant) {
+                StyleCombinator.Child -> targetNode.parent
+                StyleCombinator.Descendant -> findAncestorMatching(
+                    from = targetNode.parent,
+                    part = steps[index - 1].part
+                )
+                StyleCombinator.AdjacentSibling -> targetNode.previousSiblingOrNull()
+                StyleCombinator.GeneralSibling -> findPreviousSiblingMatching(
+                    from = targetNode.previousSiblingOrNull(),
+                    part = steps[index - 1].part
+                )
+            }
+            if (current == null) return false
+        }
+        return true
+    }
+
+    private fun findAncestorMatching(from: DOMNode?, part: StyleSelectorPart): DOMNode? {
+        var current = from
+        while (current != null) {
+            if (selectorPartMatches(current, part)) {
+                return current
+            }
+            current = current.parent
+        }
+        return null
+    }
+
+    private fun findPreviousSiblingMatching(from: DOMNode?, part: StyleSelectorPart): DOMNode? {
+        var current = from
+        while (current != null) {
+            if (selectorPartMatches(current, part)) {
+                return current
+            }
+            current = current.previousSiblingOrNull()
+        }
+        return null
+    }
+
+    private fun selectorPartMatches(node: DOMNode, part: StyleSelectorPart): Boolean {
+        if (part.id != null && part.id != selectorNodeId(node)) return false
+        if (part.typeName != null && part.typeName != node.styleType) return false
+        if (part.classes.isNotEmpty() && !node.styleClasses.containsAll(part.classes)) return false
+        val pseudo = part.pseudoState ?: return true
         return when (pseudo) {
             StylePseudoState.HOVER -> node.styleHovered && !node.styleDisabled
             StylePseudoState.ACTIVE -> node.styleActive && !node.styleDisabled
@@ -396,21 +673,89 @@ object StyleEngine {
     }
 
     private fun selectorLabel(selector: StyleSelector): String {
-        val base = when {
-            selector.id != null -> "#${selector.id}"
-            selector.typeName != null && selector.className != null -> "${selector.typeName}.${selector.className}"
-            selector.className != null -> ".${selector.className}"
-            selector.typeName != null -> selector.typeName
-            else -> "*"
+        return selector.steps.joinToString(separator = " ") { step ->
+            val part = buildString {
+                when {
+                    step.part.universal -> append("*")
+                    step.part.typeName != null -> append(step.part.typeName)
+                }
+                step.part.id?.let { append('#').append(it) }
+                step.part.classes.forEach { className -> append('.').append(className) }
+                when (step.part.pseudoState) {
+                    StylePseudoState.HOVER -> append(":hover")
+                    StylePseudoState.ACTIVE -> append(":active")
+                    StylePseudoState.FOCUS -> append(":focus")
+                    StylePseudoState.DISABLED -> append(":disabled")
+                    null -> Unit
+                }
+            }
+            val prefix = when (step.combinatorToLeft) {
+                StyleCombinator.Child -> ">"
+                StyleCombinator.Descendant -> ""
+                StyleCombinator.AdjacentSibling -> "+"
+                StyleCombinator.GeneralSibling -> "~"
+                null -> ""
+            }
+            if (prefix.isEmpty()) part else "$prefix $part"
+        }.trim()
+    }
+
+    private fun selectorNodeId(node: DOMNode): String? {
+        return node.styleId ?: (node.key as? String)
+    }
+
+    private fun ancestorSelectorHash(node: DOMNode): Int {
+        var current = node.parent
+        var result = 1
+        while (current != null) {
+            result = 31 * result + selectorStateHash(current)
+            current = current.parent
         }
-        val pseudo = when (selector.pseudoState) {
-            StylePseudoState.HOVER -> ":hover"
-            StylePseudoState.ACTIVE -> ":active"
-            StylePseudoState.FOCUS -> ":focus"
-            StylePseudoState.DISABLED -> ":disabled"
-            null -> ""
+        return result
+    }
+
+    private fun previousSiblingSelectorHash(node: DOMNode): Int {
+        val parent = node.parent ?: return 0
+        var result = 1
+        for (sibling in parent.children) {
+            if (sibling === node) break
+            result = 31 * result + selectorStateHash(sibling)
         }
-        return base + pseudo
+        return result
+    }
+
+    private fun selectorStateHash(node: DOMNode): Int {
+        var result = 1
+        result = 31 * result + node.styleType.hashCode()
+        result = 31 * result + (selectorNodeId(node)?.hashCode() ?: 0)
+        result = 31 * result + node.styleClasses.hashCode()
+        result = 31 * result + if (node.styleHovered) 1 else 0
+        result = 31 * result + if (node.styleActive) 1 else 0
+        result = 31 * result + if (node.styleFocused) 1 else 0
+        result = 31 * result + if (node.styleDisabled) 1 else 0
+        return result
+    }
+
+    private fun inheritProperty(current: ComputedStyle, parent: ComputedStyle, property: StyleProperty): ComputedStyle {
+        return when (property) {
+            StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parent.foregroundColor)
+            StyleProperty.FONT_ID -> current.copy(fontId = parent.fontId)
+            StyleProperty.FONT_SIZE -> current.copy(fontSize = parent.fontSize)
+            StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parent.fontWeight)
+            StyleProperty.FONT_STYLE -> current.copy(fontStyle = parent.fontStyle)
+            else -> current
+        }
+    }
+
+    private fun inheritedHash(parentComputed: ComputedStyle?): Int {
+        if (parentComputed == null) return 0
+        var result = 1
+        result = 31 * result + parentComputed.foregroundColor
+        result = 31 * result + (parentComputed.fontId?.hashCode() ?: 0)
+        result = 31 * result + (parentComputed.fontSize ?: 0)
+        result = 31 * result + parentComputed.fontWeight.hashCode()
+        result = 31 * result + parentComputed.fontStyle.hashCode()
+        return result
     }
 
     private fun applyProperty(
@@ -479,7 +824,9 @@ object StyleEngine {
 
     private fun copyStyleDeclarations(value: StyleDeclarations): StyleDeclarations {
         val copy = StyleDeclarations()
-        copy.values.putAll(value.values)
+        value.values.forEach { (property, expression) ->
+            copy.set(property, expression, value.isImportant(property))
+        }
         return copy
     }
 
@@ -487,5 +834,65 @@ object StyleEngine {
         val next = ((inspectorOverrideVersions[nodeKey] ?: 0) + 1).coerceAtLeast(1)
         inspectorOverrideVersions[nodeKey] = next
         inspectorOverridesVersion += 1
+    }
+
+    private fun DOMNode.depth(): Int {
+        var count = 0
+        var current = parent
+        while (current != null) {
+            count++
+            current = current.parent
+        }
+        return count
+    }
+
+    private fun DOMNode.isDescendantOfOrSame(ancestor: DOMNode): Boolean {
+        var current: DOMNode? = this
+        while (current != null) {
+            if (current === ancestor) return true
+            current = current.parent
+        }
+        return false
+    }
+
+    private fun DOMNode.previousSiblingOrNull(): DOMNode? {
+        val parentNode = parent ?: return null
+        val index = parentNode.children.indexOf(this)
+        if (index <= 0) return null
+        return parentNode.children[index - 1]
+    }
+
+    private fun expandDirtyNodesForCombinators(
+        root: DOMNode,
+        snapshot: StylesheetSnapshot,
+        rawDirty: Collection<DOMNode>
+    ): Set<DOMNode> {
+        if (rawDirty.isEmpty()) return emptySet()
+        if (!snapshot.index.hasAdjacentSiblingCombinators && !snapshot.index.hasGeneralSiblingCombinators) {
+            return rawDirty.filterTo(linkedSetOf()) { it.isDescendantOfOrSame(root) }
+        }
+
+        val expanded = linkedSetOf<DOMNode>()
+        rawDirty.forEach { candidate ->
+            if (!candidate.isDescendantOfOrSame(root)) return@forEach
+            expanded += candidate
+            val parentNode = candidate.parent ?: return@forEach
+            val siblings = parentNode.children
+            val index = siblings.indexOf(candidate)
+            if (index < 0) return@forEach
+
+            if (snapshot.index.hasAdjacentSiblingCombinators) {
+                val adjacent = siblings.getOrNull(index + 1)
+                if (adjacent != null) {
+                    expanded += adjacent
+                }
+            }
+            if (snapshot.index.hasGeneralSiblingCombinators) {
+                for (siblingIndex in (index + 1) until siblings.size) {
+                    expanded += siblings[siblingIndex]
+                }
+            }
+        }
+        return expanded
     }
 }

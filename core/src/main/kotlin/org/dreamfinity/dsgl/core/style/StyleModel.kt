@@ -233,19 +233,32 @@ sealed class StyleExpression {
 }
 
 data class StyleDeclarations(
-    val values: MutableMap<StyleProperty, StyleExpression> = linkedMapOf()
+    val values: MutableMap<StyleProperty, StyleExpression> = linkedMapOf(),
+    val importantProperties: MutableSet<StyleProperty> = linkedSetOf()
 ) {
-    fun set(property: StyleProperty, value: StyleExpression) {
+    fun set(property: StyleProperty, value: StyleExpression, important: Boolean = false) {
         values[property] = value
+        if (important) {
+            importantProperties += property
+        } else {
+            importantProperties -= property
+        }
     }
 
     fun get(property: StyleProperty): StyleExpression? = values[property]
+
+    fun isImportant(property: StyleProperty): Boolean = property in importantProperties
+
+    fun remove(property: StyleProperty) {
+        values.remove(property)
+        importantProperties.remove(property)
+    }
 
     fun isEmpty(): Boolean = values.isEmpty()
 
     fun mergeFrom(other: StyleDeclarations) {
         other.values.forEach { (property, expression) ->
-            values[property] = expression
+            set(property, expression, other.isImportant(property))
         }
     }
 
@@ -258,6 +271,7 @@ data class StyleDeclarations(
             val expression = values[property] ?: continue
             result = 31 * result + property.ordinal
             result = 31 * result + expression.hashCode()
+            result = 31 * result + if (property in importantProperties) 1 else 0
         }
         return result
     }

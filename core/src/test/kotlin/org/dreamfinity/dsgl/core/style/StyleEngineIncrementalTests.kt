@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.TextNode
 import org.dreamfinity.dsgl.core.dom.elements.TextSource
+import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,5 +43,75 @@ class StyleEngineIncrementalTests {
         val after = StyleEngine.currentStyleRevision()
 
         assertTrue(after != before)
+    }
+
+    @Test
+    fun `pseudo-state change restyles only dirty subtree`() {
+        val root = ContainerNode(key = "root")
+        val branchA = ContainerNode(key = "branchA").applyParent(root)
+        val branchB = ContainerNode(key = "branchB").applyParent(root)
+        TextNode(TextSource.Static("A"), key = "aText").applyParent(branchA)
+        val hoveredLeaf = TextNode(TextSource.Static("B"), key = "bText").applyParent(branchB)
+
+        val baseline = StyleEngine.applyStylesRecursivelyDetailed(root)
+        hoveredLeaf.setHoveredState(true)
+        val afterHover = StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        assertTrue(baseline.visitedNodes >= 5)
+        assertTrue(afterHover.visitedNodes <= 2, "Expected targeted restyle, but visited=${afterHover.visitedNodes}")
+    }
+
+    @Test
+    fun `sibling selector change restyles only affected following range`() {
+        installStylesheet(
+            """
+            .a ~ .b { color: #33AA66; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val row = ContainerNode(key = "row").applyParent(root)
+        val marker = TextNode(TextSource.Static("marker"), key = "marker").applyParent(row)
+        val target1 = TextNode(TextSource.Static("target1"), key = "target1").applyParent(row)
+        target1.setClassNames("b")
+        val target2 = TextNode(TextSource.Static("target2"), key = "target2").applyParent(row)
+        target2.setClassNames("b")
+        val unaffectedBranch = ContainerNode(key = "other").applyParent(root)
+        TextNode(TextSource.Static("other"), key = "other-text").applyParent(unaffectedBranch)
+
+        val baseline = StyleEngine.applyStylesRecursivelyDetailed(root)
+        marker.setClassNames("a")
+        val afterChange = StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        assertTrue(baseline.visitedNodes >= 6)
+        assertTrue(afterChange.visitedNodes <= 3, "Expected range-only restyle, visited=${afterChange.visitedNodes}")
+    }
+
+    @Test
+    fun `detached dirty selector markers do not skip active tree styling`() {
+        installStylesheet(
+            """
+            .target { color: #2288FF; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val target = TextNode(TextSource.Static("target"), key = "target").applyParent(root)
+        target.setClassNames("target")
+        StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        val detached = TextNode(TextSource.Static("detached"), key = "detached")
+        detached.setClassNames("other")
+
+        val report = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertTrue(report.visitedNodes >= 2, "Active tree should still be styled when dirty markers are detached.")
+        assertEquals(0xFF2288FF.toInt(), target.color)
+    }
+
+    private fun installStylesheet(contents: String) {
+        val dir = Files.createTempDirectory("dsgl-style-incremental-test").toFile()
+        dir.resolve("test.dss").writeText(contents)
+        StyleEngine.setStylesDirectory(dir)
+        StyleEngine.forceReloadStylesheets()
     }
 }

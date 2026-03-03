@@ -82,6 +82,11 @@ abstract class DOMNode(
     var transitionSpec: TransitionSpec = TransitionSpec.NONE
     var animationSpecs: List<AnimationSpec> = emptyList()
     var styleId: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            StyleEngine.markSelectorStateChanged(this)
+        }
     val styleClasses: MutableSet<String> = linkedSetOf()
     var inlineStyleDeclarations: StyleDeclarations = StyleDeclarations()
     var styleHovered: Boolean = false
@@ -103,7 +108,7 @@ abstract class DOMNode(
                 }
             }
             if (changed) {
-                StyleEngine.markPseudoStateChanged()
+                StyleEngine.markPseudoStateChanged(this)
             }
         }
     var draggable: Boolean = false
@@ -413,7 +418,13 @@ abstract class DOMNode(
     fun applyHandlers(props: ComponentProps) {
         this@DOMNode.styleId = props.id
         this@DOMNode.setClassNames(props.className)
-        this@DOMNode.styleClasses.addAll(props.classes)
+        if (props.classes.isNotEmpty()) {
+            val before = this@DOMNode.styleClasses.size
+            this@DOMNode.styleClasses.addAll(props.classes)
+            if (this@DOMNode.styleClasses.size != before) {
+                StyleEngine.markSelectorStateChanged(this@DOMNode)
+            }
+        }
         this@DOMNode.styleDisabled = props.disabled
         this@DOMNode.draggable = props.draggable
         this@DOMNode.droppable = props.droppable ||
@@ -456,14 +467,19 @@ abstract class DOMNode(
     }
 
     fun setClassNames(value: String) {
+        val parsed = parseClassNames(value)
+        if (styleClasses == parsed) return
         styleClasses.clear()
-        styleClasses.addAll(parseClassNames(value))
+        styleClasses.addAll(parsed)
+        StyleEngine.markSelectorStateChanged(this)
     }
 
     fun addClass(name: String) {
         val normalized = name.trim()
         if (normalized.isNotEmpty()) {
-            styleClasses.add(normalized)
+            if (styleClasses.add(normalized)) {
+                StyleEngine.markSelectorStateChanged(this)
+            }
         }
     }
 
@@ -471,21 +487,21 @@ abstract class DOMNode(
         val normalized = value && !styleDisabled
         if (styleHovered == normalized) return
         styleHovered = normalized
-        StyleEngine.markPseudoStateChanged()
+        StyleEngine.markPseudoStateChanged(this)
     }
 
     fun setActiveState(value: Boolean) {
         val normalized = value && !styleDisabled
         if (styleActive == normalized) return
         styleActive = normalized
-        StyleEngine.markPseudoStateChanged()
+        StyleEngine.markPseudoStateChanged(this)
     }
 
     fun setFocusedState(value: Boolean) {
         val normalized = value && !styleDisabled
         if (styleFocused == normalized) return
         styleFocused = normalized
-        StyleEngine.markPseudoStateChanged()
+        StyleEngine.markPseudoStateChanged(this)
     }
 
     /**
@@ -706,6 +722,8 @@ abstract class DOMNode(
             layoutDirty = layoutDirty
         )
     }
+
+    internal fun appliedComputedStyleSnapshot(): ComputedStyle? = appliedComputedStyle
 
     internal fun applyAnimationVisuals(transform: UiTransform?, opacity: Float?, color: Int?): Boolean {
         val normalizedOpacity = opacity?.coerceIn(0f, 1f)
@@ -958,9 +976,14 @@ abstract class DOMNode(
     }
 
     private fun copyStyleDecls(source: StyleDeclarations): StyleDeclarations {
-        return StyleDeclarations(linkedMapOf<StyleProperty, StyleExpression>().apply {
-            putAll(source.values)
-        })
+        return StyleDeclarations(
+            values = linkedMapOf<StyleProperty, StyleExpression>().apply {
+                putAll(source.values)
+            },
+            importantProperties = linkedSetOf<StyleProperty>().apply {
+                addAll(source.importantProperties)
+            }
+        )
     }
 }
 

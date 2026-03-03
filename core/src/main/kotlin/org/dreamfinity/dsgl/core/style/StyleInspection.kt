@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.style
 
 enum class StyleSourceKind {
     Default,
+    Inherited,
     Selector,
     Inline,
     InspectorOverride

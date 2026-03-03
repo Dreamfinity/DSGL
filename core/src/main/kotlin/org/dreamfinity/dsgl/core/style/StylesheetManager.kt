@@ -13,14 +13,20 @@ data class RuleIndex(
     val typeIndex: Map<String, List<StyleRule>>,
     val classIndex: Map<String, List<StyleRule>>,
     val idIndex: Map<String, List<StyleRule>>,
-    val typeClassIndex: Map<String, List<StyleRule>>
+    val universalIndex: List<StyleRule>,
+    val hasAncestorDependentSelectors: Boolean,
+    val hasAdjacentSiblingCombinators: Boolean,
+    val hasGeneralSiblingCombinators: Boolean
 ) {
     companion object {
         val EMPTY = RuleIndex(
             typeIndex = emptyMap(),
             classIndex = emptyMap(),
             idIndex = emptyMap(),
-            typeClassIndex = emptyMap()
+            universalIndex = emptyList(),
+            hasAncestorDependentSelectors = false,
+            hasAdjacentSiblingCombinators = false,
+            hasGeneralSiblingCombinators = false
         )
     }
 }
@@ -150,27 +156,42 @@ object StylesheetManager {
         val typeIndex = linkedMapOf<String, MutableList<StyleRule>>()
         val classIndex = linkedMapOf<String, MutableList<StyleRule>>()
         val idIndex = linkedMapOf<String, MutableList<StyleRule>>()
-        val typeClassIndex = linkedMapOf<String, MutableList<StyleRule>>()
+        val universalIndex = mutableListOf<StyleRule>()
+        var hasAncestorDependentSelectors = false
+        var hasAdjacentSiblingCombinators = false
+        var hasGeneralSiblingCombinators = false
 
         rules.forEach { rule ->
-            val selector = rule.selector
-            when {
-                selector.id != null -> {
-                    idIndex.getOrPut(selector.id) { mutableListOf() }.add(rule)
+            if (
+                rule.selector.steps.any {
+                    it.combinatorToLeft == StyleCombinator.Descendant ||
+                        it.combinatorToLeft == StyleCombinator.Child
                 }
-
-                selector.typeName != null && selector.className != null -> {
-                    val key = selector.typeName + "|" + selector.className
-                    typeClassIndex.getOrPut(key) { mutableListOf() }.add(rule)
+            ) {
+                hasAncestorDependentSelectors = true
+            }
+            rule.selector.steps.forEach { step ->
+                when (step.combinatorToLeft) {
+                    StyleCombinator.AdjacentSibling -> hasAdjacentSiblingCombinators = true
+                    StyleCombinator.GeneralSibling -> hasGeneralSiblingCombinators = true
+                    else -> Unit
                 }
-
-                selector.className != null -> {
-                    classIndex.getOrPut(selector.className) { mutableListOf() }.add(rule)
-                }
-
-                selector.typeName != null -> {
-                    typeIndex.getOrPut(selector.typeName) { mutableListOf() }.add(rule)
-                }
+            }
+            val rightMost = rule.selector.rightMostPart()
+            val indexed = linkedSetOf<MutableList<StyleRule>>()
+            rightMost.id?.let { id ->
+                indexed += idIndex.getOrPut(id) { mutableListOf() }
+            }
+            rightMost.typeName?.let { type ->
+                indexed += typeIndex.getOrPut(type) { mutableListOf() }
+            }
+            rightMost.classes.forEach { className ->
+                indexed += classIndex.getOrPut(className) { mutableListOf() }
+            }
+            if (indexed.isEmpty() || rightMost.universal) {
+                universalIndex += rule
+            } else {
+                indexed.forEach { bucket -> bucket += rule }
             }
         }
 
@@ -178,7 +199,10 @@ object StylesheetManager {
             typeIndex = typeIndex.mapValues { it.value.toList() },
             classIndex = classIndex.mapValues { it.value.toList() },
             idIndex = idIndex.mapValues { it.value.toList() },
-            typeClassIndex = typeClassIndex.mapValues { it.value.toList() }
+            universalIndex = universalIndex.toList(),
+            hasAncestorDependentSelectors = hasAncestorDependentSelectors,
+            hasAdjacentSiblingCombinators = hasAdjacentSiblingCombinators,
+            hasGeneralSiblingCombinators = hasGeneralSiblingCombinators
         )
     }
 }

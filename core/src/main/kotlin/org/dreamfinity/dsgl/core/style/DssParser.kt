@@ -10,6 +10,8 @@ class DssParseException(
 ) : RuntimeException("$path:$line:$column $message")
 
 object DssParser {
+    private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
+
     fun parse(file: File): StylesheetData {
         val text = file.readText()
         return parse(text, file.path)
@@ -133,7 +135,12 @@ object DssParser {
                         nameStart,
                         "Unsupported style property '$rawName'."
                     )
-                val expression = parseExpression(rawValue)
+                val important = importantSuffixRegex.containsMatchIn(rawValue)
+                val normalizedValue = if (important) importantSuffixRegex.replace(rawValue, "") else rawValue
+                if (normalizedValue.isEmpty()) {
+                    throw parseError(sourceName, text, valueStart, "Declaration value cannot be empty.")
+                }
+                val expression = parseExpression(normalizedValue)
                 if (expression is StyleExpression.Literal) {
                     try {
                         validateLiteralForProperty(property, expression.value)
@@ -141,7 +148,7 @@ object DssParser {
                         throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.")
                     }
                 }
-                declarations.set(property, expression)
+                declarations.set(property, expression, important = important)
             }
 
             if (index < text.length && text[index] == ';') {

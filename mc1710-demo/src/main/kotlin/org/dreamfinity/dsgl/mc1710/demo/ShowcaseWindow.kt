@@ -112,6 +112,13 @@ class ShowcaseWindow : DsglWindow() {
     internal var stylesheetDemoClickCount by state(0)
     internal var stylesheetEditorValue by state("")
     internal var stylesheetEditorStatus by state("not loaded")
+    internal var cascadeParentDark by state(false)
+    internal var cascadeRuleAEnabled by state(true)
+    internal var cascadeAdjacentSourceEnabled by state(true)
+    internal var cascadeAdjacentSwapOrder by state(false)
+    internal var cascadeGeneralWarningIndex by state(1L)
+    internal var cascadeGeneralInsertExtra by state(false)
+    internal var cascadeMixedSpacerEnabled by state(false)
 
     internal var mouseEnterCount by state(0)
     internal var mouseLeaveCount by state(0)
@@ -237,6 +244,7 @@ class ShowcaseWindow : DsglWindow() {
     override fun onOpen() {
         prepareDemoMedia()
         prepareDemoStylesheet()
+        prepareCascadeStylesheet()
         registerAnimationKeyframes()
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
@@ -388,6 +396,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.STYLESHEETS -> renderStylesheetsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.CSS_CASCADE -> renderCssCascadeCombinatorsSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30
@@ -1364,9 +1378,145 @@ class ShowcaseWindow : DsglWindow() {
         }
     }
 
+    private fun prepareCascadeStylesheet() {
+        try {
+            val file = cascadeStylesheetFile()
+            file.parentFile?.mkdirs()
+            file.writeText(
+                """
+                .cascade-demo-root {
+                  background-color: #25303B;
+                  border-color: #5A6877;
+                  border-width: 1;
+                  padding: 4;
+                }
+                
+                .cascade-demo-root.dark {
+                  foreground-color: #FFE4C7;
+                }
+                
+                .cascade-demo-root.light {
+                  foreground-color: #D7E8FF;
+                }
+                
+                .cascade-demo-root .panel {
+                  background-color: #1E2935;
+                  border-width: 1;
+                  border-color: #516071;
+                  padding: 3;
+                }
+                
+                .cascade-demo-root .panel .item {
+                  foreground-color: #7EC8FF;
+                }
+                
+                .cascade-demo-root .panel > .item {
+                  foreground-color: #9BE66F;
+                }
+                
+                .cascade-demo-root .btn {
+                  background-color: #4A5568;
+                  foreground-color: #FFFFFFFF;
+                  border-color: #1F2937;
+                  border-width: 1;
+                }
+                
+                .cascade-demo-root #primary.btn {
+                  background-color: #2B6CB0;
+                }
+                
+                .cascade-demo-root .order-target {
+                  foreground-color: #F56565;
+                }
+                
+                .cascade-demo-root .order-target {
+                  foreground-color: #48BB78;
+                }
+                
+                .cascade-demo-root .important-target {
+                  foreground-color: #DD6B20 !important;
+                }
+                
+                .cascade-demo-root .important-target {
+                  foreground-color: #3182CE;
+                }
+                
+                .cascade-demo-root.rule-a .toggle-target {
+                  foreground-color: #D69E2E;
+                }
+                
+                .cascade-demo-root.rule-b .toggle-target {
+                  foreground-color: #63B3ED;
+                }
+
+                .cascade-sibling-adj {
+                  background-color: #1E2731;
+                  border-color: #45576B;
+                  border-width: 1;
+                  padding: 3;
+                }
+
+                .cascade-sibling-adj .adj-item {
+                  background-color: #2D3A47;
+                  border-color: #53667A;
+                  border-width: 1;
+                  padding: 2 4;
+                }
+
+                .cascade-sibling-adj .adj-source {
+                  foreground-color: #FFDE9E;
+                }
+
+                .cascade-sibling-adj .adj-source + .adj-target {
+                  foreground-color: #7DFFB0;
+                  border-color: #7DFFB0;
+                }
+
+                .cascade-sibling-general {
+                  background-color: #1B2530;
+                  border-color: #495D73;
+                  border-width: 1;
+                  padding: 3;
+                }
+
+                .cascade-sibling-general .warning {
+                  foreground-color: #FF9B9B;
+                }
+
+                .cascade-sibling-general .warning ~ .gen-target {
+                  foreground-color: #6EC8FF;
+                }
+
+                .cascade-mixed {
+                  background-color: #202A34;
+                  border-color: #516679;
+                  border-width: 1;
+                  padding: 3;
+                }
+
+                .cascade-mixed > .header {
+                  foreground-color: #D8E6F5;
+                }
+
+                .cascade-mixed > .header + .body .title {
+                  foreground-color: #F6D66F;
+                }
+                """.trimIndent()
+            )
+            StyleEngine.forceReloadStylesheets()
+        } catch (ex: Exception) {
+            appendLog("Cascade stylesheet prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+        }
+    }
+
     private fun demoStylesheetFile(): File {
         val dataDir = Minecraft.getMinecraft().mcDataDir
         return File(dataDir, "dsgl/styles/showcase_styles.dss")
+    }
+
+    private fun cascadeStylesheetFile(): File {
+        val dataDir = Minecraft.getMinecraft().mcDataDir
+        return File(dataDir, "dsgl/styles/showcase_cascade.dss")
     }
 
     private fun defaultDndItems(): List<DndDemoItem> {

@@ -183,4 +183,40 @@ class DssParserTests {
         assertIs<StyleExpression.Literal>(gridRule.declarations.get(StyleProperty.GRID_COLUMNS))
         assertIs<StyleExpression.Literal>(gridRule.declarations.get(StyleProperty.GRID_COLUMN_SPAN))
     }
+
+    @Test
+    fun parsesCombinatorsAndSpecificity() {
+        val data = DssParser.parse(
+            """
+            .panel .item { color: #FFFFFF; }
+            .panel > .item { color: #EEEEEE; }
+            .item + .item { color: #DDDDDD; }
+            .item ~ .item { color: #CCCCCC; }
+            #root.toolbar .btn:hover { color: #DDDDDD; }
+            """.trimIndent(),
+            "combinators.dss"
+        )
+
+        assertEquals(5, data.rules.size)
+        assertTrue(data.rules[0].selector.hasCombinators)
+        assertEquals(StyleCombinator.Descendant, data.rules[0].selector.steps[1].combinatorToLeft)
+        assertEquals(StyleCombinator.Child, data.rules[1].selector.steps[1].combinatorToLeft)
+        assertEquals(StyleCombinator.AdjacentSibling, data.rules[2].selector.steps[1].combinatorToLeft)
+        assertEquals(StyleCombinator.GeneralSibling, data.rules[3].selector.steps[1].combinatorToLeft)
+        assertEquals(1, data.rules[4].selector.specificity.idCount)
+        assertEquals(3, data.rules[4].selector.specificity.classLikeCount)
+    }
+
+    @Test
+    fun parsesImportantDeclarationFlag() {
+        val data = DssParser.parse(
+            """
+            .btn { color: #111111 !important; }
+            """.trimIndent(),
+            "important.dss"
+        )
+
+        val rule = data.rules.single()
+        assertTrue(rule.declarations.isImportant(StyleProperty.FOREGROUND_COLOR))
+    }
 }

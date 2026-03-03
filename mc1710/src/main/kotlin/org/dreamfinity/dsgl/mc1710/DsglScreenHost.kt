@@ -68,12 +68,17 @@ abstract class DsglScreenHost(
     private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
+    private val stagingCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
     private val inspectorInputDebug: Boolean = false
     private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
+    private val phaseTraceDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.rebuild.trace")
     private var lastPerfLogMs: Long = 0L
+    private var frameIndex: Long = 0L
+    private var blankFrameGuardSkips: Long = 0L
+    private val pipelineErrorLogTimes: MutableMap<String, Long> = linkedMapOf()
     private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
         override fun readText(): String {
             return try {
@@ -117,9 +122,11 @@ abstract class DsglScreenHost(
 
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
         if (!::adapter.isInitialized) return
+        frameIndex += 1
+        tracePhase("draw.start")
         updateSize(force = false)
         window.onFrame(System.currentTimeMillis())
-        rebuildIfNeeded()
+        val rebuiltThisFrame = rebuildIfNeeded()
         val tree = domTree ?: return
         val nowNanos = System.nanoTime()
         val dtSeconds = if (lastFrameNanos == 0L) {
@@ -134,12 +141,21 @@ abstract class DsglScreenHost(
             tree.markVisualDirty()
         }
         var stylesAlreadyApplied = false
+        var layoutCommittedThisFrame = false
         if (needsLayout) {
-            tree.render(adapter, lastWidth, lastHeight)
-            layoutRevision++
-            inspector.onLayoutCommitted(tree.root, layoutRevision)
-            needsLayout = false
-            stylesAlreadyApplied = true
+            tracePhase("layout.start")
+            if (tryCommitLayout(tree, "drawScreen")) {
+                needsLayout = false
+                stylesAlreadyApplied = true
+                layoutCommittedThisFrame = true
+                tracePhase("layout.end")
+            } else {
+                tracePhase("layout.fail")
+                adapter.paint(composedCommandsBuffer)
+                flushPendingCleanup()
+                super.drawScreen(mouseX, mouseY, partialTicks)
+                return
+            }
         }
         inspector.onLayoutCommitted(tree.root, layoutRevision)
         inspector.onCursorMoved(mouseX, mouseY)
@@ -147,7 +163,25 @@ abstract class DsglScreenHost(
             inspector.onCapturedPointerMove(mouseX, mouseY, lastWidth, lastHeight)
         }
         val inspectorBlocks = inspectorPointerCaptured || inspector.shouldConsumePointer(mouseX, mouseY)
-        val commands = tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
+        tracePhase("commands.start")
+        if (!stylesAlreadyApplied) {
+            tracePhase("style.start")
+        }
+        val commands = try {
+            tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "draw.paint",
+                message = "[DSGL] Paint pipeline failed; rendering previous committed frame: ${error.message}"
+            )
+            adapter.paint(composedCommandsBuffer)
+            flushPendingCleanup()
+            super.drawScreen(mouseX, mouseY, partialTicks)
+            return
+        }
+        if (!stylesAlreadyApplied) {
+            tracePhase("style.end")
+        }
         if (!inspectorBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
         }
@@ -173,12 +207,27 @@ abstract class DsglScreenHost(
         }
         lastMoveX = mouseX
         lastMoveY = mouseY
-        composedCommandsBuffer.clear()
-        composedCommandsBuffer.addAll(commands)
-        DndRuntime.engine.appendPlaceholderCommands(composedCommandsBuffer)
-        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, composedCommandsBuffer)
-        inspector.appendOverlayCommands(lastWidth, lastHeight, composedCommandsBuffer)
+        stagingCommandsBuffer.clear()
+        stagingCommandsBuffer.addAll(commands)
+        DndRuntime.engine.appendPlaceholderCommands(stagingCommandsBuffer)
+        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, stagingCommandsBuffer)
+        inspector.appendOverlayCommands(lastWidth, lastHeight, stagingCommandsBuffer)
+        val keepPrevious = shouldKeepPreviousFrameCommands(
+            tree = tree,
+            rebuiltThisFrame = rebuiltThisFrame,
+            layoutCommittedThisFrame = layoutCommittedThisFrame,
+            candidate = stagingCommandsBuffer
+        )
+        if (!keepPrevious) {
+            composedCommandsBuffer.clear()
+            composedCommandsBuffer.addAll(stagingCommandsBuffer)
+        } else {
+            blankFrameGuardSkips += 1
+            tracePhase("commands.guard-preserved")
+        }
+        tracePhase("commands.end")
         adapter.paint(composedCommandsBuffer)
+        tracePhase("draw.end")
         maybeLogPerf(tree)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
@@ -240,8 +289,10 @@ abstract class DsglScreenHost(
         }
     }
 
-    private fun rebuildIfNeeded() {
-        if (needsRender || domTree == null) {
+    private fun rebuildIfNeeded(): Boolean {
+        if (!needsRender && domTree != null) return false
+        return try {
+            tracePhase("rebuild.start")
             rendersCount++
             window.beginRenderBuild()
             val nextTree = window.render()
@@ -255,6 +306,9 @@ abstract class DsglScreenHost(
                 }
                 domTree = currentTree
             }
+            // Reconcile may involve selector-state mutations on template nodes.
+            // Force a full style pass on the active retained tree to avoid one-frame unstyled flashes.
+            StyleEngine.markSelectorStateChanged()
             needsRender = false
             needsLayout = true
             domTree?.root?.let { root ->
@@ -262,6 +316,14 @@ abstract class DsglScreenHost(
                 restoreDragCapture(root)
                 DndRuntime.engine.rebindAfterReconcile(root)
             }
+            tracePhase("rebuild.end")
+            true
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "rebuild",
+                message = "[DSGL] Rebuild failed; keeping previous committed frame/tree: ${error.message}"
+            )
+            false
         }
     }
 
@@ -345,10 +407,11 @@ abstract class DsglScreenHost(
         rebuildIfNeeded()
         val tree = domTree ?: return
         if (needsLayout) {
-            tree.render(adapter, lastWidth, lastHeight)
-            layoutRevision++
-            inspector.onLayoutCommitted(tree.root, layoutRevision)
-            needsLayout = false
+            if (tryCommitLayout(tree, "handleMouseInput")) {
+                needsLayout = false
+            } else {
+                return
+            }
         }
 
         val mouseX = Mouse.getEventX() * width / mc.displayWidth
@@ -628,10 +691,11 @@ abstract class DsglScreenHost(
     private fun refreshHoverTarget(mouseX: Int, mouseY: Int) {
         val tree = domTree ?: return
         if (needsLayout) {
-            tree.render(adapter, lastWidth, lastHeight)
-            layoutRevision++
-            inspector.onLayoutCommitted(tree.root, layoutRevision)
-            needsLayout = false
+            if (tryCommitLayout(tree, "refreshHoverTarget")) {
+                needsLayout = false
+            } else {
+                return
+            }
         }
         val chain = collectHoverChain(tree.root, mouseX, mouseY)
         hoverTarget = chain.lastOrNull()
@@ -669,6 +733,116 @@ abstract class DsglScreenHost(
         println("[DSGL-InspectorInput] $message")
     }
 
+    private fun tryCommitLayout(tree: DomTree, phase: String): Boolean {
+        return try {
+            tree.render(adapter, lastWidth, lastHeight)
+            val rootBounds = tree.root.bounds
+            if (lastWidth > 0 && lastHeight > 0 && (rootBounds.width <= 0 || rootBounds.height <= 0)) {
+                logPipelineError(
+                    key = "layout.$phase.invalidBounds",
+                    message = "[DSGL] Layout commit produced invalid root bounds ${rootBounds.width}x${rootBounds.height} in $phase."
+                )
+                return false
+            }
+            layoutRevision++
+            inspector.onLayoutCommitted(tree.root, layoutRevision)
+            true
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "layout.$phase",
+                message = "[DSGL] Layout commit failed in $phase; keeping previous frame: ${error.message}"
+            )
+            false
+        }
+    }
+
+    private fun shouldKeepPreviousFrameCommands(
+        tree: DomTree,
+        rebuiltThisFrame: Boolean,
+        layoutCommittedThisFrame: Boolean,
+        candidate: List<RenderCommand>
+    ): Boolean {
+        val shape = validateCommandShape(candidate)
+        if (!shape.valid) {
+            logPipelineError(
+                key = "shape.guard",
+                message = "[DSGL] Guarded invalid command shape (clip=${shape.clipDepth}, transform=${shape.transformDepth}, opacity=${shape.opacityDepth}); keeping previous frame."
+            )
+            return composedCommandsBuffer.isNotEmpty()
+        }
+        if (candidate.isNotEmpty()) return false
+        if (composedCommandsBuffer.isEmpty()) return false
+        if (!rebuiltThisFrame && !layoutCommittedThisFrame) return false
+        if (!hasRenderableNodes(tree.root)) return false
+        logPipelineError(
+            key = "blank.guard",
+            message = "[DSGL] Guarded against blank rebuild frame; keeping previous commands."
+        )
+        return true
+    }
+
+    private data class CommandShape(
+        val valid: Boolean,
+        val clipDepth: Int,
+        val transformDepth: Int,
+        val opacityDepth: Int
+    )
+
+    private fun validateCommandShape(commands: List<RenderCommand>): CommandShape {
+        var clipDepth = 0
+        var transformDepth = 0
+        var opacityDepth = 0
+        for (command in commands) {
+            when (command) {
+                is RenderCommand.PushClip -> clipDepth += 1
+                is RenderCommand.PopClip -> {
+                    clipDepth -= 1
+                    if (clipDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
+                }
+                is RenderCommand.PushTransform -> transformDepth += 1
+                is RenderCommand.PopTransform -> {
+                    transformDepth -= 1
+                    if (transformDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
+                }
+                is RenderCommand.PushOpacity -> opacityDepth += 1
+                is RenderCommand.PopOpacity -> {
+                    opacityDepth -= 1
+                    if (opacityDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
+                }
+                else -> Unit
+            }
+        }
+        return CommandShape(
+            valid = clipDepth == 0 && transformDepth == 0 && opacityDepth == 0,
+            clipDepth = clipDepth,
+            transformDepth = transformDepth,
+            opacityDepth = opacityDepth
+        )
+    }
+
+    private fun hasRenderableNodes(node: DOMNode): Boolean {
+        if (node.display != org.dreamfinity.dsgl.core.style.Display.None && node.children.isNotEmpty()) {
+            return true
+        }
+        node.children.forEach { child ->
+            if (hasRenderableNodes(child)) return true
+        }
+        return false
+    }
+
+    private fun tracePhase(phase: String) {
+        if (!phaseTraceDebug) return
+        println("[DSGL-RebuildTrace] frame=$frameIndex phase=$phase needsRender=$needsRender needsLayout=$needsLayout")
+    }
+
+    private fun logPipelineError(key: String, message: String) {
+        val now = System.currentTimeMillis()
+        val previous = pipelineErrorLogTimes[key] ?: 0L
+        if (now - previous < 2_000L) return
+        pipelineErrorLogTimes[key] = now
+        println(message)
+    }
+
     private fun maybeLogPerf(tree: DomTree) {
         if (!perfDebug) return
         val now = System.currentTimeMillis()
@@ -678,7 +852,8 @@ abstract class DsglScreenHost(
         val styleStats = StyleEngine.lastStyleApplyReport()
         println(
             "[DSGL-PERF] frames=${paintStats.frames} commandRebuilds=${paintStats.commandRebuilds} " +
-                "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} styleRecomputed=${styleStats.recomputedNodes}"
+                "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
+                "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips"
         )
     }
 }

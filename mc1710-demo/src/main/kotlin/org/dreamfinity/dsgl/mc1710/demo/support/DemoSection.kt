@@ -13,6 +13,7 @@ enum class DemoSection(
     MSDF_FONTS("MSDF Fonts", "MTSDF atlas fonts: switch font, size, color, opacity, wrapping"),
     ANIMATIONS("Animations & Transforms", "Transform hit-testing, transitions, keyframes, easing"),
     STYLESHEETS("Stylesheets", "Selectors, variables, pseudo-states, inline override"),
+    CSS_CASCADE("CSS Cascade & Combinators", "Descendant/child/sibling selectors, specificity, source order, !important, inheritance"),
     MODALS("Modals", "Declarative stacked modal host (RB-inspired)"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),

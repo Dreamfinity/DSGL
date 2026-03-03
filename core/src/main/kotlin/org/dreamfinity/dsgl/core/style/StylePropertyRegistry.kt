@@ -16,7 +16,8 @@ data class StylePropertyDescriptor(
     val enumOptions: List<String> = emptyList(),
     val numericStep: Float = 1f,
     val minInt: Int = 0,
-    val minFloat: Float = 0f
+    val minFloat: Float = 0f,
+    val isInherited: Boolean = false
 )
 
 object StylePropertyRegistry {
@@ -38,15 +39,16 @@ object StylePropertyRegistry {
         StylePropertyDescriptor(StyleProperty.BORDER_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
         StylePropertyDescriptor(StyleProperty.BORDER_WIDTH, StyleEditorValueType.IntNumber, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.BORDER_RADIUS, StyleEditorValueType.IntNumber, numericStep = 1f),
-        StylePropertyDescriptor(StyleProperty.FOREGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
+        StylePropertyDescriptor(StyleProperty.FOREGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette(), isInherited = true),
         StylePropertyDescriptor(
             StyleProperty.FONT_ID,
             StyleEditorValueType.StringPreset,
-            enumOptions = listOf("minecraft", "ubuntu", "JetBrains Mono")
+            enumOptions = listOf("minecraft", "ubuntu", "JetBrains Mono"),
+            isInherited = true
         ),
-        StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
-        StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold")),
-        StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic")),
+        StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1, isInherited = true),
+        StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold"), isInherited = true),
+        StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic"), isInherited = true),
         StylePropertyDescriptor(
             StyleProperty.TEXT_DECORATION,
             StyleEditorValueType.EnumChoice,
@@ -83,6 +85,8 @@ object StylePropertyRegistry {
     fun descriptor(property: StyleProperty): StylePropertyDescriptor {
         return byProperty[property] ?: error("Missing style descriptor for '${property.key}'.")
     }
+
+    fun isInherited(property: StyleProperty): Boolean = descriptor(property).isInherited
 
     private fun colorPalette(): List<String> {
         return listOf(
