@@ -66,6 +66,16 @@ object StyleEngine {
         val visualDirty: Boolean
     )
 
+    private data class NodeApplyResult(
+        val flags: NodeApplyFlags,
+        val cacheHit: Boolean
+    )
+
+    private enum class StylePassMode {
+        Full,
+        Targeted
+    }
+
     private val cache: MutableMap<DOMNode, CachedStyle> = WeakHashMap()
     private val themeVariables: MutableMap<String, String> = linkedMapOf()
     private val inspectorOverrides: MutableMap<Any, StyleDeclarations> = linkedMapOf()
@@ -272,7 +282,8 @@ object StyleEngine {
                 snapshot = snapshot,
                 variables = variables,
                 metrics = metrics,
-                parentComputed = null
+                parentComputed = null,
+                passMode = StylePassMode.Full
             )
         }
         pseudoDirtyNodes.clear()
@@ -357,7 +368,8 @@ object StyleEngine {
                 snapshot = snapshot,
                 variables = variables,
                 metrics = metrics,
-                parentComputed = null
+                parentComputed = null,
+                passMode = StylePassMode.Full
             )
         }
 
@@ -375,7 +387,8 @@ object StyleEngine {
                 snapshot = snapshot,
                 variables = variables,
                 metrics = metrics,
-                parentComputed = subtreeRoot.parent?.appliedComputedStyleSnapshot()
+                parentComputed = subtreeRoot.parent?.appliedComputedStyleSnapshot(),
+                passMode = StylePassMode.Targeted
             )
             flags = NodeApplyFlags(
                 layoutDirty = flags.layoutDirty || subtreeFlags.layoutDirty,
@@ -390,9 +403,17 @@ object StyleEngine {
         snapshot: StylesheetSnapshot,
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
-        parentComputed: ComputedStyle?
+        parentComputed: ComputedStyle?,
+        passMode: StylePassMode
     ): NodeApplyFlags {
-        var flags = applyStyleToNode(root, snapshot, variables, metrics, parentComputed)
+        val nodeResult = applyStyleToNode(root, snapshot, variables, metrics, parentComputed)
+        var flags = nodeResult.flags
+        val canSkipSubtree = passMode == StylePassMode.Targeted &&
+            nodeResult.cacheHit &&
+            !snapshot.index.hasAncestorDependentSelectors
+        if (canSkipSubtree) {
+            return flags
+        }
         val nodeComputed = root.appliedComputedStyleSnapshot()
         root.children.forEach { child ->
             val childFlags = applyStylesRecursively(
@@ -400,7 +421,8 @@ object StyleEngine {
                 snapshot = snapshot,
                 variables = variables,
                 metrics = metrics,
-                parentComputed = nodeComputed
+                parentComputed = nodeComputed,
+                passMode = passMode
             )
             flags = NodeApplyFlags(
                 layoutDirty = flags.layoutDirty || childFlags.layoutDirty,
@@ -416,7 +438,7 @@ object StyleEngine {
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
         parentComputed: ComputedStyle?
-    ): NodeApplyFlags {
+    ): NodeApplyResult {
         metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
         val key = CacheKey(
@@ -447,9 +469,12 @@ object StyleEngine {
         if (cached != null && cached.key == key) {
             metrics.cacheHits += 1
             val result = node.applyComputedStyle(cached.style)
-            return NodeApplyFlags(
-                layoutDirty = result.layoutDirty,
-                visualDirty = result.visualDirty
+            return NodeApplyResult(
+                flags = NodeApplyFlags(
+                    layoutDirty = result.layoutDirty,
+                    visualDirty = result.visualDirty
+                ),
+                cacheHit = true
             )
         }
 
@@ -463,9 +488,12 @@ object StyleEngine {
         cache[node] = CachedStyle(key = key, style = computed)
         metrics.recomputedNodes += 1
         val result = node.applyComputedStyle(computed)
-        return NodeApplyFlags(
-            layoutDirty = result.layoutDirty,
-            visualDirty = result.visualDirty
+        return NodeApplyResult(
+            flags = NodeApplyFlags(
+                layoutDirty = result.layoutDirty,
+                visualDirty = result.visualDirty
+            ),
+            cacheHit = false
         )
     }
 

@@ -140,6 +140,9 @@ abstract class DsglScreenHost(
         if (animationVisualsChanged) {
             tree.markVisualDirty()
         }
+        if (focusedNodeNeedsLiveTextRepaint()) {
+            tree.markVisualDirty()
+        }
         var stylesAlreadyApplied = false
         var layoutCommittedThisFrame = false
         if (needsLayout) {
@@ -719,6 +722,12 @@ abstract class DsglScreenHost(
             current = current.parent
         }
         return false
+    }
+
+    private fun focusedNodeNeedsLiveTextRepaint(): Boolean {
+        val focused = FocusManager.focusedNode() ?: return false
+        if (focused.styleDisabled) return false
+        return focused is SingleLineInputNode || focused is TextAreaNode
     }
 
     private fun clearHoverChainStates() {

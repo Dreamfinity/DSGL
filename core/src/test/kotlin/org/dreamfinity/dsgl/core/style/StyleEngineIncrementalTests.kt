@@ -108,6 +108,30 @@ class StyleEngineIncrementalTests {
         assertEquals(0xFF2288FF.toInt(), target.color)
     }
 
+    @Test
+    fun `targeted pass skips unchanged subtree when cache hit`() {
+        installStylesheet(
+            """
+            .node { color: #FFFFFF; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val branch = ContainerNode(key = "branch").applyParent(root)
+        branch.setClassNames("node")
+        repeat(6) { index ->
+            TextNode(TextSource.Static("child-$index"), key = "child-$index").applyParent(branch)
+        }
+
+        StyleEngine.applyStylesRecursivelyDetailed(root)
+        StyleEngine.markSelectorStateChanged(branch)
+        val report = StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        assertEquals(1, report.visitedNodes, "Expected subtree short-circuit on cache hit.")
+        assertEquals(1, report.cacheHits, "Branch node should be served from style cache.")
+        assertEquals(0, report.recomputedNodes)
+    }
+
     private fun installStylesheet(contents: String) {
         val dir = Files.createTempDirectory("dsgl-style-incremental-test").toFile()
         dir.resolve("test.dss").writeText(contents)

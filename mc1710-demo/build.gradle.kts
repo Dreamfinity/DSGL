@@ -76,11 +76,11 @@ val generateModMetadata by tasks.registering {
 tasks {
     runClient {
         jvmArgs(
-            "-Ddsgl.msdf.debug=true",
-            "-Ddsgl.msdf.debug.decorations=true",
-            "-Ddsgl.msdf.debug.performance=true",
+            "-Ddsgl.msdf.debug=false",
+            "-Ddsgl.msdf.debug.decorations=false",
+            "-Ddsgl.msdf.debug.performance=false",
             "-Ddsgl.rebuild.trace=false",
-            "-Ddsgl.perf.debug=true",
+            "-Ddsgl.perf.debug=false",
         )
 
         if (project.hasProperty("clientRunArgs")) {

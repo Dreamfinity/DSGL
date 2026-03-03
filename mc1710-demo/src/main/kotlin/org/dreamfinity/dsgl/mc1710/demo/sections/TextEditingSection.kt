@@ -137,7 +137,12 @@ fun UiScope.renderTextEditingSection(window: ShowcaseWindow, contentWidth: Int, 
 private fun UiScope.checklistLine(textValue: String, done: Boolean) {
     val mark = if (done) "[ok]" else "[ ]"
     val color = if (done) DEMO_OK else FAIL_COLOR
-    text(TextProps("$mark $textValue").apply { this.color = color })
+    text(
+        TextProps("$mark $textValue").apply {
+            this.color = color
+            style = { foregroundColor(color) }
+        }
+    )
 }
 
 private fun trackSelectionDrag(window: ShowcaseWindow, event: MouseDragEvent, key: Any) {
