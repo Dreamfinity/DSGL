@@ -394,6 +394,7 @@ abstract class DOMNode(
 
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        if (!isChildrenRenderPassEnabled()) return
         if (dragRenderHidden || display == Display.None) return
         val activeTransform = effectiveTransform()
         val activeOpacity = effectiveOpacity()

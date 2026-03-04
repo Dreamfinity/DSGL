@@ -58,6 +58,22 @@ class DomTreeCachingTests {
         }
     }
 
+    private class LegacyManualChildrenNode(
+        private val color: Int,
+        key: Any? = null
+    ) : DOMNode(key) {
+        override val styleType: String = "legacy-manual"
+
+        override fun measure(ctx: UiMeasureContext): Size = Size(10, 10)
+
+        override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+            out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, color)
+            children.forEach { child ->
+                child.appendRenderCommands(ctx, out)
+            }
+        }
+    }
+
     private val ctx = object : UiMeasureContext {
         override fun measureText(text: String): Int = text.length * 6
         override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
@@ -177,5 +193,20 @@ class DomTreeCachingTests {
         assertEquals(2, drawRectColors.size)
         assertEquals(1, drawRectColors.count { it == 0xFFAA3300.toInt() })
         assertEquals(1, drawRectColors.count { it == 0xFF0033AA.toInt() })
+    }
+
+    @Test
+    fun `legacy manual child rendering does not duplicate in chunk assembly`() {
+        val root = LegacyManualChildrenNode(color = 0xFF1255AA.toInt(), key = "legacy-root")
+        CountingRectNode(color = 0xFF22AA55.toInt(), key = "legacy-child").applyParent(root)
+        val tree = DomTree(root)
+
+        tree.render(ctx, 320, 180)
+        val commands = tree.paint(ctx)
+        val drawRectColors = commands.filterIsInstance<RenderCommand.DrawRect>().map { it.color }
+
+        assertEquals(2, drawRectColors.size)
+        assertEquals(1, drawRectColors.count { it == 0xFF1255AA.toInt() })
+        assertEquals(1, drawRectColors.count { it == 0xFF22AA55.toInt() })
     }
 }

@@ -952,19 +952,19 @@ internal class MsdfTextRenderer {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
-        drainGlErrors()
-        GL11.glTexImage2D(
-            GL11.GL_TEXTURE_2D,
-            0,
-            GL11.GL_RGBA8,
-            width,
-            height,
-            0,
-            GL11.GL_RGBA,
-            GL11.GL_UNSIGNED_BYTE,
-            buffer
-        )
-        val glError = drainGlErrors()
+        val glError = scopedGlError {
+            GL11.glTexImage2D(
+                GL11.GL_TEXTURE_2D,
+                0,
+                GL11.GL_RGBA8,
+                width,
+                height,
+                0,
+                GL11.GL_RGBA,
+                GL11.GL_UNSIGNED_BYTE,
+                buffer
+            )
+        }
         if (glError != GL11.GL_NO_ERROR) {
             GL11.glDeleteTextures(textureId)
             throw IllegalStateException(
@@ -988,6 +988,12 @@ internal class MsdfTextRenderer {
             }
         }
         return firstError
+    }
+
+    private inline fun scopedGlError(block: () -> Unit): Int {
+        drainGlErrors()
+        block()
+        return drainGlErrors()
     }
 
     private fun useProgram(): Boolean {
