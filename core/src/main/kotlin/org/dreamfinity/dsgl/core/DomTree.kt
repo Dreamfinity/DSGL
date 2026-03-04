@@ -11,7 +11,9 @@ import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import java.util.WeakHashMap
 
 /**
  * Retained DOM tree. Render phase builds this tree, paint phase draws it.
@@ -23,6 +25,8 @@ class DomTree(var root: DOMNode) {
     data class PaintStats(
         val frames: Long,
         val commandRebuilds: Long,
+        val chunkNodesVisitedLastFrame: Int,
+        val chunkNodesRebuiltLastFrame: Int,
         val styledNodesLastFrame: Int,
         val styleCacheHitsLastFrame: Int,
         val styleRecomputedLastFrame: Int
@@ -40,7 +44,12 @@ class DomTree(var root: DOMNode) {
     private var lastStyleRevision: Long = Long.MIN_VALUE
     private var frames: Long = 0L
     private var commandRebuilds: Long = 0L
+    private var chunkNodesVisitedLastFrame: Int = 0
+    private var chunkNodesRebuiltLastFrame: Int = 0
+    private var chunkTreeChangedThisFrame: Boolean = false
     private var lastPaintBuildErrorMs: Long = 0L
+    private val chunksByNode: MutableMap<DOMNode, RenderCommandChunk> = WeakHashMap()
+    private val debugCommandStackChecks: Boolean = java.lang.Boolean.getBoolean("dsgl.render.debug.stack")
     private var lastStyleReport: StyleEngine.StyleApplyReport = StyleEngine.StyleApplyReport(
         layoutDirty = false,
         visualDirty = false,
@@ -89,10 +98,8 @@ class DomTree(var root: DOMNode) {
         } else if (styleReport.visualDirty) {
             commandsDirty = true
         }
-        if (commandsDirty) {
-            if (rebuildPaintCommands(ctx)) {
-                commandRebuilds += 1
-            }
+        if (rebuildPaintCommands(ctx)) {
+            commandRebuilds += 1
         }
         return paintBuffer
     }
@@ -106,6 +113,7 @@ class DomTree(var root: DOMNode) {
         root = result.root
         laidOut = false
         commandsDirty = true
+        chunksByNode.clear()
         return result
     }
 
@@ -113,6 +121,8 @@ class DomTree(var root: DOMNode) {
         return PaintStats(
             frames = frames,
             commandRebuilds = commandRebuilds,
+            chunkNodesVisitedLastFrame = chunkNodesVisitedLastFrame,
+            chunkNodesRebuiltLastFrame = chunkNodesRebuiltLastFrame,
             styledNodesLastFrame = lastStyleReport.visitedNodes,
             styleCacheHitsLastFrame = lastStyleReport.cacheHits,
             styleRecomputedLastFrame = lastStyleReport.recomputedNodes
@@ -125,15 +135,35 @@ class DomTree(var root: DOMNode) {
 
     private fun rebuildPaintCommands(ctx: UiMeasureContext): Boolean {
         return try {
+            val nowMs = System.currentTimeMillis()
+            chunkNodesVisitedLastFrame = 0
+            chunkNodesRebuiltLastFrame = 0
+            chunkTreeChangedThisFrame = false
+            val chunkChanged = if (!strictInvalidLayout) {
+                rebuildChunkRecursive(root, ctx, nowMs)
+                chunkTreeChangedThisFrame
+            } else {
+                false
+            }
+            val changed = commandsDirty || chunkChanged
+            if (!changed) {
+                return false
+            }
             stagingPaintBuffer.clear()
             if (!strictInvalidLayout) {
-                root.appendRenderCommands(ctx, stagingPaintBuffer)
+                val rootChunk = chunksByNode[root]
+                if (rootChunk != null) {
+                    appendChunkCommands(rootChunk, stagingPaintBuffer)
+                }
             }
             LayoutValidator.appendDebugCommands(root, lastViolations, stagingPaintBuffer)
+            if (debugCommandStackChecks) {
+                validateCommandStacks(stagingPaintBuffer)
+            }
             paintBuffer.clear()
             paintBuffer.addAll(stagingPaintBuffer)
             commandsDirty = false
-            true
+            changed
         } catch (error: Throwable) {
             val now = System.currentTimeMillis()
             if (now - lastPaintBuildErrorMs >= 2_000L) {
@@ -142,6 +172,144 @@ class DomTree(var root: DOMNode) {
             }
             false
         }
+    }
+
+    private fun validateCommandStacks(commands: List<RenderCommand>) {
+        var clipDepth = 0
+        var transformDepth = 0
+        var opacityDepth = 0
+        commands.forEach { command ->
+            when (command) {
+                is RenderCommand.PushClip -> clipDepth += 1
+                RenderCommand.PopClip -> {
+                    clipDepth -= 1
+                    require(clipDepth >= 0) { "clip stack underflow" }
+                }
+                is RenderCommand.PushTransform -> transformDepth += 1
+                RenderCommand.PopTransform -> {
+                    transformDepth -= 1
+                    require(transformDepth >= 0) { "transform stack underflow" }
+                }
+                is RenderCommand.PushOpacity -> opacityDepth += 1
+                RenderCommand.PopOpacity -> {
+                    opacityDepth -= 1
+                    require(opacityDepth >= 0) { "opacity stack underflow" }
+                }
+                else -> Unit
+            }
+        }
+        require(clipDepth == 0) { "clip stack imbalance: $clipDepth" }
+        require(transformDepth == 0) { "transform stack imbalance: $transformDepth" }
+        require(opacityDepth == 0) { "opacity stack imbalance: $opacityDepth" }
+    }
+
+    private fun rebuildChunkRecursive(node: DOMNode, ctx: UiMeasureContext, nowMs: Long): RenderCommandChunk {
+        chunkNodesVisitedLastFrame += 1
+        val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk(node) }
+        val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
+
+        val childSignature = if (nodeHidden) {
+            if (chunk.children.isNotEmpty()) {
+                chunk.children.clear()
+                chunkTreeChangedThisFrame = true
+            }
+            0L
+        } else {
+            var signature = 1L
+            val expectedChildren = node.children
+            var childrenChanged = chunk.children.size != expectedChildren.size
+            if (childrenChanged) {
+                chunk.children.clear()
+            }
+            expectedChildren.forEachIndexed { index, child ->
+                val childChunk = rebuildChunkRecursive(child, ctx, nowMs)
+                if (childrenChanged) {
+                    chunk.children += childChunk
+                } else if (chunk.children[index] !== childChunk) {
+                    childrenChanged = true
+                }
+                signature = 31L * signature + childChunk.subtreeSignature
+            }
+            if (childrenChanged) {
+                chunkTreeChangedThisFrame = true
+                chunk.children.clear()
+                expectedChildren.forEach { child ->
+                    chunk.children += chunksByNode.getOrPut(child) { RenderCommandChunk(child) }
+                }
+            }
+            signature
+        }
+
+        val nodeSignature = node.renderCommandsSignature(nowMs)
+        val rebuildSelf = commandsDirty ||
+            chunk.lastNodeSignature != nodeSignature ||
+            chunk.lastChildrenSignature != childSignature ||
+            chunk.lastNodeSignature == Long.MIN_VALUE
+
+        if (rebuildSelf) {
+            chunkTreeChangedThisFrame = true
+            chunkNodesRebuiltLastFrame += 1
+            rebuildChunkCommands(node, chunk, ctx, nodeHidden)
+            chunk.lastNodeSignature = nodeSignature
+            chunk.lastChildrenSignature = childSignature
+        }
+
+        chunk.subtreeSignature = 31L * nodeSignature + childSignature
+        return chunk
+    }
+
+    private fun rebuildChunkCommands(
+        node: DOMNode,
+        chunk: RenderCommandChunk,
+        ctx: UiMeasureContext,
+        nodeHidden: Boolean
+    ) {
+        chunk.prefixCommands.clear()
+        chunk.selfCommands.clear()
+        chunk.suffixCommands.clear()
+        if (nodeHidden) return
+
+        val activeTransform = node.effectiveTransform()
+        val activeOpacity = node.effectiveOpacity()
+        val transformPushed = !activeTransform.isIdentity()
+        val opacityPushed = activeOpacity < 0.999f
+
+        if (transformPushed) {
+            val ox = node.bounds.x + node.bounds.width * node.transformOrigin.originX
+            val oy = node.bounds.y + node.bounds.height * node.transformOrigin.originY
+            chunk.prefixCommands += RenderCommand.PushTransform(
+                originX = ox,
+                originY = oy,
+                translateX = activeTransform.translateX,
+                translateY = activeTransform.translateY,
+                scaleX = activeTransform.scaleX,
+                scaleY = activeTransform.scaleY,
+                rotateDeg = activeTransform.rotateDeg
+            )
+        }
+        if (opacityPushed) {
+            chunk.prefixCommands += RenderCommand.PushOpacity(activeOpacity)
+        }
+
+        DOMNode.withChildrenRenderPass(enabled = false) {
+            node.buildRenderCommands(ctx, chunk.selfCommands)
+        }
+
+        if (opacityPushed) {
+            chunk.suffixCommands += RenderCommand.PopOpacity
+        }
+        if (transformPushed) {
+            chunk.suffixCommands += RenderCommand.PopTransform
+        }
+    }
+
+    private fun appendChunkCommands(chunk: RenderCommandChunk, out: MutableList<RenderCommand>) {
+        out.addAll(chunk.prefixCommands)
+        out.addAll(chunk.selfCommands)
+        chunk.children.forEach { child ->
+            appendChunkCommands(child, out)
+        }
+        out.addAll(chunk.suffixCommands)
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {

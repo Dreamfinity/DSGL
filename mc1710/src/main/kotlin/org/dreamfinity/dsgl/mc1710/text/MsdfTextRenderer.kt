@@ -148,16 +148,13 @@ internal class MsdfTextRenderer {
     private var obfuscationLastNano: Long = System.nanoTime()
     private var obfuscationAccumSec: Double = 0.0
     private var obfuscationTimeSlice: Long = 0
+    private val maxTextureSize: Int by lazy { GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE).coerceAtLeast(1) }
     private val segmentBuffer = SegmentBuffer(96)
     private val debugCounters = RendererDebugCounters()
     private val debugPerformanceEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {
         java.lang.Boolean.getBoolean("dsgl.msdf.debug.performance")
     }
     private var debugLastLogMs: Long = 0L
-    val isDebugDecorationGuidesEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {
-        java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations")
-    }
-
     fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return FontRegistry.measureText(text, fontId, fontSize)
     }
@@ -171,6 +168,8 @@ internal class MsdfTextRenderer {
         val primaryFont = FontRegistry.get(command.fontId) ?: return
         val runtimeFallbackFont = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
             ?.takeIf { it.descriptor.fontId != primaryFont.descriptor.fontId }
+        val missingGlyphFont = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
+            ?: FontRegistry.get(FontRegistry.DEFAULT_FONT_ID)
         val fontSize = FontRegistry.resolveFontSize(command.fontSize)
         val prepared = prepareText(command)
         val layoutEntry = getOrBuildLayoutCacheEntry(
@@ -181,7 +180,7 @@ internal class MsdfTextRenderer {
         )
         if (prepared.text.isEmpty() || layoutEntry.lines.isEmpty()) return
 
-        val debugDecorationGuidesEnabled = isDebugDecorationGuidesEnabled
+        val debugDecorationGuidesEnabled = MsdfRuntimeDebugSettings.decorationGuidesEnabled
         updateObfuscationClock()
         segmentBuffer.clear()
 
@@ -220,12 +219,15 @@ internal class MsdfTextRenderer {
             var activeStyleColor = withOpacity(command.color, opacityMultiplier)
             var activeStyleFlags = baseFlagsMask(command)
 
-            fun beginForFont(font: LoadedMsdfFont, texture: FontTextureHandle) {
-                if (activeFontId == font.descriptor.fontId && activeTexture === texture && glBegun) return
+            fun beginForFont(font: LoadedMsdfFont): FontTextureHandle? {
+                if (activeFontId == font.descriptor.fontId && activeTexture != null && glBegun) {
+                    return activeTexture
+                }
                 if (glBegun) {
                     GL11.glEnd()
                     glBegun = false
                 }
+                val texture = textureFor(font) ?: return null
                 GL13.glActiveTexture(GL13.GL_TEXTURE0)
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture.textureId)
                 ARBShaderObjects.glUniform1iARB(uniformAtlas, 0)
@@ -235,6 +237,7 @@ internal class MsdfTextRenderer {
                 activeFontId = font.descriptor.fontId
                 activeTexture = texture
                 currentDrawColor = Int.MIN_VALUE
+                return texture
             }
 
             try {
@@ -305,27 +308,33 @@ internal class MsdfTextRenderer {
                                 cachedShapedFont = resolved
                             }
                         }
-                        var glyphFont = shapedFont
-                        var glyph = shapedFont.meta.glyphByIndex(shapedGlyph.glyphIndex)
-                        if (glyph == null) {
-                            glyph = shapedFont.meta.glyph(shapedGlyph.sourceCodepoint)
+                        val forceMissingGlyphFont = if (
+                            shapedGlyph.sourceCodepoint == REPLACEMENT_CODEPOINT ||
+                            isShapedGlyphMissingInFont(shapedFont, shapedGlyph)
+                        ) {
+                            missingGlyphFont ?: runtimeFallbackFont ?: shapedFont
+                        } else {
+                            null
                         }
-                        if (glyph == null) {
-                            glyph = shapedFont.meta.fallbackGlyph()
+
+                        var glyphFont = forceMissingGlyphFont ?: shapedFont
+                        var glyph = if (forceMissingGlyphFont != null) {
+                            preferredMissingGlyph(glyphFont)
+                        } else {
+                            resolveGlyphForShapedInput(shapedFont, shapedGlyph)
                         }
                         if (glyph == null && runtimeFallbackFont != null) {
-                            val fallbackByCodepoint = runtimeFallbackFont.meta.glyph(shapedGlyph.sourceCodepoint)
+                            val fallbackByCodepoint = resolveGlyphForShapedInput(runtimeFallbackFont, shapedGlyph)
                             if (fallbackByCodepoint != null) {
                                 glyphFont = runtimeFallbackFont
                                 glyph = fallbackByCodepoint
                             } else {
-                                runtimeFallbackFont.meta.fallbackGlyph()?.let { fallbackDefault ->
+                                preferredMissingGlyph(runtimeFallbackFont)?.let { fallbackDefault ->
                                     glyphFont = runtimeFallbackFont
                                     glyph = fallbackDefault
                                 }
                             }
                         }
-                        val texture = textureFor(glyphFont)
                         debugCounters.glyphResolutionRequests += 1
 
                         val styleBold = (activeStyleFlags and STYLE_FLAG_BOLD) != 0
@@ -347,8 +356,14 @@ internal class MsdfTextRenderer {
                         if (glyphEndX > lineEndX) lineEndX = glyphEndX
 
                         val resolvedGlyph = glyph
-                        if (resolvedGlyph != null && resolvedGlyph.drawable && texture != null) {
-                            beginForFont(glyphFont, texture)
+                        if (resolvedGlyph != null && resolvedGlyph.drawable) {
+                            val texture = beginForFont(glyphFont)
+                            if (texture == null) {
+                                lastObfuscatedGlyphIndex = null
+                                glyphIndexInLine += 1
+                                globalGlyphIndex += 1
+                                return@forEach
+                            }
                             if (activeStyleColor != currentDrawColor) {
                                 val r = ((activeStyleColor ushr 16) and 0xFF) / 255f
                                 val g = ((activeStyleColor ushr 8) and 0xFF) / 255f
@@ -535,6 +550,69 @@ internal class MsdfTextRenderer {
         }
         lines += LineSlice(start = start, endExclusive = text.length)
         return lines
+    }
+
+    private fun resolveGlyphForShapedInput(font: LoadedMsdfFont, shapedGlyph: ShapedGlyph): MsdfGlyph? {
+        val sourceCodepoint = shapedGlyph.sourceCodepoint
+        val canUseGlyphIndex = shapedGlyph.fontId == font.descriptor.fontId
+        val fromIndex = if (canUseGlyphIndex) {
+            font.meta.glyphByIndex(shapedGlyph.glyphIndex)
+        } else {
+            null
+        }
+        val indexLooksMissing = isMissingGlyphIndex(font, shapedGlyph.glyphIndex, fromIndex)
+        val indexMatchesSource = if (!indexLooksMissing) {
+            val fromIndexCodepoint = fromIndex?.codepoint
+            fromIndex != null && (
+                    fromIndexCodepoint == null ||
+                            fromIndexCodepoint == sourceCodepoint
+                    )
+        } else {
+            false
+        }
+
+        if (sourceCodepoint == REPLACEMENT_CODEPOINT) {
+            return preferredMissingGlyph(font)
+        }
+
+        if (indexMatchesSource) return fromIndex
+
+        val fromCodepoint = font.meta.glyph(sourceCodepoint)
+        if (fromCodepoint != null) return fromCodepoint
+
+        return preferredMissingGlyph(font)
+    }
+
+    private fun preferredMissingGlyph(font: LoadedMsdfFont): MsdfGlyph? {
+        val meta = font.meta
+        val replacementByCodepoint = meta.glyph(REPLACEMENT_CODEPOINT)
+        if (replacementByCodepoint != null) return replacementByCodepoint
+        val questionByCodepoint = meta.glyph('?'.code)
+        if (questionByCodepoint != null) return questionByCodepoint
+
+        val questionByIndex = font.preferredQuestionGlyphIndex?.let(meta::glyphByIndex)
+        if (questionByIndex != null) return questionByIndex
+        val replacementByIndex = font.preferredMissingGlyphIndex
+            ?.takeIf { it != 0 }
+            ?.let(meta::glyphByIndex)
+        if (replacementByIndex != null) return replacementByIndex
+        val notDef = meta.glyphByIndex(0)
+        if (notDef != null) return notDef
+        return meta.fallbackGlyph()
+    }
+
+    private fun isShapedGlyphMissingInFont(font: LoadedMsdfFont, shapedGlyph: ShapedGlyph): Boolean {
+        if (TextStyleMetrics.isWhitespaceCodepoint(shapedGlyph.sourceCodepoint)) return false
+        val fromIndex = font.meta.glyphByIndex(shapedGlyph.glyphIndex)
+        return isMissingGlyphIndex(font, shapedGlyph.glyphIndex, fromIndex)
+    }
+
+    private fun isMissingGlyphIndex(font: LoadedMsdfFont, glyphIndex: Int, glyph: MsdfGlyph?): Boolean {
+        if (glyph == null) return true
+        val preferredMissingIndex = font.preferredMissingGlyphIndex
+        if (preferredMissingIndex != null && glyphIndex == preferredMissingIndex) return true
+        if (glyphIndex == 0 && (glyph.codepoint == null || glyph.codepoint == REPLACEMENT_CODEPOINT)) return true
+        return false
     }
 
     private fun emitGlyphQuad(
@@ -859,6 +937,11 @@ internal class MsdfTextRenderer {
         val bitmap = font.atlasPayload.ensureDecoded()
         val width = bitmap.width.coerceAtLeast(1)
         val height = bitmap.height.coerceAtLeast(1)
+        if (width > maxTextureSize || height > maxTextureSize) {
+            throw IllegalStateException(
+                "Atlas '${font.descriptor.fontId}' is ${width}x${height}, exceeds GL_MAX_TEXTURE_SIZE=$maxTextureSize"
+            )
+        }
         val buffer = BufferUtils.createByteBuffer(width * height * 4)
         buffer.put(ByteBuffer.wrap(bitmap.rgbaBytes))
         buffer.flip()
@@ -869,6 +952,7 @@ internal class MsdfTextRenderer {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
+        drainGlErrors()
         GL11.glTexImage2D(
             GL11.GL_TEXTURE_2D,
             0,
@@ -880,9 +964,30 @@ internal class MsdfTextRenderer {
             GL11.GL_UNSIGNED_BYTE,
             buffer
         )
+        val glError = drainGlErrors()
+        if (glError != GL11.GL_NO_ERROR) {
+            GL11.glDeleteTextures(textureId)
+            throw IllegalStateException(
+                "glTexImage2D failed for '${font.descriptor.fontId}' (${width}x${height}), glError=0x${
+                    glError.toString(16)
+                }"
+            )
+        }
         debugCounters.textureUploads += 1
         debugCounters.textureUploadBytes += (width.toLong() * height.toLong() * 4L)
         return FontTextureHandle(textureId = textureId, width = width, height = height)
+    }
+
+    private fun drainGlErrors(): Int {
+        var firstError = GL11.GL_NO_ERROR
+        while (true) {
+            val error = GL11.glGetError()
+            if (error == GL11.GL_NO_ERROR) break
+            if (firstError == GL11.GL_NO_ERROR) {
+                firstError = error
+            }
+        }
+        return firstError
     }
 
     private fun useProgram(): Boolean {
@@ -1009,6 +1114,7 @@ internal class MsdfTextRenderer {
         private const val SEGMENT_DEBUG_BASELINE: Int = 3
         private const val SEGMENT_DEBUG_UNDERLINE: Int = 4
         private const val SEGMENT_DEBUG_STRIKE: Int = 5
+        private const val REPLACEMENT_CODEPOINT: Int = 0xFFFD
 
         private const val VERTEX_SHADER_SOURCE: String = """
             #version 120

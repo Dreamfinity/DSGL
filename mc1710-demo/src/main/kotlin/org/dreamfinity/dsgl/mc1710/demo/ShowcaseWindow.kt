@@ -19,6 +19,7 @@ import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
+import org.dreamfinity.dsgl.mc1710.text.MsdfRuntimeDebugSettings
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
 import org.dreamfinity.dsgl.mc1710.demo.support.*
 import java.awt.image.BufferedImage
@@ -84,7 +85,7 @@ class ShowcaseWindow : DsglWindow() {
     internal var msdfWrapWidth by state(220L)
     internal var msdfColorIndex by state(0)
     internal var msdfParseMinecraftFormatting by state(true)
-    internal var msdfShowBaselineGuides by state(java.lang.Boolean.getBoolean("dsgl.msdf.debug.decorations"))
+    internal var msdfShowBaselineGuides by state(MsdfRuntimeDebugSettings.decorationGuidesEnabled)
     internal var animationsToggle by state(false)
     internal var animationsHover by state(false)
     internal var animationsPaused by state(false)
@@ -248,6 +249,7 @@ class ShowcaseWindow : DsglWindow() {
         registerAnimationKeyframes()
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
+        MsdfRuntimeDebugSettings.decorationGuidesEnabled = msdfShowBaselineGuides
         LayoutDebug.strictBounds = layoutDebugStrict
         LayoutDebug.drawBounds = layoutDebugDraw
         appendInfo("Showcase opened")

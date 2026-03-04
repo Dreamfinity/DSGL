@@ -33,6 +33,23 @@ data class NodeStyleApplyResult(
 abstract class DOMNode(
     var key: Any? = null
 ) {
+    companion object {
+        private val includeChildrenInRenderPass: ThreadLocal<Boolean> =
+            ThreadLocal.withInitial { true }
+
+        internal inline fun <T> withChildrenRenderPass(enabled: Boolean, block: () -> T): T {
+            val previous = includeChildrenInRenderPass.get()
+            includeChildrenInRenderPass.set(enabled)
+            return try {
+                block()
+            } finally {
+                includeChildrenInRenderPass.set(previous)
+            }
+        }
+
+        internal fun isChildrenRenderPassEnabled(): Boolean = includeChildrenInRenderPass.get()
+    }
+
     val children: MutableList<DOMNode> = mutableListOf()
     var parent: DOMNode? = null
     var bounds: Rect = Rect(0, 0, 0, 0)
@@ -156,6 +173,7 @@ abstract class DOMNode(
     private var onDragLeaveHandler: ((DragLeaveEvent) -> Unit)? = null
     private var onDropHandler: ((DropEvent) -> Unit)? = null
     private var externalEventBridgeInstalled: Boolean = false
+    private var renderCommandsRevision: Long = 1L
 
     var onMouseDown: ((MouseDownEvent) -> Unit)?
         get() = onMouseDownHandler
@@ -343,10 +361,18 @@ abstract class DOMNode(
     /** Lays out this node and its children for the given bounds. */
     open fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         if (display == Display.None) {
-            bounds = Rect(x, y, 0, 0)
+            val next = Rect(x, y, 0, 0)
+            if (bounds != next) {
+                bounds = next
+                markRenderCommandsDirty()
+            }
             return
         }
-        bounds = Rect(x, y, width, height)
+        val next = Rect(x, y, width, height)
+        if (bounds != next) {
+            bounds = next
+            markRenderCommandsDirty()
+        }
         val contentX = x + border.left + padding.left
         val contentY = y + border.top + padding.top
         children.forEach { child ->
@@ -360,6 +386,7 @@ abstract class DOMNode(
 
     /** Appends render commands for this node and its children. */
     open fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        if (!isChildrenRenderPassEnabled()) return
         children.forEach { child ->
             child.appendRenderCommands(ctx, out)
         }
@@ -584,6 +611,7 @@ abstract class DOMNode(
         onDrop = template.onDrop
         styleDefaultsSnapshot = null
         appliedComputedStyle = null
+        markRenderCommandsDirty()
     }
 
     internal fun captureStyleDefaults(): ComputedStyleDefaults {
@@ -680,6 +708,7 @@ abstract class DOMNode(
         applyFontSize(style.fontSize)
         appliedComputedStyle = style
         StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
+        markRenderCommandsDirty()
 
         if (previous == null) {
             return NodeStyleApplyResult(
@@ -735,7 +764,27 @@ abstract class DOMNode(
         animatedOpacity = normalizedOpacity
         animatedColor = color
         applyForegroundColor(animatedColor ?: baseForegroundColor)
+        if (changed) {
+            markRenderCommandsDirty()
+        }
         return changed
+    }
+
+    internal fun renderCommandsSignature(nowMs: Long): Long {
+        var result = renderCommandsRevision
+        result = 31L * result + bounds.hashCode().toLong()
+        result = 31L * result + if (dragRenderHidden) 1L else 0L
+        result = 31L * result + display.ordinal.toLong()
+        result = 31L * result + effectiveTransform().hashCode().toLong()
+        result = 31L * result + java.lang.Float.floatToIntBits(effectiveOpacity()).toLong()
+        result = 31L * result + volatileRenderCommandsSignature(nowMs)
+        return result
+    }
+
+    protected open fun volatileRenderCommandsSignature(nowMs: Long): Long = 0L
+
+    protected fun markRenderCommandsDirty() {
+        renderCommandsRevision += 1L
     }
 
     fun effectiveTransform(): UiTransform = animatedTransform ?: transform

@@ -319,6 +319,7 @@ class TextAreaNode(
             clampScroll()
             editState.resetBlinkClock()
         }
+        markRenderCommandsDirty()
     }
 
     fun shouldCaptureScrollbarDrag(mouseX: Int, mouseY: Int): Boolean {
@@ -819,6 +820,7 @@ class TextAreaNode(
     }
 
     private fun persistState() {
+        markRenderCommandsDirty()
         persistedByKey.save(
             key,
             PersistedState(
@@ -882,6 +884,19 @@ class TextAreaNode(
             fontHeight = fontHeight.coerceAtLeast(1),
             measureText = measureText
         )
+    }
+
+    override fun volatileRenderCommandsSignature(nowMs: Long): Long {
+        val focused = FocusManager.isFocused(this) && !styleDisabled
+        val caretVisible = focused && editState.isCaretVisible(caretBlinkPeriodMs, nowMs)
+        var hash = 17L
+        hash = 31L * hash + text.hashCode().toLong()
+        hash = 31L * hash + editState.caretIndex.toLong()
+        hash = 31L * hash + (editState.selectionAnchor ?: -1).toLong()
+        hash = 31L * hash + editState.scrollY.toLong()
+        hash = 31L * hash + if (focused) 1L else 0L
+        hash = 31L * hash + if (caretVisible) 1L else 0L
+        return hash
     }
 
     private fun caretLineAndColumn(caret: Int, layout: TextLayoutEngine.Layout): Pair<Int, Int> {

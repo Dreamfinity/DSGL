@@ -479,6 +479,7 @@ open class SingleLineInputNode(
     }
 
     private fun persistState() {
+        markRenderCommandsDirty()
         persistedByKey.save(
             key,
             PersistedState(
@@ -528,5 +529,18 @@ open class SingleLineInputNode(
             editState.clampToLength(text.length)
             editState.resetBlinkClock()
         }
+        markRenderCommandsDirty()
+    }
+
+    override fun volatileRenderCommandsSignature(nowMs: Long): Long {
+        val focused = FocusManager.isFocused(this) && !styleDisabled
+        val caretVisible = focused && editState.isCaretVisible(caretBlinkPeriodMs, nowMs)
+        var hash = 17L
+        hash = 31L * hash + text.hashCode().toLong()
+        hash = 31L * hash + editState.caretIndex.toLong()
+        hash = 31L * hash + (editState.selectionAnchor ?: -1).toLong()
+        hash = 31L * hash + if (focused) 1L else 0L
+        hash = 31L * hash + if (caretVisible) 1L else 0L
+        return hash
     }
 }

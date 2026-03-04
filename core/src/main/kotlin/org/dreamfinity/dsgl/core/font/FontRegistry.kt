@@ -40,6 +40,8 @@ data class LoadedMsdfFont(
     val descriptor: MsdfFontResource,
     val meta: MsdfFontMeta,
     val awtBaseFont: Font?,
+    val preferredMissingGlyphIndex: Int?,
+    val preferredQuestionGlyphIndex: Int?,
     val atlasPayload: AtlasPayload,
     var handle: FontTextureHandle? = null
 )
@@ -656,6 +658,8 @@ object FontRegistry {
             descriptor = descriptor,
             meta = meta,
             awtBaseFont = awtBase,
+            preferredMissingGlyphIndex = glyphIndexForCodepoint(awtBase, 0xFFFD),
+            preferredQuestionGlyphIndex = glyphIndexForCodepoint(awtBase, '?'.code),
             atlasPayload = AtlasPayload(atlasBytes)
         )
         loaded[descriptor.fontId] = loadedFont
@@ -761,13 +765,18 @@ object FontRegistry {
             val localStart = start - startIndex
             val localEnd = end - startIndex
 
+            val primaryNeedsReplacement = requiresReplacementGlyph(primary, codepoint)
+            val fallbackNeedsReplacement = fallback?.let { requiresReplacementGlyph(it, codepoint) } ?: true
             val selectedFont = when {
-                canDisplay(primary, codepoint) -> primary
-                fallback != null && canDisplay(fallback, codepoint) -> fallback
+                !primaryNeedsReplacement -> primary
+                fallback != null && !fallbackNeedsReplacement -> fallback
                 fallback != null -> fallback
                 else -> primary
             }
-            val replacementNeeded = !canDisplay(selectedFont, codepoint)
+            val replacementNeeded = when (selectedFont.descriptor.fontId) {
+                primary.descriptor.fontId -> primaryNeedsReplacement
+                else -> fallbackNeedsReplacement
+            }
 
             if (segment == null || segment.font.descriptor.fontId != selectedFont.descriptor.fontId) {
                 segment = MutableShapingSegment(font = selectedFont)
@@ -829,7 +838,9 @@ object FontRegistry {
             val sourceStart = segment.sourceStartByChar.getOrElse(charIndex) { 0 }
             val sourceEnd = segment.sourceEndByChar.getOrElse(charIndex) { sourceStart + 1 }
             val sourceGlobalStart = sourceRangeStart + sourceStart
-            val sourceCodepoint = if (sourceGlobalStart in sourceText.indices) {
+            val sourceCodepoint = if (charIndex in chars.indices) {
+                Character.codePointAt(chars, charIndex, chars.size)
+            } else if (sourceGlobalStart in sourceText.indices) {
                 Character.codePointAt(sourceText, sourceGlobalStart)
             } else {
                 '?'.code
@@ -869,6 +880,31 @@ object FontRegistry {
     private fun canDisplay(font: LoadedMsdfFont, codepoint: Int): Boolean {
         val awt = font.awtBaseFont ?: return false
         return runCatching { awt.canDisplay(codepoint) }.getOrDefault(false)
+    }
+
+    private fun requiresReplacementGlyph(font: LoadedMsdfFont, codepoint: Int): Boolean {
+        if (!Character.isValidCodePoint(codepoint)) return true
+        if (!canDisplay(font, codepoint)) return true
+        val awt = font.awtBaseFont ?: return true
+        val glyphIndex = glyphIndexForCodepoint(awt, codepoint) ?: return true
+        if (glyphIndex < 0) return true
+        val missingIndex = font.preferredMissingGlyphIndex
+        if (missingIndex != null && glyphIndex == missingIndex) return true
+        if (glyphIndex == 0 && (missingIndex == null || missingIndex == 0)) return true
+        return false
+    }
+
+    private fun glyphIndexForCodepoint(font: Font?, codepoint: Int): Int? {
+        if (font == null || !Character.isValidCodePoint(codepoint)) return null
+        val text = String(Character.toChars(codepoint))
+        return runCatching {
+            val vector = font.createGlyphVector(fontRenderContext, text)
+            if (vector.numGlyphs <= 0) {
+                null
+            } else {
+                vector.getGlyphCode(0).takeIf { it >= 0 }
+            }
+        }.getOrNull()
     }
 
     private fun loadAwtFont(ttfBytes: ByteArray): Font {

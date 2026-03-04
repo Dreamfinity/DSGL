@@ -140,9 +140,6 @@ abstract class DsglScreenHost(
         if (animationVisualsChanged) {
             tree.markVisualDirty()
         }
-        if (focusedNodeNeedsLiveTextRepaint()) {
-            tree.markVisualDirty()
-        }
         var stylesAlreadyApplied = false
         var layoutCommittedThisFrame = false
         if (needsLayout) {
@@ -724,12 +721,6 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun focusedNodeNeedsLiveTextRepaint(): Boolean {
-        val focused = FocusManager.focusedNode() ?: return false
-        if (focused.styleDisabled) return false
-        return focused is SingleLineInputNode || focused is TextAreaNode
-    }
-
     private fun clearHoverChainStates() {
         hoverChain.forEach { node ->
             node.setHoveredState(false)
@@ -861,6 +852,7 @@ abstract class DsglScreenHost(
         val styleStats = StyleEngine.lastStyleApplyReport()
         println(
             "[DSGL-PERF] frames=${paintStats.frames} commandRebuilds=${paintStats.commandRebuilds} " +
+                "chunkVisited=${paintStats.chunkNodesVisitedLastFrame} chunkRebuilt=${paintStats.chunkNodesRebuiltLastFrame} " +
                 "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
                 "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips"
         )

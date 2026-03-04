@@ -32,9 +32,5 @@ internal class ModalHostNode(
         }
     }
 
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        children.forEach { child ->
-            child.appendRenderCommands(ctx, out)
-        }
-    }
+    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
 }

@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -8,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.elements.TextSource
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -16,6 +18,29 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class DomTreeCachingTests {
+    private class CountingRectNode(
+        private var color: Int,
+        key: Any? = null
+    ) : DOMNode(key) {
+        var buildCount: Int = 0
+            private set
+
+        override val styleType: String = "counting-rect"
+
+        override fun measure(ctx: UiMeasureContext): Size = Size(10, 10)
+
+        override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+            buildCount += 1
+            out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, color)
+        }
+
+        fun setColor(next: Int) {
+            if (next == color) return
+            color = next
+            markRenderCommandsDirty()
+        }
+    }
+
     private class TestRectNode(
         private val color: Int,
         key: Any? = null
@@ -78,5 +103,79 @@ class DomTreeCachingTests {
         val second = tree.paint(ctx).toList()
 
         assertEquals(first, second, "DomTree should keep previous committed commands when rebuild fails.")
+    }
+
+    @Test
+    fun `leaf visual mutation rebuilds only affected chunk path`() {
+        val root = ContainerNode(key = "root")
+        val left = CountingRectNode(color = 0xFF4477AA.toInt(), key = "left").applyParent(root)
+        val right = CountingRectNode(color = 0xFFAA7744.toInt(), key = "right").applyParent(root)
+        val tree = DomTree(root)
+
+        tree.render(ctx, 320, 180)
+        tree.paint(ctx)
+        assertEquals(1, left.buildCount)
+        assertEquals(1, right.buildCount)
+
+        left.setColor(0xFF55CC88.toInt())
+        tree.paint(ctx)
+
+        assertEquals(2, left.buildCount)
+        assertEquals(1, right.buildCount)
+        val stats = tree.paintStats()
+        assertTrue(stats.chunkNodesRebuiltLastFrame >= 2)
+    }
+
+    @Test
+    fun `transform and opacity commands remain balanced`() {
+        val root = ContainerNode(key = "root")
+        val node = CountingRectNode(color = 0xFF22AA55.toInt(), key = "balanced").applyParent(root)
+        node.transform = org.dreamfinity.dsgl.core.style.UiTransform(translateX = 4f, translateY = 3f, scaleX = 1f, scaleY = 1f, rotateDeg = 0f)
+        node.opacity = 0.6f
+        val tree = DomTree(root)
+
+        tree.render(ctx, 320, 180)
+        val commands = tree.paint(ctx)
+
+        val pushTransform = commands.count { it is RenderCommand.PushTransform }
+        val popTransform = commands.count { it == RenderCommand.PopTransform }
+        val pushOpacity = commands.count { it is RenderCommand.PushOpacity }
+        val popOpacity = commands.count { it == RenderCommand.PopOpacity }
+        assertEquals(pushTransform, popTransform)
+        assertEquals(pushOpacity, popOpacity)
+    }
+
+    @Test
+    fun `display none removes stale child commands`() {
+        val root = ContainerNode(key = "root")
+        val node = CountingRectNode(color = 0xFF3399CC.toInt(), key = "toggle").applyParent(root)
+        val tree = DomTree(root)
+
+        tree.render(ctx, 320, 180)
+        val initial = tree.paint(ctx)
+        assertTrue(initial.any { it is RenderCommand.DrawRect })
+
+        node.display = Display.None
+        val afterHide = tree.paint(ctx)
+        assertTrue(afterHide.none { command ->
+            command is RenderCommand.DrawRect &&
+                command.color == 0xFF3399CC.toInt()
+        })
+    }
+
+    @Test
+    fun `modal host does not duplicate child commands in chunk assembly`() {
+        val host = ModalHostNode(key = "modal-host")
+        CountingRectNode(color = 0xFFAA3300.toInt(), key = "content").applyParent(host)
+        CountingRectNode(color = 0xFF0033AA.toInt(), key = "overlay").applyParent(host)
+        val tree = DomTree(host)
+
+        tree.render(ctx, 320, 180)
+        val commands = tree.paint(ctx)
+        val drawRectColors = commands.filterIsInstance<RenderCommand.DrawRect>().map { it.color }
+
+        assertEquals(2, drawRectColors.size)
+        assertEquals(1, drawRectColors.count { it == 0xFFAA3300.toInt() })
+        assertEquals(1, drawRectColors.count { it == 0xFF0033AA.toInt() })
     }
 }

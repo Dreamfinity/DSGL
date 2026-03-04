@@ -179,6 +179,14 @@ class MsdfFontTests {
     }
 
     @Test
+    fun `missing glyph substitution uses replacement codepoint in shaped output`() {
+        val missing = String(Character.toChars(0x10FFFF))
+        val shaped = FontRegistry.shapeText(missing, FontRegistry.FONT_MINECRAFT, 16)
+        assertTrue(shaped.glyphs.isNotEmpty())
+        assertTrue(shaped.glyphs.all { it.sourceCodepoint == 0xFFFD })
+    }
+
+    @Test
     fun `mixed-font width matches last pen position`() {
         val primary = FontRegistry.get(FontRegistry.FONT_MINECRAFT)
         val fallback = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
@@ -376,4 +384,3 @@ class MsdfFontTests {
         return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
     }
 }
-

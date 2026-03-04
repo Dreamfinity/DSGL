@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.font.RegisteredFontInfo
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.mc1710.text.MsdfRuntimeDebugSettings
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
@@ -118,6 +119,7 @@ fun UiScope.renderMsdfFontsSection(window: ShowcaseWindow, contentWidth: Int, co
                     width = 84
                     onMouseClick = {
                         window.msdfShowBaselineGuides = !window.msdfShowBaselineGuides
+                        MsdfRuntimeDebugSettings.decorationGuidesEnabled = window.msdfShowBaselineGuides
                         System.setProperty(
                             "dsgl.msdf.debug.decorations",
                             window.msdfShowBaselineGuides.toString()
