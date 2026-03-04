@@ -57,6 +57,10 @@ object EventBus {
         listeners.values.forEach { it.remove(this) }
     }
 
+    fun DOMNode.clearOwnListeners() {
+        listeners.values.forEach { it.remove(this) }
+    }
+
     /** Clears listeners for this node and its entire subtree. */
     fun DOMNode.clearListenersDeep() {
         this.children.forEach { child -> child.clearListenersDeep() }

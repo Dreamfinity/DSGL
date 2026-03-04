@@ -7,12 +7,15 @@ import org.dreamfinity.dsgl.core.dom.debug.LayoutViolation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
+import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.WeakHashMap
 
 /**
@@ -110,6 +113,7 @@ class DomTree(var root: DOMNode) {
      */
     fun reconcileWith(next: DomTree): DomReconcileResult {
         val result = DomReconciler.reconcile(root, next.root)
+        cleanupDiscardedTemplateListeners(templateRoot = next.root, retainedRoot = result.root)
         root = result.root
         laidOut = false
         commandsDirty = true
@@ -171,6 +175,33 @@ class DomTree(var root: DOMNode) {
                 println("[DSGL-DomTree] Paint command rebuild failed; keeping previous frame commands: ${error.message}")
             }
             false
+        }
+    }
+
+    private fun cleanupDiscardedTemplateListeners(templateRoot: DOMNode, retainedRoot: DOMNode) {
+        if (templateRoot === retainedRoot) return
+        val retainedNodes: MutableSet<DOMNode> = Collections.newSetFromMap(IdentityHashMap())
+        collectNodes(retainedRoot, retainedNodes)
+        EventBus.run {
+            traverseNodes(templateRoot) { node ->
+                if (!retainedNodes.contains(node)) {
+                    node.clearOwnListeners()
+                }
+            }
+        }
+    }
+
+    private fun traverseNodes(root: DOMNode, visitor: (DOMNode) -> Unit) {
+        visitor(root)
+        root.children.forEach { child ->
+            traverseNodes(child, visitor)
+        }
+    }
+
+    private fun collectNodes(root: DOMNode, out: MutableSet<DOMNode>) {
+        out.add(root)
+        root.children.forEach { child ->
+            collectNodes(child, out)
         }
     }
 

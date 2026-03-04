@@ -386,7 +386,9 @@ abstract class DsglScreenHost(
             if (pressedKeys.add(keyCode)) {
                 val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
                 EventBus.post(downEvent)
-                if (!downEvent.cancelled) {
+                if (downEvent.cancelled) {
+                    pressedKeys.remove(keyCode)
+                } else {
                     window.onKeyTyped(keyChar, keyCode)
                     if (keyCode == Keyboard.KEY_ESCAPE) {
                         mc.displayGuiScreen(null)
