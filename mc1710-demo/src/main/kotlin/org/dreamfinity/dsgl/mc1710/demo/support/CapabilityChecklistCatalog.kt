@@ -76,6 +76,10 @@ enum class CapabilityId(
     MODAL_BACKDROP("Modal backdrop behaviors", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_ESCAPE("Modal ESC close behavior", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_FOCUS_TRAP("Modal focus trap + restore", CapabilityGroup.SHOWCASE_FEATURES),
+    CONTEXT_MENU_OVERLAY("Context menu overlay rendering", CapabilityGroup.SHOWCASE_FEATURES),
+    CONTEXT_MENU_NESTED("Context menu nested submenus", CapabilityGroup.SHOWCASE_FEATURES),
+    CONTEXT_MENU_ANCHORED("Context menu anchored + cursor open", CapabilityGroup.SHOWCASE_FEATURES),
+    CONTEXT_MENU_SCROLL("Context menu overflow + wheel scroll", CapabilityGroup.SHOWCASE_FEATURES),
     LAYOUT_GAP_FIXED("Gap + fixed-size demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLE_MARGIN_PADDING_BORDER("Style margin/padding/border toggles", CapabilityGroup.SHOWCASE_FEATURES),
     OVERLAY_BEHAVIOR("Overlay behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -192,6 +196,17 @@ object CapabilityChecklistCatalog {
             CapabilityId.MODAL_BACKDROP,
             CapabilityId.MODAL_ESCAPE,
             CapabilityId.MODAL_FOCUS_TRAP
+        )
+
+        DemoSection.CONTEXT_MENU -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.HOOK_MOUSE_DOWN,
+            CapabilityId.CONTEXT_MENU_OVERLAY,
+            CapabilityId.CONTEXT_MENU_NESTED,
+            CapabilityId.CONTEXT_MENU_ANCHORED,
+            CapabilityId.CONTEXT_MENU_SCROLL
         )
 
         DemoSection.INPUTS -> setOf(

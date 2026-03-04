@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
@@ -182,7 +183,10 @@ abstract class DsglScreenHost(
         if (!stylesAlreadyApplied) {
             tracePhase("style.end")
         }
-        if (!inspectorBlocks) {
+        val viewportScale = adapter.scaledResolution().scaleFactor.toFloat()
+        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, viewportScale)
+        val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
+        if (!inspectorBlocks && !contextMenuBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
         }
         DndRuntime.engine.onFrame(tree.root, dtSeconds)
@@ -190,7 +194,7 @@ abstract class DsglScreenHost(
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
         val dx = mouseX - prevX
         val dy = mouseY - prevY
-        if (inspectorBlocks) {
+        if (inspectorBlocks || contextMenuBlocks) {
             clearHoverChainStates()
             hoverTarget = null
         } else {
@@ -211,6 +215,7 @@ abstract class DsglScreenHost(
         stagingCommandsBuffer.addAll(commands)
         DndRuntime.engine.appendPlaceholderCommands(stagingCommandsBuffer)
         DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, stagingCommandsBuffer)
+        ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         inspector.appendOverlayCommands(lastWidth, lastHeight, stagingCommandsBuffer)
         val keepPrevious = shouldKeepPreviousFrameCommands(
             tree = tree,
@@ -241,6 +246,7 @@ abstract class DsglScreenHost(
         ClipboardBridge.install(null)
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
+        ContextMenuRuntime.engine.closeAll()
         clearActiveTarget()
         flushPendingCleanup()
         clearHoverChainStates()
@@ -369,6 +375,10 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
+            if (ContextMenuRuntime.engine.handleKeyDown(keyCode)) {
+                mc.dispatchKeypresses()
+                return
+            }
             if (keyCode == Keyboard.KEY_F6) {
                 StyleEngine.forceReloadStylesheets()
                 requestRebuild("style reload")
@@ -419,6 +429,12 @@ abstract class DsglScreenHost(
         val dWheel = Mouse.getDWheel()
         val mouseButton = Mouse.getEventButton()
         inspector.onCursorMoved(mouseX, mouseY)
+        ContextMenuRuntime.engine.onFrame(
+            measureContext = adapter,
+            viewportWidth = lastWidth,
+            viewportHeight = lastHeight,
+            viewportScale = adapter.scaledResolution().scaleFactor.toFloat()
+        )
 
         if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
             inspector.markPointerHandled("wheel in inspector")
@@ -512,6 +528,40 @@ abstract class DsglScreenHost(
             lastMouseX = mouseX
             lastMouseY = mouseY
             logInspectorInput("pointer event consumed by inspector bounds button=$mouseButton wheel=$dWheel")
+            return
+        }
+
+        if (dWheel != 0 && ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            return
+        }
+        if (mouseButton != -1) {
+            val mappedButton = mapButton(mouseButton)
+            if (mappedButton != null) {
+                val consumed = if (Mouse.getEventButtonState()) {
+                    ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                if (consumed) {
+                    eventButton = -1
+                    clearActiveTarget()
+                    releaseDragCapture()
+                    lastMouseX = mouseX
+                    lastMouseY = mouseY
+                    return
+                }
+            }
+        } else if (ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
             return
         }
 

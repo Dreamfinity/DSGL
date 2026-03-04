@@ -101,6 +101,11 @@ class ShowcaseWindow : DsglWindow() {
     internal var modalBackgroundCounter by state(0)
     internal var modalPromptValue by state("hello")
     internal var demoModals by state(emptyList<ModalSpec>())
+    internal var contextMenuLastAction by state("none")
+    internal var contextMenuLastTarget by state("none")
+    internal var contextMenuActionCount by state(0)
+    internal var contextMenuPinned by state(false)
+    internal var contextMenuFileSelection by state("README.md")
     internal var stackOverlayEnabled by state(true)
     internal var layoutOverlayX by state(8)
     internal var layoutOverlayY by state(92)
@@ -397,6 +402,12 @@ class ShowcaseWindow : DsglWindow() {
                                     bodyHeight - 30
                                 )
 
+                                DemoSection.CONTEXT_MENU -> renderContextMenuSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
                                 DemoSection.STYLESHEETS -> renderStylesheetsSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
@@ -550,6 +561,13 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun appendInfo(message: String) {
         appendLog(message, DEMO_OK)
+    }
+
+    internal fun recordContextMenuAction(target: String, action: String) {
+        contextMenuLastTarget = target
+        contextMenuLastAction = action
+        contextMenuActionCount += 1
+        appendInfo("Context menu [$target]: $action")
     }
 
     internal fun sampledMouseOverEvent(): Boolean {
