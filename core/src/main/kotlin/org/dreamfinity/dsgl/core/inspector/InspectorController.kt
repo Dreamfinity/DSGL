@@ -1074,16 +1074,47 @@ class InspectorController {
                 next.toString()
             }
 
+            StyleEditorValueType.LengthPx -> {
+                val base = runCatching {
+                    parseLengthPxInt(
+                        raw = current,
+                        allowNegative = false
+                    )
+                }.getOrElse { descriptor.minInt }
+                val next = (base + delta.toInt()).coerceAtLeast(descriptor.minInt)
+                pxLiteral(next)
+            }
+
             StyleEditorValueType.OptionalIntNumber -> {
                 val base = parseOptionalInt(current) ?: descriptor.minInt
                 val next = (base + delta.toInt()).coerceAtLeast(descriptor.minInt)
                 next.toString()
             }
 
+            StyleEditorValueType.OptionalLengthPx -> {
+                val base = parseOptionalLengthPxInt(
+                    raw = current,
+                    allowNegative = false
+                ) ?: descriptor.minInt
+                val next = (base + delta.toInt()).coerceAtLeast(descriptor.minInt)
+                pxLiteral(next)
+            }
+
             StyleEditorValueType.Spacing -> {
                 val currentInsets = parseSpacingShorthand(current)
                 val next = (currentInsets.top + delta.toInt()).coerceAtLeast(0)
                 next.toString()
+            }
+
+            StyleEditorValueType.SpacingLengthPx -> {
+                val allowNegative = property == StyleProperty.MARGIN
+                val currentInsets = parseSpacingShorthand(
+                    raw = current,
+                    allowNegative = allowNegative
+                )
+                val rawNext = currentInsets.top + delta.toInt()
+                val next = if (allowNegative) rawNext else rawNext.coerceAtLeast(0)
+                pxLiteral(next)
             }
 
             StyleEditorValueType.FloatNumber -> {
@@ -1110,11 +1141,11 @@ class InspectorController {
             StyleProperty.BACKGROUND_COLOR -> style.backgroundColor?.let(::colorLabel) ?: "none"
             StyleProperty.BACKGROUND_IMAGE -> style.backgroundImage ?: "none"
             StyleProperty.BORDER_COLOR -> colorLabel(style.borderColor)
-            StyleProperty.BORDER_WIDTH -> style.borderWidth.toString()
-            StyleProperty.BORDER_RADIUS -> style.borderRadius.toString()
+            StyleProperty.BORDER_WIDTH -> pxLiteral(style.borderWidth)
+            StyleProperty.BORDER_RADIUS -> pxLiteral(style.borderRadius)
             StyleProperty.FOREGROUND_COLOR -> colorLabel(style.foregroundColor)
             StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
-            StyleProperty.FONT_SIZE -> style.fontSize?.toString() ?: "auto"
+            StyleProperty.FONT_SIZE -> style.fontSize?.let(::pxLiteral) ?: "auto"
             StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
             StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
             StyleProperty.TEXT_DECORATION -> when (style.textDecoration) {
@@ -1124,8 +1155,8 @@ class InspectorController {
                 TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
             }
             StyleProperty.OBFUSCATED -> style.obfuscated.toString()
-            StyleProperty.WIDTH -> style.width?.toString() ?: "auto"
-            StyleProperty.HEIGHT -> style.height?.toString() ?: "auto"
+            StyleProperty.WIDTH -> style.width?.let(::pxLiteral) ?: "auto"
+            StyleProperty.HEIGHT -> style.height?.let(::pxLiteral) ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
             StyleProperty.FLEX_DIRECTION -> style.flexDirection.name.lowercase()
@@ -1134,10 +1165,10 @@ class InspectorController {
                 .lowercase()
             StyleProperty.ALIGN_ITEMS -> style.alignItems.name.lowercase()
             StyleProperty.JUSTIFY_ITEMS -> style.justifyItems.name.lowercase()
-            StyleProperty.GAP -> style.gap.toString()
+            StyleProperty.GAP -> pxLiteral(style.gap)
             StyleProperty.FLEX_GROW -> formatFloatLiteral(style.flexGrow)
             StyleProperty.FLEX_SHRINK -> formatFloatLiteral(style.flexShrink)
-            StyleProperty.FLEX_BASIS -> style.flexBasis?.toString() ?: "auto"
+            StyleProperty.FLEX_BASIS -> style.flexBasis?.let(::pxLiteral) ?: "auto"
             StyleProperty.GRID_COLUMNS -> style.gridColumns.toString()
             StyleProperty.GRID_ROWS -> style.gridRows?.toString() ?: "auto"
             StyleProperty.GRID_AUTO_FLOW -> style.gridAutoFlow.name.lowercase()
@@ -1167,8 +1198,10 @@ class InspectorController {
     }
 
     private fun spacingLiteral(value: org.dreamfinity.dsgl.core.dom.layout.Insets): String {
-        return "${value.top} ${value.right} ${value.bottom} ${value.left}"
+        return "${pxLiteral(value.top)} ${pxLiteral(value.right)} ${pxLiteral(value.bottom)} ${pxLiteral(value.left)}"
     }
+
+    private fun pxLiteral(value: Int): String = "${value}px"
 
     private fun formatFloatLiteral(value: Float): String {
         val rounded = ((value * 100f).toInt()) / 100f

@@ -9,9 +9,9 @@ class DssParserTests {
         val data = DssParser.parse(
             """
             :root { --primary: #3E6B9E; --fg: #FFFFFF; }
-            button { padding: 6 10; background-color: #222222; }
-            .accent { border-width: 1; }
-            button.primary:hover { foreground-color: #FFF; }
+            button { padding: 6px 10px; background-color: #222222; }
+            .accent { border-width: 1px; }
+            button.primary:hover { color: #FFF; }
             #dangerAction:disabled { background-color: #A34343; }
             """.trimIndent(),
             "selectors.dss"
@@ -61,9 +61,9 @@ class DssParserTests {
     fun assignsStableSourceOrder() {
         val data = DssParser.parse(
             """
-            button { width: 10; }
-            .accent { width: 11; }
-            #idOne { width: 12; }
+            button { width: 10px; }
+            .accent { width: 11px; }
+            #idOne { width: 12px; }
             """.trimIndent(),
             "order.dss"
         )
@@ -78,7 +78,7 @@ class DssParserTests {
         val data = DssParser.parse(
             """
             /* comment before rules */
-            .accent { width: 10; } /* inline comment */
+            .accent { width: 10px; } /* inline comment */
             """.trimIndent(),
             "comments.dss"
         )
@@ -139,7 +139,7 @@ class DssParserTests {
         val tempDir = Files.createTempDirectory("dss-parser-test").toFile()
         try {
             val file = tempDir.resolve("file-parse.dss")
-            file.writeText("button { height: 20; }")
+            file.writeText("button { height: 20px; }")
             val data = DssParser.parse(file)
             assertEquals(1, data.rules.size)
             assertEquals("button", data.rules[0].selector.typeName)
@@ -158,7 +158,7 @@ class DssParserTests {
               flex-direction: row;
               justify-content: space-between;
               align-items: center;
-              gap: 6;
+              gap: 6px;
               text-wrap: nowrap;
             }
             .grid {
@@ -218,5 +218,35 @@ class DssParserTests {
 
         val rule = data.rules.single()
         assertTrue(rule.declarations.isImportant(StyleProperty.FOREGROUND_COLOR))
+    }
+
+    @Test
+    fun `foreground-color alias is accepted and warns once`() {
+        val data = DssParser.parse(
+            """
+            .card { foreground-color: #ff0000; }
+            .other { foreground-color: #00ff00; }
+            """.trimIndent(),
+            "alias.dss"
+        )
+
+        assertEquals(2, data.rules.size)
+        assertIs<StyleExpression.Literal>(data.rules[0].declarations.get(StyleProperty.FOREGROUND_COLOR))
+        assertEquals(1, data.warnings.size)
+        assertTrue(data.warnings.single().contains("foreground-color"))
+    }
+
+    @Test
+    fun `unitless length literal is accepted with deprecation warning`() {
+        val data = DssParser.parse(
+            """
+            .panel { margin: 12; padding: 4px; }
+            """.trimIndent(),
+            "unitless-length.dss"
+        )
+
+        assertEquals(1, data.rules.size)
+        assertEquals(1, data.warnings.size)
+        assertTrue(data.warnings.single().contains("pixels"))
     }
 }

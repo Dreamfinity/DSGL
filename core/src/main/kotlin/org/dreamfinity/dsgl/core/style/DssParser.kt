@@ -11,6 +11,8 @@ class DssParseException(
 
 object DssParser {
     private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
+    private const val DEPRECATED_FOREGROUND_COLOR_WARNING_KEY = "deprecated.property.foreground-color"
+    private const val DEPRECATED_UNITLESS_LENGTH_WARNING_KEY = "deprecated.length.unitless"
 
     fun parse(file: File): StylesheetData {
         val text = file.readText()
@@ -23,6 +25,7 @@ object DssParser {
         var sourceOrder = 0
         val rules = mutableListOf<StyleRule>()
         val rootVars = linkedMapOf<String, String>()
+        val warnings = ParseWarnings()
 
         while (true) {
             index = skipWhitespace(text, index)
@@ -49,7 +52,8 @@ object DssParser {
                 fromIndex = index,
                 declarations = declarations,
                 rootVars = rootVars,
-                allowVariables = selectorText == ":root"
+                allowVariables = selectorText == ":root",
+                warnings = warnings
             )
 
             if (selectorText != ":root") {
@@ -70,7 +74,8 @@ object DssParser {
         return StylesheetData(
             rules = rules,
             rootVariables = rootVars,
-            source = sourceName
+            source = sourceName,
+            warnings = warnings.messages()
         )
     }
 
@@ -80,7 +85,8 @@ object DssParser {
         fromIndex: Int,
         declarations: StyleDeclarations,
         rootVars: MutableMap<String, String>,
-        allowVariables: Boolean
+        allowVariables: Boolean,
+        warnings: ParseWarnings
     ): Int {
         var index = fromIndex
         while (index < text.length) {
@@ -128,6 +134,13 @@ object DssParser {
                 }
                 rootVars[rawName] = rawValue
             } else {
+                val normalizedName = rawName.trim().lowercase()
+                if (normalizedName == "foreground-color" || normalizedName == "foregroundcolor") {
+                    warnings.warnOnce(
+                        DEPRECATED_FOREGROUND_COLOR_WARNING_KEY,
+                        "Property 'foreground-color' is deprecated; use 'color'."
+                    )
+                }
                 val property = StyleProperty.fromKeyOrNull(rawName)
                     ?: throw parseError(
                         sourceName,
@@ -143,7 +156,12 @@ object DssParser {
                 val expression = parseExpression(normalizedValue)
                 if (expression is StyleExpression.Literal) {
                     try {
-                        validateLiteralForProperty(property, expression.value)
+                        validateLiteralForProperty(
+                            property = property,
+                            literal = expression.value,
+                            warningReporter = warnings,
+                            deprecatedLengthWarningKey = DEPRECATED_UNITLESS_LENGTH_WARNING_KEY
+                        )
                     } catch (ex: Exception) {
                         throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.")
                     }
@@ -199,5 +217,15 @@ object DssParser {
             i++
         }
         return out.toString()
+    }
+
+    private class ParseWarnings : StyleWarningReporter {
+        private val byKey: LinkedHashMap<String, String> = linkedMapOf()
+
+        override fun warnOnce(key: String, message: String) {
+            byKey.putIfAbsent(key, message)
+        }
+
+        fun messages(): List<String> = byKey.values.toList()
     }
 }

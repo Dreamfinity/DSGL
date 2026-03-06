@@ -794,32 +794,77 @@ object StyleEngine {
     ): ComputedStyle {
         val literal = resolveExpressionToLiteral(expression, variables)
         return when (property) {
-            StyleProperty.MARGIN -> current.copy(margin = parseSpacingShorthand(literal))
-            StyleProperty.PADDING -> current.copy(padding = parseSpacingShorthand(literal))
+            StyleProperty.MARGIN -> current.copy(
+                margin = parseSpacingShorthand(
+                    raw = literal,
+                    allowNegative = true
+                )
+            )
+            StyleProperty.PADDING -> current.copy(
+                padding = parseSpacingShorthand(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
             StyleProperty.BACKGROUND_COLOR -> current.copy(backgroundColor = parseColor(literal))
             StyleProperty.BACKGROUND_IMAGE -> current.copy(backgroundImage = parseStringLiteral(literal))
             StyleProperty.BORDER_COLOR -> current.copy(borderColor = parseColor(literal))
-            StyleProperty.BORDER_WIDTH -> current.copy(borderWidth = parseIntLike(literal).coerceAtLeast(0))
-            StyleProperty.BORDER_RADIUS -> current.copy(borderRadius = parseIntLike(literal).coerceAtLeast(0))
+            StyleProperty.BORDER_WIDTH -> current.copy(
+                borderWidth = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
+            StyleProperty.BORDER_RADIUS -> current.copy(
+                borderRadius = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
             StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parseColor(literal))
             StyleProperty.FONT_ID -> current.copy(fontId = parseStringLiteral(literal))
-            StyleProperty.FONT_SIZE -> current.copy(fontSize = parseIntLike(literal).coerceAtLeast(1))
+            StyleProperty.FONT_SIZE -> current.copy(
+                fontSize = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                ).coerceAtLeast(1)
+            )
             StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parseFontWeight(literal))
             StyleProperty.FONT_STYLE -> current.copy(fontStyle = parseFontStyle(literal))
             StyleProperty.TEXT_DECORATION -> current.copy(textDecoration = parseTextDecoration(literal))
             StyleProperty.OBFUSCATED -> current.copy(obfuscated = parseBooleanLike(literal))
-            StyleProperty.WIDTH -> current.copy(width = parseIntLike(literal).coerceAtLeast(0))
-            StyleProperty.HEIGHT -> current.copy(height = parseIntLike(literal).coerceAtLeast(0))
+            StyleProperty.WIDTH -> current.copy(
+                width = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
+            StyleProperty.HEIGHT -> current.copy(
+                height = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
             StyleProperty.FLEX_DIRECTION -> current.copy(flexDirection = parseFlexDirection(literal))
             StyleProperty.JUSTIFY_CONTENT -> current.copy(justifyContent = parseJustifyContent(literal))
             StyleProperty.ALIGN_ITEMS -> current.copy(alignItems = parseAlignItems(literal))
             StyleProperty.JUSTIFY_ITEMS -> current.copy(justifyItems = parseJustifyItems(literal))
-            StyleProperty.GAP -> current.copy(gap = parseIntLike(literal).coerceAtLeast(0))
+            StyleProperty.GAP -> current.copy(
+                gap = parseLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
             StyleProperty.FLEX_GROW -> current.copy(flexGrow = parseFloatLike(literal).coerceAtLeast(0f))
             StyleProperty.FLEX_SHRINK -> current.copy(flexShrink = parseFloatLike(literal).coerceAtLeast(0f))
-            StyleProperty.FLEX_BASIS -> current.copy(flexBasis = parseOptionalInt(literal)?.coerceAtLeast(0))
+            StyleProperty.FLEX_BASIS -> current.copy(
+                flexBasis = parseOptionalLengthPxInt(
+                    raw = literal,
+                    allowNegative = false
+                )
+            )
             StyleProperty.GRID_COLUMNS -> current.copy(gridColumns = parseIntLike(literal).coerceAtLeast(1))
             StyleProperty.GRID_ROWS -> current.copy(gridRows = parseOptionalInt(literal)?.coerceAtLeast(1))
             StyleProperty.GRID_AUTO_FLOW -> current.copy(gridAutoFlow = parseGridAutoFlow(literal))

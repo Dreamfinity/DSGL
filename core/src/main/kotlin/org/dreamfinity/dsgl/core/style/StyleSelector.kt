@@ -228,5 +228,6 @@ data class StyleRule(
 data class StylesheetData(
     val rules: List<StyleRule>,
     val rootVariables: Map<String, String>,
-    val source: String
+    val source: String,
+    val warnings: List<String> = emptyList()
 )

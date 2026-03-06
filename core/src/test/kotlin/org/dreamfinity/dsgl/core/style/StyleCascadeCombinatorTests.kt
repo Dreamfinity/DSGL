@@ -122,7 +122,7 @@ class StyleCascadeCombinatorTests {
     fun `inherited text properties propagate from parent`() {
         installStylesheet(
             """
-            .parent { color: #ABCDEF; font-size: 14; padding: 7; }
+            .parent { color: #ABCDEF; font-size: 14px; padding: 7px; }
             """.trimIndent()
         )
 
@@ -214,7 +214,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .a + .b .c { color: #5566FF; }
-            .a ~ .b > .c { font-size: 14; }
+            .a ~ .b > .c { font-size: 14px; }
             """.trimIndent()
         )
 
@@ -249,6 +249,26 @@ class StyleCascadeCombinatorTests {
 
         StyleEngine.applyStylesRecursively(root)
         assertEquals(0xFF992222.toInt(), target.color)
+    }
+
+    @Test
+    fun `foreground-color alias applies same as canonical color`() {
+        installStylesheet(
+            """
+            .alias { foreground-color: #113355; }
+            .canonical { color: #113355; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val alias = TextNode(TextSource.Static("alias"), key = "alias").applyParent(root)
+        alias.setClassNames("alias")
+        val canonical = TextNode(TextSource.Static("canonical"), key = "canonical").applyParent(root)
+        canonical.setClassNames("canonical")
+
+        StyleEngine.applyStylesRecursively(root)
+        assertEquals(0xFF113355.toInt(), alias.color)
+        assertEquals(canonical.color, alias.color)
     }
 
     private fun installStylesheet(contents: String) {

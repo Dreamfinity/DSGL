@@ -3,9 +3,12 @@ package org.dreamfinity.dsgl.core.style
 enum class StyleEditorValueType {
     EnumChoice,
     IntNumber,
+    LengthPx,
     FloatNumber,
     OptionalIntNumber,
+    OptionalLengthPx,
     Spacing,
+    SpacingLengthPx,
     ColorHex,
     StringPreset
 }
@@ -23,10 +26,10 @@ data class StylePropertyDescriptor(
 object StylePropertyRegistry {
     val all: List<StylePropertyDescriptor> = listOf(
         StylePropertyDescriptor(StyleProperty.DISPLAY, StyleEditorValueType.EnumChoice, enumOptions = listOf("block", "inline", "none", "flex", "grid")),
-        StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.IntNumber, numericStep = 4f),
-        StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.IntNumber, numericStep = 4f),
-        StylePropertyDescriptor(StyleProperty.MARGIN, StyleEditorValueType.Spacing, numericStep = 1f),
-        StylePropertyDescriptor(StyleProperty.PADDING, StyleEditorValueType.Spacing, numericStep = 1f),
+        StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.LengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.LengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.MARGIN, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
+        StylePropertyDescriptor(StyleProperty.PADDING, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.BACKGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
         StylePropertyDescriptor(
             StyleProperty.BACKGROUND_IMAGE,
@@ -37,8 +40,8 @@ object StylePropertyRegistry {
             )
         ),
         StylePropertyDescriptor(StyleProperty.BORDER_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
-        StylePropertyDescriptor(StyleProperty.BORDER_WIDTH, StyleEditorValueType.IntNumber, numericStep = 1f),
-        StylePropertyDescriptor(StyleProperty.BORDER_RADIUS, StyleEditorValueType.IntNumber, numericStep = 1f),
+        StylePropertyDescriptor(StyleProperty.BORDER_WIDTH, StyleEditorValueType.LengthPx, numericStep = 1f),
+        StylePropertyDescriptor(StyleProperty.BORDER_RADIUS, StyleEditorValueType.LengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.FOREGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette(), isInherited = true),
         StylePropertyDescriptor(
             StyleProperty.FONT_ID,
@@ -46,7 +49,7 @@ object StylePropertyRegistry {
             enumOptions = listOf("minecraft", "ubuntu", "JetBrains Mono"),
             isInherited = true
         ),
-        StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1, isInherited = true),
+        StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.LengthPx, numericStep = 1f, minInt = 1, isInherited = true),
         StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold"), isInherited = true),
         StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic"), isInherited = true),
         StylePropertyDescriptor(
@@ -64,10 +67,10 @@ object StylePropertyRegistry {
         ),
         StylePropertyDescriptor(StyleProperty.ALIGN_ITEMS, StyleEditorValueType.EnumChoice, enumOptions = listOf("start", "center", "end", "stretch")),
         StylePropertyDescriptor(StyleProperty.JUSTIFY_ITEMS, StyleEditorValueType.EnumChoice, enumOptions = listOf("start", "center", "end", "stretch")),
-        StylePropertyDescriptor(StyleProperty.GAP, StyleEditorValueType.IntNumber, numericStep = 1f),
+        StylePropertyDescriptor(StyleProperty.GAP, StyleEditorValueType.LengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.FLEX_GROW, StyleEditorValueType.FloatNumber, numericStep = 0.25f),
         StylePropertyDescriptor(StyleProperty.FLEX_SHRINK, StyleEditorValueType.FloatNumber, numericStep = 0.25f),
-        StylePropertyDescriptor(StyleProperty.FLEX_BASIS, StyleEditorValueType.OptionalIntNumber, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.FLEX_BASIS, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.GRID_COLUMNS, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = 1),
         StylePropertyDescriptor(StyleProperty.GRID_ROWS, StyleEditorValueType.OptionalIntNumber, numericStep = 1f, minInt = 1),
         StylePropertyDescriptor(StyleProperty.GRID_AUTO_FLOW, StyleEditorValueType.EnumChoice, enumOptions = listOf("row", "column")),

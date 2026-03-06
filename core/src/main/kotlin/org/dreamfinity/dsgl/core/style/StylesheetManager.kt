@@ -109,6 +109,9 @@ object StylesheetManager {
                 if (parsed != null) {
                     loadedSheets[key] = LoadedSheet(file, lastModified, parsed)
                     println("[DSGL-Style] Reloaded stylesheet: ${file.path}")
+                    parsed.warnings.forEach { warning ->
+                        println("[DSGL-Style][Deprecated] ${file.path}: $warning")
+                    }
                     changed = true
                 }
             }

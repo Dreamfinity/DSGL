@@ -1692,17 +1692,17 @@ class ShowcaseWindow : DsglWindow() {
                     }
                     
                     button {
-                      border-width: 1;
+                      border-width: 1px;
                       border-color: #000000;
-                      padding: 3 6;
+                      padding: 3px 6px;
                     }
                     
                     .style-card {
-                      margin: 2 0 0 0;
+                      margin: 2px 0px 0px 0px;
                       background-color: #2A3440;
                       border-color: #5E6A77;
-                      border-width: 1;
-                      padding: 4;
+                      border-width: 1px;
+                      padding: 4px;
                     }
                     
                     .accent {
@@ -1711,12 +1711,12 @@ class ShowcaseWindow : DsglWindow() {
                     
                     button.primary {
                       background-color: var(--primary);
-                      foreground-color: var(--fg);
+                      color: var(--fg);
                     }
                     
                     #dangerAction {
                       background-color: var(--danger);
-                      foreground-color: #FFFFFFFF;
+                      color: #FFFFFFFF;
                     }
                     
                     #hoverActiveTarget:hover {
@@ -1729,12 +1729,12 @@ class ShowcaseWindow : DsglWindow() {
                     
                     #focusInput:focus {
                       border-color: var(--accent);
-                      border-width: 2;
+                      border-width: 2px;
                     }
                     
                     #disabledTarget:disabled {
                       background-color: #444444;
-                      foreground-color: #999999;
+                      color: #999999;
                     }
                     
                     .vars-demo {
@@ -1783,38 +1783,38 @@ class ShowcaseWindow : DsglWindow() {
                 .cascade-demo-root {
                   background-color: #25303B;
                   border-color: #5A6877;
-                  border-width: 1;
-                  padding: 4;
+                  border-width: 1px;
+                  padding: 4px;
                 }
                 
                 .cascade-demo-root.dark {
-                  foreground-color: #FFE4C7;
+                  color: #FFE4C7;
                 }
                 
                 .cascade-demo-root.light {
-                  foreground-color: #D7E8FF;
+                  color: #D7E8FF;
                 }
                 
                 .cascade-demo-root .panel {
                   background-color: #1E2935;
-                  border-width: 1;
+                  border-width: 1px;
                   border-color: #516071;
-                  padding: 3;
+                  padding: 3px;
                 }
                 
                 .cascade-demo-root .panel .item {
-                  foreground-color: #7EC8FF;
+                  color: #7EC8FF;
                 }
                 
                 .cascade-demo-root .panel > .item {
-                  foreground-color: #9BE66F;
+                  color: #9BE66F;
                 }
                 
                 .cascade-demo-root .btn {
                   background-color: #4A5568;
-                  foreground-color: #FFFFFFFF;
+                  color: #FFFFFFFF;
                   border-color: #1F2937;
-                  border-width: 1;
+                  border-width: 1px;
                 }
                 
                 .cascade-demo-root #primary.btn {
@@ -1822,80 +1822,80 @@ class ShowcaseWindow : DsglWindow() {
                 }
                 
                 .cascade-demo-root .order-target {
-                  foreground-color: #F56565;
+                  color: #F56565;
                 }
                 
                 .cascade-demo-root .order-target {
-                  foreground-color: #48BB78;
+                  color: #48BB78;
                 }
                 
                 .cascade-demo-root .important-target {
-                  foreground-color: #DD6B20 !important;
+                  color: #DD6B20 !important;
                 }
                 
                 .cascade-demo-root .important-target {
-                  foreground-color: #3182CE;
+                  color: #3182CE;
                 }
                 
                 .cascade-demo-root.rule-a .toggle-target {
-                  foreground-color: #D69E2E;
+                  color: #D69E2E;
                 }
                 
                 .cascade-demo-root.rule-b .toggle-target {
-                  foreground-color: #63B3ED;
+                  color: #63B3ED;
                 }
 
                 .cascade-sibling-adj {
                   background-color: #1E2731;
                   border-color: #45576B;
-                  border-width: 1;
-                  padding: 3;
+                  border-width: 1px;
+                  padding: 3px;
                 }
 
                 .cascade-sibling-adj .adj-item {
                   background-color: #2D3A47;
                   border-color: #53667A;
-                  border-width: 1;
-                  padding: 2 4;
+                  border-width: 1px;
+                  padding: 2px 4px;
                 }
 
                 .cascade-sibling-adj .adj-source {
-                  foreground-color: #FFDE9E;
+                  color: #FFDE9E;
                 }
 
                 .cascade-sibling-adj .adj-source + .adj-target {
-                  foreground-color: #7DFFB0;
+                  color: #7DFFB0;
                   border-color: #7DFFB0;
                 }
 
                 .cascade-sibling-general {
                   background-color: #1B2530;
                   border-color: #495D73;
-                  border-width: 1;
-                  padding: 3;
+                  border-width: 1px;
+                  padding: 3px;
                 }
 
                 .cascade-sibling-general .warning {
-                  foreground-color: #FF9B9B;
+                  color: #FF9B9B;
                 }
 
                 .cascade-sibling-general .warning ~ .gen-target {
-                  foreground-color: #6EC8FF;
+                  color: #6EC8FF;
                 }
 
                 .cascade-mixed {
                   background-color: #202A34;
                   border-color: #516679;
-                  border-width: 1;
-                  padding: 3;
+                  border-width: 1px;
+                  padding: 3px;
                 }
 
                 .cascade-mixed > .header {
-                  foreground-color: #D8E6F5;
+                  color: #D8E6F5;
                 }
 
                 .cascade-mixed > .header + .body .title {
-                  foreground-color: #F6D66F;
+                  color: #F6D66F;
                 }
                 """.trimIndent()
             )

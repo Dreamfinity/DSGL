@@ -18,9 +18,41 @@ fun parseExpression(rawValue: String): StyleExpression {
 }
 
 fun parseSpacingShorthand(raw: String): Insets {
-    val parts = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    val parts = splitLengthTokens(raw)
     require(parts.isNotEmpty()) { "Spacing value cannot be empty." }
-    val nums = parts.map { parseIntLike(it) }
+    val nums = parts.map {
+        parseLengthPxInt(
+            raw = it,
+            allowNegative = true
+        )
+    }
+    return when (nums.size) {
+        1 -> Insets.all(nums[0])
+        2 -> Insets(nums[0], nums[1], nums[0], nums[1])
+        3 -> Insets(nums[0], nums[1], nums[2], nums[1])
+        4 -> Insets(nums[0], nums[1], nums[2], nums[3])
+        else -> error("Spacing supports 1, 2, 3, or 4 values.")
+    }
+}
+
+fun parseSpacingShorthand(
+    raw: String,
+    allowNegative: Boolean,
+    allowUnitlessPx: Boolean = true,
+    warningReporter: StyleWarningReporter? = null,
+    warningKey: String = "deprecated.unitless-length"
+): Insets {
+    val parts = splitLengthTokens(raw)
+    require(parts.isNotEmpty()) { "Spacing value cannot be empty." }
+    val nums = parts.map {
+        parseLengthPxInt(
+            raw = it,
+            allowNegative = allowNegative,
+            allowUnitlessPx = allowUnitlessPx,
+            warningReporter = warningReporter,
+            warningKey = warningKey
+        )
+    }
     return when (nums.size) {
         1 -> Insets.all(nums[0])
         2 -> Insets(nums[0], nums[1], nums[0], nums[1])
@@ -255,6 +287,10 @@ fun parseOptionalInt(raw: String): Int? {
     return if (normalized == "auto") null else parseIntLike(raw)
 }
 
+private fun splitLengthTokens(raw: String): List<String> {
+    return raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+}
+
 fun parseStringLiteral(raw: String): String {
     val trimmed = raw.trim()
     if (trimmed.length >= 2 && trimmed.first() == '"' && trimmed.last() == '"') {
@@ -266,10 +302,25 @@ fun parseStringLiteral(raw: String): String {
     return trimmed
 }
 
-fun validateLiteralForProperty(property: StyleProperty, literal: String) {
+fun validateLiteralForProperty(
+    property: StyleProperty,
+    literal: String,
+    warningReporter: StyleWarningReporter? = null,
+    deprecatedLengthWarningKey: String = "deprecated.unitless-length"
+) {
     when (property) {
-        StyleProperty.MARGIN,
-        StyleProperty.PADDING -> parseSpacingShorthand(literal)
+        StyleProperty.MARGIN -> parseSpacingShorthand(
+            raw = literal,
+            allowNegative = true,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
+        StyleProperty.PADDING -> parseSpacingShorthand(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
 
         StyleProperty.BACKGROUND_COLOR,
         StyleProperty.BORDER_COLOR,
@@ -278,11 +329,39 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.BACKGROUND_IMAGE -> parseStringLiteral(literal)
         StyleProperty.FONT_ID -> parseStringLiteral(literal)
 
-        StyleProperty.BORDER_WIDTH,
-        StyleProperty.BORDER_RADIUS,
-        StyleProperty.FONT_SIZE,
-        StyleProperty.WIDTH,
-        StyleProperty.HEIGHT -> parseIntLike(literal)
+        StyleProperty.BORDER_WIDTH -> parseLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
+        StyleProperty.BORDER_RADIUS -> parseLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
+        StyleProperty.FONT_SIZE -> {
+            val parsed = parseLengthPxInt(
+                raw = literal,
+                allowNegative = false,
+                warningReporter = warningReporter,
+                warningKey = deprecatedLengthWarningKey
+            )
+            require(parsed >= 1) { "font-size must be at least 1px." }
+        }
+        StyleProperty.WIDTH -> parseLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
+        StyleProperty.HEIGHT -> parseLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
 
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
@@ -290,10 +369,20 @@ fun validateLiteralForProperty(property: StyleProperty, literal: String) {
         StyleProperty.JUSTIFY_CONTENT -> parseJustifyContent(literal)
         StyleProperty.ALIGN_ITEMS -> parseAlignItems(literal)
         StyleProperty.JUSTIFY_ITEMS -> parseJustifyItems(literal)
-        StyleProperty.GAP -> parseIntLike(literal)
+        StyleProperty.GAP -> parseLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
         StyleProperty.FLEX_GROW -> parseFloatLike(literal)
         StyleProperty.FLEX_SHRINK -> parseFloatLike(literal)
-        StyleProperty.FLEX_BASIS -> parseOptionalInt(literal)
+        StyleProperty.FLEX_BASIS -> parseOptionalLengthPxInt(
+            raw = literal,
+            allowNegative = false,
+            warningReporter = warningReporter,
+            warningKey = deprecatedLengthWarningKey
+        )
         StyleProperty.GRID_COLUMNS -> parseIntLike(literal)
         StyleProperty.GRID_ROWS -> parseOptionalInt(literal)
         StyleProperty.GRID_AUTO_FLOW -> parseGridAutoFlow(literal)
