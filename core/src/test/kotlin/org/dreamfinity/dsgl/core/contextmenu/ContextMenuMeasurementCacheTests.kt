@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class ContextMenuMeasurementCacheTests {
     private val ctx = object : UiMeasureContext {
@@ -57,5 +58,25 @@ class ContextMenuMeasurementCacheTests {
         cache.measure(model.token, model.entries, ContextMenuStyle(minPanelWidth = 220), ctx, 1f)
 
         assertEquals(2L, cache.computeCount)
+    }
+
+    @Test
+    fun `measurement expands panel when icon column grows`() {
+        val cache = ContextMenuMeasurementCache()
+        val noIcons = contextMenu(id = "cache.icons.none") {
+            item("Rename")
+        }
+        val withIcons = contextMenu(id = "cache.icons.present") {
+            item("Rename") {
+                icon("FILE-LONG")
+            }
+        }
+        val style = ContextMenuStyle(minPanelWidth = 1)
+
+        val noIconMeasurement = cache.measure(noIcons.token, noIcons.entries, style, ctx, 1f)
+        val withIconMeasurement = cache.measure(withIcons.token, withIcons.entries, style, ctx, 1f)
+
+        assertTrue(withIconMeasurement.indicatorWidth > noIconMeasurement.indicatorWidth)
+        assertTrue(withIconMeasurement.panelWidth > noIconMeasurement.panelWidth)
     }
 }

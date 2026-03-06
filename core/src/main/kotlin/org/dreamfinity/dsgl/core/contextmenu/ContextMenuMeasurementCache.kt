@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.contextmenu
+﻿package org.dreamfinity.dsgl.core.contextmenu
 
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 
@@ -67,9 +67,8 @@ class ContextMenuMeasurementCache(
         }
 
         computeCount += 1
-        val fallbackRowHeight = (ctx.fontHeight(style.fontId, style.fontSize) + style.rowPaddingY * 2)
+        val rowHeight = (ctx.fontHeight(style.fontId, style.fontSize) + style.rowPaddingY * 2)
             .coerceAtLeast(14)
-        val rowHeight = fallbackRowHeight
         val separatorHeight = style.separatorHeight.coerceAtLeast(2)
 
         val entryHeights = IntArray(snapshots.size)
@@ -77,23 +76,43 @@ class ContextMenuMeasurementCache(
         var offset = 0
         var maxLabelWidth = 0
         var maxHintWidth = 0
+        var maxIndicatorWidth = 0
 
         snapshots.forEachIndexed { index, snapshot ->
             entryOffsets[index] = offset
             val height = if (snapshot.kind == KIND_SEPARATOR) separatorHeight else rowHeight
             entryHeights[index] = height
             offset += height + style.rowGap
-            if (snapshot.kind != KIND_SEPARATOR) {
-                val labelWidth = ctx.measureText(snapshot.label, style.fontId, style.fontSize)
-                if (labelWidth > maxLabelWidth) {
-                    maxLabelWidth = labelWidth
+            if (snapshot.kind == KIND_SEPARATOR) {
+                return@forEachIndexed
+            }
+
+            val labelWidth = ctx.measureText(snapshot.label, style.fontId, style.fontSize)
+            if (labelWidth > maxLabelWidth) {
+                maxLabelWidth = labelWidth
+            }
+
+            val indicatorText = when {
+                snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
+                !snapshot.icon.isNullOrEmpty() -> snapshot.icon
+                else -> null
+            }
+            if (!indicatorText.isNullOrEmpty()) {
+                val indicatorWidth = ctx.measureText(indicatorText, style.fontId, style.fontSize)
+                if (indicatorWidth > maxIndicatorWidth) {
+                    maxIndicatorWidth = indicatorWidth
                 }
-                val hintText = snapshot.hint ?: ""
-                if (hintText.isNotEmpty()) {
-                    val hintWidth = ctx.measureText(hintText, style.fontId, style.fontSize)
-                    if (hintWidth > maxHintWidth) {
-                        maxHintWidth = hintWidth
-                    }
+            }
+
+            val hintText = when {
+                !snapshot.hint.isNullOrEmpty() -> snapshot.hint
+                snapshot.kind == KIND_SUBMENU -> ContextMenuGlyphs.SUBMENU_ARROW
+                else -> null
+            }
+            if (!hintText.isNullOrEmpty()) {
+                val hintWidth = ctx.measureText(hintText, style.fontId, style.fontSize)
+                if (hintWidth > maxHintWidth) {
+                    maxHintWidth = hintWidth
                 }
             }
         }
@@ -102,21 +121,13 @@ class ContextMenuMeasurementCache(
             offset -= style.rowGap
         }
 
-        val indicatorCandidates = listOf("✓", "›", "●")
-        var indicatorWidth = 0
-        indicatorCandidates.forEach { sample ->
-            val width = ctx.measureText(sample, style.fontId, style.fontSize)
-            if (width > indicatorWidth) {
-                indicatorWidth = width
-            }
-        }
-        val measuredIndicatorWidth = indicatorWidth.coerceAtLeast(8)
+        val measuredIndicatorWidth = maxIndicatorWidth.coerceAtLeast(style.iconColumnMinWidth.coerceAtLeast(0))
         val measuredWidth =
             style.rowPaddingX +
                 measuredIndicatorWidth +
                 style.contentSpacing +
                 maxLabelWidth +
-                if (maxHintWidth > 0) style.hintSpacing + maxHintWidth else 0 +
+                (if (maxHintWidth > 0) style.hintSpacing + maxHintWidth else 0) +
                 style.rowPaddingX
         val panelWidth = measuredWidth.coerceAtLeast(style.minPanelWidth)
 

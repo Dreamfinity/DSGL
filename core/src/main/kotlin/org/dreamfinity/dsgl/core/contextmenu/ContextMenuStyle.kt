@@ -13,6 +13,7 @@ data class ContextMenuStyle(
     val separatorInsetX: Int = 5,
     val contentSpacing: Int = 6,
     val hintSpacing: Int = 14,
+    val iconColumnMinWidth: Int = 10,
     val minPanelWidth: Int = 120,
     val maxPanelHeightPadding: Int = 10,
     val hoverOpenDelayMs: Long = 130L,

@@ -125,6 +125,42 @@ class ContextMenuEngineTests {
         assertFalse(engine.isOpen())
     }
 
+    @Test
+    fun `open at cursor keeps root panel under click point`() {
+        val engine = ContextMenuEngine()
+        val model = contextMenu(id = "placement.cursor") {
+            item("Open")
+            item("Rename")
+        }
+
+        val openX = 84
+        val openY = 62
+        engine.openAtCursor(model, openX, openY)
+        engine.onFrame(ctx, 320, 180, 1f)
+
+        val panel = engine.debugPanelRect(0)
+        assertNotNull(panel)
+        assertTrue(panel.contains(openX, openY))
+    }
+
+    @Test
+    fun `open anchored positions root panel below anchor`() {
+        val engine = ContextMenuEngine()
+        val model = contextMenu(id = "placement.anchor") {
+            item("Open")
+            item("Rename")
+        }
+
+        val anchor = Rect(48, 34, 96, 18)
+        engine.openAnchored(model, anchor)
+        engine.onFrame(ctx, 320, 200, 1f)
+
+        val panel = engine.debugPanelRect(0)
+        assertNotNull(panel)
+        assertEquals(anchor.x, panel.x)
+        assertEquals(anchor.y + anchor.height, panel.y)
+    }
+
     private fun requireEntryRect(engine: ContextMenuEngine, level: Int, index: Int): Rect {
         val rect = engine.debugEntryRect(level, index)
         assertNotNull(rect)

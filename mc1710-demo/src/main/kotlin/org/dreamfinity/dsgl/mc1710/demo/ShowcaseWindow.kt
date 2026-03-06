@@ -26,6 +26,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.ArrayDeque
 import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -37,10 +38,30 @@ class ShowcaseWindow : DsglWindow() {
         val stack: McItemStackRef
     )
 
+    internal data class ContextMenuDemoFile(
+        val id: String,
+        val parentId: String?,
+        val name: String,
+        val sizeKb: Int,
+        val isDirectory: Boolean,
+        val locked: Boolean,
+        val updatedAtOrder: Long
+    )
+
+    internal data class ContextMenuBreadcrumb(
+        val id: String,
+        val label: String
+    )
+
     internal enum class DndLaneIndicator {
         NONE,
         BEFORE,
         AFTER
+    }
+
+    private companion object {
+        const val CONTEXT_MENU_ROOT_ID: String = "fs.root"
+        const val CONTEXT_MENU_DOUBLE_CLICK_MS: Long = 320L
     }
 
     private var viewportWidth: Int = 320
@@ -104,8 +125,29 @@ class ShowcaseWindow : DsglWindow() {
     internal var contextMenuLastAction by state("none")
     internal var contextMenuLastTarget by state("none")
     internal var contextMenuActionCount by state(0)
+    internal var contextMenuOpenAnchored by state(false)
+    internal var contextMenuShowCursorDebug by state(false)
+    internal var contextMenuClipboardHasData by state(false)
+    internal var contextMenuClipboardEntryName by state("clipboard.txt")
+    internal var contextMenuClipboardEntryId by state<String?>(null)
+    internal var contextMenuSortMode by state("Name")
+    internal var contextMenuCursorX by state(-1)
+    internal var contextMenuCursorY by state(-1)
+    internal var contextMenuCursorOwner by state("none")
+    internal var contextMenuCursorLocalX by state(0)
+    internal var contextMenuCursorLocalY by state(0)
     internal var contextMenuPinned by state(false)
     internal var contextMenuFileSelection by state("README.md")
+    internal var contextMenuCurrentDirectoryId by state(CONTEXT_MENU_ROOT_ID)
+    internal var contextMenuBackHistory by state(emptyList<String>())
+    internal var contextMenuForwardHistory by state(emptyList<String>())
+    internal var contextMenuRenameTargetId by state<String?>(null)
+    internal var contextMenuRenameDraft by state("")
+    internal var contextMenuDragHoverDirectoryId by state<String?>(null)
+    private var contextMenuLastClickEntryId: String? = null
+    private var contextMenuLastClickMs: Long = 0L
+    internal var contextMenuFiles by state(defaultContextMenuFiles())
+    private var contextMenuFileSequence by state(100L)
     internal var stackOverlayEnabled by state(true)
     internal var layoutOverlayX by state(8)
     internal var layoutOverlayY by state(92)
@@ -568,6 +610,330 @@ class ShowcaseWindow : DsglWindow() {
         contextMenuLastAction = action
         contextMenuActionCount += 1
         appendInfo("Context menu [$target]: $action")
+    }
+
+    internal fun recordContextMenuCursor(
+        owner: String,
+        mouseX: Int,
+        mouseY: Int,
+        localX: Int,
+        localY: Int
+    ) {
+        contextMenuCursorOwner = owner
+        contextMenuCursorX = mouseX
+        contextMenuCursorY = mouseY
+        contextMenuCursorLocalX = localX
+        contextMenuCursorLocalY = localY
+    }
+
+    internal fun contextMenuVisibleFiles(): List<ContextMenuDemoFile> {
+        return sortedChildrenForDirectory(contextMenuCurrentDirectoryId)
+    }
+
+    internal fun contextMenuCurrentPath(): String {
+        val byId = contextMenuFiles.associateBy { it.id }
+        val path = ArrayDeque<String>()
+        var currentId: String? = contextMenuCurrentDirectoryId
+        while (currentId != null) {
+            val entry = byId[currentId] ?: break
+            if (entry.id != CONTEXT_MENU_ROOT_ID) {
+                path.addFirst(entry.name)
+            }
+            currentId = entry.parentId
+        }
+        return if (path.isEmpty()) "/" else "/" + path.joinToString("/")
+    }
+
+    internal fun contextMenuBreadcrumbs(): List<ContextMenuBreadcrumb> {
+        val byId = contextMenuFiles.associateBy { it.id }
+        val breadcrumbs = ArrayDeque<ContextMenuBreadcrumb>()
+        var currentId: String? = contextMenuCurrentDirectoryId
+        while (currentId != null) {
+            val entry = byId[currentId] ?: break
+            val label = if (entry.id == CONTEXT_MENU_ROOT_ID) "Workspace" else entry.name
+            breadcrumbs.addFirst(ContextMenuBreadcrumb(entry.id, label))
+            currentId = entry.parentId
+        }
+        return breadcrumbs.toList()
+    }
+
+    internal fun contextMenuCanGoBack(): Boolean = contextMenuBackHistory.isNotEmpty()
+
+    internal fun contextMenuCanGoForward(): Boolean = contextMenuForwardHistory.isNotEmpty()
+
+    internal fun contextMenuCanGoUp(): Boolean {
+        val current = contextMenuEntryById(contextMenuCurrentDirectoryId) ?: return false
+        return current.parentId != null
+    }
+
+    internal fun contextMenuNavigateBack() {
+        if (!contextMenuCanGoBack()) return
+        val previous = contextMenuBackHistory.last()
+        contextMenuBackHistory = contextMenuBackHistory.dropLast(1)
+        contextMenuForwardHistory = listOf(contextMenuCurrentDirectoryId) + contextMenuForwardHistory
+        contextMenuCurrentDirectoryId = previous
+        contextMenuRenameTargetId = null
+        contextMenuDragHoverDirectoryId = null
+        recordContextMenuAction("navigator", "back to ${contextMenuCurrentPath()}")
+    }
+
+    internal fun contextMenuNavigateForward() {
+        val target = contextMenuForwardHistory.firstOrNull() ?: return
+        contextMenuForwardHistory = contextMenuForwardHistory.drop(1)
+        contextMenuBackHistory = contextMenuBackHistory + contextMenuCurrentDirectoryId
+        contextMenuCurrentDirectoryId = target
+        contextMenuRenameTargetId = null
+        contextMenuDragHoverDirectoryId = null
+        recordContextMenuAction("navigator", "forward to ${contextMenuCurrentPath()}")
+    }
+
+    internal fun contextMenuNavigateUp() {
+        val current = contextMenuEntryById(contextMenuCurrentDirectoryId) ?: return
+        val parentId = current.parentId ?: return
+        contextMenuOpenDirectory(parentId, pushHistory = true)
+    }
+
+    internal fun contextMenuHandleEntryClick(file: ContextMenuDemoFile) {
+        contextMenuFileSelection = file.name
+        if (!file.isDirectory) return
+        val now = System.currentTimeMillis()
+        val isDoubleClick = contextMenuLastClickEntryId == file.id && (now - contextMenuLastClickMs) <= CONTEXT_MENU_DOUBLE_CLICK_MS
+        contextMenuLastClickEntryId = file.id
+        contextMenuLastClickMs = now
+        if (isDoubleClick) {
+            contextMenuOpenDirectory(file.id, pushHistory = true)
+        }
+    }
+
+    internal fun contextMenuOpenDirectory(directoryId: String, pushHistory: Boolean) {
+        val directory = contextMenuFiles.firstOrNull { it.id == directoryId && it.isDirectory } ?: return
+        if (pushHistory && directory.id != contextMenuCurrentDirectoryId) {
+            contextMenuBackHistory = contextMenuBackHistory + contextMenuCurrentDirectoryId
+            contextMenuForwardHistory = emptyList()
+        }
+        contextMenuCurrentDirectoryId = directory.id
+        contextMenuRenameTargetId = null
+        contextMenuDragHoverDirectoryId = null
+        recordContextMenuAction("navigator", "open ${contextMenuCurrentPath()}")
+    }
+
+    internal fun contextMenuSetSortMode(mode: String) {
+        contextMenuSortMode = mode
+        recordContextMenuAction("background", "sort by ${mode.lowercase()}")
+    }
+
+    internal fun contextMenuCreateFolder(parentId: String = contextMenuCurrentDirectoryId) {
+        val parent = contextMenuFiles.firstOrNull { it.id == parentId && it.isDirectory } ?: return
+        val name = uniqueContextMenuName(parent.id, "New Folder")
+        val created = ContextMenuDemoFile(
+            id = nextContextMenuEntryId(),
+            parentId = parent.id,
+            name = name,
+            sizeKb = 0,
+            isDirectory = true,
+            locked = false,
+            updatedAtOrder = nextContextMenuFileOrder()
+        )
+        contextMenuFiles = contextMenuFiles + created
+        contextMenuFileSelection = created.name
+        recordContextMenuAction("background", "new folder $name")
+    }
+
+    internal fun contextMenuCreateFile(parentId: String = contextMenuCurrentDirectoryId) {
+        val parent = contextMenuFiles.firstOrNull { it.id == parentId && it.isDirectory } ?: return
+        if (parent.id != contextMenuCurrentDirectoryId) {
+            contextMenuOpenDirectory(parent.id, pushHistory = true)
+        }
+        val name = uniqueContextMenuName(parent.id, "new-file.txt")
+        val created = ContextMenuDemoFile(
+            id = nextContextMenuEntryId(),
+            parentId = parent.id,
+            name = name,
+            sizeKb = 1,
+            isDirectory = false,
+            locked = false,
+            updatedAtOrder = nextContextMenuFileOrder()
+        )
+        contextMenuFiles = contextMenuFiles + created
+        contextMenuFileSelection = created.name
+        contextMenuRenameTargetId = created.id
+        contextMenuRenameDraft = created.name
+        recordContextMenuAction("background", "new file $name")
+    }
+
+    internal fun contextMenuPasteIntoWorkspace() {
+        if (!contextMenuClipboardHasData) return
+        val sourceId = contextMenuClipboardEntryId ?: return
+        val source = contextMenuEntryById(sourceId) ?: return
+        contextMenuDuplicateFile(source, targetParentId = contextMenuCurrentDirectoryId)
+        recordContextMenuAction("background", "paste ${source.name}")
+    }
+
+    internal fun contextMenuRefreshWorkspace() {
+        contextMenuFiles = contextMenuFiles.map { file ->
+            file.copy(updatedAtOrder = file.updatedAtOrder + 1L)
+        }
+        recordContextMenuAction("background", "refresh")
+    }
+
+    internal fun contextMenuOpenFile(file: ContextMenuDemoFile) {
+        if (file.isDirectory) {
+            contextMenuOpenDirectory(file.id, pushHistory = true)
+            return
+        }
+        contextMenuFileSelection = file.name
+        recordContextMenuAction(file.name, "open")
+    }
+
+    internal fun contextMenuBeginRename(file: ContextMenuDemoFile) {
+        if (file.locked) return
+        contextMenuRenameTargetId = file.id
+        contextMenuRenameDraft = file.name
+        contextMenuFileSelection = file.name
+    }
+
+    internal fun contextMenuApplyRename() {
+        val targetId = contextMenuRenameTargetId ?: return
+        val target = contextMenuEntryById(targetId) ?: run {
+            contextMenuRenameTargetId = null
+            return
+        }
+        if (target.locked) {
+            contextMenuRenameTargetId = null
+            return
+        }
+        val draft = contextMenuRenameDraft.trim()
+        if (draft.isEmpty()) return
+        val resolved = if (draft == target.name) {
+            draft
+        } else {
+            uniqueContextMenuName(target.parentId ?: CONTEXT_MENU_ROOT_ID, draft)
+        }
+        contextMenuFiles = contextMenuFiles.map { current ->
+            if (current.id == target.id) {
+                current.copy(
+                    name = resolved,
+                    updatedAtOrder = nextContextMenuFileOrder()
+                )
+            } else {
+                current
+            }
+        }
+        contextMenuFileSelection = resolved
+        contextMenuRenameTargetId = null
+        contextMenuRenameDraft = ""
+        recordContextMenuAction(target.name, "rename to $resolved")
+    }
+
+    internal fun contextMenuCancelRename() {
+        contextMenuRenameTargetId = null
+        contextMenuRenameDraft = ""
+    }
+
+    internal fun contextMenuDuplicateFile(
+        file: ContextMenuDemoFile,
+        targetParentId: String = file.parentId ?: contextMenuCurrentDirectoryId
+    ) {
+        val targetParent = contextMenuFiles.firstOrNull { it.id == targetParentId && it.isDirectory } ?: return
+        val byId = contextMenuFiles.associateBy { it.id }
+        val descendants = collectSubtree(file.id, byId)
+        val idRemap = linkedMapOf<String, String>()
+        val rootCopyId = nextContextMenuEntryId()
+        idRemap[file.id] = rootCopyId
+        val rootName = uniqueContextMenuName(targetParent.id, file.name, "copy")
+        val copies = ArrayList<ContextMenuDemoFile>(descendants.size)
+        copies += file.copy(
+            id = rootCopyId,
+            parentId = targetParent.id,
+            name = rootName,
+            locked = false,
+            updatedAtOrder = nextContextMenuFileOrder()
+        )
+        descendants.drop(1).forEach { child ->
+            val parentCopyId = idRemap[child.parentId] ?: return@forEach
+            val childCopyId = nextContextMenuEntryId()
+            idRemap[child.id] = childCopyId
+            copies += child.copy(
+                id = childCopyId,
+                parentId = parentCopyId,
+                locked = false,
+                updatedAtOrder = nextContextMenuFileOrder()
+            )
+        }
+        contextMenuFiles = contextMenuFiles + copies
+        contextMenuFileSelection = rootName
+        recordContextMenuAction(file.name, "duplicate as $rootName")
+    }
+
+    internal fun contextMenuCopyFile(file: ContextMenuDemoFile) {
+        contextMenuClipboardHasData = true
+        contextMenuClipboardEntryName = file.name
+        contextMenuClipboardEntryId = file.id
+        contextMenuFileSelection = file.name
+        recordContextMenuAction(file.name, "copied to clipboard")
+    }
+
+    internal fun contextMenuMoveFile(file: ContextMenuDemoFile, destinationDirectoryId: String) {
+        if (!contextMenuCanDropIntoDirectory(file.id, destinationDirectoryId)) return
+        val destination = contextMenuEntryById(destinationDirectoryId) ?: return
+        val resolvedName = uniqueContextMenuName(destination.id, file.name)
+        contextMenuFiles = contextMenuFiles.map { current ->
+            if (current.id == file.id) {
+                current.copy(
+                    parentId = destination.id,
+                    name = resolvedName,
+                    updatedAtOrder = nextContextMenuFileOrder()
+                )
+            } else {
+                current
+            }
+        }
+        contextMenuFileSelection = resolvedName
+        contextMenuDragHoverDirectoryId = null
+        recordContextMenuAction(file.name, "move to ${destination.name}")
+    }
+
+    internal fun contextMenuCanDropIntoDirectory(entryId: String, destinationDirectoryId: String): Boolean {
+        val entry = contextMenuEntryById(entryId) ?: return false
+        val destination = contextMenuEntryById(destinationDirectoryId) ?: return false
+        if (!destination.isDirectory) return false
+        if (entry.id == destination.id) return false
+        if (entry.parentId == destination.id) return false
+        if (isDescendantDirectory(ancestorId = entry.id, candidateId = destination.id)) return false
+        return true
+    }
+
+    internal fun contextMenuDeleteFile(file: ContextMenuDemoFile) {
+        if (file.locked) return
+        val subtreeIds = collectSubtreeIds(file.id)
+        contextMenuFiles = contextMenuFiles.filterNot { subtreeIds.contains(it.id) }
+        if (contextMenuCurrentDirectoryId == file.id || contextMenuCurrentDirectoryId in subtreeIds) {
+            contextMenuCurrentDirectoryId = CONTEXT_MENU_ROOT_ID
+            contextMenuBackHistory = emptyList()
+            contextMenuForwardHistory = emptyList()
+        } else {
+            contextMenuBackHistory = contextMenuBackHistory.filterNot { subtreeIds.contains(it) }
+            contextMenuForwardHistory = contextMenuForwardHistory.filterNot { subtreeIds.contains(it) }
+        }
+        if (contextMenuClipboardEntryId in subtreeIds) {
+            contextMenuClipboardHasData = false
+            contextMenuClipboardEntryId = null
+        }
+        contextMenuRenameTargetId = contextMenuRenameTargetId?.takeUnless { subtreeIds.contains(it) }
+        if (contextMenuSelectedFileMissing()) {
+            contextMenuFileSelection = contextMenuVisibleFiles().firstOrNull()?.name ?: "none"
+        }
+        recordContextMenuAction(file.name, "delete")
+    }
+
+    internal fun contextMenuSelectedFileMissing(): Boolean {
+        if (contextMenuFileSelection == "none") return false
+        return contextMenuVisibleFiles().none { it.name == contextMenuFileSelection }
+    }
+
+    internal fun contextMenuEntryById(entryId: String?): ContextMenuDemoFile? {
+        if (entryId == null) return null
+        return contextMenuFiles.firstOrNull { it.id == entryId }
     }
 
     internal fun sampledMouseOverEvent(): Boolean {
@@ -1292,6 +1658,8 @@ class ShowcaseWindow : DsglWindow() {
                 0xFF2D8757.toInt(),
                 0xFFC8E66B.toInt()
             )
+            writeDemoFolderIcon(File(dataDir, "dsgl/demo/folder.png"))
+            writeDemoDocumentIcon(File(dataDir, "dsgl/demo/document.png"))
             mediaReady = true
             appendInfo("Prepared local file:// and cached http image assets")
         } catch (ex: Exception) {
@@ -1539,6 +1907,265 @@ class ShowcaseWindow : DsglWindow() {
         return File(dataDir, "dsgl/styles/showcase_cascade.dss")
     }
 
+    private fun nextContextMenuFileOrder(): Long {
+        contextMenuFileSequence += 1L
+        return contextMenuFileSequence
+    }
+
+    private fun nextContextMenuEntryId(): String {
+        contextMenuFileSequence += 1L
+        return "fs.${contextMenuFileSequence}"
+    }
+
+    private fun uniqueContextMenuName(parentId: String, baseName: String, variant: String = "new"): String {
+        val existing = contextMenuFiles
+            .asSequence()
+            .filter { it.parentId == parentId }
+            .map { it.name }
+            .toHashSet()
+        if (!existing.contains(baseName)) {
+            return baseName
+        }
+        val (stem, extension) = splitContextMenuName(baseName)
+        fun candidate(index: Int): String {
+            return when (variant) {
+                "copy" -> if (index == 1) "$stem copy$extension" else "$stem copy $index$extension"
+                "renamed" -> if (index == 1) "$stem (renamed)$extension" else "$stem (renamed $index)$extension"
+                else -> "$stem $index$extension"
+            }
+        }
+
+        var index = 1
+        var next = candidate(index)
+        while (existing.contains(next)) {
+            index += 1
+            next = candidate(index)
+        }
+        return next
+    }
+
+    private fun sortedChildrenForDirectory(directoryId: String): List<ContextMenuDemoFile> {
+        val children = contextMenuFiles.filter { it.parentId == directoryId }
+        val comparator = when (contextMenuSortMode) {
+            "Date" -> compareByDescending<ContextMenuDemoFile> { it.updatedAtOrder }.thenBy { it.name.lowercase() }
+            "Size" -> compareByDescending<ContextMenuDemoFile> { it.sizeKb }.thenBy { it.name.lowercase() }
+            else -> compareBy<ContextMenuDemoFile> { it.name.lowercase() }
+        }
+        return children.sortedWith(
+            compareBy<ContextMenuDemoFile> { !it.isDirectory }.then(comparator)
+        )
+    }
+
+    private fun collectSubtree(
+        rootId: String,
+        byId: Map<String, ContextMenuDemoFile> = contextMenuFiles.associateBy { it.id }
+    ): List<ContextMenuDemoFile> {
+        val root = byId[rootId] ?: return emptyList()
+        val queue = ArrayDeque<String>()
+        val orderedIds = ArrayList<String>()
+        queue += root.id
+        while (queue.isNotEmpty()) {
+            val currentId = queue.removeFirst()
+            orderedIds += currentId
+            byId.values
+                .filter { it.parentId == currentId }
+                .sortedBy { it.name.lowercase() }
+                .forEach { queue += it.id }
+        }
+        return orderedIds.mapNotNull { byId[it] }
+    }
+
+    private fun collectSubtreeIds(rootId: String): Set<String> {
+        return collectSubtree(rootId).map { it.id }.toSet()
+    }
+
+    private fun isDescendantDirectory(ancestorId: String, candidateId: String): Boolean {
+        if (ancestorId == candidateId) return true
+        val byId = contextMenuFiles.associateBy { it.id }
+        var current = byId[candidateId]
+        while (current != null) {
+            if (current.parentId == ancestorId) return true
+            current = current.parentId?.let { byId[it] }
+        }
+        return false
+    }
+
+    private fun splitContextMenuName(name: String): Pair<String, String> {
+        val dotIndex = name.lastIndexOf('.')
+        return if (dotIndex > 0 && dotIndex < name.length - 1) {
+            name.substring(0, dotIndex) to name.substring(dotIndex)
+        } else {
+            name to ""
+        }
+    }
+
+    private fun defaultContextMenuFiles(): List<ContextMenuDemoFile> {
+        return listOf(
+            ContextMenuDemoFile(
+                id = CONTEXT_MENU_ROOT_ID,
+                parentId = null,
+                name = "Workspace",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = true,
+                updatedAtOrder = 1L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.docs",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "Documents",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 2L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.downloads",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "Downloads",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 3L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.projects",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "Projects",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 4L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.readme",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "README.md",
+                sizeKb = 4,
+                isDirectory = false,
+                locked = true,
+                updatedAtOrder = 5L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.build",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "build.gradle.kts",
+                sizeKb = 3,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 6L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.mods",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "mods.toml",
+                sizeKb = 1,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 7L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.atlas",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "TexturesAtlas.kt",
+                sizeKb = 19,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 8L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.notes",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "notes.txt",
+                sizeKb = 2,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 9L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.roadmap",
+                parentId = CONTEXT_MENU_ROOT_ID,
+                name = "roadmap.md",
+                sizeKb = 6,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 10L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.docs.spec",
+                parentId = "fs.docs",
+                name = "spec.md",
+                sizeKb = 5,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 11L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.docs.todos",
+                parentId = "fs.docs",
+                name = "todos.txt",
+                sizeKb = 2,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 12L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.projects.clientA",
+                parentId = "fs.projects",
+                name = "Client A",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 13L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.projects.archive",
+                parentId = "fs.projects",
+                name = "Archive",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 14L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.archive.2025",
+                parentId = "fs.projects.archive",
+                name = "2025",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 15L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.archive.2026",
+                parentId = "fs.projects.archive",
+                name = "2026",
+                sizeKb = 0,
+                isDirectory = true,
+                locked = false,
+                updatedAtOrder = 16L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.archive.2026.q1",
+                parentId = "fs.archive.2026",
+                name = "Q1-report.md",
+                sizeKb = 7,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 17L
+            ),
+            ContextMenuDemoFile(
+                id = "fs.downloads.asset",
+                parentId = "fs.downloads",
+                name = "texture-pack.zip",
+                sizeKb = 24,
+                isDirectory = false,
+                locked = false,
+                updatedAtOrder = 18L
+            )
+        )
+    }
+
     private fun defaultDndItems(): List<DndDemoItem> {
         return listOf(
             DndDemoItem("diamond", "Diamond", McItemStackRef(ItemStack(Items.diamond))),
@@ -1555,6 +2182,69 @@ class ShowcaseWindow : DsglWindow() {
             for (x in 0 until image.width) {
                 val useA = ((x / 5) + (y / 5)) % 2 == 0
                 image.setRGB(x, y, if (useA) colorA else colorB)
+            }
+        }
+        ImageIO.write(image, "png", file)
+    }
+
+    private fun writeDemoFolderIcon(file: File) {
+        file.parentFile?.mkdirs()
+        val image = BufferedImage(18, 18, BufferedImage.TYPE_INT_ARGB)
+        val bg = 0xFFE0B25A.toInt()
+        val fg = 0xFFC7923D.toInt()
+        for (y in 0 until image.height) {
+            for (x in 0 until image.width) {
+                image.setRGB(x, y, 0x00000000)
+            }
+        }
+        for (y in 5 until 15) {
+            for (x in 1 until 17) {
+                image.setRGB(x, y, bg)
+            }
+        }
+        for (y in 3 until 7) {
+            for (x in 3 until 9) {
+                image.setRGB(x, y, fg)
+            }
+        }
+        for (x in 1 until 17) {
+            image.setRGB(x, 5, fg)
+            image.setRGB(x, 14, fg)
+        }
+        for (y in 5 until 15) {
+            image.setRGB(1, y, fg)
+            image.setRGB(16, y, fg)
+        }
+        ImageIO.write(image, "png", file)
+    }
+
+    private fun writeDemoDocumentIcon(file: File) {
+        file.parentFile?.mkdirs()
+        val image = BufferedImage(18, 18, BufferedImage.TYPE_INT_ARGB)
+        val bg = 0xFFD7E6F8.toInt()
+        val fg = 0xFF94AAC4.toInt()
+        for (y in 0 until image.height) {
+            for (x in 0 until image.width) {
+                image.setRGB(x, y, 0x00000000)
+            }
+        }
+        for (y in 2 until 16) {
+            for (x in 3 until 14) {
+                image.setRGB(x, y, bg)
+            }
+        }
+        for (x in 3 until 14) {
+            image.setRGB(x, 2, fg)
+            image.setRGB(x, 15, fg)
+        }
+        for (y in 2 until 16) {
+            image.setRGB(3, y, fg)
+            image.setRGB(13, y, fg)
+        }
+        for (line in 0..4) {
+            val y = 5 + line * 2
+            for (x in 5 until 12) {
+                image.setRGB(x, y, fg)
             }
         }
         ImageIO.write(image, "png", file)

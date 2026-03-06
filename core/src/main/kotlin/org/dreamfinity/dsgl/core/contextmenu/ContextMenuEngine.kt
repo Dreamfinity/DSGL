@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.contextmenu
+﻿package org.dreamfinity.dsgl.core.contextmenu
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
@@ -225,7 +225,7 @@ class ContextMenuEngine(
                 val textColor = if (snapshot.enabled) style.itemTextColor else style.disabledTextColor
 
                 val indicatorText = when {
-                    snapshot.checked -> "✓"
+                    snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
                     !snapshot.icon.isNullOrEmpty() -> snapshot.icon
                     else -> null
                 }
@@ -251,7 +251,7 @@ class ContextMenuEngine(
                 )
 
                 val hintText = when {
-                    snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU && snapshot.hint.isNullOrEmpty() -> "›"
+                    snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU && snapshot.hint.isNullOrEmpty() -> ContextMenuGlyphs.SUBMENU_ARROW
                     else -> snapshot.hint
                 }
                 if (!hintText.isNullOrEmpty()) {
@@ -758,3 +758,4 @@ class ContextMenuEngine(
         private const val PLACEMENT_SUBMENU: Int = 3
     }
 }
+

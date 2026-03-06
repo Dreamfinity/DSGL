@@ -1,24 +1,62 @@
-package org.dreamfinity.dsgl.mc1710.demo.sections
+﻿package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.ButtonProps
 import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.ImageProps
+import org.dreamfinity.dsgl.core.InputProps
 import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuStyle
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
+import org.dreamfinity.dsgl.core.dnd.DragPreviewMode
+import org.dreamfinity.dsgl.core.dnd.applyDraggable
+import org.dreamfinity.dsgl.core.dnd.applyDroppable
+import org.dreamfinity.dsgl.core.dnd.useDraggable
+import org.dreamfinity.dsgl.core.dnd.useDroppable
 import org.dreamfinity.dsgl.core.dom.onContextMenu
+import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.style.AlignItems
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
-import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
+
+private const val TILE_WIDTH = 86
+private const val TILE_HEIGHT = 92
+private const val TILE_ICON_SIZE = 30
+private const val TILE_GHOST_SIZE = 30
+private const val ICON_FOLDER = "file://demo/folder.png"
+private const val ICON_DOCUMENT = "file://demo/document.png"
 
 fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    val files = listOf(
-        "README.md",
-        "build.gradle.kts",
-        "mods.toml",
-        "TexturesAtlas.kt",
-        "notes.txt",
-        "roadmap.md"
+    val entries = window.contextMenuVisibleFiles()
+    val listWidth = (contentWidth - 16).coerceAtLeast(120)
+    val gridColumns = (listWidth / (TILE_WIDTH + 10)).coerceAtLeast(1)
+
+    ContextMenuRuntime.engine.setStyle(
+        ContextMenuStyle(
+            panelPaddingX = 4,
+            panelPaddingY = 4,
+            rowPaddingX = 6,
+            rowPaddingY = 2,
+            rowGap = 1,
+            iconColumnMinWidth = 13,
+            minPanelWidth = 158,
+            panelBackgroundColor = 0xFF212833.toInt(),
+            panelBorderColor = 0xFF5F7387.toInt(),
+            panelShadowColor = 0x7C0E1520,
+            itemHoverBackgroundColor = 0xFF33506B.toInt(),
+            itemSelectedBackgroundColor = 0xFF2A4155.toInt(),
+            itemTextColor = 0xFFF1F6FC.toInt(),
+            disabledTextColor = 0xFF8D98A4.toInt(),
+            hintTextColor = 0xFFC5D2E1.toInt(),
+            separatorColor = 0xFF4C6074.toInt(),
+            checkMarkColor = 0xFF8BD59D.toInt(),
+            submenuArrowColor = 0xFFC9D7E6.toInt()
+        )
     )
 
     div(
@@ -29,178 +67,442 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
             gap = 4
         ).asFlexColumn()
     ) {
-        text(TextProps("Right-click the background zone or any file row."))
-        text(TextProps("Submenus open with hover intent, ESC pops one level, outside click closes all.").apply {
-            color = DEMO_MUTED
-        })
+        text(TextProps("Pseudo filesystem: tile view + context menu + drag/drop"))
         text(
             TextProps {
-                "lastTarget=${window.contextMenuLastTarget} lastAction=${window.contextMenuLastAction} actions=${window.contextMenuActionCount} pinned=${window.contextMenuPinned}"
+                "path=${window.contextMenuCurrentPath()} sort=${window.contextMenuSortMode} selected=${window.contextMenuFileSelection}"
+            }.apply { color = DEMO_MUTED }
+        )
+        text(
+            TextProps {
+                "lastAction=${window.contextMenuLastAction} target=${window.contextMenuLastTarget} actions=${window.contextMenuActionCount}"
             }.apply { color = DEMO_MUTED }
         )
 
         div(ComponentProps(gap = 4).asFlexRow()) {
             button(
-                ButtonProps("Open programmatic menu").apply {
-                    onMouseClick = {
-                        ContextMenuRuntime.host.openAtCursor(buildBackgroundMenu(window), 42, 58)
-                    }
+                ButtonProps("New File").apply {
+                    onMouseClick = { window.contextMenuCreateFile() }
                 }
             )
             button(
-                ButtonProps("Close menus").apply {
-                    onMouseClick = {
-                        ContextMenuRuntime.host.closeAll()
-                    }
+                ButtonProps("New Folder").apply {
+                    onMouseClick = { window.contextMenuCreateFolder() }
                 }
             )
-        }
-
-        val backgroundNode = div(
-            ComponentProps(
-                key = "section.contextMenu.background",
-                width = contentWidth - 8,
-                height = 54,
-                padding = 4,
-                backgroundColor = DEMO_SURFACE_ALT,
-                style = { border(1, 0xFF6E7A89.toInt()) }
-            )
-        ) {
-            text(TextProps("Background area menu (cursor placement)"))
-            text(TextProps("Includes disabled item, separators, 3+ levels and overflow scroll").apply {
-                color = DEMO_MUTED
-            })
-        }
-        backgroundNode.onContextMenu {
-            openMenu(buildBackgroundMenu(window))
         }
 
         div(
             ComponentProps(
-                key = "section.contextMenu.files",
+                key = "section.contextMenu.window",
                 width = contentWidth - 8,
-                gap = 2,
+                height = (contentHeight - 58).coerceAtLeast(80),
                 padding = 3,
-                backgroundColor = 0xFF303944.toInt(),
-                style = { border(1, 0xFF627282.toInt()) }
+                gap = 2,
+                backgroundColor = 0xFF2A313B.toInt(),
+                style = { border(1, 0xFF5B6A7A.toInt()) }
             ).asFlexColumn()
         ) {
-            text(TextProps("File list (anchored to row)"))
-            files.forEachIndexed { index, fileName ->
-                val rowKey = "section.contextMenu.file.$index"
-                val selected = window.contextMenuFileSelection == fileName
-                val rowNode = div(
-                    ComponentProps(
-                        key = rowKey,
-                        width = contentWidth - 22,
-                        padding = 3,
-                        backgroundColor = if (selected) 0xFF3A5168.toInt() else 0xFF3A424D.toInt(),
-                        style = { border(1, 0xFF566170.toInt()) }
+            div(
+                ComponentProps(
+                    key = "section.contextMenu.pathbar",
+                    width = contentWidth - 16,
+                    padding = 2,
+                    gap = 2,
+                    backgroundColor = 0xFF25303A.toInt(),
+                    style = { border(1, 0xFF4F6175.toInt()) }
+                ).asFlexRow()
+            ) {
+                button(
+                    ButtonProps("<").apply {
+                        key = "section.contextMenu.path.back"
+                        onMouseClick = { window.contextMenuNavigateBack() }
+                        disabled = !window.contextMenuCanGoBack()
+                    }
+                )
+                button(
+                    ButtonProps(">").apply {
+                        key = "section.contextMenu.path.forward"
+                        onMouseClick = { window.contextMenuNavigateForward() }
+                        disabled = !window.contextMenuCanGoForward()
+                    }
+                )
+                val breadcrumbs = window.contextMenuBreadcrumbs()
+                breadcrumbs.forEachIndexed { index, breadcrumb ->
+                    if (index > 0) {
+                        text(TextProps("/").apply { color = DEMO_MUTED })
+                    }
+                    val breadcrumbKey = "section.contextMenu.path.${breadcrumb.id}"
+                    val breadcrumbDrop = window.useDroppable(
+                        id = "context.fs.path.${breadcrumb.id}",
+                        nodeKey = breadcrumbKey,
+                        accepts = { active ->
+                            val activeId = active.id ?: return@useDroppable false
+                            window.contextMenuCanDropIntoDirectory(activeId, breadcrumb.id)
+                        },
+                        onDragEnter = { event, active ->
+                            if (event.target?.key != breadcrumbKey) return@useDroppable
+                            val activeId = active?.id ?: return@useDroppable
+                            if (window.contextMenuCanDropIntoDirectory(activeId, breadcrumb.id)) {
+                                window.contextMenuDragHoverDirectoryId = breadcrumb.id
+                                event.cancelled = true
+                            }
+                        },
+                        onDragOver = { event, active ->
+                            if (event.target?.key != breadcrumbKey) return@useDroppable
+                            val activeId = active?.id ?: return@useDroppable
+                            if (window.contextMenuCanDropIntoDirectory(activeId, breadcrumb.id)) {
+                                window.contextMenuDragHoverDirectoryId = breadcrumb.id
+                                event.cancelled = true
+                            }
+                        },
+                        onDragLeave = { event, _ ->
+                            if (event.target?.key != breadcrumbKey) return@useDroppable
+                            if (window.contextMenuDragHoverDirectoryId == breadcrumb.id) {
+                                window.contextMenuDragHoverDirectoryId = null
+                            }
+                            event.cancelled = true
+                        },
+                        onDrop = { event, active ->
+                            if (event.target?.key != breadcrumbKey) return@useDroppable
+                            val moving = window.contextMenuEntryById(active?.id) ?: return@useDroppable
+                            window.contextMenuMoveFile(moving, breadcrumb.id)
+                            event.cancelled = true
+                        }
                     )
-                ) {
-                    text(TextProps(fileName))
-                }
-                rowNode.onContextMenu {
-                    openMenuAnchored(buildFileMenu(window, fileName), anchor = rowNode.bounds)
+                    val isCurrent = breadcrumb.id == window.contextMenuCurrentDirectoryId
+                    val isDropHover = window.contextMenuDragHoverDirectoryId == breadcrumb.id
+                    button(
+                        ButtonProps(breadcrumb.label).apply {
+                            key = breadcrumbKey
+                            backgroundColor = when {
+                                isDropHover -> 0xFF40617F.toInt()
+                                isCurrent -> 0xFF364A5E.toInt()
+                                else -> 0xFF2B3A4A.toInt()
+                            }
+                            onMouseClick = {
+                                window.contextMenuOpenDirectory(breadcrumb.id, pushHistory = true)
+                            }
+                            style = {
+                                border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
+                            }
+                            applyDroppable(breadcrumbDrop)
+                        }
+                    )
                 }
             }
-        }
-    }
-}
 
-private fun buildBackgroundMenu(window: ShowcaseWindow) = contextMenu(id = "demo.context.background") {
-    item("Refresh workspace", id = "refresh") {
-        icon("[R]")
-        onClick { window.recordContextMenuAction("background", "refresh workspace") }
-    }
-    item("Pin toolbar", id = "pin") {
-        icon("[*]")
-        checkedIf { window.contextMenuPinned }
-        closeOnAction(false)
-        onClick {
-            window.contextMenuPinned = !window.contextMenuPinned
-            window.recordContextMenuAction("background", "pin toolbar=${window.contextMenuPinned}")
-        }
-    }
-    item("Paste", id = "paste") {
-        enabledIf { window.contextMenuPinned }
-        hint("Ctrl+V")
-        onClick { window.recordContextMenuAction("background", "paste") }
-    }
-    separator("line.main")
-    submenu("Create", id = "create") {
-        item("Text file", id = "create.txt") {
-            icon("[+]")
-            onClick { window.recordContextMenuAction("background", "create text file") }
-        }
-        item("Folder", id = "create.folder") {
-            icon("[+]")
-            onClick { window.recordContextMenuAction("background", "create folder") }
-        }
-        submenu("Advanced", id = "create.advanced") {
-            item("Module", id = "create.module") {
-                onClick { window.recordContextMenuAction("background", "create module") }
-            }
-            submenu("Deep", id = "create.deep") {
-                submenu("Level 3", id = "create.deep.l3") {
-                    item("Script template", id = "create.script") {
-                        onClick { window.recordContextMenuAction("background", "create script template") }
+            val listDroppable = window.useDroppable(
+                id = "context.fs.current.${window.contextMenuCurrentDirectoryId}",
+                nodeKey = "section.contextMenu.list",
+                accepts = { active ->
+                    val activeId = active.id ?: return@useDroppable false
+                    window.contextMenuCanDropIntoDirectory(activeId, window.contextMenuCurrentDirectoryId)
+                },
+                onDragEnter = { event, active ->
+                    if (event.target?.key != "section.contextMenu.list") return@useDroppable
+                    val activeId = active?.id
+                    if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, window.contextMenuCurrentDirectoryId)) {
+                        window.contextMenuDragHoverDirectoryId = window.contextMenuCurrentDirectoryId
+                    }
+                },
+                onDragOver = { event, active ->
+                    if (event.target?.key != "section.contextMenu.list") return@useDroppable
+                    val activeId = active?.id
+                    if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, window.contextMenuCurrentDirectoryId)) {
+                        window.contextMenuDragHoverDirectoryId = window.contextMenuCurrentDirectoryId
+                    }
+                },
+                onDragLeave = { event, _ ->
+                    if (event.target?.key != "section.contextMenu.list") return@useDroppable
+                    if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
+                        window.contextMenuDragHoverDirectoryId = null
+                    }
+                },
+                onDrop = { event, active ->
+                    if (event.target?.key != "section.contextMenu.list") return@useDroppable
+                    val moving = window.contextMenuEntryById(active?.id) ?: return@useDroppable
+                    window.contextMenuMoveFile(moving, window.contextMenuCurrentDirectoryId)
+                }
+            )
+
+            val listNode = div(
+                ComponentProps(
+                    key = "section.contextMenu.list",
+                    width = listWidth,
+                    gap = 8,
+                    padding = 4,
+                    backgroundColor = if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
+                        0xFF2F4358.toInt()
+                    } else {
+                        0xFF2B343F.toInt()
+                    },
+                    style = {
+                        border(1, 0xFF4F6175.toInt())
+                        display = Display.Grid
+                        this.gridColumns = gridColumns
+                        gap = 4
+                    }
+                ).apply {
+                    applyDroppable(listDroppable)
+                }
+            ) {
+                if (entries.isEmpty()) {
+                    div(
+                        ComponentProps(
+                            width = listWidth - 8,
+                            padding = 2
+                        )
+                    ) {
+                        text(TextProps("Folder is empty. Right-click to create file/folder.").apply { color = DEMO_MUTED })
+                    }
+                } else {
+                    entries.forEach { file ->
+                        renderContextMenuEntryTile(window, file)
                     }
                 }
             }
-        }
-    }
-    separator("line.overflow")
-    submenu("Recent files", id = "recent") {
-        for (index in 1..26) {
-            item("Recent item $index", id = "recent.$index") {
-                hint("Alt+$index")
-                onClick { window.recordContextMenuAction("background", "recent item $index") }
+            listNode.onContextMenu {
+                val anchorX = anchorRect?.x ?: mouseX
+                val anchorY = anchorRect?.y ?: mouseY
+                window.recordContextMenuCursor(
+                    owner = "background",
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    localX = mouseX - anchorX,
+                    localY = mouseY - anchorY
+                )
+                openMenu(buildBackgroundMenu(window))
             }
         }
     }
 }
 
-private fun buildFileMenu(window: ShowcaseWindow, fileName: String) = contextMenu(id = "demo.context.file.$fileName") {
-    item("Open", id = "file.open") {
-        icon("[>]")
-        onClick {
-            window.contextMenuFileSelection = fileName
-            window.recordContextMenuAction(fileName, "open")
+private fun UiScope.renderContextMenuEntryTile(
+    window: ShowcaseWindow,
+    file: ShowcaseWindow.ContextMenuDemoFile
+) {
+    val tileKey = "context.fs.tile.${file.id}"
+    val icon = iconFor(file)
+    val draggable = window.useDraggable(
+        id = file.id,
+        nodeKey = tileKey,
+        type = "context.fs.entry",
+        data = file.id,
+        previewMode = DragPreviewMode.GHOST,
+        hideSourceWhileDragging = false,
+        renderPreview = {
+            val offset = TILE_GHOST_SIZE / 2
+            image(icon, -offset, -offset, TILE_GHOST_SIZE, TILE_GHOST_SIZE)
+            rect(-offset, -offset, TILE_GHOST_SIZE, TILE_GHOST_SIZE, 0x66000000)
+        },
+        onDragStart = { event ->
+            event.dataTransfer.setDragImage(tileKey, 0, 0)
         }
-    }
-    item("Rename", id = "file.rename") {
-        closeOnAction(false)
-        onClick {
-            window.contextMenuFileSelection = fileName
-            window.recordContextMenuAction(fileName, "rename")
-        }
-    }
-    item("Delete", id = "file.delete") {
-        enabledIf { fileName != "README.md" }
-        onClick {
-            window.contextMenuFileSelection = fileName
-            window.recordContextMenuAction(fileName, "delete")
-        }
-    }
-    separator("file.sep")
-    submenu("Share", id = "file.share") {
-        item("Copy path", id = "file.share.path") {
-            hint("Ctrl+C")
-            onClick { window.recordContextMenuAction(fileName, "copy path") }
-        }
-        submenu("Permissions", id = "file.share.perm") {
-            item("Read-only", id = "file.perm.readonly") {
-                checkedIf { window.contextMenuPinned }
-                closeOnAction(false)
-                onClick {
-                    window.contextMenuPinned = !window.contextMenuPinned
-                    window.recordContextMenuAction(fileName, "toggle read-only=${window.contextMenuPinned}")
+    )
+    val droppable = if (file.isDirectory) {
+        window.useDroppable(
+            id = "context.fs.dir.${file.id}",
+            nodeKey = tileKey,
+            accepts = { active ->
+                val activeId = active.id ?: return@useDroppable false
+                window.contextMenuCanDropIntoDirectory(activeId, file.id)
+            },
+            onDragEnter = { event, active ->
+                val activeId = active?.id
+                if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, file.id)) {
+                    window.contextMenuDragHoverDirectoryId = file.id
+                    event.cancelled = true
                 }
+            },
+            onDragOver = { event, active ->
+                val activeId = active?.id
+                if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, file.id)) {
+                    window.contextMenuDragHoverDirectoryId = file.id
+                    event.cancelled = true
+                }
+            },
+            onDragLeave = { event, _ ->
+                if (window.contextMenuDragHoverDirectoryId == file.id) {
+                    window.contextMenuDragHoverDirectoryId = null
+                }
+                event.cancelled = true
+            },
+            onDrop = { event, active ->
+                val moving = window.contextMenuEntryById(active?.id) ?: return@useDroppable
+                window.contextMenuMoveFile(moving, file.id)
+                event.cancelled = true
             }
-            item("Public link", id = "file.perm.link") {
-                onClick { window.recordContextMenuAction(fileName, "create public link") }
+        )
+    } else {
+        null
+    }
+    val isEditingName = window.contextMenuRenameTargetId == file.id
+    val isSelected = window.contextMenuFileSelection == file.name
+    val isDropHover = window.contextMenuDragHoverDirectoryId == file.id
+    val tileNode = div(
+        ComponentProps(
+            key = tileKey,
+            backgroundColor = when {
+                isDropHover -> 0xFF43607A.toInt()
+                isSelected -> 0xFF3A5168.toInt()
+                else -> 0xFF33414E.toInt()
+            },
+            onMouseClick = { event ->
+                if (!isEditingName && event.mouseButton == MouseButton.LEFT) {
+                    window.contextMenuHandleEntryClick(file)
+                }
+            },
+            style = {
+                border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
+                alignItems = AlignItems.Center
+                justifyContent = JustifyContent.Center
             }
+        ).apply {
+            applyDraggable(draggable)
+            if (droppable != null) {
+                applyDroppable(droppable)
+            }
+        }.asFlexColumn()
+    ) {
+        img(
+            ImageProps(icon).apply {
+                width = TILE_ICON_SIZE
+                height = TILE_ICON_SIZE
+            }
+        )
+        if (isEditingName) {
+            input(
+                InputProps(
+                    InputType.Text(
+                        value = window.contextMenuRenameDraft,
+                        placeholder = "Name"
+                    )
+                ).apply {
+                    key = "contextMenu.rename.inline.${file.id}"
+                    onInput = { event ->
+                        window.contextMenuRenameDraft = event.value
+                    }
+                    onKeyDown = { event ->
+                        when (event.keyCode) {
+                            KeyCodes.ENTER -> window.contextMenuApplyRename()
+                            KeyCodes.ESCAPE -> window.contextMenuCancelRename()
+                        }
+                    }
+                }
+            )
+        } else {
+            text(
+                TextProps(file.name).apply {
+                    color = if (file.locked) 0xFFE9A56E.toInt() else 0xFFEAF2FD.toInt()
+                }
+            )
         }
+    }
+    tileNode.onContextMenu {
+        val anchorX = anchorRect?.x ?: mouseX
+        val anchorY = anchorRect?.y ?: mouseY
+        window.recordContextMenuCursor(
+            owner = "file:${file.id}",
+            mouseX = mouseX,
+            mouseY = mouseY,
+            localX = mouseX - anchorX,
+            localY = mouseY - anchorY
+        )
+        openMenu(buildEntryMenu(window, file))
     }
 }
+
+private fun iconFor(file: ShowcaseWindow.ContextMenuDemoFile): String {
+    return if (file.isDirectory) ICON_FOLDER else ICON_DOCUMENT
+}
+
+private fun buildBackgroundMenu(window: ShowcaseWindow) = contextMenu(id = "demo.context.background") {
+    submenu("Create", id = "create") {
+        icon("+")
+        item("File", id = "create.file") {
+            icon("FI")
+            onClick { window.contextMenuCreateFile() }
+        }
+        item("Directory", id = "create.dir") {
+            icon("FD")
+            onClick { window.contextMenuCreateFolder() }
+        }
+    }
+
+    item("Paste", id = "paste") {
+        icon("CL")
+        hint("Ctrl+V")
+        enabledIf { window.contextMenuClipboardHasData }
+        onClick { window.contextMenuPasteIntoWorkspace() }
+    }
+
+    submenu("Sort by", id = "sort") {
+        icon("AZ")
+        item("Name", id = "sort.name") {
+            checkedIf { window.contextMenuSortMode == "Name" }
+            onClick { window.contextMenuSetSortMode("Name") }
+        }
+        item("Date", id = "sort.date") {
+            checkedIf { window.contextMenuSortMode == "Date" }
+            onClick { window.contextMenuSetSortMode("Date") }
+        }
+        item("Size", id = "sort.size") {
+            checkedIf { window.contextMenuSortMode == "Size" }
+            onClick { window.contextMenuSetSortMode("Size") }
+        }
+    }
+
+    separator("main.sep")
+
+    item("Refresh", id = "refresh") {
+        icon("RF")
+        onClick { window.contextMenuRefreshWorkspace() }
+    }
+}
+
+private fun buildEntryMenu(window: ShowcaseWindow, file: ShowcaseWindow.ContextMenuDemoFile) =
+    contextMenu(id = "demo.context.entry.${file.id}") {
+        if (file.isDirectory) {
+            item("Open", id = "entry.open") {
+                icon("OP")
+                onClick { window.contextMenuOpenDirectory(file.id, pushHistory = true) }
+            }
+            submenu("Create Inside", id = "entry.createInside") {
+                icon("+")
+                item("File", id = "entry.createInside.file") {
+                    icon("FI")
+                    onClick { window.contextMenuCreateFile(file.id) }
+                }
+                item("Directory", id = "entry.createInside.dir") {
+                    icon("FD")
+                    onClick { window.contextMenuCreateFolder(file.id) }
+                }
+            }
+            separator("entry.sep.open")
+        }
+
+        item("Duplicate", id = "entry.duplicate") {
+            icon("CP")
+            onClick { window.contextMenuDuplicateFile(file) }
+        }
+
+        item("Rename", id = "entry.rename") {
+            icon("RN")
+            enabledIf { !file.locked }
+            onClick { window.contextMenuBeginRename(file) }
+        }
+
+        item("Delete", id = "entry.delete") {
+            icon("DL")
+            enabledIf { !file.locked }
+            onClick { window.contextMenuDeleteFile(file) }
+        }
+
+        separator("entry.sep.copy")
+
+        item("Copy", id = "entry.copy") {
+            icon("CY")
+            onClick { window.contextMenuCopyFile(file) }
+        }
+    }

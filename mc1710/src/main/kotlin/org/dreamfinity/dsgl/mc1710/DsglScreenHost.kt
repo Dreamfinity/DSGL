@@ -287,6 +287,7 @@ abstract class DsglScreenHost(
         val width = scaled.scaledWidth
         val height = scaled.scaledHeight
         if (force || width != lastWidth || height != lastHeight) {
+            ContextMenuRuntime.engine.closeAll()
             lastWidth = width
             lastHeight = height
             needsLayout = true

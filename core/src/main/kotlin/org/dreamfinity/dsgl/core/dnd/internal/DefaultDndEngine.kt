@@ -434,21 +434,15 @@ object DefaultDndEngine : DndEngine {
         }
         active.collisionCandidateCount = candidates.size
         active.sourceExcludedFromHitTest = excludedSource || active.sourceExcludedFromHitTest
+        return selectDropTargetCandidate(candidates, active.dropTargetNode)
+    }
 
-        val previousTarget = active.dropTargetNode
-        if (previousTarget != null) {
-            for (index in candidates.indices.reversed()) {
-                val candidate = candidates[index]
-                if (isSameNode(candidate, previousTarget)) {
-                    return candidate
-                }
-            }
+    internal fun selectDropTargetCandidate(candidates: List<DOMNode>, previousTarget: DOMNode?): DOMNode? {
+        val deepest = candidates.lastOrNull() ?: return null
+        if (previousTarget != null && isSameNode(previousTarget, deepest)) {
+            return deepest
         }
-
-        for (index in candidates.size - 1 downTo 0) {
-            return candidates[index]
-        }
-        return null
+        return deepest
     }
 
     private fun dispatchDragEvent(active: ActiveSession) {
