@@ -1,13 +1,9 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.TextProps
-import org.dreamfinity.dsgl.core.ItemStackProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dnd.*
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private const val LEFT_PANEL_PERCENT = 58
@@ -19,7 +15,7 @@ private const val BOX_HEIGHT = 52
 private const val BOX_CARD_SIZE = 28
 private const val HIGHLIGHT_DELTA = 22
 
-fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     val splitAllowed = contentWidth >= (MIN_LEFT_WIDTH + MIN_RIGHT_WIDTH + PANELS_GAP)
     val availableWidth = (contentWidth - PANELS_GAP).coerceAtLeast(0)
     val leftIdeal = (availableWidth * LEFT_PANEL_PERCENT) / 100
@@ -35,128 +31,109 @@ fun UiScope.renderDragDropSection(window: ShowcaseWindow, contentWidth: Int, con
     }
     val monitor = DndSystem.monitor()
 
-    div(
-        ComponentProps(
-            key = "section.dragDrop",
-            width = contentWidth,
-            height = contentHeight,
-            gap = 4
-        ).asFlexColumn()
-    ) {
-        text(TextProps("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview)."))
-        text(
-            TextProps {
-                val mode = monitor.mode?.name ?: "none"
+    div({
+        key = "section.dragDrop"
+        width = contentWidth
+        height = contentHeight
+        gap = 4
+        asFlexColumn()
+    }) {
+        text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
+        text({
+            val mode = monitor.mode?.name ?: "none"
+            value =
                 "active=${window.dndActiveItem} mode=$mode effect=${window.dndDropEffect} hover=${window.dndHoverZone}"
-            }.apply { color = DEMO_MUTED }
+            color = DEMO_MUTED
+        })
+        text("types=${window.dndTransferTypes} dragTicks=${window.dndDragTickCount} action=${window.dndLastAction}", {
+            color = DEMO_MUTED
+        })
+        text(
+            "debug active=${monitor.sourceKey ?: "none"} over=${window.dndDebugOverId} container=${window.dndDebugOverContainerId}",
+            { color = DEMO_MUTED }
         )
         text(
-            TextProps {
-                "types=${window.dndTransferTypes} dragTicks=${window.dndDragTickCount} action=${window.dndLastAction}"
-            }.apply { color = DEMO_MUTED }
-        )
-        text(
-            TextProps {
-                "debug active=${monitor.sourceKey ?: "none"} over=${window.dndDebugOverId} container=${window.dndDebugOverContainerId}"
-            }.apply { color = DEMO_MUTED }
-        )
-        text(
-            TextProps {
-                "candidates=${window.dndDebugCandidatesCount} insert=${window.dndDebugInsertPosition} excludeActive=${window.dndDebugExcludesActiveCard}"
-            }.apply { color = DEMO_MUTED }
+            "candidates=${window.dndDebugCandidatesCount} insert=${window.dndDebugInsertPosition} excludeActive=${window.dndDebugExcludesActiveCard}",
+            { color = DEMO_MUTED }
         )
 
-        div(ComponentProps(gap = 3).asFlexRow()) {
-            button(
-                ButtonProps(if (window.dndGhostEnabled) "Ghost ON" else "Ghost OFF").apply {
-                    onMouseClick = {
-                        window.dndGhostEnabled = !window.dndGhostEnabled
-                        window.appendInfo("DnD ghost=${window.dndGhostEnabled}")
-                    }
+        div({ gap = 3; asFlexRow() }) {
+            button(if (window.dndGhostEnabled) "Ghost ON" else "Ghost OFF", {
+                onMouseClick = {
+                    window.dndGhostEnabled = !window.dndGhostEnabled
+                    window.appendInfo("DnD ghost=${window.dndGhostEnabled}")
                 }
-            )
-            button(
-                ButtonProps(if (window.dndHideSourceWhileDragging) "Hide ON" else "Hide OFF").apply {
-                    onMouseClick = {
-                        window.dndHideSourceWhileDragging = !window.dndHideSourceWhileDragging
-                        window.appendInfo("DnD hideSource=${window.dndHideSourceWhileDragging}")
-                    }
+            })
+            button(if (window.dndHideSourceWhileDragging) "Hide ON" else "Hide OFF", {
+                onMouseClick = {
+                    window.dndHideSourceWhileDragging = !window.dndHideSourceWhileDragging
+                    window.appendInfo("DnD hideSource=${window.dndHideSourceWhileDragging}")
                 }
-            )
-            button(
-                ButtonProps("Reset state").apply {
-                    onMouseClick = { window.resetDndItems("toolbar") }
-                }
-            )
-            button(
-                ButtonProps("Reset logs").apply {
-                    onMouseClick = { window.clearEventLogs() }
-                }
-            )
+            })
+            button("Reset state", {
+                onMouseClick = { window.resetDndItems("toolbar") }
+            })
+            button("Reset logs", {
+                onMouseClick = { window.clearEventLogs() }
+            })
         }
-        div(ComponentProps(gap = 3).asFlexRow()) {
-            button(
-                ButtonProps("k-").apply {
-                    width = 26
-                    onMouseClick = { window.updateDndSmoothing(-4.0) }
-                }
-            )
-            button(
-                ButtonProps("k+").apply {
-                    width = 26
-                    onMouseClick = { window.updateDndSmoothing(4.0) }
-                }
-            )
-            text(TextProps("smoothing k=${"%.1f".format(window.dndSmoothFactor)}").apply { color = DEMO_MUTED })
+        div({ gap = 3; asFlexRow() }) {
+            button("k-", {
+                width = 26
+                onMouseClick = { window.updateDndSmoothing(-4.0) }
+            })
+            button("k+", {
+                width = 26
+                onMouseClick = { window.updateDndSmoothing(4.0) }
+            })
+            text("smoothing k=${"%.1f".format(window.dndSmoothFactor)}", { color = DEMO_MUTED })
         }
         if (splitAllowed) {
-            div(
-                ComponentProps(
-                    key = "dnd.row.main",
-                    width = leftWidth + rightWidth + PANELS_GAP,
-                    height = (contentHeight - 70).coerceAtLeast(96),
-                    gap = PANELS_GAP
-                ).asFlexRow()
-            ) {
-                renderOriginalModeReorder(window, leftWidth)
+            div({
+
+                key = "dnd.row.main"
+                width = leftWidth + rightWidth + PANELS_GAP
+                height = (contentHeight - 70).coerceAtLeast(96)
+                gap = PANELS_GAP
+                asFlexRow()
+            }) {
+                originalModeReorder(window, leftWidth)
                 renderGhostModeBoxes(window, rightWidth)
             }
         } else {
-            div(
-                ComponentProps(
-                    key = "dnd.col.main",
-                    width = contentWidth.coerceAtLeast(0),
-                    height = (contentHeight - 70).coerceAtLeast(96),
-                    gap = 4
-                ).asFlexColumn()
-            ) {
-                renderOriginalModeReorder(window, contentWidth.coerceAtLeast(0))
+            div({
+                key = "dnd.col.main"
+                width = contentWidth.coerceAtLeast(0)
+                height = (contentHeight - 70).coerceAtLeast(96)
+                gap = 4
+                asFlexColumn()
+            }) {
+                originalModeReorder(window, contentWidth.coerceAtLeast(0))
                 renderGhostModeBoxes(window, contentWidth.coerceAtLeast(0))
             }
         }
     }
 }
 
-private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int) {
+private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int) {
     val monitor = DndSystem.monitor()
     val draggedId = extractCardIdFromDragKey(monitor.sourceKey)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
-    div(
-        ComponentProps(
-            key = "dnd.original.panel",
-            width = width,
-            gap = 3,
-            padding = 3,
-            backgroundColor = 0xFF2D333B.toInt(),
-            style = { border(1, 0xFF6B7785.toInt()) }
-        ).asFlexColumn()
-    ) {
-        text(TextProps("ORIGINAL mode: reorder list"))
-        text(TextProps("Detached source follows cursor; slot uses placeholder.").apply { color = DEMO_MUTED })
+    div({
+        key = "dnd.original.panel"
+        width = panelWidth
+        gap = 3
+        padding = 3
+        backgroundColor = 0xFF2D333B.toInt()
+        style = { border(1, 0xFF6B7785.toInt()) }
+        asFlexColumn()
+    }) {
+        text("ORIGINAL mode: reorder list")
+        text("Detached source follows cursor; slot uses placeholder.", { color = DEMO_MUTED })
         if (previewOrder.isEmpty()) {
-            text(TextProps("No items available").apply { color = DEMO_MUTED })
+            text("No items available", { color = DEMO_MUTED })
         } else {
-            val laneCardSize = CARD_SIZE.coerceAtMost((width - 12).coerceAtLeast(24))
+            val laneCardSize = CARD_SIZE.coerceAtMost((panelWidth - 12).coerceAtLeast(24))
             val laneDroppable = window.useDroppable(
                 id = "lane",
                 nodeKey = "dnd.lane.column",
@@ -165,21 +142,19 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                 onDragLeave = { _, _ -> window.clearLaneReorderHoverState() },
                 onDrop = { event, _ -> window.handleDndLaneDrop(event) }
             )
-            div(
-                ComponentProps(
-                    gap = 2,
-                    key = "dnd.lane.column",
-                    backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000,
-                    style = {
-                        border(
-                            1,
-                            if (window.isLaneAppendHighlighted()) 0xFF9EC4E3.toInt() else 0x44405058
-                        )
-                    }
-                ).apply {
-                    applyDroppable(laneDroppable)
-                }.asFlexColumn()
-            ) {
+            div({
+                gap = 2
+                key = "dnd.lane.column"
+                backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000
+                style = {
+                    border(
+                        1,
+                        if (window.isLaneAppendHighlighted()) 0xFF9EC4E3.toInt() else 0x44405058
+                    )
+                }
+                asFlexColumn()
+                applyDroppable(laneDroppable)
+            }) {
                 previewOrder.forEach { item ->
                     val indicator = window.laneIndicatorForCard(item.id, monitor.sourceKey)
                     val isDraggedItem = draggedId != null && draggedId == item.id
@@ -192,10 +167,10 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                         previewMode = DragPreviewMode.ORIGINAL,
                         hideSourceWhileDragging = true
                     )
-                    renderCard(
+                    cardWithItem(
                         item = item,
-                        key = "dnd.lane.card.${item.id}",
-                        size = laneCardSize,
+                        cardKey = "dnd.lane.card.${item.id}",
+                        cardSize = laneCardSize,
                         sortable = sortable,
                         draggableEnabled = !isDraggedItem,
                         highlighted = indicator != ShowcaseWindow.DndLaneIndicator.NONE,
@@ -216,94 +191,86 @@ private fun UiScope.renderOriginalModeReorder(window: ShowcaseWindow, width: Int
                     )
                 }
                 if (window.shouldShowLaneAppendGap(monitor.sourceKey)) {
-                    div(
-                        ComponentProps(
-                            key = "dnd.lane.append.gap",
-                            width = laneCardSize,
-                            height = laneCardSize,
-                            backgroundColor = 0x2A9EC4E3,
-                            style = {
-                                border(1, 0xFF9EC4E3.toInt())
-                                borderRadius(3)
-                            }
-                        )
-                    ) {
-                        text(TextProps("APPEND").apply { color = 0xFFD3E8FB.toInt() })
+                    div({
+                        key = "dnd.lane.append.gap"
+                        width = laneCardSize
+                        height = laneCardSize
+                        backgroundColor = 0x2A9EC4E3
+                        style = {
+                            border(1, 0xFF9EC4E3.toInt())
+                            borderRadius(3)
+                        }
+                    }) {
+                        text("APPEND", { color = 0xFFD3E8FB.toInt() })
                     }
                 }
             }
-            text(
-                TextProps {
-                    val source = monitor.sourceKey ?: "none"
-                    "dragSource=$source previewCount=${previewOrder.size}"
-                }.apply { color = DEMO_MUTED }
-            )
+            text({
+                val source = monitor.sourceKey ?: "none"
+                value = "dragSource=$source previewCount=${previewOrder.size}"
+                color = DEMO_MUTED
+            })
             if (window.dndBoxes.values.any { it.isNotEmpty() }) {
-                text(
-                    TextProps("Tip: drag cards from boxes back to lane to reorder them.")
-                        .apply { color = DEMO_MUTED }
+                text("Tip: drag cards from boxes back to lane to reorder them.", { color = DEMO_MUTED }
                 )
             }
         }
     }
 }
 
-private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, width: Int) {
-    div(
-        ComponentProps(
-            key = "dnd.ghost.panel",
-            width = width,
-            gap = 4,
-            padding = 3,
-            backgroundColor = 0xFF2D333B.toInt(),
-            style = { border(1, 0xFF6B7785.toInt()) }
-        ).asFlexColumn()
-    ) {
-        text(TextProps("Buckets: drop card to move it into a box"))
-        text(TextProps("Ghost toggle applies to drag previews in this panel.").apply { color = DEMO_MUTED })
+private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int) {
+    div({
+        key = "dnd.ghost.panel"
+        width = ghostWidth
+        gap = 4
+        padding = 3
+        backgroundColor = 0xFF2D333B.toInt()
+        style = { border(1, 0xFF6B7785.toInt()) }
+        asFlexColumn()
+    }) {
+        text("Buckets: drop card to move it into a box")
+        text("Ghost toggle applies to drag previews in this panel.", { color = DEMO_MUTED })
 
-        renderDropBox(
+        dropBox(
             window = window,
-            key = "dnd.box.a",
+            boxKey = "dnd.box.a",
             title = "Box A",
             boxId = "box-a",
             color = 0xFF314B3A.toInt(),
             cards = window.bucketCards("box-a"),
-            width = width
+            boxWidth = ghostWidth
         )
-        renderDropBox(
+        dropBox(
             window = window,
-            key = "dnd.box.b",
+            boxKey = "dnd.box.b",
             title = "Box B",
             boxId = "box-b",
             color = 0xFF5A3434.toInt(),
             cards = window.bucketCards("box-b"),
-            width = width
+            boxWidth = ghostWidth
         )
-        renderDropBox(
+        dropBox(
             window = window,
-            key = "dnd.box.c",
+            boxKey = "dnd.box.c",
             title = "Box C",
             boxId = "box-c",
             color = 0xFF354A5A.toInt(),
             cards = window.bucketCards("box-c"),
-            width = width
+            boxWidth = ghostWidth
         )
 
-        button(
-            ButtonProps("Reset DnD").apply {
-                this.width = width - 8
-                onMouseClick = { window.resetDndItems("button") }
-                style = { backgroundImage("file://demo/local_showcase.png") }
-            }
-        )
+        button("Reset DnD", {
+            width = ghostWidth - 8
+            onMouseClick = { window.resetDndItems("button") }
+            style = { backgroundImage("file://demo/local_showcase.png") }
+        })
     }
 }
 
-private fun UiScope.renderCard(
+private fun UiScope.cardWithItem(
     item: DndDemoItem,
-    key: Any,
-    size: Int,
+    cardKey: Any,
+    cardSize: Int,
     draggable: Draggable? = null,
     sortable: Sortable? = null,
     draggableEnabled: Boolean = true,
@@ -311,87 +278,80 @@ private fun UiScope.renderCard(
     insertionIndicator: ShowcaseWindow.DndLaneIndicator = ShowcaseWindow.DndLaneIndicator.NONE,
     extraListeners: DndListeners = DndListeners()
 ) {
-    val draggingThis = sortable?.isDragging ?: draggable?.isDragging ?: DndSystem.monitor(key).isDragging
+    val draggingThis = sortable?.isDragging ?: draggable?.isDragging ?: DndSystem.monitor(cardKey).isDragging
     val accent = itemAccentColor(item.id)
     val base = itemBaseColor(item.id)
-    val insertionGap = (size + 2).coerceAtLeast(24)
-    div(
-        ComponentProps(
-            key = key,
-            width = size,
-            height = size,
-            padding = 2,
-            gap = 1,
-            dragPlaceholder = {
-                fillColor = 0x44333F4D
-                borderColor = accent
-                borderWidth = 1
-            },
-            backgroundColor = when {
-                draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
-                highlighted -> lighten(base, HIGHLIGHT_DELTA)
-                else -> base
-            },
-            style = {
-                border(1, accent)
-                borderRadius(3)
-                when (insertionIndicator) {
-                    ShowcaseWindow.DndLaneIndicator.BEFORE -> margin(insertionGap, 0, 0, 0)
-                    ShowcaseWindow.DndLaneIndicator.AFTER -> margin(0, 0, insertionGap, 0)
-                    ShowcaseWindow.DndLaneIndicator.NONE -> Unit
-                }
-            }
-        ).apply {
-            when {
-                sortable != null -> applySortable(sortable)
-                draggable != null -> applyDraggable(draggable)
-                else -> this.draggable = draggableEnabled
-            }
-            if (!draggableEnabled) {
-                this.draggable = false
-            }
-            applyDndListeners(extraListeners)
+    val insertionGap = (cardSize + 2).coerceAtLeast(24)
+    div({
+        key = cardKey
+        width = cardSize
+        height = cardSize
+        padding = 2
+        gap = 1
+        dragPlaceholder = {
+            fillColor = 0x44333F4D
+            borderColor = accent
+            borderWidth = 1
         }
-    ) {
-        div(
-            ComponentProps(
-                key = "$key.accent",
-                width = size - 8,
-                height = 3,
-                backgroundColor = lighten(accent, 12)
-            ).apply {
-                style = { borderRadius(2) }
+        backgroundColor = when {
+            draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
+            highlighted -> lighten(base, HIGHLIGHT_DELTA)
+            else -> base
+        }
+        style = {
+            border(1, accent)
+            borderRadius(3)
+            when (insertionIndicator) {
+                ShowcaseWindow.DndLaneIndicator.BEFORE -> margin(insertionGap, 0, 0, 0)
+                ShowcaseWindow.DndLaneIndicator.AFTER -> margin(0, 0, insertionGap, 0)
+                ShowcaseWindow.DndLaneIndicator.NONE -> Unit
             }
-        )
-        itemStack(
-            ItemStackProps(item.stack, size = (size / 2).coerceAtLeast(16)).apply {
-                this.key = "dnd.stack.${item.id}"
-                this.width = (size - 12).coerceAtLeast(18)
-                style = {
-                    border(1, 0x553A4452)
-                    backgroundColor(0x2219222B)
-                }
+        }
+        when {
+            sortable != null -> applySortable(sortable)
+            draggable != null -> applyDraggable(draggable)
+            else -> this.draggable = draggableEnabled
+        }
+        if (!draggableEnabled) {
+            this.draggable = false
+        }
+        applyDndListeners(extraListeners)
+    }) {
+        div({
+            key = "$cardKey.accent"
+            width = cardSize - 8
+            height = 3
+            backgroundColor = lighten(accent, 12)
+            style = { borderRadius(2) }
+        })
+        itemStack(item.stack, {
+            size = (cardSize / 2).coerceAtLeast(16)
+            key = "dnd.stack.${item.id}"
+            width = (cardSize - 12).coerceAtLeast(18)
+            style = {
+                border(1, 0x553A4452)
+                backgroundColor(0x2219222B)
             }
-        )
-        text(TextProps(item.label).apply {
+        })
+        text(item.label, {
             color = if (draggingThis) 0xFFFFFFFF.toInt() else 0xFFEAF2FD.toInt()
         })
     }
 }
 
-private fun UiScope.renderDropBox(
+private fun UiScope.dropBox(
     window: ShowcaseWindow,
-    key: Any,
+    boxKey: Any,
     title: String,
     boxId: String,
     color: Int,
     cards: List<DndDemoItem>,
-    width: Int
+    boxWidth: Int
 ) {
     val highlighted = window.dndHoverZone == boxId
     val dropDescriptor = window.useDroppable(
         id = boxId,
-        nodeKey = key,
+        nodeKey = boxKey,
         accepts = { active -> !active.id.isNullOrBlank() },
         onDragEnter = { event, _ ->
             window.dndHoverZone = boxId
@@ -406,29 +366,26 @@ private fun UiScope.renderDropBox(
         },
         onDrop = { event, _ -> window.handleDndBoxDrop(boxId, event) }
     )
-    div(
-        ComponentProps(
-            key = key,
-            width = null,
-            height = BOX_HEIGHT,
-            padding = 4,
-            gap = 2,
-            backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color,
-            style = {
-                border(1, 0xFF8A94A2.toInt())
-                borderRadius(3)
-            }
-        ).apply {
-            applyDroppable(dropDescriptor)
+    div({
+        key = boxKey
+        width = null
+        height = BOX_HEIGHT
+        padding = 4
+        gap = 2
+        backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
+        style = {
+            border(1, 0xFF8A94A2.toInt())
+            borderRadius(3)
         }
-    ) {
-        text(TextProps("$title (${cards.size})"))
+        applyDroppable(dropDescriptor)
+    }) {
+        text("$title (${cards.size})")
         if (cards.isEmpty()) {
-            text(TextProps("Drop here").apply { this.color = DEMO_MUTED })
+            text("Drop here", { this.color = DEMO_MUTED })
         } else {
-            val rowBudget = (width - 20).coerceAtLeast(1)
+            val rowBudget = (boxWidth - 20).coerceAtLeast(1)
             val maxVisibleCards = ((rowBudget + 2) / (BOX_CARD_SIZE + 2)).coerceAtLeast(1)
-            div(ComponentProps(gap = 2, key = "$key.cards").asFlexRow()) {
+            div({ gap = 2; key = "$boxKey.cards"; asFlexRow() }) {
                 cards.take(maxVisibleCards).forEach { item ->
                     val draggable = window.useDraggable(
                         id = item.id,
@@ -441,17 +398,17 @@ private fun UiScope.renderDropBox(
                         onDrag = { event -> window.handleDndDrag(event) },
                         onDragEnd = { event -> window.handleDndEnd(event) }
                     )
-                    renderCard(
+                    cardWithItem(
                         item = item,
-                        key = "dnd.box.$boxId.card.${item.id}",
-                        size = BOX_CARD_SIZE,
+                        cardKey = "dnd.box.$boxId.card.${item.id}",
+                        cardSize = BOX_CARD_SIZE,
                         draggable = draggable,
                         highlighted = false,
                         extraListeners = DndListeners()
                     )
                 }
                 if (cards.size > maxVisibleCards) {
-                    text(TextProps("+${cards.size - maxVisibleCards}").apply { this.color = DEMO_MUTED })
+                    text("+${cards.size - maxVisibleCards}", { this.color = DEMO_MUTED })
                 }
             }
         }

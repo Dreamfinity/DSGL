@@ -1,17 +1,8 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextAreaProps
-import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.event.InputEvent
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
@@ -21,28 +12,26 @@ private const val PASSWORD_KEY = "textEditing.password"
 private const val AREA_KEY = "textEditing.area"
 private const val FAIL_COLOR = 0xFFFF8A8A.toInt()
 
-fun UiScope.renderTextEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    div(
-        ComponentProps(
-            key = "section.textEditing",
-            width = contentWidth,
-            height = contentHeight,
-            gap = 4
-        ).asFlexColumn()
-    ) {
-        text(TextProps("HTML-like text editing: caret blink, selection and clipboard shortcuts"))
-        text(TextProps("Use Ctrl on Windows/Linux or Cmd on macOS for copy/cut/paste/select-all/undo/redo.").apply {
+fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+    div({
+        key = "section.textEditing"
+        width = contentWidth
+        height = contentHeight
+        gap = 4
+        asFlexColumn()
+    }) {
+        text("HTML-like text editing: caret blink, selection and clipboard shortcuts")
+        text("Use Ctrl on Windows/Linux or Cmd on macOS for copy/cut/paste/select-all/undo/redo.", {
             color = DEMO_MUTED
         })
 
-        text(TextProps("Single-line input"))
+        text("Single-line input")
         input(
-            InputProps(
-                InputType.Text(
-                    value = window.textEditingSingleValue,
-                    placeholder = "Type and select text"
-                )
-            ).apply {
+            InputType.Text(
+                value = window.textEditingSingleValue,
+                placeholder = "Type and select text"
+            ),
+            {
                 key = SINGLE_KEY
                 width = contentWidth - 8
                 onFocusGain = {
@@ -60,16 +49,15 @@ fun UiScope.renderTextEditingSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             }
         )
-        text(TextProps("Single-line: caret + selection visible in control").apply { color = DEMO_MUTED })
+        text("Single-line: caret + selection visible in control", { color = DEMO_MUTED })
 
-        text(TextProps("Password input (copy/cut restricted, paste allowed)"))
+        text("Password input (copy/cut restricted, paste allowed)")
         input(
-            InputProps(
-                InputType.Password(
-                    value = window.textEditingPasswordValue,
-                    placeholder = "password"
-                )
-            ).apply {
+            InputType.Password(
+                value = window.textEditingPasswordValue,
+                placeholder = "password"
+            ),
+            {
                 key = PASSWORD_KEY
                 width = contentWidth - 8
                 onFocusGain = {
@@ -87,62 +75,57 @@ fun UiScope.renderTextEditingSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             }
         )
-        text(TextProps("Password: masked selection/caret behavior").apply { color = DEMO_MUTED })
+        text("Password: masked selection/caret behavior", { color = DEMO_MUTED })
 
-        text(TextProps("Textarea"))
-        textarea(
-            TextAreaProps("Multiline editing").apply {
-                key = AREA_KEY
-                width = contentWidth - 8
-                height = 62
-                value = window.textEditingAreaValue
-                onFocusGain = {
-                    window.textEditingSawFocus = true
-                    window.logHook("textEditing.area.focus", it)
-                }
-                onInput = { event: InputEvent ->
-                    window.textEditingAreaValue = event.value
-                }
-                onMouseDrag = { event: MouseDragEvent ->
-                    trackSelectionDrag(window, event, AREA_KEY)
-                }
-                onKeyDown = { event: KeyboardKeyDownEvent ->
-                    trackKeyboardEditing(window, event, AREA_KEY)
-                }
+        text("Textarea")
+        textarea({
+            placeholder = "Multiline editing"
+            key = AREA_KEY
+            width = contentWidth - 8
+            height = 62
+            value = window.textEditingAreaValue
+            onFocusGain = {
+                window.textEditingSawFocus = true
+                window.logHook("textEditing.area.focus", it)
             }
-        )
-        text(TextProps("Textarea: multiline selection + scroll-aware caret").apply { color = DEMO_MUTED })
+            onInput = { event: InputEvent ->
+                window.textEditingAreaValue = event.value
+            }
+            onMouseDrag = { event: MouseDragEvent ->
+                trackSelectionDrag(window, event, AREA_KEY)
+            }
+            onKeyDown = { event: KeyboardKeyDownEvent ->
+                trackKeyboardEditing(window, event, AREA_KEY)
+            }
+        })
+        text("Textarea: multiline selection + scroll-aware caret", { color = DEMO_MUTED })
 
-        text(TextProps("Checklist"))
+        text("Checklist")
         checklistLine("caret blinks when focused", window.textEditingSawFocus)
         checklistLine("mouse drag selects and highlights text", window.textEditingSawSelectionDrag)
         checklistLine("Shift + arrows extends selection", window.textEditingSawShiftSelection)
         checklistLine("copy/cut/paste/undo/redo shortcuts are handled", window.textEditingSawClipboardShortcut)
 
-        button(
-            ButtonProps("Reset Checklist").apply {
-                width = 72
-                onMouseClick = {
-                    window.textEditingSawSelectionDrag = false
-                    window.textEditingSawShiftSelection = false
-                    window.textEditingSawClipboardShortcut = false
-                    window.textEditingSawFocus = false
-                    window.logHook("textEditing.checklist.reset", it)
-                }
+        button("Reset Checklist", {
+            width = 72
+            onMouseClick = {
+                window.textEditingSawSelectionDrag = false
+                window.textEditingSawShiftSelection = false
+                window.textEditingSawClipboardShortcut = false
+                window.textEditingSawFocus = false
+                window.logHook("textEditing.checklist.reset", it)
             }
-        )
+        })
     }
 }
 
 private fun UiScope.checklistLine(textValue: String, done: Boolean) {
     val mark = if (done) "[ok]" else "[ ]"
     val color = if (done) DEMO_OK else FAIL_COLOR
-    text(
-        TextProps("$mark $textValue").apply {
-            this.color = color
-            style = { foregroundColor(color) }
-        }
-    )
+    text("$mark $textValue", {
+        this.color = color
+        style = { foregroundColor(color) }
+    })
 }
 
 private fun trackSelectionDrag(window: ShowcaseWindow, event: MouseDragEvent, key: Any) {
@@ -165,17 +148,17 @@ private fun trackKeyboardEditing(window: ShowcaseWindow, event: KeyboardKeyDownE
 
 private fun isArrowLike(keyCode: Int): Boolean {
     return keyCode == KeyCodes.LEFT ||
-        keyCode == KeyCodes.RIGHT ||
-        keyCode == KeyCodes.UP ||
-        keyCode == KeyCodes.DOWN ||
-        keyCode == KeyCodes.HOME ||
-        keyCode == KeyCodes.END
+            keyCode == KeyCodes.RIGHT ||
+            keyCode == KeyCodes.UP ||
+            keyCode == KeyCodes.DOWN ||
+            keyCode == KeyCodes.HOME ||
+            keyCode == KeyCodes.END
 }
 
 private fun isClipboardShortcut(keyCode: Int): Boolean {
     return keyCode == KeyCodes.C ||
-        keyCode == KeyCodes.X ||
-        keyCode == KeyCodes.V ||
-        keyCode == KeyCodes.A ||
-        keyCode == KeyCodes.Z
+            keyCode == KeyCodes.X ||
+            keyCode == KeyCodes.V ||
+            keyCode == KeyCodes.A ||
+            keyCode == KeyCodes.Z
 }

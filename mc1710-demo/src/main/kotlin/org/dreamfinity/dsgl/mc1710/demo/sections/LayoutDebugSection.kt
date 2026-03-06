@@ -1,9 +1,5 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.elements.InputType
@@ -16,27 +12,27 @@ private const val WRAP_DEBUG_TEXT_A =
 private const val WRAP_DEBUG_TEXT_B =
     "Wrapped text B: this block should always appear below text A with no overlap."
 
-fun UiScope.renderLayoutDebugSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     val minWidth = 96
     val maxWidth = (contentWidth - 8).coerceAtLeast(minWidth)
     val wrapWidth = window.layoutDebugWrapWidth.toInt().coerceIn(minWidth, maxWidth)
 
-    div(
-        ComponentProps(
-            key = "section.layoutDebug",
-            width = contentWidth,
-            height = contentHeight,
-            gap = 4
-        ).asFlexColumn()
-    ) {
-        text(TextProps("Layout validator"))
-        text(TextProps("Checks containment, invalid sizes, and wrapped text line-stack invariants.").apply {
+    div({
+        key = "section.layoutDebug"
+        width = contentWidth
+        height = contentHeight
+        gap = 4
+        asFlexColumn()
+    }) {
+        text("Layout validator")
+        text("Checks containment, invalid sizes, and wrapped text line-stack invariants.", {
             color = DEMO_MUTED
         })
 
-        div(ComponentProps(gap = 4).asFlexRow()) {
+        div({ gap = 4; asFlexRow() }) {
             button(
-                ButtonProps(if (window.layoutDebugStrict) "strict: on" else "strict: off").apply {
+                if (window.layoutDebugStrict) "strict: on" else "strict: off",
+                {
                     width = 64
                     onMouseClick = {
                         window.layoutDebugStrict = !window.layoutDebugStrict
@@ -46,7 +42,8 @@ fun UiScope.renderLayoutDebugSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             )
             button(
-                ButtonProps(if (window.layoutDebugDraw) "draw bounds: on" else "draw bounds: off").apply {
+                if (window.layoutDebugDraw) "draw bounds: on" else "draw bounds: off",
+                {
                     width = 86
                     onMouseClick = {
                         window.layoutDebugDraw = !window.layoutDebugDraw
@@ -55,28 +52,24 @@ fun UiScope.renderLayoutDebugSection(window: ShowcaseWindow, contentWidth: Int, 
                     }
                 }
             )
-            button(
-                ButtonProps("clear logs").apply {
-                    width = 54
-                    onMouseClick = { window.clearEventLogs() }
-                }
-            )
+            button("clear logs", {
+                width = 54
+                onMouseClick = { window.clearEventLogs() }
+            })
         }
         text(
-            TextProps {
-                "validatorViolations=${LayoutDebug.lastViolationCount} strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}"
-            }.apply { color = DEMO_MUTED }
+            "validatorViolations=${LayoutDebug.lastViolationCount} strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}",
+            { color = DEMO_MUTED }
         )
 
         input(
-            InputProps(
-                InputType.Range(
-                    value = wrapWidth.toLong(),
-                    min = minWidth.toLong(),
-                    max = maxWidth.toLong(),
-                    step = 2
-                )
-            ).apply {
+            InputType.Range(
+                value = wrapWidth.toLong(),
+                min = minWidth.toLong(),
+                max = maxWidth.toLong(),
+                step = 2
+            ),
+            {
                 key = "layoutDebug.wrapWidth"
                 width = contentWidth - 8
                 onInput = { event ->
@@ -85,28 +78,24 @@ fun UiScope.renderLayoutDebugSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             }
         )
-        text(TextProps { "wrap test width=$wrapWidth" }.apply { color = DEMO_MUTED })
+        text("wrap test width=$wrapWidth", { color = DEMO_MUTED })
 
-        div(
-            ComponentProps(
-                key = "layoutDebug.wrapCase",
-                width = wrapWidth,
-                padding = 3,
-                gap = 2,
-                backgroundColor = 0xFF2D3745.toInt()
-            ).asFlexColumn().apply {
-                style = { border(1, 0xFF70859C.toInt()) }
-            }
-        ) {
-            text(TextProps("Case: wrapped text stack").apply { style = { textWrap = TextWrap.Wrap } })
-            text(TextProps(WRAP_DEBUG_TEXT_A).apply { style = { textWrap = TextWrap.Wrap } })
-            text(TextProps(WRAP_DEBUG_TEXT_B).apply { style = { textWrap = TextWrap.Wrap } })
-            button(
-                ButtonProps("button label wraps too: long_unbroken_word_to_force_hard_break_123456789").apply {
-                    width = wrapWidth - 8
-                    style = { textWrap = TextWrap.Wrap }
-                }
-            )
+        div({
+            key = "layoutDebug.wrapCase"
+            width = wrapWidth
+            padding = 3
+            gap = 2
+            backgroundColor = 0xFF2D3745.toInt()
+            style = { border(1, 0xFF70859C.toInt()) }
+            asFlexColumn()
+        }) {
+            text("Case: wrapped text stack", { style = { textWrap = TextWrap.Wrap } })
+            text(WRAP_DEBUG_TEXT_A, { style = { textWrap = TextWrap.Wrap } })
+            text(WRAP_DEBUG_TEXT_B, { style = { textWrap = TextWrap.Wrap } })
+            button("button label wraps too: long_unbroken_word_to_force_hard_break_123456789", {
+                width = wrapWidth - 8
+                style = { textWrap = TextWrap.Wrap }
+            })
         }
     }
 }

@@ -1,13 +1,12 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.*
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
@@ -16,15 +15,15 @@ import org.dreamfinity.dsgl.core.style.JustifyContent
 
 fun UiScope.modalHost(
     modals: List<ModalSpec>,
-    key: String = "modal.host",
+    modalKey: String = "modal.host",
     content: UiScope.() -> Unit
 ) {
-    ModalRuntime.onBuild(key, modals)
-    val hostNode = mount(ModalHostNode(key))
+    ModalRuntime.onBuild(modalKey, modals)
+    val hostNode = mount(ModalHostNode(modalKey))
     hostNode.onKeyDown = { event ->
         val topMost = modals.lastOrNull()
         if (topMost != null) {
-            val topDialogKey = ModalRuntime.dialogKey(key, topMost.key)
+            val topDialogKey = ModalRuntime.dialogKey(modalKey, topMost.key)
             val focusInsideTop = FocusManager.isFocusWithinSubtree(topDialogKey)
             if (event.keyCode == KeyCodes.ESCAPE) {
                 if (topMost.keyboard) {
@@ -41,61 +40,59 @@ fun UiScope.modalHost(
     }
 
     val hostScope = UiScope(hostNode)
-    hostScope.div(ComponentProps(key = "$key.content")) {
+    hostScope.div({ key = "$modalKey.content" }) {
         content()
     }
 
     modals.forEachIndexed { index, spec ->
         val isTopMost = index == modals.lastIndex
-        val dialogKey = ModalRuntime.dialogKey(key, spec.key)
+        val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
         val backdropColor = when (spec.backdrop) {
             BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
             BackdropMode.False -> 0x00000000
         }
-        hostScope.div(
-            ComponentProps(
-                key = "$key.modal.${spec.key}.layer",
-                backgroundColor = backdropColor,
-                onMouseDown = { event ->
-                    if (!isTopMost) {
-                        event.cancelled = true
-                    } else {
-                        val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                        if (!insideDialog && spec.trapFocus) {
-                            FocusManager.requestFocusFirstInSubtree(dialogKey)
-                        }
-                        event.cancelled = true
-                    }
-                },
-                onMouseClick = { event ->
-                    if (!isTopMost) {
-                        event.cancelled = true
-                    } else {
-                        val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                        if (!insideDialog) {
-                            if (spec.backdrop == BackdropMode.True) {
-                                spec.onHide?.invoke()
-                            }
-                            event.cancelled = true
-                        }
-                    }
-                },
-                onMouseWheel = { event ->
+        hostScope.div({
+            key = "$modalKey.modal.${spec.key}.layer"
+            backgroundColor = backdropColor
+            onMouseDown = { event ->
+                if (!isTopMost) {
+                    event.cancelled = true
+                } else {
                     val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                    if (!insideDialog) {
-                        event.cancelled = true
+                    if (!insideDialog && spec.trapFocus) {
+                        FocusManager.requestFocusFirstInSubtree(dialogKey)
                     }
-                }
-            ).asFlexColumn().apply {
-                style = {
-                    display = Display.Flex
-                    flexDirection = FlexDirection.Column
-                    alignItems = AlignItems.Center
-                    justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
-                    padding(if (spec.centered) 6 else 10)
+                    event.cancelled = true
                 }
             }
-        ) {
+            onMouseClick = { event ->
+                if (!isTopMost) {
+                    event.cancelled = true
+                } else {
+                    val insideDialog = isTargetInsideDialog(event.target, dialogKey)
+                    if (!insideDialog) {
+                        if (spec.backdrop == BackdropMode.True) {
+                            spec.onHide?.invoke()
+                        }
+                        event.cancelled = true
+                    }
+                }
+            }
+            onMouseWheel = { event ->
+                val insideDialog = isTargetInsideDialog(event.target, dialogKey)
+                if (!insideDialog) {
+                    event.cancelled = true
+                }
+            }
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                alignItems = AlignItems.Center
+                justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
+                padding(if (spec.centered) 6 else 10)
+            }
+            asFlexColumn()
+        }) {
             modalFrame(
                 spec = spec,
                 dialogKey = dialogKey,
@@ -108,21 +105,19 @@ fun UiScope.modalHost(
         }
     }
 
-    hostScope.div(
-        ComponentProps(
-            key = "$key.modal.lifecycle",
-            width = 0,
-            height = 0,
-            ref = RefTarget<ElementHandle> { handle ->
-                if (handle != null) {
-                    ModalRuntime.onCommit(key, modals)
-                }
-            },
-            style = {
-                display = Display.None
+    hostScope.div({
+        key = "$modalKey.modal.lifecycle"
+        width = 0
+        height = 0
+        ref = RefTarget { handle ->
+            if (handle != null) {
+                ModalRuntime.onCommit(modalKey, modals)
             }
-        )
-    )
+        }
+        style = {
+            display = Display.None
+        }
+    })
 }
 
 fun UiScope.modalFrame(
@@ -137,7 +132,7 @@ fun UiScope.modalFrame(
     modalDialog(
         centered = spec.centered,
         size = spec.size,
-        key = dialogKey
+        modalKey = dialogKey
     ) {
         spec.content(this, scope)
     }
@@ -146,7 +141,7 @@ fun UiScope.modalFrame(
 fun UiScope.modalDialog(
     centered: Boolean = false,
     size: ModalSize? = null,
-    key: Any? = null,
+    modalKey: Any? = null,
     block: UiScope.() -> Unit
 ) {
     val presetWidth = when (size) {
@@ -154,23 +149,22 @@ fun UiScope.modalDialog(
         ModalSize.Lg -> 232
         null -> 184
     }
-    div(
-        ComponentProps(
-            key = key,
-            width = presetWidth,
-            padding = 0,
-            gap = 0,
-            backgroundColor = 0xFF2F3A46.toInt(),
-            style = {
-                display = Display.Flex
-                flexDirection = FlexDirection.Column
-                if (!centered) {
-                    margin(6, 0, 0, 0)
-                }
-                border(1, 0xFF6E7D8C.toInt())
+    div({
+        key = modalKey
+        width = presetWidth
+        padding = 0
+        gap = 0
+        backgroundColor = 0xFF2F3A46.toInt()
+        style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            if (!centered) {
+                margin(6, 0, 0, 0)
             }
-        ).asFlexColumn()
-    ) {
+            border(1, 0xFF6E7D8C.toInt())
+        }
+        asFlexColumn()
+    }) {
         block()
     }
 }
@@ -180,128 +174,116 @@ fun UiScope.modalHeader(
     onHide: (() -> Unit)? = null,
     block: UiScope.() -> Unit = {}
 ) {
-    div(
-        ComponentProps(
-            key = "modal.header",
-            padding = 4,
-            gap = 4,
-            backgroundColor = 0xFF334255.toInt(),
+    div({
+        key = "modal.header"
+        padding = 4
+        gap = 4
+        backgroundColor = 0xFF334255.toInt()
+        style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Row
+            alignItems = AlignItems.Center
+        }
+        asFlexRow()
+    }) {
+        div({
+            key = "modal.header.titleSlot"
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
-                alignItems = AlignItems.Center
+                flexGrow = 1f
             }
-        ).asFlexRow()
-    ) {
-        div(
-            ComponentProps(
-                key = "modal.header.titleSlot",
-                style = {
-                    display = Display.Flex
-                    flexDirection = FlexDirection.Row
-                    flexGrow = 1f
-                }
-            ).asFlexRow()
-        ) {
+            asFlexRow()
+        }) {
             block()
         }
         if (closeButton) {
-            button(
-                ButtonProps("x").apply {
-                    width = 18
-                    onMouseClick = { onHide?.invoke() }
-                }
-            )
+            button("x", {
+                width = 18
+                onMouseClick = { onHide?.invoke() }
+            })
         }
     }
 }
 
 fun UiScope.modalTitle(
     text: String,
-    key: Any? = null
+    modalTitleKey: Any? = null
 ) {
-    div(
-        ComponentProps(
-            key = key,
-            style = {
-                display = Display.Block
-            }
-        )
-    ) {
-        this.text(
-            TextProps(text).apply {
-                color = 0xFFEAF3FF.toInt()
-            }
-        )
+    div({
+        key = modalTitleKey
+        style = {
+            display = Display.Block
+        }
+    }) {
+        text(text, {
+            color = 0xFFEAF3FF.toInt()
+        })
     }
 }
 
 fun UiScope.modalBody(
-    key: Any? = null,
+    modalBodyKey: Any? = null,
     block: UiScope.() -> Unit
 ) {
-    div(
-        ComponentProps(
-            key = key,
-            padding = 4,
-            gap = 3,
-            backgroundColor = 0xFF2F3A46.toInt()
-        ).asFlexColumn()
-    ) {
+    div({
+        key = modalBodyKey
+        padding = 4
+        gap = 3
+        backgroundColor = 0xFF2F3A46.toInt()
+        asFlexColumn()
+    }) {
         block()
     }
 }
 
 fun UiScope.modalFooter(
-    key: Any? = null,
+    modalFooterKey: Any? = null,
     block: UiScope.() -> Unit
 ) {
-    div(
-        ComponentProps(
-            key = key,
-            padding = 4,
-            gap = 4,
-            backgroundColor = 0xFF334255.toInt(),
-            style = {
-                display = Display.Flex
-                flexDirection = FlexDirection.Row
-                justifyContent = JustifyContent.End
-                alignItems = AlignItems.Center
-            }
-        ).asFlexRow()
-    ) {
+    div({
+        key = modalFooterKey
+        padding = 4
+        gap = 4
+        backgroundColor = 0xFF334255.toInt()
+        style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Row
+            justifyContent = JustifyContent.End
+            alignItems = AlignItems.Center
+        }
+        asFlexRow()
+    }) {
         block()
     }
 }
 
 fun alertModal(
-    key: String,
+    modalKey: String,
     title: String,
     message: String,
     onClose: () -> Unit
 ): ModalSpec {
     return ModalSpec(
-        key = key,
+        key = modalKey,
         onHide = onClose
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
         }
         modalBody {
-            text(TextProps(message))
+            text(message)
         }
         modalFooter {
-            button(
-                ButtonProps("OK").apply {
-                    onMouseClick = { scope.dismiss?.invoke() }
-                }
-            )
+            button("OK", {
+                onMouseClick = { scope.dismiss?.invoke() }
+            })
         }
     }
 }
 
 fun confirmModal(
-    key: String,
+    modalKey: String,
     title: String,
     message: String,
     confirmText: String = "Confirm",
@@ -310,34 +292,30 @@ fun confirmModal(
     onCancel: () -> Unit
 ): ModalSpec {
     return ModalSpec(
-        key = key,
+        key = modalKey,
         onHide = onCancel
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
         }
         modalBody {
-            text(TextProps(message))
+            text(message)
         }
         modalFooter {
-            button(
-                ButtonProps(cancelText).apply {
-                    onMouseClick = { scope.dismiss?.invoke() }
+            button(cancelText, {
+                onMouseClick = { scope.dismiss?.invoke() }
+            })
+            button(confirmText, {
+                onMouseClick = {
+                    onConfirm()
                 }
-            )
-            button(
-                ButtonProps(confirmText).apply {
-                    onMouseClick = {
-                        onConfirm()
-                    }
-                }
-            )
+            })
         }
     }
 }
 
 fun promptModal(
-    key: String,
+    modalKey: String,
     title: String,
     value: String,
     onValueInput: (String) -> Unit,
@@ -347,7 +325,7 @@ fun promptModal(
     onCancel: () -> Unit
 ): ModalSpec {
     return ModalSpec(
-        key = key,
+        key = modalKey,
         onHide = onCancel
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
@@ -355,9 +333,7 @@ fun promptModal(
         }
         modalBody {
             input(
-                InputProps(
-                    InputType.Text(value = value, placeholder = "Enter value")
-                ).apply {
+                InputType.Text(value = value, placeholder = "Enter value"), {
                     this.key = "modal.prompt.input.$key"
                     width = 150
                     onInput = { event ->
@@ -367,16 +343,12 @@ fun promptModal(
             )
         }
         modalFooter {
-            button(
-                ButtonProps(cancelText).apply {
-                    onMouseClick = { scope.dismiss?.invoke() }
-                }
-            )
-            button(
-                ButtonProps(confirmText).apply {
-                    onMouseClick = { onConfirm() }
-                }
-            )
+            button(cancelText, {
+                onMouseClick = { scope.dismiss?.invoke() }
+            })
+            button(confirmText, {
+                onMouseClick = { onConfirm() }
+            })
         }
     }
 }

@@ -1,55 +1,41 @@
 package org.dreamfinity.dsgl.mc1710.demo.support
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 
-fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, width: Int, height: Int) {
-    div(
-        panelProps(
-            key = "panel.eventInspector",
-            width = width,
-            height = height,
-            backgroundColor = DEMO_SURFACE_ALT
-        )
-    ) {
-        div(ComponentProps().asFlexRow()) {
-            text(TextProps("Event Inspector"))
-            button(
-                ButtonProps("Clear").apply {
-                    this.width = 44
-                    onMouseClick = { window.clearEventLogs() }
-                }
-            )
+fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, panelHeight: Int) {
+    div({
+        key = "panel.eventInspector"
+        width = panelWidth
+        height = panelHeight
+        gap = 4
+        backgroundColor = DEMO_SURFACE_ALT
+        color = DsglColors.TEXT
+        style = { border(1, DsglColors.BORDER) }
+        asFlexColumn()
+    }) {
+        div({ asFlexRow() }) {
+            text("Event Inspector")
+            button("Clear", {
+                this.width = 44
+                onMouseClick = { window.clearEventLogs() }
+            })
         }
-        text(
-            TextProps {
-                "Stored: ${window.eventLogs.size}/${window.maxEventLogs}"
-            }.apply {
-                color = DEMO_MUTED
-            }
-        )
+        text("Stored: ${window.eventLogs.size}/${window.maxEventLogs}", { color = DEMO_MUTED })
         if (window.eventLogs.isEmpty()) {
-            text(
-                TextProps("No events yet. Interact with any demo area.")
-                    .apply { color = DEMO_MUTED }
-            )
+            text("No events yet. Interact with any demo area.", { color = DEMO_MUTED })
         } else {
             window.eventLogs
                 .take(window.visibleEventLines)
                 .forEach { entry ->
-                    text(
-                        TextProps("#${entry.sequence} ${entry.line}")
-                            .apply { color = entry.color }
-                    )
+                    text("#${entry.sequence} ${entry.line}", { color = entry.color })
                 }
         }
     }
 }
 
-fun UiScope.renderChecklistPanel(window: ShowcaseWindow, width: Int, height: Int) {
+fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelHeight: Int) {
     val required = CapabilityChecklistCatalog.required
     val implemented = window.implementedCapabilities
     val pageSize = window.checklistPageSize
@@ -62,48 +48,33 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, width: Int, height: Int
     val to = minOf(required.size, from + pageSize)
     val pageItems = required.subList(from, to)
 
-    div(
-        panelProps(
-            key = "panel.capabilityChecklist",
-            width = width,
-            height = height,
-            backgroundColor = DEMO_SURFACE_ALT
-        )
-    ) {
-        text(TextProps("Capability Checklist"))
-        div(ComponentProps().asFlexRow()) {
-            button(
-                ButtonProps("<").apply {
-                    this.width = 22
-                    onMouseClick = { window.moveChecklistPage(-1) }
-                }
-            )
-            text(
-                TextProps {
-                    "Page ${window.checklistPage + 1}/$pageCount"
-                }.apply { color = DEMO_MUTED }
-            )
-            button(
-                ButtonProps(">").apply {
-                    this.width = 22
-                    onMouseClick = { window.moveChecklistPage(1) }
-                }
-            )
+    div({
+        key = "panel.capabilityChecklist"
+        width = panelWidth
+        height = panelHeight
+        gap = 4
+        backgroundColor = DEMO_SURFACE_ALT
+        color = DsglColors.TEXT
+        style = { border(1, DsglColors.BORDER) }
+        asFlexColumn()
+    }) {
+        text("Capability Checklist")
+        div({ asFlexRow() }) {
+            button("<", {
+                width = 22
+                onMouseClick = { window.moveChecklistPage(-1) }
+            })
+            text("Page ${window.checklistPage + 1}/$pageCount", { color = DEMO_MUTED })
+            button(">", {
+                this.width = 22
+                onMouseClick = { window.moveChecklistPage(1) }
+            })
         }
         pageItems.forEach { capability ->
             val ok = implemented.contains(capability)
-            text(
-                TextProps("${if (ok) "[OK]" else "[MISS]"} ${capability.label}")
-                    .apply { color = if (ok) DEMO_OK else DEMO_ERR }
-            )
+            text("${if (ok) "[OK]" else "[MISS]"} ${capability.label}", { color = if (ok) DEMO_OK else DEMO_ERR })
         }
         val missing = required.count { !implemented.contains(it) }
-        text(
-            TextProps {
-                "Missing: $missing / ${required.size}"
-            }.apply {
-                color = if (missing == 0) DEMO_OK else DEMO_ERR
-            }
-        )
+        text("Missing: $missing / ${required.size}", { color = if (missing == 0) DEMO_OK else DEMO_ERR })
     }
 }

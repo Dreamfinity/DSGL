@@ -1,37 +1,28 @@
 ﻿package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.ButtonProps
-import org.dreamfinity.dsgl.core.ComponentProps
-import org.dreamfinity.dsgl.core.ImageProps
-import org.dreamfinity.dsgl.core.InputProps
-import org.dreamfinity.dsgl.core.TextProps
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuStyle
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
-import org.dreamfinity.dsgl.core.dnd.DragPreviewMode
-import org.dreamfinity.dsgl.core.dnd.applyDraggable
-import org.dreamfinity.dsgl.core.dnd.applyDroppable
-import org.dreamfinity.dsgl.core.dnd.useDraggable
-import org.dreamfinity.dsgl.core.dnd.useDroppable
-import org.dreamfinity.dsgl.core.dom.onContextMenu
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dom.onContextMenu
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private const val TILE_WIDTH = 86
-private const val TILE_HEIGHT = 92
 private const val TILE_ICON_SIZE = 30
 private const val TILE_GHOST_SIZE = 30
 private const val ICON_FOLDER = "file://demo/folder.png"
 private const val ICON_DOCUMENT = "file://demo/document.png"
 
-fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     val entries = window.contextMenuVisibleFiles()
     val listWidth = (contentWidth - 16).coerceAtLeast(120)
     val gridColumns = (listWidth / (TILE_WIDTH + 10)).coerceAtLeast(1)
@@ -59,78 +50,64 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
         )
     )
 
-    div(
-        ComponentProps(
-            key = "section.contextMenu",
-            width = contentWidth,
-            height = contentHeight,
-            gap = 4
-        ).asFlexColumn()
-    ) {
-        text(TextProps("Pseudo filesystem: tile view + context menu + drag/drop"))
+    div({
+        key = "section.contextMenu"
+        width = contentWidth
+        height = contentHeight
+        gap = 4
+        asFlexColumn()
+    }) {
+        text("Pseudo filesystem: tile view + context menu + drag/drop")
         text(
-            TextProps {
-                "path=${window.contextMenuCurrentPath()} sort=${window.contextMenuSortMode} selected=${window.contextMenuFileSelection}"
-            }.apply { color = DEMO_MUTED }
+            "path=${window.contextMenuCurrentPath()} sort=${window.contextMenuSortMode} selected=${window.contextMenuFileSelection}",
+            { color = DEMO_MUTED }
         )
         text(
-            TextProps {
-                "lastAction=${window.contextMenuLastAction} target=${window.contextMenuLastTarget} actions=${window.contextMenuActionCount}"
-            }.apply { color = DEMO_MUTED }
+            "lastAction=${window.contextMenuLastAction} target=${window.contextMenuLastTarget} actions=${window.contextMenuActionCount}",
+            { color = DEMO_MUTED }
         )
 
-        div(ComponentProps(gap = 4).asFlexRow()) {
-            button(
-                ButtonProps("New File").apply {
-                    onMouseClick = { window.contextMenuCreateFile() }
-                }
-            )
-            button(
-                ButtonProps("New Folder").apply {
-                    onMouseClick = { window.contextMenuCreateFolder() }
-                }
-            )
+        div({ gap = 4; asFlexRow() }) {
+            button("New File", {
+                onMouseClick = { window.contextMenuCreateFile() }
+            })
+            button("New Folder", {
+                onMouseClick = { window.contextMenuCreateFolder() }
+            })
         }
 
-        div(
-            ComponentProps(
-                key = "section.contextMenu.window",
-                width = contentWidth - 8,
-                height = (contentHeight - 58).coerceAtLeast(80),
-                padding = 3,
-                gap = 2,
-                backgroundColor = 0xFF2A313B.toInt(),
-                style = { border(1, 0xFF5B6A7A.toInt()) }
-            ).asFlexColumn()
-        ) {
-            div(
-                ComponentProps(
-                    key = "section.contextMenu.pathbar",
-                    width = contentWidth - 16,
-                    padding = 2,
-                    gap = 2,
-                    backgroundColor = 0xFF25303A.toInt(),
-                    style = { border(1, 0xFF4F6175.toInt()) }
-                ).asFlexRow()
-            ) {
-                button(
-                    ButtonProps("<").apply {
-                        key = "section.contextMenu.path.back"
-                        onMouseClick = { window.contextMenuNavigateBack() }
-                        disabled = !window.contextMenuCanGoBack()
-                    }
-                )
-                button(
-                    ButtonProps(">").apply {
-                        key = "section.contextMenu.path.forward"
-                        onMouseClick = { window.contextMenuNavigateForward() }
-                        disabled = !window.contextMenuCanGoForward()
-                    }
-                )
+        div({
+            key = "section.contextMenu.window"
+            width = contentWidth - 8
+            height = (contentHeight - 58).coerceAtLeast(80)
+            padding = 3
+            gap = 2
+            backgroundColor = 0xFF2A313B.toInt()
+            style = { border(1, 0xFF5B6A7A.toInt()) }
+            asFlexColumn()
+        }) {
+            div({
+                key = "section.contextMenu.pathbar"
+                width = contentWidth - 16
+                padding = 2
+                gap = 2
+                backgroundColor = 0xFF25303A.toInt()
+                style = { display = Display.Flex; flexDirection = FlexDirection.Row; border(1, 0xFF4F6175.toInt()) }
+            }) {
+                button("<", {
+                    key = "section.contextMenu.path.back"
+                    onMouseClick = { window.contextMenuNavigateBack() }
+                    disabled = !window.contextMenuCanGoBack()
+                })
+                button(">", {
+                    key = "section.contextMenu.path.forward"
+                    onMouseClick = { window.contextMenuNavigateForward() }
+                    disabled = !window.contextMenuCanGoForward()
+                })
                 val breadcrumbs = window.contextMenuBreadcrumbs()
                 breadcrumbs.forEachIndexed { index, breadcrumb ->
                     if (index > 0) {
-                        text(TextProps("/").apply { color = DEMO_MUTED })
+                        text("/", { color = DEMO_MUTED })
                     }
                     val breadcrumbKey = "section.contextMenu.path.${breadcrumb.id}"
                     val breadcrumbDrop = window.useDroppable(
@@ -172,23 +149,21 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
                     )
                     val isCurrent = breadcrumb.id == window.contextMenuCurrentDirectoryId
                     val isDropHover = window.contextMenuDragHoverDirectoryId == breadcrumb.id
-                    button(
-                        ButtonProps(breadcrumb.label).apply {
-                            key = breadcrumbKey
-                            backgroundColor = when {
-                                isDropHover -> 0xFF40617F.toInt()
-                                isCurrent -> 0xFF364A5E.toInt()
-                                else -> 0xFF2B3A4A.toInt()
-                            }
-                            onMouseClick = {
-                                window.contextMenuOpenDirectory(breadcrumb.id, pushHistory = true)
-                            }
-                            style = {
-                                border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
-                            }
-                            applyDroppable(breadcrumbDrop)
+                    button(breadcrumb.label, {
+                        key = breadcrumbKey
+                        backgroundColor = when {
+                            isDropHover -> 0xFF40617F.toInt()
+                            isCurrent -> 0xFF364A5E.toInt()
+                            else -> 0xFF2B3A4A.toInt()
                         }
-                    )
+                        onMouseClick = {
+                            window.contextMenuOpenDirectory(breadcrumb.id, pushHistory = true)
+                        }
+                        style = {
+                            border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
+                        }
+                        applyDroppable(breadcrumbDrop)
+                    })
                 }
             }
 
@@ -202,14 +177,22 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
                 onDragEnter = { event, active ->
                     if (event.target?.key != "section.contextMenu.list") return@useDroppable
                     val activeId = active?.id
-                    if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, window.contextMenuCurrentDirectoryId)) {
+                    if (activeId != null && window.contextMenuCanDropIntoDirectory(
+                            activeId,
+                            window.contextMenuCurrentDirectoryId
+                        )
+                    ) {
                         window.contextMenuDragHoverDirectoryId = window.contextMenuCurrentDirectoryId
                     }
                 },
                 onDragOver = { event, active ->
                     if (event.target?.key != "section.contextMenu.list") return@useDroppable
                     val activeId = active?.id
-                    if (activeId != null && window.contextMenuCanDropIntoDirectory(activeId, window.contextMenuCurrentDirectoryId)) {
+                    if (activeId != null && window.contextMenuCanDropIntoDirectory(
+                            activeId,
+                            window.contextMenuCurrentDirectoryId
+                        )
+                    ) {
                         window.contextMenuDragHoverDirectoryId = window.contextMenuCurrentDirectoryId
                     }
                 },
@@ -226,39 +209,38 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
                 }
             )
 
-            val listNode = div(
-                ComponentProps(
-                    key = "section.contextMenu.list",
-                    width = listWidth,
-                    gap = 8,
-                    padding = 4,
-                    backgroundColor = if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
-                        0xFF2F4358.toInt()
-                    } else {
-                        0xFF2B343F.toInt()
-                    },
-                    style = {
-                        border(1, 0xFF4F6175.toInt())
-                        display = Display.Grid
-                        this.gridColumns = gridColumns
-                        gap = 4
-                    }
-                ).apply {
-                    applyDroppable(listDroppable)
+            val listNode = div({
+                key = "section.contextMenu.list"
+                width = listWidth
+                gap = 8
+                padding = 4
+                backgroundColor = if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
+                    0xFF2F4358.toInt()
+                } else {
+                    0xFF2B343F.toInt()
                 }
-            ) {
+                style = {
+                    border(1, 0xFF4F6175.toInt())
+                    display = Display.Grid
+                    this.gridColumns = gridColumns
+                    gap = 4
+                }
+                applyDroppable(listDroppable)
+            }) {
                 if (entries.isEmpty()) {
-                    div(
-                        ComponentProps(
-                            width = listWidth - 8,
-                            padding = 2
+                    div({
+                        width = listWidth - 8
+                        padding = 2
+
+                    }) {
+                        text(
+                            "Folder is empty. Right-click to create file/folder.",
+                            { color = DEMO_MUTED }
                         )
-                    ) {
-                        text(TextProps("Folder is empty. Right-click to create file/folder.").apply { color = DEMO_MUTED })
                     }
                 } else {
                     entries.forEach { file ->
-                        renderContextMenuEntryTile(window, file)
+                        contextMenuEntryTile(window, file)
                     }
                 }
             }
@@ -278,12 +260,12 @@ fun UiScope.renderContextMenuSection(window: ShowcaseWindow, contentWidth: Int, 
     }
 }
 
-private fun UiScope.renderContextMenuEntryTile(
+private fun UiScope.contextMenuEntryTile(
     window: ShowcaseWindow,
     file: ShowcaseWindow.ContextMenuDemoFile
 ) {
     val tileKey = "context.fs.tile.${file.id}"
-    val icon = iconFor(file)
+    val iconURL = iconFor(file)
     val draggable = window.useDraggable(
         id = file.id,
         nodeKey = tileKey,
@@ -293,7 +275,7 @@ private fun UiScope.renderContextMenuEntryTile(
         hideSourceWhileDragging = false,
         renderPreview = {
             val offset = TILE_GHOST_SIZE / 2
-            image(icon, -offset, -offset, TILE_GHOST_SIZE, TILE_GHOST_SIZE)
+            image(iconURL, -offset, -offset, TILE_GHOST_SIZE, TILE_GHOST_SIZE)
             rect(-offset, -offset, TILE_GHOST_SIZE, TILE_GHOST_SIZE, 0x66000000)
         },
         onDragStart = { event ->
@@ -340,45 +322,40 @@ private fun UiScope.renderContextMenuEntryTile(
     val isEditingName = window.contextMenuRenameTargetId == file.id
     val isSelected = window.contextMenuFileSelection == file.name
     val isDropHover = window.contextMenuDragHoverDirectoryId == file.id
-    val tileNode = div(
-        ComponentProps(
-            key = tileKey,
-            backgroundColor = when {
-                isDropHover -> 0xFF43607A.toInt()
-                isSelected -> 0xFF3A5168.toInt()
-                else -> 0xFF33414E.toInt()
-            },
-            onMouseClick = { event ->
-                if (!isEditingName && event.mouseButton == MouseButton.LEFT) {
-                    window.contextMenuHandleEntryClick(file)
-                }
-            },
-            style = {
-                border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
-                alignItems = AlignItems.Center
-                justifyContent = JustifyContent.Center
+    val tileNode = div({
+        key = tileKey
+        backgroundColor = when {
+            isDropHover -> 0xFF43607A.toInt()
+            isSelected -> 0xFF3A5168.toInt()
+            else -> 0xFF33414E.toInt()
+        }
+        onMouseClick = { event ->
+            if (!isEditingName && event.mouseButton == MouseButton.LEFT) {
+                window.contextMenuHandleEntryClick(file)
             }
-        ).apply {
-            applyDraggable(draggable)
-            if (droppable != null) {
-                applyDroppable(droppable)
-            }
-        }.asFlexColumn()
-    ) {
-        img(
-            ImageProps(icon).apply {
-                width = TILE_ICON_SIZE
-                height = TILE_ICON_SIZE
-            }
-        )
+        }
+        style = {
+            border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
+            alignItems = AlignItems.Center
+            justifyContent = JustifyContent.Center
+        }
+        asFlexColumn()
+        applyDraggable(draggable)
+        if (droppable != null) {
+            applyDroppable(droppable)
+        }
+    }) {
+        img(iconURL, {
+            width = TILE_ICON_SIZE
+            height = TILE_ICON_SIZE
+        })
         if (isEditingName) {
             input(
-                InputProps(
-                    InputType.Text(
-                        value = window.contextMenuRenameDraft,
-                        placeholder = "Name"
-                    )
-                ).apply {
+                InputType.Text(
+                    value = window.contextMenuRenameDraft,
+                    placeholder = "Name"
+                ),
+                {
                     key = "contextMenu.rename.inline.${file.id}"
                     onInput = { event ->
                         window.contextMenuRenameDraft = event.value
@@ -392,11 +369,9 @@ private fun UiScope.renderContextMenuEntryTile(
                 }
             )
         } else {
-            text(
-                TextProps(file.name).apply {
-                    color = if (file.locked) 0xFFE9A56E.toInt() else 0xFFEAF2FD.toInt()
-                }
-            )
+            text(file.name, {
+                color = if (file.locked) 0xFFE9A56E.toInt() else 0xFFEAF2FD.toInt()
+            })
         }
     }
     tileNode.onContextMenu {

@@ -1,12 +1,11 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.ComponentProps
 import org.dreamfinity.dsgl.core.DomTree
-import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.ui
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -48,8 +47,8 @@ class ModalHostKeyboardRegressionTests {
 
     private fun buildTree(hostKey: String, modals: List<ModalSpec>): DomTree {
         return ui {
-            modalHost(modals = modals, key = hostKey) {
-                div(ComponentProps(key = "$hostKey.content"))
+            modalHost(modals = modals, modalKey = hostKey) {
+                div({ key = "$hostKey.content" })
             }
         }
     }
