@@ -2,23 +2,34 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.components.modal.*
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.modals"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Declarative modal stack (state-driven list order).")
         text("Last modal in list is topmost. Background button proves input blocking.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Open basic", {
                 onMouseClick = { window.pushModal(basicModal(window)) }
             })
@@ -33,7 +44,13 @@ fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeig
             })
         }
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Background +1", {
                 onMouseClick = {
                     window.modalBackgroundCounter += 1
@@ -57,11 +74,11 @@ fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeig
                 postfix = "]"
             ) { it.key }
             value = "Stack=$stack"
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
         text(
             "Background counter=${window.modalBackgroundCounter}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
     }
 }
@@ -99,7 +116,7 @@ private fun staticModal(window: ShowcaseWindow): ModalSpec {
         }
         modalBody {
             text("Backdrop clicks and ESC do not dismiss this modal.")
-            text("Use close button or footer action.", { color = DEMO_MUTED })
+            text("Use close button or footer action.", { style = { color = DEMO_MUTED } })
         }
         modalFooter {
             button("Close", {
@@ -121,7 +138,7 @@ private fun largeCenteredModal(window: ShowcaseWindow): ModalSpec {
         }
         modalBody {
             text("Preset size: Lg; centered=true")
-            text("ModalHost keeps background inert while open.", { color = DEMO_MUTED })
+            text("ModalHost keeps background inert while open.", { style = { color = DEMO_MUTED } })
         }
         modalFooter {
             button("Done", {

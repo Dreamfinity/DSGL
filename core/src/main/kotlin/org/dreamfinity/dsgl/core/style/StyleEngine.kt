@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import java.util.Collections
 import java.util.EnumMap
 import java.util.WeakHashMap
+import kotlin.math.roundToInt
 
 object StyleEngine {
     private data class AnonymousInspectorTarget(val path: String)
@@ -37,7 +38,9 @@ object StyleEngine {
         val defaultsHash: Int,
         val parentInheritedHash: Int,
         val ancestorSelectorHash: Int,
-        val siblingSelectorHash: Int
+        val siblingSelectorHash: Int,
+        val viewportWidthPx: Int,
+        val viewportHeightPx: Int
     )
 
     private data class CachedStyle(
@@ -97,6 +100,8 @@ object StyleEngine {
     private var lastAppliedInspectorOverridesVersion: Long = Long.MIN_VALUE
     private var lastAppliedPseudoStateVersion: Long = Long.MIN_VALUE
     private var lastAppliedSelectorStateVersion: Long = Long.MIN_VALUE
+    private var viewportWidthPx: Int = 0
+    private var viewportHeightPx: Int = 0
     private var lastApplyReport: StyleApplyReport = StyleApplyReport(
         layoutDirty = false,
         visualDirty = false,
@@ -124,6 +129,19 @@ object StyleEngine {
     fun clearCache() {
         cache.clear()
     }
+
+    fun setViewportSize(width: Int, height: Int) {
+        val normalizedWidth = width.coerceAtLeast(0)
+        val normalizedHeight = height.coerceAtLeast(0)
+        if (viewportWidthPx == normalizedWidth && viewportHeightPx == normalizedHeight) return
+        viewportWidthPx = normalizedWidth
+        viewportHeightPx = normalizedHeight
+        cache.clear()
+    }
+
+    internal fun viewportWidthPx(): Int = viewportWidthPx
+
+    internal fun viewportHeightPx(): Int = viewportHeightPx
 
     fun setStylesDirectory(directory: java.io.File?) {
         StylesheetManager.setStylesDirectory(directory)
@@ -237,7 +255,7 @@ object StyleEngine {
             val winner = winners[property]
             if (winner != null) {
                 val applied = runCatching {
-                    applyProperty(result, property, winner.expression, variables)
+                    applyProperty(result, parentComputed, property, winner.expression, variables)
                 }.onFailure { error ->
                     println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
                 }.getOrNull()
@@ -314,7 +332,9 @@ object StyleEngine {
             (themeVersion shl 1) xor
             inspectorOverridesVersion xor
             (pseudoStateVersion shl 3) xor
-            (selectorStateVersion shl 4)
+            (selectorStateVersion shl 4) xor
+            (viewportWidthPx.toLong() shl 5) xor
+            (viewportHeightPx.toLong() shl 6)
     }
 
     fun markPseudoStateChanged(node: DOMNode? = null) {
@@ -462,7 +482,9 @@ object StyleEngine {
                 previousSiblingSelectorHash(node)
             } else {
                 0
-            }
+            },
+            viewportWidthPx = viewportWidthPx,
+            viewportHeightPx = viewportHeightPx
         )
 
         val cached = cache[node]
@@ -516,7 +538,7 @@ object StyleEngine {
             val winner = winners[property]
             if (winner != null) {
                 val applied = runCatching {
-                    applyProperty(result, property, winner.expression, variables)
+                    applyProperty(result, parentComputed, property, winner.expression, variables)
                 }.onFailure { error ->
                     println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
                 }.getOrNull()
@@ -768,7 +790,7 @@ object StyleEngine {
         return when (property) {
             StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parent.foregroundColor)
             StyleProperty.FONT_ID -> current.copy(fontId = parent.fontId)
-            StyleProperty.FONT_SIZE -> current.copy(fontSize = parent.fontSize)
+            StyleProperty.FONT_SIZE -> current.copy(fontSize = parent.fontSize, fontSizeValue = parent.fontSizeValue)
             StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parent.fontWeight)
             StyleProperty.FONT_STYLE -> current.copy(fontStyle = parent.fontStyle)
             else -> current
@@ -788,6 +810,7 @@ object StyleEngine {
 
     private fun applyProperty(
         current: ComputedStyle,
+        parentComputed: ComputedStyle?,
         property: StyleProperty,
         expression: StyleExpression,
         variables: Map<String, String>
@@ -795,13 +818,13 @@ object StyleEngine {
         val literal = resolveExpressionToLiteral(expression, variables)
         return when (property) {
             StyleProperty.MARGIN -> current.copy(
-                margin = parseSpacingShorthand(
+                margin = parseSpacingLengthShorthand(
                     raw = literal,
                     allowNegative = true
                 )
             )
             StyleProperty.PADDING -> current.copy(
-                padding = parseSpacingShorthand(
+                padding = parseSpacingLengthShorthand(
                     raw = literal,
                     allowNegative = false
                 )
@@ -810,40 +833,33 @@ object StyleEngine {
             StyleProperty.BACKGROUND_IMAGE -> current.copy(backgroundImage = parseStringLiteral(literal))
             StyleProperty.BORDER_COLOR -> current.copy(borderColor = parseColor(literal))
             StyleProperty.BORDER_WIDTH -> current.copy(
-                borderWidth = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                borderWidth = parseLengthLiteral(literal, allowNegative = false)
             )
             StyleProperty.BORDER_RADIUS -> current.copy(
-                borderRadius = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                borderRadius = parseLengthLiteral(literal, allowNegative = false)
             )
             StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parseColor(literal))
             StyleProperty.FONT_ID -> current.copy(fontId = parseStringLiteral(literal))
-            StyleProperty.FONT_SIZE -> current.copy(
-                fontSize = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                ).coerceAtLeast(1)
-            )
+            StyleProperty.FONT_SIZE -> {
+                val fontSizeValue = parseLengthLiteral(literal, allowNegative = false)
+                current.copy(
+                    fontSize = resolveFontSizePx(
+                        fontSizeValue = fontSizeValue,
+                        current = current,
+                        parentComputed = parentComputed
+                    ).coerceAtLeast(1),
+                    fontSizeValue = fontSizeValue
+                )
+            }
             StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parseFontWeight(literal))
             StyleProperty.FONT_STYLE -> current.copy(fontStyle = parseFontStyle(literal))
             StyleProperty.TEXT_DECORATION -> current.copy(textDecoration = parseTextDecoration(literal))
             StyleProperty.OBFUSCATED -> current.copy(obfuscated = parseBooleanLike(literal))
             StyleProperty.WIDTH -> current.copy(
-                width = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                width = parseLengthLiteral(literal, allowNegative = false)
             )
             StyleProperty.HEIGHT -> current.copy(
-                height = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                height = parseLengthLiteral(literal, allowNegative = false)
             )
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
@@ -852,18 +868,16 @@ object StyleEngine {
             StyleProperty.ALIGN_ITEMS -> current.copy(alignItems = parseAlignItems(literal))
             StyleProperty.JUSTIFY_ITEMS -> current.copy(justifyItems = parseJustifyItems(literal))
             StyleProperty.GAP -> current.copy(
-                gap = parseLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                gap = parseLengthLiteral(literal, allowNegative = false)
             )
             StyleProperty.FLEX_GROW -> current.copy(flexGrow = parseFloatLike(literal).coerceAtLeast(0f))
             StyleProperty.FLEX_SHRINK -> current.copy(flexShrink = parseFloatLike(literal).coerceAtLeast(0f))
             StyleProperty.FLEX_BASIS -> current.copy(
-                flexBasis = parseOptionalLengthPxInt(
-                    raw = literal,
-                    allowNegative = false
-                )
+                flexBasis = parseOptionalCssLength(literal)?.also { length ->
+                    if (length.value < 0f) {
+                        error("Negative length is not allowed: '$literal'.")
+                    }
+                }
             )
             StyleProperty.GRID_COLUMNS -> current.copy(gridColumns = parseIntLike(literal).coerceAtLeast(1))
             StyleProperty.GRID_ROWS -> current.copy(gridRows = parseOptionalInt(literal)?.coerceAtLeast(1))
@@ -876,6 +890,38 @@ object StyleEngine {
             StyleProperty.TRANSFORM_ORIGIN -> current.copy(transformOrigin = parseTransformOrigin(literal))
             StyleProperty.OPACITY -> current.copy(opacity = parseOpacity(literal))
         }
+    }
+
+    private fun parseLengthLiteral(literal: String, allowNegative: Boolean): CssLength {
+        val parsed = parseCssLength(literal)
+        if (!allowNegative && parsed.value < 0f) {
+            error("Negative length is not allowed: '$literal'.")
+        }
+        return parsed
+    }
+
+    private fun resolveFontSizePx(
+        fontSizeValue: CssLength,
+        current: ComputedStyle,
+        parentComputed: ComputedStyle?
+    ): Int {
+        val inheritedFontPx = (
+            parentComputed?.fontSize
+                ?: current.fontSize
+                ?: 16
+            ).toFloat()
+        val context = LengthResolveContext(
+            viewportWidthPx = viewportWidthPx.toFloat(),
+            viewportHeightPx = viewportHeightPx.toFloat(),
+            containingBlockWidthPx = viewportWidthPx.toFloat(),
+            containingBlockHeightPx = viewportHeightPx.toFloat(),
+            currentFontSizePx = inheritedFontPx,
+            inheritedFontSizePx = inheritedFontPx
+        )
+        return fontSizeValue
+            .resolvePx(context, LengthPercentBase.InheritedFontSize)
+            .roundToInt()
+            .coerceAtLeast(1)
     }
 
     private fun inspectorOverrideHash(node: DOMNode): Int {

@@ -65,8 +65,14 @@ class DomTree(var root: DOMNode) {
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         lastWidth = width
         lastHeight = height
+        StyleEngine.setViewportSize(width, height)
         lastStyleReport = StyleEngine.applyStylesRecursivelyDetailed(root)
         lastStyleRevision = StyleEngine.currentStyleRevision()
+        root.resolveLayoutStyleValues(
+            ctx = ctx,
+            parentContentWidth = width,
+            parentContentHeight = height
+        )
         root.render(ctx, 0, 0, width, height)
         validateLayout(ctx)
         refManager.commit(root)
@@ -77,6 +83,7 @@ class DomTree(var root: DOMNode) {
     /** Builds render commands for the current layout. */
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
         frames += 1
+        StyleEngine.setViewportSize(lastWidth, lastHeight)
         val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision() else lastStyleRevision
         val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
             StyleEngine.applyStylesRecursivelyDetailed(root).also {
@@ -93,6 +100,11 @@ class DomTree(var root: DOMNode) {
             )
         }
         if ((!laidOut || styleReport.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
+            root.resolveLayoutStyleValues(
+                ctx = ctx,
+                parentContentWidth = lastWidth,
+                parentContentHeight = lastHeight
+            )
             root.render(ctx, 0, 0, lastWidth, lastHeight)
             validateLayout(ctx)
             refManager.commit(root)

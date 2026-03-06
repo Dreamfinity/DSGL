@@ -7,75 +7,102 @@ import kotlin.test.assertTrue
 
 class CssLengthTests {
     @Test
-    fun `parses px length with sign`() {
-        val positive = parseCssLength("12px")
-        val negative = parseCssLength("-4PX")
-
-        assertEquals(CssLength(12f, CssUnit.Px), positive)
-        assertEquals(CssLength(-4f, CssUnit.Px), negative)
+    fun `parses supported units`() {
+        assertEquals(CssLength(12f, CssUnit.Px), parseCssLength("12px"))
+        assertEquals(CssLength(1.25f, CssUnit.Em), parseCssLength("1.25em"))
+        assertEquals(CssLength(50f, CssUnit.Vw), parseCssLength("50vw"))
+        assertEquals(CssLength(70f, CssUnit.Vh), parseCssLength("70vh"))
+        assertEquals(CssLength(100f, CssUnit.Percent), parseCssLength("100%"))
     }
 
     @Test
-    fun `parses spacing shorthand with px lengths`() {
-        val insets = parseSpacingShorthand(
-            raw = "12px 4px 6px 8px",
-            allowNegative = true
-        )
-
-        assertEquals(12, insets.top)
-        assertEquals(4, insets.right)
-        assertEquals(6, insets.bottom)
-        assertEquals(8, insets.left)
-    }
-
-    @Test
-    fun `rejects spacing shorthand with whitespace between number and unit`() {
-        assertFailsWith<IllegalStateException> {
-            parseSpacingShorthand(
-                raw = "12 px 4 px",
-                allowNegative = true
-            )
-        }
-    }
-
-    @Test
-    fun `padding rejects negative lengths`() {
-        assertFailsWith<IllegalStateException> {
-            parseSpacingShorthand(
-                raw = "-4px",
-                allowNegative = false
-            )
-        }
-    }
-
-    @Test
-    fun `unitless lengths are treated as px with deprecation warning`() {
-        val warnings = linkedMapOf<String, String>()
-        val reporter = StyleWarningReporter { key, message ->
-            warnings.putIfAbsent(key, message)
-        }
-
-        val parsed = parseCssLength(
-            raw = "12",
-            warningReporter = reporter
-        )
-
-        assertEquals(CssLength(12f, CssUnit.Px), parsed)
-        assertEquals(1, warnings.size)
-        assertTrue(warnings.values.single().contains("pixels"))
-    }
-
-    @Test
-    fun `resolves px length directly`() {
-        val px = CssLength(12f, CssUnit.Px).toPx(LengthContext())
-        assertEquals(12f, px)
-    }
-
-    @Test
-    fun `unknown units fail gracefully`() {
+    fun `unitless zero is accepted but non-zero is rejected`() {
+        assertEquals(CssLength.ZERO_PX, parseCssLength("0"))
         val error = assertFailsWith<IllegalStateException> {
-            parseCssLength("1em")
+            parseCssLength("12")
+        }
+        assertTrue(error.message?.contains("Expected explicit unit") == true)
+    }
+
+    @Test
+    fun `unknown units are rejected`() {
+        val error = assertFailsWith<IllegalStateException> {
+            parseCssLength("1rem")
         }
         assertTrue(error.message?.contains("Unknown length unit") == true)
+    }
+
+    @Test
+    fun `rejects whitespace between number and unit`() {
+        assertFailsWith<IllegalStateException> {
+            parseCssLength("12 px")
+        }
+    }
+
+    @Test
+    fun `parses spacing shorthand with mixed units`() {
+        val insets = parseSpacingLengthShorthand(
+            raw = "1em 8px 2vh 5%",
+            allowNegative = false
+        )
+
+        assertEquals(CssUnit.Em, insets.top.unit)
+        assertEquals(CssUnit.Px, insets.right.unit)
+        assertEquals(CssUnit.Vh, insets.bottom.unit)
+        assertEquals(CssUnit.Percent, insets.left.unit)
+    }
+
+    @Test
+    fun `resolves percent against horizontal and vertical axes`() {
+        val context = LengthResolveContext(
+            viewportWidthPx = 400f,
+            viewportHeightPx = 200f,
+            containingBlockWidthPx = 240f,
+            containingBlockHeightPx = 80f,
+            currentFontSizePx = 10f,
+            inheritedFontSizePx = 12f
+        )
+
+        val horizontal = CssLength(50f, CssUnit.Percent)
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
+        val vertical = CssLength(50f, CssUnit.Percent)
+            .resolvePx(context, LengthPercentBase.ContainerHeight)
+
+        assertEquals(120f, horizontal)
+        assertEquals(40f, vertical)
+    }
+
+    @Test
+    fun `resolves vw and vh against viewport`() {
+        val context = LengthResolveContext(
+            viewportWidthPx = 320f,
+            viewportHeightPx = 180f
+        )
+
+        val vw = CssLength(10f, CssUnit.Vw).resolvePx(context, LengthPercentBase.ContainerWidth)
+        val vh = CssLength(20f, CssUnit.Vh).resolvePx(context, LengthPercentBase.ContainerHeight)
+
+        assertEquals(32f, vw)
+        assertEquals(36f, vh)
+    }
+
+    @Test
+    fun `em uses current font size and inherited base for font-size percent`() {
+        val context = LengthResolveContext(
+            viewportWidthPx = 0f,
+            viewportHeightPx = 0f,
+            containingBlockWidthPx = 0f,
+            containingBlockHeightPx = 0f,
+            currentFontSizePx = 12f,
+            inheritedFontSizePx = 20f
+        )
+
+        val paddingEm = CssLength(1.5f, CssUnit.Em)
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
+        val fontPercent = CssLength(125f, CssUnit.Percent)
+            .resolvePx(context, LengthPercentBase.InheritedFontSize)
+
+        assertEquals(18f, paddingEm)
+        assertEquals(25f, fontPercent)
     }
 }

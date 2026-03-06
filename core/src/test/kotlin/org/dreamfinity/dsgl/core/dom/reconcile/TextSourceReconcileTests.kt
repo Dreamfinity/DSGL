@@ -25,14 +25,14 @@ class TextSourceReconcileTests {
     fun `dynamic text updates on reconcile without replacing text node`() {
         var counter = 0
         val current = ui {
-            text { "Count=$counter" }
+            text("Count=$counter")
         }
         val retainedBefore = assertIs<TextNode>(current.root.children.single())
         assertEquals("Count=0", retainedBefore.text)
 
         counter = 7
         val next = ui {
-            text { "Count=$counter" }
+            text("Count=$counter")
         }
 
         current.reconcileWith(next)

@@ -6,6 +6,8 @@ import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
@@ -15,25 +17,43 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.inputEvents"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("HTML-like events demo: onFocus/onBlur/onInput/onChange")
         text(
             "Proof case: type in text field, then click elsewhere -> onInput per key, onChange on blur.",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
-        div({ gap = 6; asFlexRow() }) {
-            div({ width = halfWidth; gap = 3; key = "inputEvents.left"; asFlexColumn() }) {
+        div({
+            style = {
+                gap = 6
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
+            div({
+                key = "inputEvents.left"
+                style = {
+                    width = halfWidth
+                    gap = 3
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
                 text("Text input")
                 input(
                     InputType.Text(value = window.inputEventTextValue, placeholder = "Type then blur"),
                     {
                         key = "inputEvents.text"
-                        width = halfWidth - 6
+                        style = { width = halfWidth - 6 }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("text", "focus", window.inputEventTextValue, event)
                         }
@@ -55,8 +75,10 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 textarea({
                     placeholder = "Multiline event sample"
                     key = "inputEvents.textarea"
-                    width = halfWidth - 6
-                    height = 46
+                    style = {
+                        width = halfWidth - 6
+                        height = 46
+                    }
                     value = window.inputEventTextareaValue
                     onFocusGain = { event: FocusGainEvent ->
                         window.recordInputEvent("textarea", "focus", window.inputEventTextareaValue, event)
@@ -75,7 +97,15 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 })
             }
 
-            div({ width = halfWidth; gap = 3; key = "inputEvents.right"; asFlexColumn() }) {
+            div({
+                key = "inputEvents.right"
+                style = {
+                    width = halfWidth
+                    gap = 3
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
                 text("Checkbox")
                 input(
                     InputType.Checkbox(
@@ -86,7 +116,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.checkbox"
-                        width = halfWidth - 6
+                        style = { width = halfWidth - 6 }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("checkbox", "focus", window.checkboxValueString(), event)
                         }
@@ -112,7 +142,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.radio"
-                        width = halfWidth - 6
+                        style = { width = halfWidth - 6 }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("radio", "focus", window.inputEventRadioValue ?: "", event)
                         }
@@ -140,7 +170,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.range"
-                        width = halfWidth - 6
+                        style = { width = halfWidth - 6 }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("range", "focus", window.inputEventRangeValue.toString(), event)
                         }
@@ -159,32 +189,40 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 )
                 text(
                     "Range value=${window.inputEventRangeValue}",
-                    { color = DEMO_MUTED }
+                    { style = { color = DEMO_MUTED } }
                 )
             }
         }
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Clear Log", {
-                width = 62
+                style = { width = 62 }
                 onMouseClick = { window.clearInputEventLog() }
             })
             text(
                 "Entries=${window.inputEventLogEntries.size}",
-                { color = DEMO_MUTED }
+                { style = { color = DEMO_MUTED } }
             )
         }
 
         div({
             key = "inputEvents.logPanel"
-            width = contentWidth - 8
-            height = 54
-            backgroundColor = DEMO_SURFACE_ALT
-            padding = 3
-            style = { border(1, 0xFF6A7785.toInt()) }
+            style = {
+                width = contentWidth - 8
+                height = 54
+                backgroundColor = DEMO_SURFACE_ALT
+                padding = 3
+                border(1, 0xFF6A7785.toInt())
+            }
         }) {
             if (window.inputEventLogEntries.isEmpty()) {
-                text("No input events yet.", { color = DEMO_MUTED })
+                text("No input events yet.", { style = { color = DEMO_MUTED } })
             } else {
                 window.inputEventLogEntries.forEach { line ->
                     text(line)

@@ -10,8 +10,8 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
  */
 class ImageNode(
     var url: String,
-    var imageWidth: Int,
-    var imageHeight: Int,
+    var imageWidth: Int = 0,
+    var imageHeight: Int = 0,
     key: Any? = null
 ) : DOMNode(key) {
     override val styleType: String = "img"

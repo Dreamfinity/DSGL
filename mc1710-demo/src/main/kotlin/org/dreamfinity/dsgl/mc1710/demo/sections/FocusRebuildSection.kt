@@ -3,30 +3,35 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.focusRebuild"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }
     ) {
         text("Stable key focus test: focus first field, press Enter to rebuild, keep typing.")
         text("Unstable key field changes key version and demonstrates focus/key instability.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         text(
             "renderPasses=${window.renderPasses} autoState=${window.autoRebuildCounter} manualInvalidates=${window.manualInvalidateCount}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         text(
             "stableEnterRebuilds=${window.focusStableEnterRebuilds} unstableKeyVersion=${window.focusKeyVersion}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
         input(
@@ -36,7 +41,7 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             ),
             {
                 key = "focus.stable.input"
-                width = contentWidth - 10
+                style = { width = contentWidth - 10 }
                 onKeyDown = { event ->
                     if (event.keyCode == KeyCodes.ENTER) {
                         window.focusStableEnterRebuilds += 1
@@ -61,7 +66,7 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             ),
             {
                 key = "focus.unstable.input.${window.focusKeyVersion}"
-                width = contentWidth - 10
+                style = { width = contentWidth - 10 }
                 onKeyDown = { event ->
                     window.focusUnstableValue =
                         window.applyTextMutation(window.focusUnstableValue, event, maxLength = 28)
@@ -70,16 +75,22 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             }
         )
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Auto state +1", {
-                width = 80
+                style = { width = 80 }
                 onMouseClick = {
                     window.bumpAutoRebuildCounter()
                     window.appendInfo("Focus/Rebuild: state counter increment")
                 }
             })
             button("Manual invalidate", {
-                width = 96
+                style = { width = 96 }
                 onMouseClick = {
                     window.requestManualInvalidate("focus section button")
                     window.appendInfo("Focus/Rebuild: manual invalidate button")
@@ -87,9 +98,15 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             })
         }
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Bump unstable key", {
-                width = 94
+                style = { width = 94 }
                 onMouseClick = {
                     window.bumpFocusVersion()
                     window.requestManualInvalidate("unstable key version changed")
@@ -98,7 +115,7 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             })
             text(
                 "lastManualReason=${window.lastManualReason}",
-                { color = DEMO_MUTED }
+                { style = { color = DEMO_MUTED } }
             )
         }
     }

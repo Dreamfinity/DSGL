@@ -52,22 +52,31 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.contextMenu"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Pseudo filesystem: tile view + context menu + drag/drop")
         text(
             "path=${window.contextMenuCurrentPath()} sort=${window.contextMenuSortMode} selected=${window.contextMenuFileSelection}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         text(
             "lastAction=${window.contextMenuLastAction} target=${window.contextMenuLastTarget} actions=${window.contextMenuActionCount}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("New File", {
                 onMouseClick = { window.contextMenuCreateFile() }
             })
@@ -78,21 +87,28 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             key = "section.contextMenu.window"
-            width = contentWidth - 8
-            height = (contentHeight - 58).coerceAtLeast(80)
-            padding = 3
-            gap = 2
-            backgroundColor = 0xFF2A313B.toInt()
-            style = { border(1, 0xFF5B6A7A.toInt()) }
-            asFlexColumn()
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                width = contentWidth - 8
+                height = (contentHeight - 58).coerceAtLeast(80)
+                padding = 3
+                gap = 2
+                backgroundColor = 0xFF2A313B.toInt()
+                border(1, 0xFF5B6A7A.toInt())
+            }
         }) {
             div({
                 key = "section.contextMenu.pathbar"
-                width = contentWidth - 16
-                padding = 2
-                gap = 2
-                backgroundColor = 0xFF25303A.toInt()
-                style = { display = Display.Flex; flexDirection = FlexDirection.Row; border(1, 0xFF4F6175.toInt()) }
+                style = {
+                    width = contentWidth - 16
+                    padding = 2
+                    gap = 2
+                    backgroundColor = 0xFF25303A.toInt()
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                    border(1, 0xFF4F6175.toInt())
+                }
             }) {
                 button("<", {
                     key = "section.contextMenu.path.back"
@@ -107,7 +123,7 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
                 val breadcrumbs = window.contextMenuBreadcrumbs()
                 breadcrumbs.forEachIndexed { index, breadcrumb ->
                     if (index > 0) {
-                        text("/", { color = DEMO_MUTED })
+                        text("/", { style = { color = DEMO_MUTED } })
                     }
                     val breadcrumbKey = "section.contextMenu.path.${breadcrumb.id}"
                     val breadcrumbDrop = window.useDroppable(
@@ -151,15 +167,15 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
                     val isDropHover = window.contextMenuDragHoverDirectoryId == breadcrumb.id
                     button(breadcrumb.label, {
                         key = breadcrumbKey
-                        backgroundColor = when {
-                            isDropHover -> 0xFF40617F.toInt()
-                            isCurrent -> 0xFF364A5E.toInt()
-                            else -> 0xFF2B3A4A.toInt()
-                        }
                         onMouseClick = {
                             window.contextMenuOpenDirectory(breadcrumb.id, pushHistory = true)
                         }
                         style = {
+                            backgroundColor = when {
+                                isDropHover -> 0xFF40617F.toInt()
+                                isCurrent -> 0xFF364A5E.toInt()
+                                else -> 0xFF2B3A4A.toInt()
+                            }
                             border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
                         }
                         applyDroppable(breadcrumbDrop)
@@ -211,15 +227,16 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             val listNode = div({
                 key = "section.contextMenu.list"
-                width = listWidth
-                gap = 8
-                padding = 4
-                backgroundColor = if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
-                    0xFF2F4358.toInt()
-                } else {
-                    0xFF2B343F.toInt()
-                }
                 style = {
+                    width = listWidth
+                    gap = 8
+                    padding = 4
+                    backgroundColor =
+                        if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
+                            0xFF2F4358.toInt()
+                        } else {
+                            0xFF2B343F.toInt()
+                        }
                     border(1, 0xFF4F6175.toInt())
                     display = Display.Grid
                     this.gridColumns = gridColumns
@@ -229,13 +246,14 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
             }) {
                 if (entries.isEmpty()) {
                     div({
-                        width = listWidth - 8
-                        padding = 2
-
+                        style = {
+                            width = listWidth - 8
+                            padding = 2
+                        }
                     }) {
                         text(
                             "Folder is empty. Right-click to create file/folder.",
-                            { color = DEMO_MUTED }
+                            { style = { color = DEMO_MUTED } }
                         )
                     }
                 } else {
@@ -324,30 +342,33 @@ private fun UiScope.contextMenuEntryTile(
     val isDropHover = window.contextMenuDragHoverDirectoryId == file.id
     val tileNode = div({
         key = tileKey
-        backgroundColor = when {
-            isDropHover -> 0xFF43607A.toInt()
-            isSelected -> 0xFF3A5168.toInt()
-            else -> 0xFF33414E.toInt()
-        }
         onMouseClick = { event ->
             if (!isEditingName && event.mouseButton == MouseButton.LEFT) {
                 window.contextMenuHandleEntryClick(file)
             }
         }
         style = {
+            backgroundColor = when {
+                isDropHover -> 0xFF43607A.toInt()
+                isSelected -> 0xFF3A5168.toInt()
+                else -> 0xFF33414E.toInt()
+            }
             border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
             alignItems = AlignItems.Center
             justifyContent = JustifyContent.Center
         }
-        asFlexColumn()
         applyDraggable(draggable)
         if (droppable != null) {
             applyDroppable(droppable)
         }
     }) {
         img(iconURL, {
-            width = TILE_ICON_SIZE
-            height = TILE_ICON_SIZE
+            style = {
+                width = TILE_ICON_SIZE
+                height = TILE_ICON_SIZE
+            }
         })
         if (isEditingName) {
             input(
@@ -370,7 +391,7 @@ private fun UiScope.contextMenuEntryTile(
             )
         } else {
             text(file.name, {
-                color = if (file.locked) 0xFFE9A56E.toInt() else 0xFFEAF2FD.toInt()
+                style = { color = if (file.locked) 0xFFE9A56E.toInt() else 0xFFEAF2FD.toInt() }
             })
         }
     }

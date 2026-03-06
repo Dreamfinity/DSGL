@@ -39,14 +39,7 @@ fun ui(block: UiScope.() -> Unit): DomTree {
  * Event callbacks are wired into [org.dreamfinity.dsgl.core.event.EventBus].
  */
 open class ComponentProps(
-    var color: Int = DsglColors.TEXT,
-    var padding: Int = 0,
-    var gap: Int = 0,
-    var width: Int? = null,
-    var height: Int? = null,
-    var backgroundColor: Int = DsglColors.PANEL,
     var style: StyleScope.() -> Unit = {},
-
     var key: Any? = null,
     var id: String? = null,
     var className: String = "",
@@ -84,20 +77,23 @@ open class ComponentProps(
     var onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
     var onDrop: ((DropEvent) -> Unit)? = null
 ) {
-
-    fun asFlexRow(): ComponentProps = asFlex(FlexDirection.Row)
-
-    fun asFlexColumn(): ComponentProps = asFlex(FlexDirection.Column)
-
-    private fun asFlex(direction: FlexDirection): ComponentProps {
-        val previous = style
-        style = {
-            display = Display.Flex
-            flexDirection = direction
-            previous()
-        }
-        return this
+    fun style(block: StyleScope.() -> Unit) {
+        style = block
     }
+
+//    fun asFlexRow(): ComponentProps = asFlex(FlexDirection.Row)
+//
+//    fun asFlexColumn(): ComponentProps = asFlex(FlexDirection.Column)
+//
+//    private fun asFlex(direction: FlexDirection): ComponentProps {
+//        val previous = style
+//        style = {
+//            display = Display.Flex
+//            flexDirection = direction
+//            previous()
+//        }
+//        return this
+//    }
 }
 
 /** Static text props. */
@@ -149,14 +145,9 @@ class UiScope internal constructor(private val parent: DOMNode) {
         block: UiScope.() -> Unit = {}
     ) = withProps(ComponentProps().apply(props)) { props ->
         ContainerNode(
-            padding = props.padding,
-            gap = props.gap,
-            backgroundColor = props.backgroundColor,
             stackLayout = false,
             key = props.key
         ).apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -172,14 +163,9 @@ class UiScope internal constructor(private val parent: DOMNode) {
         block: UiScope.() -> Unit = {}
     ) = withProps(ComponentProps().apply(props)) { props ->
         ContainerNode(
-            padding = props.padding,
-            gap = props.gap,
-            backgroundColor = props.backgroundColor,
             stackLayout = true,
             key = props.key
         ).apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -196,11 +182,8 @@ class UiScope internal constructor(private val parent: DOMNode) {
     ) = withProps(TextProps().apply(props)) { props ->
         TextNode(
             props.source,
-            props.color,
-            props.key
+            key = props.key
         ).apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -297,13 +280,8 @@ class UiScope internal constructor(private val parent: DOMNode) {
     ) = withProps(ButtonProps(text).apply(props)) { props ->
         ButtonNode(
             props.text,
-            props.color,
-            props.backgroundColor,
-            props.padding,
-            props.key
+            key = props.key
         ).apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -321,9 +299,7 @@ class UiScope internal constructor(private val parent: DOMNode) {
     ) = withProps(ImageProps(url).apply(props)) { props ->
         ImageNode(
             props.url,
-            props.width ?: 0,
-            props.height ?: 0,
-            props.key
+            key = props.key
         ).apply {
             applyStyle(props.style)
             applyHandlers(props)
@@ -345,8 +321,6 @@ class UiScope internal constructor(private val parent: DOMNode) {
             props.rotXDeg,
             props.key
         ).apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -415,8 +389,6 @@ class UiScope internal constructor(private val parent: DOMNode) {
                 key = props.key
             )
         }.apply {
-            this.width = props.width
-            this.height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -435,8 +407,6 @@ class UiScope internal constructor(private val parent: DOMNode) {
             props.placeholder,
             props.key
         ).apply {
-            width = props.width
-            height = props.height
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)
@@ -500,6 +470,51 @@ class StyleScope internal constructor(private val node: DOMNode) {
         get() = JustifyItems.Stretch
         set(value) {
             setLiteral(StyleProperty.JUSTIFY_ITEMS, value.toCssLiteral())
+        }
+
+    var padding: Int
+        get() = 0
+        set(value) {
+            setLiteral(
+                StyleProperty.PADDING,
+                "${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)}"
+            )
+        }
+
+    var width: Int?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.WIDTH, "auto")
+            } else {
+                setLiteral(StyleProperty.WIDTH, value.coerceAtLeast(0).toString())
+            }
+        }
+
+    var height: Int?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.HEIGHT, "auto")
+            } else {
+                setLiteral(StyleProperty.HEIGHT, value.coerceAtLeast(0).toString())
+            }
+        }
+
+    var color: Int
+        get() = DsglColors.TEXT
+        set(value) {
+            setLiteral(StyleProperty.FOREGROUND_COLOR, toColorLiteral(value))
+        }
+
+    var backgroundColor: Int?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.BACKGROUND_COLOR, "#00000000")
+            } else {
+                setLiteral(StyleProperty.BACKGROUND_COLOR, toColorLiteral(value))
+            }
         }
 
     var gap: Int

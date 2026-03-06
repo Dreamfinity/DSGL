@@ -2,34 +2,45 @@ package org.dreamfinity.dsgl.mc1710.demo.support
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 
 fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, panelHeight: Int) {
     div({
         key = "panel.eventInspector"
-        width = panelWidth
-        height = panelHeight
-        gap = 4
-        backgroundColor = DEMO_SURFACE_ALT
-        color = DsglColors.TEXT
-        style = { border(1, DsglColors.BORDER) }
-        asFlexColumn()
+        style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            width = panelWidth
+            height = panelHeight
+            gap = 4
+            backgroundColor = DEMO_SURFACE_ALT
+            color = DsglColors.TEXT
+            border(1, DsglColors.BORDER)
+        }
+
     }) {
-        div({ asFlexRow() }) {
+        div({
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             text("Event Inspector")
             button("Clear", {
-                this.width = 44
+                style = { width = 44 }
                 onMouseClick = { window.clearEventLogs() }
             })
         }
-        text("Stored: ${window.eventLogs.size}/${window.maxEventLogs}", { color = DEMO_MUTED })
+        text("Stored: ${window.eventLogs.size}/${window.maxEventLogs}", { style = { color = DEMO_MUTED } })
         if (window.eventLogs.isEmpty()) {
-            text("No events yet. Interact with any demo area.", { color = DEMO_MUTED })
+            text("No events yet. Interact with any demo area.", { style = { color = DEMO_MUTED } })
         } else {
             window.eventLogs
                 .take(window.visibleEventLines)
                 .forEach { entry ->
-                    text("#${entry.sequence} ${entry.line}", { color = entry.color })
+                    text("#${entry.sequence} ${entry.line}", { style = { color = entry.color } })
                 }
         }
     }
@@ -50,31 +61,42 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
 
     div({
         key = "panel.capabilityChecklist"
-        width = panelWidth
-        height = panelHeight
-        gap = 4
-        backgroundColor = DEMO_SURFACE_ALT
-        color = DsglColors.TEXT
-        style = { border(1, DsglColors.BORDER) }
-        asFlexColumn()
+        style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            width = panelWidth
+            height = panelHeight
+            gap = 4
+            backgroundColor = DEMO_SURFACE_ALT
+            color = DsglColors.TEXT
+            border(1, DsglColors.BORDER)
+        }
+
     }) {
         text("Capability Checklist")
-        div({ asFlexRow() }) {
+        div({
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("<", {
-                width = 22
+                style = { width = 22 }
                 onMouseClick = { window.moveChecklistPage(-1) }
             })
-            text("Page ${window.checklistPage + 1}/$pageCount", { color = DEMO_MUTED })
+            text("Page ${window.checklistPage + 1}/$pageCount", { style = { color = DEMO_MUTED } })
             button(">", {
-                this.width = 22
+                style = { width = 22 }
                 onMouseClick = { window.moveChecklistPage(1) }
             })
         }
         pageItems.forEach { capability ->
             val ok = implemented.contains(capability)
-            text("${if (ok) "[OK]" else "[MISS]"} ${capability.label}", { color = if (ok) DEMO_OK else DEMO_ERR })
+            text("${if (ok) "[OK]" else "[MISS]"} ${capability.label}", {
+                style = { color = if (ok) DEMO_OK else DEMO_ERR }
+            })
         }
         val missing = required.count { !implemented.contains(it) }
-        text("Missing: $missing / ${required.size}", { color = if (missing == 0) DEMO_OK else DEMO_ERR })
+        text("Missing: $missing / ${required.size}", { style = { color = if (missing == 0) DEMO_OK else DEMO_ERR } })
     }
 }

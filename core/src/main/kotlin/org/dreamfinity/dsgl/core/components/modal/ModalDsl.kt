@@ -53,7 +53,6 @@ fun UiScope.modalHost(
         }
         hostScope.div({
             key = "$modalKey.modal.${spec.key}.layer"
-            backgroundColor = backdropColor
             onMouseDown = { event ->
                 if (!isTopMost) {
                     event.cancelled = true
@@ -85,13 +84,14 @@ fun UiScope.modalHost(
                 }
             }
             style = {
+                backgroundColor = backdropColor
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
                 alignItems = AlignItems.Center
                 justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
                 padding(if (spec.centered) 6 else 10)
             }
-            asFlexColumn()
+
         }) {
             modalFrame(
                 spec = spec,
@@ -107,14 +107,14 @@ fun UiScope.modalHost(
 
     hostScope.div({
         key = "$modalKey.modal.lifecycle"
-        width = 0
-        height = 0
         ref = RefTarget { handle ->
             if (handle != null) {
                 ModalRuntime.onCommit(modalKey, modals)
             }
         }
         style = {
+            width = 0
+            height = 0
             display = Display.None
         }
     })
@@ -151,19 +151,19 @@ fun UiScope.modalDialog(
     }
     div({
         key = modalKey
-        width = presetWidth
-        padding = 0
-        gap = 0
-        backgroundColor = 0xFF2F3A46.toInt()
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
+            width = presetWidth
+            padding = 0
+            gap = 0
+            backgroundColor = 0xFF2F3A46.toInt()
             if (!centered) {
                 margin(6, 0, 0, 0)
             }
             border(1, 0xFF6E7D8C.toInt())
         }
-        asFlexColumn()
+
     }) {
         block()
     }
@@ -176,15 +176,14 @@ fun UiScope.modalHeader(
 ) {
     div({
         key = "modal.header"
-        padding = 4
-        gap = 4
-        backgroundColor = 0xFF334255.toInt()
         style = {
+            padding = 4
+            gap = 4
+            backgroundColor = 0xFF334255.toInt()
             display = Display.Flex
             flexDirection = FlexDirection.Row
             alignItems = AlignItems.Center
         }
-        asFlexRow()
     }) {
         div({
             key = "modal.header.titleSlot"
@@ -193,13 +192,12 @@ fun UiScope.modalHeader(
                 flexDirection = FlexDirection.Row
                 flexGrow = 1f
             }
-            asFlexRow()
         }) {
             block()
         }
         if (closeButton) {
             button("x", {
-                width = 18
+                style = { width = 18 }
                 onMouseClick = { onHide?.invoke() }
             })
         }
@@ -217,7 +215,7 @@ fun UiScope.modalTitle(
         }
     }) {
         text(text, {
-            color = 0xFFEAF3FF.toInt()
+            style = { color = 0xFFEAF3FF.toInt() }
         })
     }
 }
@@ -228,10 +226,13 @@ fun UiScope.modalBody(
 ) {
     div({
         key = modalBodyKey
-        padding = 4
-        gap = 3
-        backgroundColor = 0xFF2F3A46.toInt()
-        asFlexColumn()
+        style = {
+            padding = 4
+            gap = 3
+            backgroundColor = 0xFF2F3A46.toInt()
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         block()
     }
@@ -243,16 +244,18 @@ fun UiScope.modalFooter(
 ) {
     div({
         key = modalFooterKey
-        padding = 4
-        gap = 4
-        backgroundColor = 0xFF334255.toInt()
         style = {
+            display = Display.Flex
+            flexDirection = FlexDirection.Row
+            padding = 4
+            gap = 4
+            backgroundColor = 0xFF334255.toInt()
             display = Display.Flex
             flexDirection = FlexDirection.Row
             justifyContent = JustifyContent.End
             alignItems = AlignItems.Center
         }
-        asFlexRow()
+
     }) {
         block()
     }
@@ -335,7 +338,7 @@ fun promptModal(
             input(
                 InputType.Text(value = value, placeholder = "Enter value"), {
                     this.key = "modal.prompt.input.$key"
-                    width = 150
+                    style = { width = 150 }
                     onInput = { event ->
                         onValueInput(event.value)
                     }

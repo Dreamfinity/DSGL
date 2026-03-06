@@ -19,6 +19,7 @@ import net.minecraft.client.Minecraft
 class DsglMc1710ModContainer {
     @Mod.EventHandler
     fun onPreInit(event: FMLPreInitializationEvent) {
+
     }
 
     @Mod.EventHandler

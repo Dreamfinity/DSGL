@@ -4,6 +4,8 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.Ref
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
@@ -16,13 +18,16 @@ fun UiScope.refsSection(
 ) {
     div({
         key = "section.refs"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Refs: object refs + callback refs (commit-phase attach/detach).")
-        text("Focus via ref uses ElementHandle.requestFocus().", { color = DEMO_MUTED })
+        text("Focus via ref uses ElementHandle.requestFocus().", { style = { color = DEMO_MUTED } })
 
         input(
             InputType.Text(
@@ -31,7 +36,7 @@ fun UiScope.refsSection(
             ),
             {
                 key = "refs.input.primary"
-                width = contentWidth - 10
+                style = { width = contentWidth - 10 }
                 onInput = { event ->
                     window.refsInputValue = event.value
                     window.logHook("refs.input.onInput", event, "value=${event.value}")
@@ -40,23 +45,29 @@ fun UiScope.refsSection(
             ref = inputRef
         )
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Focus via ref", {
-                width = 82
+                style = { width = 82 }
                 onMouseClick = {
                     inputRef.current?.requestFocus()
                     window.appendInfo("Refs: requestFocus() called via object ref")
                 }
             })
             button("Rebuild", {
-                width = 56
+                style = { width = 56 }
                 onMouseClick = {
                     window.refsRebuildCount += 1
                     window.requestManualInvalidate("refs section rebuild")
                 }
             })
             button(if (window.refsCallbackMounted) "Unmount callback target" else "Mount callback target", {
-                width = 136
+                style = { width = 136 }
                 onMouseClick = {
                     window.refsCallbackMounted = !window.refsCallbackMounted
                     window.appendInfo("Refs: callback target mounted=${window.refsCallbackMounted}")
@@ -67,20 +78,22 @@ fun UiScope.refsSection(
         text({
             val hasRef = inputRef.current != null
             value = "objectRef.current set=$hasRef rebuilds=${window.refsRebuildCount}"
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         div(
             {
                 key = "refs.bounds.panel"
-                width = contentWidth - 10
-                height = 34
-                padding = 4
-                backgroundColor = 0xFF313844.toInt()
+                style = {
+                    width = contentWidth - 10
+                    height = 34
+                    padding = 4
+                    backgroundColor = 0xFF313844.toInt()
+                }
             },
             ref = panelRef
         ) {
-            text("Bounds target panel", { color = 0xFFE2EAFF.toInt() })
+            text("Bounds target panel", { style = { color = 0xFFE2EAFF.toInt() } })
         }
 
         text({
@@ -90,27 +103,29 @@ fun UiScope.refsSection(
             } else {
                 "panelRef.bounds: x=${bounds.x} y=${bounds.y} w=${bounds.width} h=${bounds.height}"
             }
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         if (window.refsCallbackMounted) {
             div(
                 {
                     key = "refs.callback.target"
-                    width = contentWidth - 10
-                    height = 24
-                    backgroundColor = 0xFF2F3C2F.toInt()
-                    padding = 4
+                    style = {
+                        width = contentWidth - 10
+                        height = 24
+                        backgroundColor = 0xFF2F3C2F.toInt()
+                        padding = 4
+                    }
                 },
                 ref = window.refsCallbackRef
             ) {
-                text("Callback ref target", { color = 0xFFC5E8C5.toInt() })
+                text("Callback ref target", { style = { color = 0xFFC5E8C5.toInt() } })
             }
         }
 
         text(
             "callback attaches=${window.refsCallbackAttachCount} detaches=${window.refsCallbackDetachCount} last=${window.refsCallbackLast}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
     }
 }

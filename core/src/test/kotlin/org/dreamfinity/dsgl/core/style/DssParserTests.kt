@@ -125,7 +125,7 @@ class DssParserTests {
             DssParser.parse(
                 """
                 button {
-                  padding: 1 2 3 4 5;
+                  padding: 1px 2px 3px 4px 5px;
                 }
                 """.trimIndent(),
                 "bad-spacing.dss"
@@ -237,16 +237,15 @@ class DssParserTests {
     }
 
     @Test
-    fun `unitless length literal is accepted with deprecation warning`() {
-        val data = DssParser.parse(
-            """
-            .panel { margin: 12; padding: 4px; }
-            """.trimIndent(),
-            "unitless-length.dss"
-        )
-
-        assertEquals(1, data.rules.size)
-        assertEquals(1, data.warnings.size)
-        assertTrue(data.warnings.single().contains("pixels"))
+    fun `unitless non-zero length literal is rejected`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .panel { margin: 12; padding: 4px; }
+                """.trimIndent(),
+                "unitless-length.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected explicit unit") == true)
     }
 }

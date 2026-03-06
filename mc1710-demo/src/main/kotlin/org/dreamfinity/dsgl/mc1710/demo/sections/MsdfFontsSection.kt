@@ -5,6 +5,8 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.font.FontAssetSource
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.font.RegisteredFontInfo
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -62,27 +64,36 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.msdfFonts"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("MSDF Fonts")
         text(
             "All DSGL DrawText commands go through MSDF/MTSDF rendering. Switch font/size/color/opacity and verify wrapping.",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         text("DREAMFINITY", { style = { fontId("telegrafico") } })
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Font: $fontId", {
-                width = 82
+                style = { width = 82 }
                 onMouseClick = {
                     window.msdfFontIndex = (window.msdfFontIndex + 1) % selectableFonts.size.coerceAtLeast(1)
                 }
             })
             button("Color", {
-                width = 58
+                style = { width = 58 }
                 onMouseClick = {
                     window.msdfColorIndex = (window.msdfColorIndex + 1) % COLOR_PRESETS.size
                 }
@@ -94,7 +105,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                     "Formatting OFF"
                 },
                 {
-                    width = 104
+                    style = { width = 104 }
                     onMouseClick = {
                         window.msdfParseMinecraftFormatting = !window.msdfParseMinecraftFormatting
                         window.appendInfo("MSDF formatting=${window.msdfParseMinecraftFormatting}")
@@ -108,7 +119,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                     "Guides OFF"
                 },
                 {
-                    width = 84
+                    style = { width = 84 }
                     onMouseClick = {
                         window.msdfShowBaselineGuides = !window.msdfShowBaselineGuides
                         MsdfRuntimeDebugSettings.decorationGuidesEnabled = window.msdfShowBaselineGuides
@@ -131,7 +142,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.opacity"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.msdfOpacityPercent
                     window.msdfOpacityPercent = next.coerceIn(0, 100)
@@ -147,7 +158,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.fontSize"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.msdfFontSizePx
                     window.msdfFontSizePx = next.coerceIn(6, 48)
@@ -163,7 +174,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.wrapWidth"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
                     window.msdfWrapWidth = next.coerceIn(minWrapWidth.toLong(), maxWrapWidth.toLong())
@@ -173,13 +184,15 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         text(
             "fontId=$fontId source=${selectedFont.source.name.lowercase()} fontSize=$fontSize opacity=$opacity panelWidth=$panelWidth formatting=${formattingMode.name.lowercase()} guides=${window.msdfShowBaselineGuides}",
-            { this.color = DEMO_MUTED }
+            { style = { this.color = DEMO_MUTED } }
         )
         text(
             "Drop external font packages into <gameDir>/dsgl/fonts/<subdir>/<name>.ttf + -meta.json + -mtsdf.png and restart.",
             {
-                color = DEMO_MUTED
-                style = { textWrap = TextWrap.Wrap }
+                style = {
+                    color = DEMO_MUTED
+                    textWrap = TextWrap.Wrap
+                }
             }
         )
         text({
@@ -192,18 +205,24 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                 "Registered fonts (${selectableFonts.size}): $preview"
             }
 
-            color = DEMO_MUTED
-            style = { textWrap = TextWrap.Wrap }
+            style = {
+                color = DEMO_MUTED
+                textWrap = TextWrap.Wrap
+            }
         })
 
         div({
             key = "msdf.panel"
-            width = panelWidth
-            padding = 4
-            gap = 2
-            backgroundColor = 0xFF233040.toInt()
-            style = { border(1, 0xFF5F7288.toInt()) }
-            asFlexColumn()
+            style = {
+                width = panelWidth
+                padding = 4
+                gap = 2
+                backgroundColor = 0xFF233040.toInt()
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                border(1, 0xFF5F7288.toInt())
+            }
+
         }) {
             text("Header text", {
                 style = {
@@ -320,7 +339,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                 }
             })
             text("Minecraft Color Codes", {
-                color = DEMO_MUTED
+                style = { color = DEMO_MUTED }
             })
             text(SAMPLE_MC_COLORS, {
                 style = {

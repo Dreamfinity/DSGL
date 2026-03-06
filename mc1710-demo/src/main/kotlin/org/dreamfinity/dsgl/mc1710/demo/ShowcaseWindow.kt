@@ -19,6 +19,8 @@ import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
@@ -348,38 +350,50 @@ class ShowcaseWindow : DsglWindow() {
             modalHost(modals = demoModals, modalKey = "showcase.modalHost") {
                 div({
                     key = "showcase.root"
-                    padding = 4
-                    gap = 4
-                    backgroundColor = DEMO_BG
-                    asFlexColumn()
+                    style = {
+                        padding = 4
+                        gap = 4
+                        backgroundColor = DEMO_BG
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Column
+                    }
                 }) {
-                    text("DSGL Showcase Window", { color = DsglColors.WHITE })
+                    text("DSGL Showcase Window", { style = { color = DsglColors.WHITE } })
                     text(
                         "renderPasses=$renderPasses section=${selectedSection.title} viewport=${viewportWidth}x$viewportHeight",
-                        { color = DEMO_MUTED }
+                        { style = { color = DEMO_MUTED } }
                     )
 
                     div({
                         key = "showcase.body"
-                        gap = 4
-                        asFlexRow()
+                        style = {
+                            gap = 4
+                            display = Display.Flex
+                            flexDirection = FlexDirection.Row
+                        }
                     }) {
                         div({
                             key = "showcase.nav"
-                            width = navWidth
-                            height = bodyHeight
-                            gap = 4
-                            backgroundColor = DEMO_SURFACE
-                            color = DsglColors.TEXT
-                            style = { border(1, DsglColors.BORDER) }
-                            asFlexColumn()
+                            style = {
+                                display = Display.Flex
+                                flexDirection = FlexDirection.Column
+                                width = navWidth
+                                height = bodyHeight
+                                gap = 4
+                                backgroundColor = DEMO_SURFACE
+                                color = DsglColors.TEXT
+                                border(1, DsglColors.BORDER)
+                            }
+
                         }) {
-                            text("Sections", { color = DsglColors.WHITE })
+                            text("Sections", { style = { color = DsglColors.WHITE } })
                             DemoSection.entries.forEach { section ->
                                 button(section.title, {
                                     key = "nav.${section.name.lowercase()}"
-                                    backgroundColor =
-                                        if (selectedSection == section) DEMO_ACCENT else DsglColors.BUTTON
+                                    style = {
+                                        backgroundColor =
+                                            if (selectedSection == section) DEMO_ACCENT else DsglColors.BUTTON
+                                    }
                                     onMouseClick = { selectSection(section) }
                                 })
                             }
@@ -387,16 +401,19 @@ class ShowcaseWindow : DsglWindow() {
 
                         div({
                             key = "showcase.content"
-                            width = contentWidth
-                            height = bodyHeight
-                            gap = 4
-                            backgroundColor = DEMO_SURFACE
-                            color = DsglColors.TEXT
-                            style = { border(1, DsglColors.BORDER) }
-                            asFlexColumn()
+                            style = {
+                                display = Display.Flex
+                                flexDirection = FlexDirection.Column
+                                width = contentWidth
+                                height = bodyHeight
+                                gap = 4
+                                backgroundColor = DEMO_SURFACE
+                                color = DsglColors.TEXT
+                                border(1, DsglColors.BORDER)
+                            }
                         }) {
-                            text(selectedSection.title, { color = DsglColors.WHITE })
-                            text(selectedSection.subtitle, { color = DEMO_MUTED })
+                            text(selectedSection.title, { style = { color = DsglColors.WHITE } })
+                            text(selectedSection.subtitle, { style = { color = DEMO_MUTED } })
                             when (selectedSection) {
                                 DemoSection.OVERVIEW -> overviewSection(
                                     this@ShowcaseWindow,
@@ -524,10 +541,13 @@ class ShowcaseWindow : DsglWindow() {
 
                         div({
                             key = "showcase.side"
-                            width = sidebarWidth
-                            height = bodyHeight
-                            gap = 4
-                            asFlexColumn()
+                            style = {
+                                width = sidebarWidth
+                                height = bodyHeight
+                                gap = 4
+                                display = Display.Flex
+                                flexDirection = FlexDirection.Column
+                            }
                         }) {
                             renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
                             renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)
@@ -1741,10 +1761,118 @@ class ShowcaseWindow : DsglWindow() {
                       background-color: #213348;
                       border-color: var(--accent);
                     }
+
+                    .units-demo {
+                      padding: 8px;
+                      gap: 6px;
+                      background-color: #1E2C3A;
+                      border-color: #5E6A77;
+                      border-width: 1px;
+                    }
+
+                    .units-vw-chip {
+                      width: 20vw;
+                      background-color: #355674;
+                      border-color: #7CB6FF;
+                      border-width: 1px;
+                      padding: 2px 4px;
+                    }
+
+                    .units-playground {
+                      width: 100%;
+                      background-color: #17222D;
+                      border-color: #4E5E6E;
+                      border-width: 1px;
+                      padding: 4px;
+                    }
+
+                    .units-percent-box {
+                      width: 50%;
+                      height: 40%;
+                      margin: 8% 5%;
+                      background-color: #3D6B52;
+                      border-color: #8DD0A6;
+                      border-width: 1px;
+                      padding: 1em;
+                    }
+
+                    .units-em-text {
+                      font-size: 1.25em;
+                      margin: 1em 0;
+                      color: #E6F0FF;
+                    }
+
+                    .units-vh-bar {
+                      width: 40%;
+                      height: 8vh;
+                      background-color: #5A3F77;
+                      border-color: #9B83C5;
+                      border-width: 1px;
+                      padding: 2px 4px;
+                    }
                     """.trimIndent()
                 )
                 appendInfo("Created demo stylesheet: ${stylesheetFile.name}")
                 created = true
+            } else {
+                val existing = stylesheetFile.readText()
+                if (!existing.contains(".units-demo")) {
+                    stylesheetFile.appendText(
+                        """
+
+                        .units-demo {
+                          padding: 8px;
+                          gap: 6px;
+                          background-color: #1E2C3A;
+                          border-color: #5E6A77;
+                          border-width: 1px;
+                        }
+
+                        .units-vw-chip {
+                          width: 20vw;
+                          background-color: #355674;
+                          border-color: #7CB6FF;
+                          border-width: 1px;
+                          padding: 2px 4px;
+                        }
+
+                        .units-playground {
+                          width: 100%;
+                          background-color: #17222D;
+                          border-color: #4E5E6E;
+                          border-width: 1px;
+                          padding: 4px;
+                        }
+
+                        .units-percent-box {
+                          width: 50%;
+                          height: 40%;
+                          margin: 8% 5%;
+                          background-color: #3D6B52;
+                          border-color: #8DD0A6;
+                          border-width: 1px;
+                          padding: 1em;
+                        }
+
+                        .units-em-text {
+                          font-size: 1.25em;
+                          margin: 1em 0;
+                          color: #E6F0FF;
+                        }
+
+                        .units-vh-bar {
+                          width: 40%;
+                          height: 8vh;
+                          background-color: #5A3F77;
+                          border-color: #9B83C5;
+                          border-width: 1px;
+                          padding: 2px 4px;
+                        }
+                        """.trimIndent()
+                    )
+                    appendInfo("Patched demo stylesheet with CSS units section")
+                    created = true
+                }
             }
             if (created) {
                 StyleEngine.forceReloadStylesheets()

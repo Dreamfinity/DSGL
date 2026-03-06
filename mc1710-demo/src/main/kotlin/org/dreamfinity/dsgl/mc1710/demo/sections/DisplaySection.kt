@@ -34,19 +34,23 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
 
     div({
         key = "section.display"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Display showcase: block / inline / none / flex / grid")
         text("This section is self-checking: each panel demonstrates one display mode.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         text("Block flow (vertical stacking)")
         button(if (window.displayBlockLargeGap) "Block gap: large" else "Block gap: compact", {
-            width = 92
+            style = { width = 92 }
             onMouseClick = {
                 window.displayBlockLargeGap = !window.displayBlockLargeGap
                 window.appendInfo("Display.block gap=${if (window.displayBlockLargeGap) "large" else "compact"}")
@@ -54,10 +58,10 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
         })
         div({
             key = "display.block.container"
-            width = contentWidth - 8
-            padding = 3
-            backgroundColor = 0xFF2B3542.toInt()
             style = {
+                width = contentWidth - 8
+                padding = 3
+                backgroundColor = 0xFF2B3542.toInt()
                 display = Display.Block
                 gap = if (window.displayBlockLargeGap) 6 else 2
                 border(1, 0xFF657688.toInt())
@@ -66,9 +70,11 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             repeat(3) { index ->
                 div({
                     key = "display.block.item.$index"
-                    padding = 2
-                    backgroundColor = (0xFF3A4B60 + index * 0x000A0A00).toInt()
-                    style = { border(1, 0xFF8095AA.toInt()) }
+                    style = {
+                        padding = 2
+                        backgroundColor = (0xFF3A4B60 + index * 0x000A0A00).toInt()
+                        border(1, 0xFF8095AA.toInt())
+                    }
                 }
                 ) {
                     text("Block item ${index + 1}")
@@ -86,20 +92,22 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             ),
             {
                 key = "display.inline.width"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: inlineWidth.toLong()
                     window.displayInlineWidth = next.coerceIn(inlineMinWidth.toLong(), inlineMaxWidth.toLong())
                 }
             }
         )
-        dynamicText({ "inline container width=$inlineWidth (drag slider to force wrapping)" }, { color = DEMO_MUTED })
+        dynamicText(
+            { "inline container width=$inlineWidth (drag slider to force wrapping)" },
+            { style = { color = DEMO_MUTED } })
         div({
             key = "display.inline.container"
-            width = inlineWidth
-            padding = 3
-            backgroundColor = 0xFF2E3946.toInt()
             style = {
+                width = inlineWidth
+                padding = 3
+                backgroundColor = 0xFF2E3946.toInt()
                 display = Display.Inline
                 border(1, 0xFF607181.toInt())
                 gap = 2
@@ -108,9 +116,9 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             listOf("alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta").forEachIndexed { index, label ->
                 div({
                     key = "display.inline.chip.$index"
-                    padding = 2
-                    backgroundColor = 0xFF40556B.toInt()
                     style = {
+                        padding = 2
+                        backgroundColor = 0xFF40556B.toInt()
                         display = Display.Inline
                         margin(1, 2, 1, 1)
                         border(1, 0xFF90A7BE.toInt())
@@ -121,9 +129,9 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }
             div({
                 key = "display.inline.flex.item"
-                padding = 2
-                backgroundColor = 0xFF3C5D4A.toInt()
                 style = {
+                    padding = 2
+                    backgroundColor = 0xFF3C5D4A.toInt()
                     display = Display.Inline
                     margin(1, 2, 1, 1)
                     border(1, 0xFF86B197.toInt())
@@ -131,35 +139,49 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }) {
                 text("flex")
                 div({
-                    gap = 1
-                    padding = 1
-                    backgroundColor = 0xFF2E4739.toInt()
                     style = {
+                        gap = 1
+                        padding = 1
+                        backgroundColor = 0xFF2E4739.toInt()
                         display = Display.Flex
                         flexDirection = FlexDirection.Row
                         border(1, 0xFF5B8D73.toInt())
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
                     }
-                    asFlexRow()
+
                 }) {
-                    div({ width = 8; height = 4; backgroundColor = 0xFF6EAE8B.toInt() })
-                    div({ width = 6; height = 4; backgroundColor = 0xFF4E7A62.toInt() })
+                    div({
+                        style = {
+                            width = 8
+                            height = 4
+                            backgroundColor = 0xFF6EAE8B.toInt()
+                        }
+                    })
+                    div({
+                        style = {
+                            width = 6
+                            height = 4
+                            backgroundColor = 0xFF4E7A62.toInt()
+                        }
+                    })
                 }
             }
             div({
                 key = "display.inline.block.item"
-                padding = 2
-                backgroundColor = 0xFF5E4B3C.toInt()
                 style = {
+                    padding = 2
+                    backgroundColor = 0xFF5E4B3C.toInt()
                     display = Display.Inline
                     margin(1, 2, 1, 1)
                     border(1, 0xFFB58E6A.toInt())
                 }
             }) {
                 div({
-                    gap = 0
-                    padding = 1
-                    backgroundColor = 0xFF4B3B30.toInt()
                     style = {
+                        gap = 0
+                        padding = 1
+                        backgroundColor = 0xFF4B3B30.toInt()
                         display = Display.Block
                         border(1, 0xFF8B6A51.toInt())
                         gap = 1
@@ -173,11 +195,17 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
         }
 
         text("Display none (layout + hit-test removal)")
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button(
                 if (window.displayShowHidden) "Target visible" else "Target hidden",
                 {
-                    width = 86
+                    style = { width = 86 }
                     onMouseClick = {
                         window.displayShowHidden = !window.displayShowHidden
                         window.appendInfo("Display.none visible=${window.displayShowHidden}")
@@ -186,27 +214,31 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             )
             text(
                 "targetClicks=${window.displayNoneClicks} (should not change while hidden)",
-                { color = DEMO_MUTED }
+                { style = { color = DEMO_MUTED } }
             )
         }
         div({
             key = "display.none.container"
-            width = contentWidth - 8
-            padding = 3
-            backgroundColor = 0xFF303A46.toInt()
-            gap = 2
-            style = { border(1, 0xFF64788B.toInt()) }
-            asFlexColumn()
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                width = contentWidth - 8
+                padding = 3
+                backgroundColor = 0xFF303A46.toInt()
+                gap = 2
+                border(1, 0xFF64788B.toInt())
+            }
+
         }) {
             div({
                 key = "display.none.target"
-                padding = 2
-                backgroundColor = 0xFF5A3E3E.toInt()
                 onMouseClick = {
                     window.displayNoneClicks += 1
                     window.logHook("display.none.onMouseClick", it)
                 }
                 style = {
+                    padding = 2
+                    backgroundColor = 0xFF5A3E3E.toInt()
                     display = if (window.displayShowHidden) Display.Block else Display.None
                     border(1, 0xFFB07B7B.toInt())
                 }
@@ -214,19 +246,25 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
 
                 text("Toggle target (click me)")
             }
-            text("Sibling stays and reflows when target is hidden.", { color = DEMO_MUTED })
+            text("Sibling stays and reflows when target is hidden.", { style = { color = DEMO_MUTED } })
         }
 
         text("Flex layout (row + column)")
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("justify=${justify.first}", {
-                width = 84
+                style = { width = 84 }
                 onMouseClick = {
                     window.displayFlexJustifyIndex = (justifyIndex + 1) % JUSTIFY_OPTIONS.size
                 }
             })
             button("align=${align.first}", {
-                width = 80
+                style = { width = 80 }
                 onMouseClick = {
                     window.displayFlexAlignIndex = (alignIndex + 1) % ALIGN_OPTIONS.size
                 }
@@ -234,115 +272,144 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             button(
                 if (window.displayGridLargeGap) "gap: large" else "gap: compact",
                 {
-                    width = 78
+                    style = { width = 78 }
                     onMouseClick = { window.displayGridLargeGap = !window.displayGridLargeGap }
                 }
             )
         }
         text("Row uses fixed-size items so justify spacing is easier to compare.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
         div({
             key = "display.flex.justify.playground"
-            width = contentWidth - 8
-            height = 20
-            padding = 1
-            backgroundColor = 0xFF24303A.toInt()
             style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+                width = contentWidth - 8
+                height = 20
+                padding = 1
+                backgroundColor = 0xFF24303A.toInt()
                 justifyContent = justify.second
                 alignItems = AlignItems.Center
                 gap = 0
                 border(1, 0xFF7E93A8.toInt())
             }
-            asFlexRow()
+
         }) {
             div({
                 key = "display.flex.justify.dot.left"
-                width = 10
-                height = 10
-                backgroundColor = 0xFFB3D6FF.toInt()
                 style = {
+                    width = 10
+                    height = 10
+                    backgroundColor = 0xFFB3D6FF.toInt()
                     border(1, 0xFFDEEFFF.toInt())
                 }
             }) { text("A") }
             div({
                 key = "display.flex.justify.dot.mid"
-                width = 10
-                height = 10
-                backgroundColor = 0xFF9FE3B5.toInt()
                 style = {
+                    width = 10
+                    height = 10
+                    backgroundColor = 0xFF9FE3B5.toInt()
                     border(1, 0xFFD6FFE4.toInt())
                 }
             }) { text("B") }
             div({
                 key = "display.flex.justify.dot.right"
-                width = 10
-                height = 10
-                backgroundColor = 0xFFFFC7A3.toInt()
                 style = {
+                    width = 10
+                    height = 10
+                    backgroundColor = 0xFFFFC7A3.toInt()
                     border(1, 0xFFFFE5D3.toInt())
                 }
             }) { text("C") }
         }
         text("Top strip isolates justify (A/B/C). Large row below combines justify + align + gap.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
         div({
             key = "display.flex.row"
-            width = contentWidth - 8
-            height = 36
-            padding = 2
-            backgroundColor = 0xFF2A343F.toInt()
             style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+                width = contentWidth - 8
+                height = 36
+                padding = 2
+                backgroundColor = 0xFF2A343F.toInt()
                 justifyContent = justify.second
                 alignItems = align.second
                 gap = if (window.displayGridLargeGap) 8 else 2
                 border(1, 0xFF6C7E90.toInt())
             }
-            asFlexRow()
+
         }) {
             div({
                 key = "display.flex.row.item.0"
-                width = 14
-                padding = 1
-                backgroundColor = 0xFF46627C.toInt()
+                style = {
+                    width = 14
+                    padding = 1
+                    backgroundColor = 0xFF46627C.toInt()
+                }
             }) { text("1") }
             div({
                 key = "display.flex.row.item.1"
-                width = 20
-                padding = 2
-                backgroundColor = 0xFF4E7A5A.toInt()
+                style = {
+                    width = 20
+                    padding = 2
+                    backgroundColor = 0xFF4E7A5A.toInt()
+                }
             }) { text("2") }
             div({
                 key = "display.flex.row.item.2"
-                width = 26
-                padding = 3
-                backgroundColor = 0xFF7A5B4A.toInt()
+                style = {
+                    width = 26
+                    padding = 3
+                    backgroundColor = 0xFF7A5B4A.toInt()
+                }
             }) { text("3") }
             div({
                 key = "display.flex.row.item.3"
-                width = 16
-                padding = 1
-                backgroundColor = 0xFF6A4B78.toInt()
+                style = {
+                    width = 16
+                    padding = 1
+                    backgroundColor = 0xFF6A4B78.toInt()
+                }
             }) { text("4") }
         }
         div({
             key = "display.flex.column"
-            width = contentWidth - 8
-            height = 58
-            padding = 2
-            backgroundColor = 0xFF2A3340.toInt()
             style = {
+                width = contentWidth - 8
+                height = 58
+                padding = 2
+                backgroundColor = 0xFF2A3340.toInt()
                 gap = 2
                 border(1, 0xFF6B7E92.toInt())
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
             }
-            asFlexColumn()
+
         }) {
-            div({ height = 12; backgroundColor = 0xFF4B5C70.toInt() }) { text("header") }
-            div({ backgroundColor = 0xFF3E6A54.toInt(); style = { flexGrow = 1f } }) {
+            div({
+                style = {
+                    height = 12
+                    backgroundColor = 0xFF4B5C70.toInt()
+                }
+            }) { text("header") }
+            div({
+                style = {
+                    backgroundColor = 0xFF3E6A54.toInt()
+                    flexGrow = 1f
+                }
+            }) {
                 text("content grow")
             }
-            div({ height = 12; backgroundColor = 0xFF66503D.toInt() }) { text("footer") }
+            div({
+                style = {
+                    height = 12
+                    backgroundColor = 0xFF66503D.toInt()
+                }
+            }) { text("footer") }
         }
 
         text("Grid layout (repeat(columns, 1fr))")
@@ -355,7 +422,7 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             ),
             {
                 key = "display.grid.columns"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: gridColumns.toLong()
                     window.displayGridColumns = next.coerceIn(2, 6)
@@ -364,14 +431,14 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
         )
         text(
             "gridColumns=${window.displayGridColumns} (first tile spans 2 columns)",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         div({
             key = "display.grid.container"
-            width = contentWidth - 8
-            padding = 3
-            backgroundColor = 0xFF2B3540.toInt()
             style = {
+                width = contentWidth - 8
+                padding = 3
+                backgroundColor = 0xFF2B3540.toInt()
                 display = Display.Grid
                 this.gridColumns = gridColumns
                 gap = if (window.displayGridLargeGap) 4 else 2
@@ -383,10 +450,10 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             repeat(10) { index ->
                 div({
                     key = "display.grid.item.$index"
-                    height = if (index % 3 == 0) 18 else 14
-                    padding = 1
-                    backgroundColor = (0xFF3D5873 + index * 0x00040401).toInt()
                     style = {
+                        height = if (index % 3 == 0) 18 else 14
+                        padding = 1
+                        backgroundColor = (0xFF3D5873 + index * 0x00040401).toInt()
                         if (index == 0) {
                             gridColumnSpan = 2
                         }

@@ -728,21 +728,21 @@ class InspectorController {
         val rows = ArrayList<String>(24)
         val values = linkedMapOf(
             StyleProperty.DISPLAY to computed.display.name,
-            StyleProperty.WIDTH to (computed.width?.toString() ?: "auto"),
-            StyleProperty.HEIGHT to (computed.height?.toString() ?: "auto"),
-            StyleProperty.MARGIN to spacingLabel(computed.margin),
-            StyleProperty.PADDING to spacingLabel(computed.padding),
-            StyleProperty.BORDER_WIDTH to computed.borderWidth.toString(),
+            StyleProperty.WIDTH to (computed.width?.toCssLiteral() ?: "auto"),
+            StyleProperty.HEIGHT to (computed.height?.toCssLiteral() ?: "auto"),
+            StyleProperty.MARGIN to spacingLengthLabel(computed.margin),
+            StyleProperty.PADDING to spacingLengthLabel(computed.padding),
+            StyleProperty.BORDER_WIDTH to computed.borderWidth.toCssLiteral(),
             StyleProperty.BORDER_COLOR to colorLabel(computed.borderColor),
             StyleProperty.BACKGROUND_COLOR to (computed.backgroundColor?.let(::colorLabel) ?: "none"),
             StyleProperty.FOREGROUND_COLOR to colorLabel(computed.foregroundColor),
             StyleProperty.FONT_ID to (computed.fontId ?: "minecraft"),
-            StyleProperty.FONT_SIZE to (computed.fontSize?.toString() ?: "auto"),
+            StyleProperty.FONT_SIZE to (computed.fontSizeValue?.toCssLiteral() ?: (computed.fontSize?.let(::pxLiteral) ?: "auto")),
             StyleProperty.FONT_WEIGHT to computed.fontWeight.name.lowercase(),
             StyleProperty.FONT_STYLE to computed.fontStyle.name.lowercase(),
             StyleProperty.TEXT_DECORATION to computed.textDecoration.name,
             StyleProperty.OBFUSCATED to computed.obfuscated.toString(),
-            StyleProperty.GAP to computed.gap.toString(),
+            StyleProperty.GAP to computed.gap.toCssLiteral(),
             StyleProperty.FLEX_DIRECTION to computed.flexDirection.name,
             StyleProperty.JUSTIFY_CONTENT to computed.justifyContent.name,
             StyleProperty.ALIGN_ITEMS to computed.alignItems.name,
@@ -1141,11 +1141,11 @@ class InspectorController {
             StyleProperty.BACKGROUND_COLOR -> style.backgroundColor?.let(::colorLabel) ?: "none"
             StyleProperty.BACKGROUND_IMAGE -> style.backgroundImage ?: "none"
             StyleProperty.BORDER_COLOR -> colorLabel(style.borderColor)
-            StyleProperty.BORDER_WIDTH -> pxLiteral(style.borderWidth)
-            StyleProperty.BORDER_RADIUS -> pxLiteral(style.borderRadius)
+            StyleProperty.BORDER_WIDTH -> style.borderWidth.toCssLiteral()
+            StyleProperty.BORDER_RADIUS -> style.borderRadius.toCssLiteral()
             StyleProperty.FOREGROUND_COLOR -> colorLabel(style.foregroundColor)
             StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
-            StyleProperty.FONT_SIZE -> style.fontSize?.let(::pxLiteral) ?: "auto"
+            StyleProperty.FONT_SIZE -> style.fontSizeValue?.toCssLiteral() ?: (style.fontSize?.let(::pxLiteral) ?: "auto")
             StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
             StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
             StyleProperty.TEXT_DECORATION -> when (style.textDecoration) {
@@ -1155,8 +1155,8 @@ class InspectorController {
                 TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
             }
             StyleProperty.OBFUSCATED -> style.obfuscated.toString()
-            StyleProperty.WIDTH -> style.width?.let(::pxLiteral) ?: "auto"
-            StyleProperty.HEIGHT -> style.height?.let(::pxLiteral) ?: "auto"
+            StyleProperty.WIDTH -> style.width?.toCssLiteral() ?: "auto"
+            StyleProperty.HEIGHT -> style.height?.toCssLiteral() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
             StyleProperty.FLEX_DIRECTION -> style.flexDirection.name.lowercase()
@@ -1165,10 +1165,10 @@ class InspectorController {
                 .lowercase()
             StyleProperty.ALIGN_ITEMS -> style.alignItems.name.lowercase()
             StyleProperty.JUSTIFY_ITEMS -> style.justifyItems.name.lowercase()
-            StyleProperty.GAP -> pxLiteral(style.gap)
+            StyleProperty.GAP -> style.gap.toCssLiteral()
             StyleProperty.FLEX_GROW -> formatFloatLiteral(style.flexGrow)
             StyleProperty.FLEX_SHRINK -> formatFloatLiteral(style.flexShrink)
-            StyleProperty.FLEX_BASIS -> style.flexBasis?.let(::pxLiteral) ?: "auto"
+            StyleProperty.FLEX_BASIS -> style.flexBasis?.toCssLiteral() ?: "auto"
             StyleProperty.GRID_COLUMNS -> style.gridColumns.toString()
             StyleProperty.GRID_ROWS -> style.gridRows?.toString() ?: "auto"
             StyleProperty.GRID_AUTO_FLOW -> style.gridAutoFlow.name.lowercase()
@@ -1197,8 +1197,12 @@ class InspectorController {
         }
     }
 
-    private fun spacingLiteral(value: org.dreamfinity.dsgl.core.dom.layout.Insets): String {
-        return "${pxLiteral(value.top)} ${pxLiteral(value.right)} ${pxLiteral(value.bottom)} ${pxLiteral(value.left)}"
+    private fun spacingLiteral(value: LengthInsets): String {
+        return "${value.top.toCssLiteral()} ${value.right.toCssLiteral()} ${value.bottom.toCssLiteral()} ${value.left.toCssLiteral()}"
+    }
+
+    private fun spacingLengthLabel(value: LengthInsets): String {
+        return "${value.top.toCssLiteral()} ${value.right.toCssLiteral()} ${value.bottom.toCssLiteral()} ${value.left.toCssLiteral()}"
     }
 
     private fun pxLiteral(value: Int): String = "${value}px"

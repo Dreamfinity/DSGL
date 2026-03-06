@@ -12,7 +12,6 @@ class DssParseException(
 object DssParser {
     private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
     private const val DEPRECATED_FOREGROUND_COLOR_WARNING_KEY = "deprecated.property.foreground-color"
-    private const val DEPRECATED_UNITLESS_LENGTH_WARNING_KEY = "deprecated.length.unitless"
 
     fun parse(file: File): StylesheetData {
         val text = file.readText()
@@ -159,8 +158,7 @@ object DssParser {
                         validateLiteralForProperty(
                             property = property,
                             literal = expression.value,
-                            warningReporter = warnings,
-                            deprecatedLengthWarningKey = DEPRECATED_UNITLESS_LENGTH_WARNING_KEY
+                            warningReporter = warnings
                         )
                     } catch (ex: Exception) {
                         throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.")

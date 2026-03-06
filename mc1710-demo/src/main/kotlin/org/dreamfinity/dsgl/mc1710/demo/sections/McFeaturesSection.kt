@@ -2,77 +2,127 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.mcFeatures"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Image sources: resource + file:// + http(s):// cached path.")
         text(
             "mediaReady=${window.mediaReady} file=${
                 if (window.mediaReady) "prepared" else "failed"
             }",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
-        div({ gap = 3; asFlexRow() }) {
-            div({ gap = 2; key = "mc.image.resource.col"; asFlexColumn() }) {
-                text("Resource", { color = DEMO_MUTED })
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
+            div({
+                key = "mc.image.resource.col"
+                style = {
+                    gap = 2
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
+                text("Resource", { style = { color = DEMO_MUTED } })
                 img(window.resourceImageSource, {
                     key = "mc.image.resource"
-                    width = 36
-                    height = 36
-                    style = { border(1, 0xFF66737F.toInt()) }
+                    style = {
+                        width = 36
+                        height = 36
+                        border(1, 0xFF66737F.toInt())
+                    }
                 })
             }
-            div({ gap = 2; key = "mc.image.file.col"; asFlexColumn() }) {
-                text("file://", { color = DEMO_MUTED })
+            div({
+                key = "mc.image.file.col"
+                style = {
+                    gap = 2
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
+                text("file://", { style = { color = DEMO_MUTED } })
                 img(window.fileImageSource, {
                     key = "mc.image.file"
-                    width = 36
-                    height = 36
-                    style = { border(1, 0xFF66737F.toInt()) }
+                    style = {
+                        width = 36
+                        height = 36
+                        border(1, 0xFF66737F.toInt())
+                    }
                 })
             }
-            div({ gap = 2; key = "mc.image.http.col"; asFlexColumn() }) {
-                text("http://", { color = DEMO_MUTED })
+            div({
+                key = "mc.image.http.col"
+                style = {
+                    gap = 2
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
+                text("http://", { style = { color = DEMO_MUTED } })
                 img(window.httpImageSource, {
                     key = "mc.image.http"
-                    width = 36
-                    height = 36
-                    style = { border(1, 0xFF66737F.toInt()) }
+                    style = {
+                        width = 36
+                        height = 36
+                        border(1, 0xFF66737F.toInt())
+                    }
                 })
             }
         }
 
         text("Item stack render modes (2D item + 3D block)")
-        div({ gap = 10; key = "mc.items.row"; asFlexRow() }) {
+        div({
+            key = "mc.items.row"
+            style = {
+                gap = 10
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             itemStack(window.flatItemRef, {
                 size = 18
                 key = "mc.item.2d"
-                width = 64
-                style = { border(1, 0xFF586A7A.toInt()) }
+                style = {
+                    width = 64
+                    border(1, 0xFF586A7A.toInt())
+                }
             })
             itemStack(window.blockItemRef, {
                 size = 20
                 rotYDeg = window.itemRotY
                 rotXDeg = window.itemRotX
                 key = "mc.item.3d"
-                width = 70
-                style = { border(1, 0xFF586A7A.toInt()) }
+                style = {
+                    width = 70
+                    border(1, 0xFF586A7A.toInt())
+                }
             })
         }
 
         text("Rotation controls (drag sliders or use step buttons)")
         text(
             "Drag outside slider bounds: value should keep updating until mouse up.",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         input(
             InputType.Range(
@@ -83,7 +133,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             ),
             {
                 key = "mc.rotation.slider.yaw"
-                width = contentWidth - 10
+                style = { width = contentWidth - 10 }
                 onMouseDown = { event ->
                     window.logHook("mc.rotY.onMouseDown", event, "capture-start")
                 }
@@ -112,7 +162,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             ),
             {
                 key = "mc.rotation.slider.pitch"
-                width = contentWidth - 10
+                style = { width = contentWidth - 10 }
                 onMouseDown = { event ->
                     window.logHook("mc.rotX.onMouseDown", event, "capture-start")
                 }
@@ -134,25 +184,31 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             }
         )
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Y-15", {
-                width = 36
+                style = { width = 36 }
                 onMouseClick = { window.adjustItemRotation(deltaY = -15.0) }
             })
             button("Y+15", {
-                width = 36
+                style = { width = 36 }
                 onMouseClick = { window.adjustItemRotation(deltaY = 15.0) }
             })
             button("X-10", {
-                width = 36
+                style = { width = 36 }
                 onMouseClick = { window.adjustItemRotation(deltaX = -10.0) }
             })
             button("X+10", {
-                width = 36
+                style = { width = 36 }
                 onMouseClick = { window.adjustItemRotation(deltaX = 10.0) }
             })
             button("Reset", {
-                width = 42
+                style = { width = 42 }
                 onMouseClick = {
                     window.itemRotY = 160.0
                     window.itemRotX = -11.0
@@ -162,7 +218,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
 
         text(
             "rotY=${window.itemRotYLong()} rotX=${window.itemRotXLong()}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
     }
 }

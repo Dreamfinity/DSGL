@@ -19,6 +19,7 @@ import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ParsedText
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
+import kotlin.math.roundToInt
 
 data class NodeStyleApplyResult(
     val visualDirty: Boolean,
@@ -145,6 +146,15 @@ abstract class DOMNode(
     private var styledBackgroundImage: String? = null
     private var styleDefaultsSnapshot: ComputedStyleDefaults? = null
     private var appliedComputedStyle: ComputedStyle? = null
+    private var marginStyleValue: LengthInsets = LengthInsets.fromInsets(margin)
+    private var paddingStyleValue: LengthInsets = LengthInsets.fromInsets(padding)
+    private var borderWidthStyleValue: CssLength = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left))
+    private var borderRadiusStyleValue: CssLength = CssLength.px(borderRadius)
+    private var widthStyleValue: CssLength? = null
+    private var heightStyleValue: CssLength? = null
+    private var gapStyleValue: CssLength = CssLength.px(gap)
+    private var flexBasisStyleValue: CssLength? = null
+    private var borderColorStyleValue: Int = border.color
     private var baseForegroundColor: Int = DsglColors.TEXT
     private var animatedTransform: UiTransform? = null
     private var animatedOpacity: Float? = null
@@ -342,6 +352,83 @@ abstract class DOMNode(
         }
 
     /** Measures the node's desired size. */
+    internal fun resolveLayoutStyleValues(
+        ctx: UiMeasureContext,
+        parentContentWidth: Int?,
+        parentContentHeight: Int?
+    ) {
+        if (appliedComputedStyle == null) {
+            return
+        }
+        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
+        margin = marginStyleValue.resolveToInsets(context)
+        padding = paddingStyleValue.resolveToInsets(context)
+        val borderWidthPx = borderWidthStyleValue
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
+            .roundToInt()
+            .coerceAtLeast(0)
+        border = Border.all(borderWidthPx, borderColorStyleValue)
+        borderRadius = borderRadiusStyleValue
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
+            .roundToInt()
+            .coerceAtLeast(0)
+        width = widthStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        height = heightStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        gap = gapStyleValue
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
+            .roundToInt()
+            .coerceAtLeast(0)
+        flexBasis = flexBasisStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+    }
+
+    internal fun resolveFlexBasisForAxis(
+        ctx: UiMeasureContext,
+        parentContentWidth: Int?,
+        parentContentHeight: Int?,
+        axis: FlexDirection
+    ): Int? {
+        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
+        val percentBase = if (axis == FlexDirection.Row) {
+            LengthPercentBase.ContainerWidth
+        } else {
+            LengthPercentBase.ContainerHeight
+        }
+        return flexBasisStyleValue
+            ?.resolvePx(context, percentBase)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+    }
+
+    private fun lengthResolveContext(
+        ctx: UiMeasureContext,
+        parentContentWidth: Int?,
+        parentContentHeight: Int?
+    ): LengthResolveContext {
+        val inheritedFontSizePx = (
+            parent?.resolveFontSize(ctx)
+                ?: resolveFontSize(ctx)
+            ).toFloat()
+        val currentFontSizePx = resolveFontSize(ctx).toFloat()
+        return LengthResolveContext(
+            viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
+            viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
+            containingBlockWidthPx = parentContentWidth?.toFloat(),
+            containingBlockHeightPx = parentContentHeight?.toFloat(),
+            currentFontSizePx = currentFontSizePx,
+            inheritedFontSizePx = inheritedFontSizePx
+        )
+    }
+
+    /** Measures the node's desired size. */
     internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         return measure(ctx)
     }
@@ -375,9 +462,16 @@ abstract class DOMNode(
         }
         val contentX = x + border.left + padding.left
         val contentY = y + border.top + padding.top
+        val availableOuterWidth = (width - border.horizontal - padding.horizontal).coerceAtLeast(0)
+        val availableOuterHeight = (height - border.vertical - padding.vertical).coerceAtLeast(0)
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
-            val childSize = child.measure(ctx)
+            child.resolveLayoutStyleValues(
+                ctx = ctx,
+                parentContentWidth = availableOuterWidth,
+                parentContentHeight = availableOuterHeight
+            )
+            val childSize = child.measureForLayout(ctx, availableOuterWidth)
             val childX = contentX + child.margin.left
             val childY = contentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
@@ -558,6 +652,15 @@ abstract class DOMNode(
         flexGrow = template.flexGrow
         flexShrink = template.flexShrink
         flexBasis = template.flexBasis
+        marginStyleValue = template.marginStyleValue
+        paddingStyleValue = template.paddingStyleValue
+        borderWidthStyleValue = template.borderWidthStyleValue
+        borderRadiusStyleValue = template.borderRadiusStyleValue
+        widthStyleValue = template.widthStyleValue
+        heightStyleValue = template.heightStyleValue
+        gapStyleValue = template.gapStyleValue
+        flexBasisStyleValue = template.flexBasisStyleValue
+        borderColorStyleValue = template.borderColorStyleValue
         gridColumns = template.gridColumns
         gridRows = template.gridRows
         gridAutoFlow = template.gridAutoFlow
@@ -618,33 +721,35 @@ abstract class DOMNode(
     internal fun captureStyleDefaults(): ComputedStyleDefaults {
         val existing = styleDefaultsSnapshot
         if (existing != null) return existing
+        val defaultFontSize = defaultFontSize()
         val computed = ComputedStyleDefaults(
-            margin = margin,
-            padding = padding,
+            margin = LengthInsets.fromInsets(margin),
+            padding = LengthInsets.fromInsets(padding),
             backgroundColor = defaultBackgroundColor(),
             backgroundImage = defaultBackgroundImage(),
             borderColor = border.color,
-            borderWidth = maxOf(border.top, border.right, border.bottom, border.left),
-            borderRadius = borderRadius,
+            borderWidth = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left)),
+            borderRadius = CssLength.px(borderRadius),
             foregroundColor = defaultForegroundColor(),
             fontId = defaultFontId(),
-            fontSize = defaultFontSize(),
+            fontSize = defaultFontSize,
+            fontSizeValue = defaultFontSize?.let { CssLength.px(it) },
             fontWeight = fontWeight,
             fontStyle = fontStyle,
             textDecoration = textDecoration,
             obfuscated = textObfuscated,
-            width = width,
-            height = height,
+            width = width?.let { CssLength.px(it) },
+            height = height?.let { CssLength.px(it) },
             align = align,
             display = display,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
             alignItems = alignItems,
             justifyItems = justifyItems,
-            gap = gap,
+            gap = CssLength.px(gap),
             flexGrow = flexGrow,
             flexShrink = flexShrink,
-            flexBasis = flexBasis,
+            flexBasis = flexBasis?.let { CssLength.px(it) },
             gridColumns = gridColumns,
             gridRows = gridRows,
             gridAutoFlow = gridAutoFlow,
@@ -669,22 +774,23 @@ abstract class DOMNode(
                 layoutDirty = false
             )
         }
-        margin = style.margin
-        padding = style.padding
-        border = Border.all(style.borderWidth, style.borderColor)
-        borderRadius = style.borderRadius
-        width = style.width
-        height = style.height
+        marginStyleValue = style.margin
+        paddingStyleValue = style.padding
+        borderWidthStyleValue = style.borderWidth
+        borderRadiusStyleValue = style.borderRadius
+        widthStyleValue = style.width
+        heightStyleValue = style.height
+        gapStyleValue = style.gap
+        flexBasisStyleValue = style.flexBasis
+        borderColorStyleValue = style.borderColor
         align = style.align
         display = style.display
         flexDirection = style.flexDirection
         justifyContent = style.justifyContent
         alignItems = style.alignItems
         justifyItems = style.justifyItems
-        gap = style.gap
         flexGrow = style.flexGrow
         flexShrink = style.flexShrink
-        flexBasis = style.flexBasis
         gridColumns = style.gridColumns
         gridRows = style.gridRows
         gridAutoFlow = style.gridAutoFlow

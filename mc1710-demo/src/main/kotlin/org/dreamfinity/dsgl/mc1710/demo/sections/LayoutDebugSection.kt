@@ -3,6 +3,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -19,21 +21,31 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.layoutDebug"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Layout validator")
         text("Checks containment, invalid sizes, and wrapped text line-stack invariants.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button(
                 if (window.layoutDebugStrict) "strict: on" else "strict: off",
                 {
-                    width = 64
+                    style = { width = 64 }
                     onMouseClick = {
                         window.layoutDebugStrict = !window.layoutDebugStrict
                         LayoutDebug.strictBounds = window.layoutDebugStrict
@@ -44,7 +56,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
             button(
                 if (window.layoutDebugDraw) "draw bounds: on" else "draw bounds: off",
                 {
-                    width = 86
+                    style = { width = 86 }
                     onMouseClick = {
                         window.layoutDebugDraw = !window.layoutDebugDraw
                         LayoutDebug.drawBounds = window.layoutDebugDraw
@@ -53,13 +65,13 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             )
             button("clear logs", {
-                width = 54
+                style = { width = 54 }
                 onMouseClick = { window.clearEventLogs() }
             })
         }
         text(
             "validatorViolations=${LayoutDebug.lastViolationCount} strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
         input(
@@ -71,30 +83,36 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = "layoutDebug.wrapWidth"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: wrapWidth.toLong()
                     window.layoutDebugWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
                 }
             }
         )
-        text("wrap test width=$wrapWidth", { color = DEMO_MUTED })
+        text("wrap test width=$wrapWidth", { style = { color = DEMO_MUTED } })
 
         div({
             key = "layoutDebug.wrapCase"
-            width = wrapWidth
-            padding = 3
-            gap = 2
-            backgroundColor = 0xFF2D3745.toInt()
-            style = { border(1, 0xFF70859C.toInt()) }
-            asFlexColumn()
+            style = {
+                width = wrapWidth
+                padding = 3
+                gap = 2
+                backgroundColor = 0xFF2D3745.toInt()
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                border(1, 0xFF70859C.toInt())
+            }
+
         }) {
             text("Case: wrapped text stack", { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_A, { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_B, { style = { textWrap = TextWrap.Wrap } })
             button("button label wraps too: long_unbroken_word_to_force_hard_break_123456789", {
-                width = wrapWidth - 8
-                style = { textWrap = TextWrap.Wrap }
+                style = {
+                    width = wrapWidth - 8
+                    textWrap = TextWrap.Wrap
+                }
             })
         }
     }

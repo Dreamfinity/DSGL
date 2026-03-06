@@ -1,6 +1,8 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
@@ -17,27 +19,39 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     overlay({
         key = "section.layoutStyle.stack"
-        width = contentWidth
-        height = contentHeight
-        gap = 0
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 0
+        }
     }) {
         div({
             key = "section.layoutStyle"
-            width = contentWidth
-            height = contentHeight
-            gap = 4
-            asFlexColumn()
+            style = {
+                width = contentWidth
+                height = contentHeight
+                gap = 4
+
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+            }
         }) {
             text(
                 "Toggle values and click boxes to verify row/column behavior.",
-                { color = DEMO_MUTED }
+                { style = { color = DEMO_MUTED } }
             )
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button(
                     if (window.styleLargeGap) "Gap: Large" else "Gap: Compact",
                     {
-                        width = 82
+                        style = { width = 82 }
                         onMouseClick = {
                             window.styleLargeGap = !window.styleLargeGap
                             window.appendInfo("Layout: gap=${if (window.styleLargeGap) "large" else "compact"}")
@@ -46,7 +60,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button(
                     if (window.styleFixedSize) "Size: Fixed" else "Size: Auto",
                     {
-                        width = 82
+                        style = { width = 82 }
                         onMouseClick = {
                             window.styleFixedSize = !window.styleFixedSize
                             window.appendInfo("Layout: fixedSize=${window.styleFixedSize}")
@@ -55,60 +69,82 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 )
             }
 
-            div({ gap = demoGap; key = "layout.row.demo"; asFlexRow() }) {
+            div({
+                style = {
+                    gap = demoGap; key = "layout.row.demo"
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 repeat(3) { index ->
                     div({
                         key = "layout.row.box.$index"
-                        width = fixedSize
-                        height = fixedSize
-                        padding = 2
-                        backgroundColor = 0xFF3A4A5A.toInt()
                         onMouseClick = { event ->
                             window.logHook("layout.row.onMouseClick", event, "box=$index")
                         }
-                        style = { border(1, 0xFF5E89B5.toInt()) }
+                        style = {
+                            width = fixedSize
+                            height = fixedSize
+                            padding = 2
+                            backgroundColor = 0xFF3A4A5A.toInt()
+                            border(1, 0xFF5E89B5.toInt())
+                        }
                     }) {
                         text("R${index + 1}")
                     }
                 }
             }
 
-            div({ gap = demoGap; key = "layout.column.demo"; asFlexColumn() }) {
+            div({
+                style = {
+                    gap = demoGap; key = "layout.column.demo"
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
                 repeat(3) { index ->
                     div({
                         key = "layout.column.box.$index"
-                        width = if (window.styleFixedSize) 72 else null
-                        padding = 2
-                        backgroundColor = 0xFF43404F.toInt()
                         onMouseClick = { event ->
                             window.logHook("layout.column.onMouseClick", event, "box=$index")
                         }
-                        style = { border(1, 0xFF786AA6.toInt()) }
+                        style = {
+                            width = if (window.styleFixedSize) 72 else null
+                            padding = 2
+                            backgroundColor = 0xFF43404F.toInt()
+                            border(1, 0xFF786AA6.toInt())
+                        }
                     }) {
                         text("Column box ${index + 1}")
                     }
                 }
             }
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button(
                     if (window.styleUseMargin) "Margin ON" else "Margin OFF",
                     {
-                        width = 62
+                        style = { width = 62 }
                         onMouseClick = { window.styleUseMargin = !window.styleUseMargin }
                     }
                 )
                 button(
                     if (window.styleUsePadding) "Padding ON" else "Padding OFF",
                     {
-                        width = 66
+                        style = { width = 66 }
                         onMouseClick = { window.styleUsePadding = !window.styleUsePadding }
                     }
                 )
                 button(
                     if (window.styleUseBorder) "Border ON" else "Border OFF",
                     {
-                        width = 62
+                        style = { width = 62 }
                         onMouseClick = { window.styleUseBorder = !window.styleUseBorder }
                     }
                 )
@@ -116,12 +152,12 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 key = "layout.style.target"
-                width = 168
-                backgroundColor = DEMO_SURFACE_ALT
                 onMouseClick = { event ->
                     window.logHook("layout.style.onMouseClick", event)
                 }
                 style = {
+                    width = 168
+                    backgroundColor = DEMO_SURFACE_ALT
                     if (window.styleUseMargin) margin(4, 0, 0, 8)
                     if (window.styleUsePadding) padding(4)
                     if (window.styleUseBorder) border(1, 0xFF90A4AE.toInt())
@@ -130,15 +166,21 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 text("Style target (margin/padding/border)")
                 text(
                     "margin=${window.styleUseMargin} padding=${window.styleUsePadding} border=${window.styleUseBorder}",
-                    { color = DEMO_MUTED }
+                    { style = { color = DEMO_MUTED } }
                 )
             }
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button(
                     if (window.stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF",
                     {
-                        width = 116
+                        style = { width = 116 }
                         onMouseClick = {
                             window.stackOverlayEnabled = !window.stackOverlayEnabled
                             window.appendInfo("Layout: stackOverlay=${window.stackOverlayEnabled}")
@@ -146,7 +188,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                     }
                 )
                 button("Reset Overlay", {
-                    width = 86
+                    style = { width = 86 }
                     onMouseClick = {
                         window.layoutOverlayX = 8
                         window.layoutOverlayY = 92
@@ -156,7 +198,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 })
                 text(
                     "Overlay: ${overlayX},${overlayY} clicks=${window.overlayClicks}",
-                    { color = DEMO_MUTED }
+                    { style = { color = DEMO_MUTED } }
                 )
             }
         }
@@ -164,9 +206,6 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
         if (window.stackOverlayEnabled) {
             div({
                 key = "layout.stack.overlay"
-                width = overlayWidth
-                height = overlayHeight
-                backgroundColor = 0xCC5A3131.toInt()
                 onMouseDown = { event ->
                     window.beginLayoutOverlayDrag(event)
                 }
@@ -177,6 +216,9 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                     window.finishLayoutOverlayDrag(event)
                 }
                 style = {
+                    width = overlayWidth
+                    height = overlayHeight
+                    backgroundColor = 0xCC5A3131.toInt()
                     margin(overlayY, 0, 0, overlayX)
                     padding(4)
                     border(1, 0xFF8D4848.toInt())
@@ -184,7 +226,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
             }) {
                 text(
                     if (window.layoutOverlayDragging) "Overlay (dragging...)" else "Overlay (drag me)",
-                    { color = 0xFFF5F7FA.toInt() }
+                    { style = { color = 0xFFF5F7FA.toInt() } }
                 )
             }
         }

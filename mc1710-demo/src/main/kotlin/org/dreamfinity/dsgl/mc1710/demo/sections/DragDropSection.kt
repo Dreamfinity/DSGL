@@ -2,6 +2,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dnd.*
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow.DndDemoItem
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -33,31 +35,40 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.dragDrop"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
         text({
             val mode = monitor.mode?.name ?: "none"
             value =
                 "active=${window.dndActiveItem} mode=$mode effect=${window.dndDropEffect} hover=${window.dndHoverZone}"
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
         text("types=${window.dndTransferTypes} dragTicks=${window.dndDragTickCount} action=${window.dndLastAction}", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
         text(
             "debug active=${monitor.sourceKey ?: "none"} over=${window.dndDebugOverId} container=${window.dndDebugOverContainerId}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
         text(
             "candidates=${window.dndDebugCandidatesCount} insert=${window.dndDebugInsertPosition} excludeActive=${window.dndDebugExcludesActiveCard}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
-        div({ gap = 3; asFlexRow() }) {
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button(if (window.dndGhostEnabled) "Ghost ON" else "Ghost OFF", {
                 onMouseClick = {
                     window.dndGhostEnabled = !window.dndGhostEnabled
@@ -77,25 +88,34 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
                 onMouseClick = { window.clearEventLogs() }
             })
         }
-        div({ gap = 3; asFlexRow() }) {
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("k-", {
-                width = 26
+                style = { width = 26 }
                 onMouseClick = { window.updateDndSmoothing(-4.0) }
             })
             button("k+", {
-                width = 26
+                style = { width = 26 }
                 onMouseClick = { window.updateDndSmoothing(4.0) }
             })
-            text("smoothing k=${"%.1f".format(window.dndSmoothFactor)}", { color = DEMO_MUTED })
+            text("smoothing k=${"%.1f".format(window.dndSmoothFactor)}", { style = { color = DEMO_MUTED } })
         }
         if (splitAllowed) {
             div({
-
                 key = "dnd.row.main"
-                width = leftWidth + rightWidth + PANELS_GAP
-                height = (contentHeight - 70).coerceAtLeast(96)
-                gap = PANELS_GAP
-                asFlexRow()
+                style = {
+                    width = leftWidth + rightWidth + PANELS_GAP
+                    height = (contentHeight - 70).coerceAtLeast(96)
+                    gap = PANELS_GAP
+
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
             }) {
                 originalModeReorder(window, leftWidth)
                 renderGhostModeBoxes(window, rightWidth)
@@ -103,10 +123,13 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         } else {
             div({
                 key = "dnd.col.main"
-                width = contentWidth.coerceAtLeast(0)
-                height = (contentHeight - 70).coerceAtLeast(96)
-                gap = 4
-                asFlexColumn()
+                style = {
+                    width = contentWidth.coerceAtLeast(0)
+                    height = (contentHeight - 70).coerceAtLeast(96)
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
             }) {
                 originalModeReorder(window, contentWidth.coerceAtLeast(0))
                 renderGhostModeBoxes(window, contentWidth.coerceAtLeast(0))
@@ -121,17 +144,21 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
     div({
         key = "dnd.original.panel"
-        width = panelWidth
-        gap = 3
-        padding = 3
-        backgroundColor = 0xFF2D333B.toInt()
-        style = { border(1, 0xFF6B7785.toInt()) }
-        asFlexColumn()
+        style = {
+            width = panelWidth
+            gap = 3
+            padding = 3
+            backgroundColor = 0xFF2D333B.toInt()
+            border(1, 0xFF6B7785.toInt())
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
+
     }) {
         text("ORIGINAL mode: reorder list")
-        text("Detached source follows cursor; slot uses placeholder.", { color = DEMO_MUTED })
+        text("Detached source follows cursor; slot uses placeholder.", { style = { color = DEMO_MUTED } })
         if (previewOrder.isEmpty()) {
-            text("No items available", { color = DEMO_MUTED })
+            text("No items available", { style = { color = DEMO_MUTED } })
         } else {
             val laneCardSize = CARD_SIZE.coerceAtMost((panelWidth - 12).coerceAtLeast(24))
             val laneDroppable = window.useDroppable(
@@ -143,16 +170,18 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
                 onDrop = { event, _ -> window.handleDndLaneDrop(event) }
             )
             div({
-                gap = 2
                 key = "dnd.lane.column"
-                backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000
                 style = {
+                    gap = 2
+                    backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000
                     border(
                         1,
                         if (window.isLaneAppendHighlighted()) 0xFF9EC4E3.toInt() else 0x44405058
                     )
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
                 }
-                asFlexColumn()
+
                 applyDroppable(laneDroppable)
             }) {
                 previewOrder.forEach { item ->
@@ -193,25 +222,25 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
                 if (window.shouldShowLaneAppendGap(monitor.sourceKey)) {
                     div({
                         key = "dnd.lane.append.gap"
-                        width = laneCardSize
-                        height = laneCardSize
-                        backgroundColor = 0x2A9EC4E3
                         style = {
+                            width = laneCardSize
+                            height = laneCardSize
+                            backgroundColor = 0x2A9EC4E3
                             border(1, 0xFF9EC4E3.toInt())
                             borderRadius(3)
                         }
                     }) {
-                        text("APPEND", { color = 0xFFD3E8FB.toInt() })
+                        text("APPEND", { style = { color = 0xFFD3E8FB.toInt() } })
                     }
                 }
             }
             text({
                 val source = monitor.sourceKey ?: "none"
                 value = "dragSource=$source previewCount=${previewOrder.size}"
-                color = DEMO_MUTED
+                style = { color = DEMO_MUTED }
             })
             if (window.dndBoxes.values.any { it.isNotEmpty() }) {
-                text("Tip: drag cards from boxes back to lane to reorder them.", { color = DEMO_MUTED }
+                text("Tip: drag cards from boxes back to lane to reorder them.", { style = { color = DEMO_MUTED } }
                 )
             }
         }
@@ -221,15 +250,19 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
 private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int) {
     div({
         key = "dnd.ghost.panel"
-        width = ghostWidth
-        gap = 4
-        padding = 3
-        backgroundColor = 0xFF2D333B.toInt()
-        style = { border(1, 0xFF6B7785.toInt()) }
-        asFlexColumn()
+        style = {
+            width = ghostWidth
+            gap = 4
+            padding = 3
+            backgroundColor = 0xFF2D333B.toInt()
+            border(1, 0xFF6B7785.toInt())
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
+
     }) {
         text("Buckets: drop card to move it into a box")
-        text("Ghost toggle applies to drag previews in this panel.", { color = DEMO_MUTED })
+        text("Ghost toggle applies to drag previews in this panel.", { style = { color = DEMO_MUTED } })
 
         dropBox(
             window = window,
@@ -260,9 +293,11 @@ private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int
         )
 
         button("Reset DnD", {
-            width = ghostWidth - 8
             onMouseClick = { window.resetDndItems("button") }
-            style = { backgroundImage("file://demo/local_showcase.png") }
+            style = {
+                width = ghostWidth - 8
+                backgroundImage("file://demo/local_showcase.png")
+            }
         })
     }
 }
@@ -284,21 +319,21 @@ private fun UiScope.cardWithItem(
     val insertionGap = (cardSize + 2).coerceAtLeast(24)
     div({
         key = cardKey
-        width = cardSize
-        height = cardSize
-        padding = 2
-        gap = 1
         dragPlaceholder = {
             fillColor = 0x44333F4D
             borderColor = accent
             borderWidth = 1
         }
-        backgroundColor = when {
-            draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
-            highlighted -> lighten(base, HIGHLIGHT_DELTA)
-            else -> base
-        }
         style = {
+            width = cardSize
+            height = cardSize
+            padding = 2
+            gap = 1
+            backgroundColor = when {
+                draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
+                highlighted -> lighten(base, HIGHLIGHT_DELTA)
+                else -> base
+            }
             border(1, accent)
             borderRadius(3)
             when (insertionIndicator) {
@@ -319,22 +354,24 @@ private fun UiScope.cardWithItem(
     }) {
         div({
             key = "$cardKey.accent"
-            width = cardSize - 8
-            height = 3
-            backgroundColor = lighten(accent, 12)
-            style = { borderRadius(2) }
+            style = {
+                width = cardSize - 8
+                height = 3
+                backgroundColor = lighten(accent, 12)
+                borderRadius(2)
+            }
         })
         itemStack(item.stack, {
             size = (cardSize / 2).coerceAtLeast(16)
             key = "dnd.stack.${item.id}"
-            width = (cardSize - 12).coerceAtLeast(18)
             style = {
+                width = (cardSize - 12).coerceAtLeast(18)
                 border(1, 0x553A4452)
                 backgroundColor(0x2219222B)
             }
         })
         text(item.label, {
-            color = if (draggingThis) 0xFFFFFFFF.toInt() else 0xFFEAF2FD.toInt()
+            style = { color = if (draggingThis) 0xFFFFFFFF.toInt() else 0xFFEAF2FD.toInt() }
         })
     }
 }
@@ -368,12 +405,12 @@ private fun UiScope.dropBox(
     )
     div({
         key = boxKey
-        width = null
-        height = BOX_HEIGHT
-        padding = 4
-        gap = 2
-        backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
         style = {
+            width = null
+            height = BOX_HEIGHT
+            padding = 4
+            gap = 2
+            backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
             border(1, 0xFF8A94A2.toInt())
             borderRadius(3)
         }
@@ -381,11 +418,17 @@ private fun UiScope.dropBox(
     }) {
         text("$title (${cards.size})")
         if (cards.isEmpty()) {
-            text("Drop here", { this.color = DEMO_MUTED })
+            text("Drop here", { style = { this.color = DEMO_MUTED } })
         } else {
             val rowBudget = (boxWidth - 20).coerceAtLeast(1)
             val maxVisibleCards = ((rowBudget + 2) / (BOX_CARD_SIZE + 2)).coerceAtLeast(1)
-            div({ gap = 2; key = "$boxKey.cards"; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 2; key = "$boxKey.cards"
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 cards.take(maxVisibleCards).forEach { item ->
                     val draggable = window.useDraggable(
                         id = item.id,
@@ -408,7 +451,7 @@ private fun UiScope.dropBox(
                     )
                 }
                 if (cards.size > maxVisibleCards) {
-                    text("+${cards.size - maxVisibleCards}", { this.color = DEMO_MUTED })
+                    text("+${cards.size - maxVisibleCards}", { style = { this.color = DEMO_MUTED } })
                 }
             }
         }

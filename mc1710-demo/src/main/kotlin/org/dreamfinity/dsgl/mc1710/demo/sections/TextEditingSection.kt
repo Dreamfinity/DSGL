@@ -3,6 +3,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
@@ -15,14 +17,17 @@ private const val FAIL_COLOR = 0xFFFF8A8A.toInt()
 fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.textEditing"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("HTML-like text editing: caret blink, selection and clipboard shortcuts")
         text("Use Ctrl on Windows/Linux or Cmd on macOS for copy/cut/paste/select-all/undo/redo.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         text("Single-line input")
@@ -33,7 +38,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = SINGLE_KEY
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onFocusGain = {
                     window.textEditingSawFocus = true
                     window.logHook("textEditing.single.focus", it)
@@ -49,7 +54,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             }
         )
-        text("Single-line: caret + selection visible in control", { color = DEMO_MUTED })
+        text("Single-line: caret + selection visible in control", { style = { color = DEMO_MUTED } })
 
         text("Password input (copy/cut restricted, paste allowed)")
         input(
@@ -59,7 +64,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = PASSWORD_KEY
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onFocusGain = {
                     window.textEditingSawFocus = true
                     window.logHook("textEditing.password.focus", it)
@@ -75,14 +80,16 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             }
         )
-        text("Password: masked selection/caret behavior", { color = DEMO_MUTED })
+        text("Password: masked selection/caret behavior", { style = { color = DEMO_MUTED } })
 
         text("Textarea")
         textarea({
             placeholder = "Multiline editing"
             key = AREA_KEY
-            width = contentWidth - 8
-            height = 62
+            style = {
+                width = contentWidth - 8
+                height = 62
+            }
             value = window.textEditingAreaValue
             onFocusGain = {
                 window.textEditingSawFocus = true
@@ -98,7 +105,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
                 trackKeyboardEditing(window, event, AREA_KEY)
             }
         })
-        text("Textarea: multiline selection + scroll-aware caret", { color = DEMO_MUTED })
+        text("Textarea: multiline selection + scroll-aware caret", { style = { color = DEMO_MUTED } })
 
         text("Checklist")
         checklistLine("caret blinks when focused", window.textEditingSawFocus)
@@ -107,7 +114,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
         checklistLine("copy/cut/paste/undo/redo shortcuts are handled", window.textEditingSawClipboardShortcut)
 
         button("Reset Checklist", {
-            width = 72
+            style = { width = 72 }
             onMouseClick = {
                 window.textEditingSawSelectionDrag = false
                 window.textEditingSawShiftSelection = false
@@ -123,8 +130,10 @@ private fun UiScope.checklistLine(textValue: String, done: Boolean) {
     val mark = if (done) "[ok]" else "[ ]"
     val color = if (done) DEMO_OK else FAIL_COLOR
     text("$mark $textValue", {
-        this.color = color
-        style = { foregroundColor(color) }
+        style = {
+            this.color = color
+            foregroundColor(color)
+        }
     })
 }
 

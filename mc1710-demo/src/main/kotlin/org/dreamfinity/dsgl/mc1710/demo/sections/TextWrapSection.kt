@@ -2,6 +2,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -20,22 +22,31 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
 
     div({
         key = "section.textWrap"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Text Wrap: wrap / nowrap")
         text(
             "Wrap keeps text inside panel width; NoWrap keeps one line and may overflow or clip.",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
-        div({ gap = 4; asFlexRow() }) {
+        div({
+            style = {
+                gap = 4
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button(
                 if (mode == TextWrap.Wrap) "Mode: wrap" else "Mode: nowrap",
                 {
-                    width = 82
+                    style = { width = 82 }
                     onMouseClick = {
                         window.textWrapNoWrap = !window.textWrapNoWrap
                         window.appendInfo("TextWrap mode=${if (window.textWrapNoWrap) "nowrap" else "wrap"}")
@@ -43,7 +54,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
                 }
             )
             button("Reset width", {
-                width = 62
+                style = { width = 62 }
                 onMouseClick = {
                     window.textWrapWidth = ((minWidth + maxWidth) / 2).toLong()
                 }
@@ -59,7 +70,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             ),
             {
                 key = "textWrap.width"
-                width = contentWidth - 8
+                style = { width = contentWidth - 8 }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
                     window.textWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
@@ -68,33 +79,41 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
         )
         text(
             "panelWidth=$panelWidth mode=${if (mode == TextWrap.Wrap) "wrap" else "nowrap"}",
-            { color = DEMO_MUTED }
+            { style = { color = DEMO_MUTED } }
         )
 
         div({
             key = "textWrap.panel"
-            width = panelWidth
-            padding = 3
-            backgroundColor = 0xFF2B3542.toInt()
-            gap = 2
-            style = { border(1, 0xFF6F8298.toInt()) }
-            asFlexColumn()
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                width = panelWidth
+                padding = 3
+                backgroundColor = 0xFF2B3542.toInt()
+                gap = 2
+                border(1, 0xFF6F8298.toInt())
+            }
+
         }) {
             text("Text node (static)", { style = { textWrap = mode } })
             text(WRAP_SAMPLE_TEXT, { style = { textWrap = mode } })
             text("Text node (lambda)")
             text(WRAP_SAMPLE_WORD, { style = { textWrap = mode } })
             button("Button label: $WRAP_SAMPLE_WORD", {
-                width = panelWidth - 6
-                style = { textWrap = mode }
+                style = {
+                    width = panelWidth - 6
+                    textWrap = mode
+                }
             })
             textarea({
                 placeholder = "Wrap demo area"
                 key = "textWrap.textarea"
-                width = panelWidth - 6
-                height = 36
                 value = WRAP_TEXTAREA_SAMPLE
-                style = { textWrap = mode }
+                style = {
+                    width = panelWidth - 6
+                    height = 36
+                    textWrap = mode
+                }
             })
         }
     }

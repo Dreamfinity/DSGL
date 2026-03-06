@@ -61,7 +61,7 @@ tasks.register("generateMsdfAtlases") {
             val fontArg = "./fonts/$relative"
             val charsetFile = "./fonts/charset.txt"
             val pxrange = 4
-            val size = 64
+            val size = 32
             val commonArgs = listOf(
                 msdfGeneratorExe.absolutePath,
                 "-font", fontArg,

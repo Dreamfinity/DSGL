@@ -4,6 +4,8 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.AlignItems
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
@@ -53,15 +55,26 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
     div({
         key = "section.animations"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Transforms + Transitions + Keyframes")
-        text("Transforms are layout-neutral; hit testing follows transformed geometry.", { color = DEMO_MUTED })
+        text(
+            "Transforms are layout-neutral; hit testing follows transformed geometry.",
+            { style = { color = DEMO_MUTED } })
 
-        div({ gap = 3; asFlexRow() }) {
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button(
                 if (window.animationsToggle) "Retarget: ON" else "Retarget: OFF",
                 {
@@ -88,7 +101,13 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
             })
         }
 
-        div({ gap = 3; asFlexRow() }) {
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
             button("Dir: ${direction.name.lowercase()}", {
                 onMouseClick = {
                     window.animationsDirectionIndex = (window.animationsDirectionIndex + 1) % directionOptions.size
@@ -108,18 +127,24 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 ),
                 {
                     key = "animations.duration.slider"
-                    width = 120
+                    style = { width = 120 }
                     onInput = { event ->
                         val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: duration.toLong()
                         window.animationsDurationMs = next.coerceIn(200, 6000)
                     }
                 }
             )
-            text("duration=${window.animationsDurationMs}ms", { color = DEMO_MUTED })
+            text("duration=${window.animationsDurationMs}ms", { style = { color = DEMO_MUTED } })
         }
 
-        div({ gap = 3; asFlexRow() }) {
-            text("Bezier x1=${window.animationsBezierX1}", { color = DEMO_MUTED })
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
+            text("Bezier x1=${window.animationsBezierX1}", { style = { color = DEMO_MUTED } })
             input(
                 InputType.Range(
                     value = window.animationsBezierX1,
@@ -129,7 +154,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 ),
                 {
                     key = "animations.bezier.x1"
-                    width = 72
+                    style = { width = 72 }
                     onInput = { event ->
                         val next =
                             (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.animationsBezierX1
@@ -137,7 +162,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     }
                 }
             )
-            text("y1=${window.animationsBezierY1}", { color = DEMO_MUTED })
+            text("y1=${window.animationsBezierY1}", { style = { color = DEMO_MUTED } })
             input(
                 InputType.Range(
                     value = window.animationsBezierY1,
@@ -147,7 +172,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 ),
                 {
                     key = "animations.bezier.y1"
-                    width = 72
+                    style = { width = 72 }
                     onInput = { event ->
                         val next =
                             (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.animationsBezierY1
@@ -157,8 +182,14 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
             )
         }
 
-        div({ gap = 3; asFlexRow() }) {
-            text("Bezier x2=${window.animationsBezierX2}", { color = DEMO_MUTED })
+        div({
+            style = {
+                gap = 3
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
+            text("Bezier x2=${window.animationsBezierX2}", { style = { color = DEMO_MUTED } })
             input(
                 InputType.Range(
                     value = window.animationsBezierX2,
@@ -168,7 +199,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 ),
                 {
                     key = "animations.bezier.x2"
-                    width = 72
+                    style = { width = 72 }
                     onInput = { event ->
                         val next =
                             (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.animationsBezierX2
@@ -176,7 +207,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     }
                 }
             )
-            text("y2=${window.animationsBezierY2}", { color = DEMO_MUTED })
+            text("y2=${window.animationsBezierY2}", { style = { color = DEMO_MUTED } })
             input(
                 InputType.Range(
                     value = window.animationsBezierY2,
@@ -186,7 +217,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 ),
                 {
                     key = "animations.bezier.y2"
-                    width = 72
+                    style = { width = 72 }
                     onInput = { event ->
                         val next =
                             (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.animationsBezierY2
@@ -198,25 +229,28 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
         div({
             key = "animations.cards"
-            width = (contentWidth - 8).coerceAtLeast(120)
-            padding = 4
-            gap = 6
-            backgroundColor = 0xFF222B37.toInt()
             style = {
+                width = (contentWidth - 8).coerceAtLeast(120)
+                padding = 4
+                gap = 6
+                backgroundColor = 0xFF222B37.toInt()
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
                 alignItems = AlignItems.Center
                 justifyContent = JustifyContent.Start
                 border(1, 0xFF3F4D5E.toInt())
             }
-            asFlexRow()
         }) {
             div({
                 key = "animations.transition.card"
-                width = 120
-                height = 52
-                backgroundColor = 0xFF2E3C4F.toInt()
                 onMouseEnter = { window.animationsHover = true }
                 onMouseLeave = { window.animationsHover = false }
                 style = {
+                    width = 120
+                    height = 52
+                    backgroundColor = 0xFF2E3C4F.toInt()
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
                     transition {
                         property(StyleAnimProps.transform, 220, easing = Easings.EASE_IN_OUT)
                         property(StyleAnimProps.opacity, 200, easing = Easings.EASE_OUT)
@@ -236,18 +270,19 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     border(1, 0xFF56677A.toInt())
                     padding(4)
                 }
-                asFlexColumn()
             }) {
                 text("Transition card")
-                text("hover + toggle", { color = DEMO_MUTED })
+                text("hover + toggle", { style = { color = DEMO_MUTED } })
             }
 
             div({
                 key = "animations.keyframes.card"
-                width = 120
-                height = 52
-                backgroundColor = 0xFF31313C.toInt()
                 style = {
+                    width = 120
+                    height = 52
+                    backgroundColor = 0xFF31313C.toInt()
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
                     animation {
                         animation(
                             name = "showcase.spinFade",
@@ -263,19 +298,18 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     border(1, 0xFF5F5F72.toInt())
                     padding(4)
                 }
-                asFlexColumn()
             }) {
                 text("Keyframes card")
-                text("spin + fade + color", { color = DEMO_MUTED })
+                text("spin + fade + color", { style = { color = DEMO_MUTED } })
             }
 
             div({
                 key = "animations.nested.parent"
-                width = 110
-                height = 52
-                backgroundColor = 0xFF2A3442.toInt()
-                padding = 4
                 style = {
+                    width = 110
+                    height = 52
+                    backgroundColor = 0xFF2A3442.toInt()
+                    padding = 4
                     transform {
                         rotate(if (window.animationsToggle) 12f else 0f)
                     }
@@ -288,10 +322,10 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
             }) {
                 div({
                     key = "animations.nested.child"
-                    width = 64
-                    height = 22
-                    backgroundColor = 0xFF3F5571.toInt()
                     style = {
+                        width = 64
+                        height = 22
+                        backgroundColor = 0xFF3F5571.toInt()
                         transform {
                             translate(
                                 if (window.animationsToggle) 10f else 0f,
@@ -304,7 +338,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                         border(1, 0xFF7593B8.toInt())
                     }
                 }) {
-                    text("Nested", { color = 0xFFEAF3FF.toInt() })
+                    text("Nested", { style = { color = 0xFFEAF3FF.toInt() } })
                 }
             }
         }
@@ -322,7 +356,7 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     "activeTransitions=$transitionDebug activeKeyframes=$keyframesDebug " +
                     "effectiveOpacity=${debug?.effectiveOpacity ?: 1f} transform={$transformDebug}"
 
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
     }
 }

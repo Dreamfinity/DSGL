@@ -2,37 +2,46 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.stylesheets"
-        width = contentWidth
-        height = contentHeight
-        gap = 4
-        asFlexColumn()
+        style = {
+            width = contentWidth
+            height = contentHeight
+            gap = 4
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("This section demonstrates DSS selectors, pseudo-states, vars and inline override.")
         text("Edit <gameDir>/dsgl/styles/*.dss then click Reload stylesheets.", {
-            color = DEMO_MUTED
+            style = { color = DEMO_MUTED }
         })
 
         div({
-            key = "styles.editor.card"
             id = "stylesEditorCard"
+            key = "styles.editor.card"
             className = "style-card editor"
-            padding = 4
-            gap = 3
-            style = { border(1, 0xFF5E6A77.toInt()) }
+            style = {
+                padding = 4
+                gap = 3
+                border(1, 0xFF5E6A77.toInt())
+            }
         }) {
             text("Demo stylesheet editor: showcase_styles.dss")
             textarea({
                 placeholder = "Stylesheet content"
                 key = "styles.editor.textarea"
                 value = window.stylesheetEditorValue
-                width = (contentWidth - 22).coerceAtLeast(120)
-                height = 92
+                style = {
+                    width = (contentWidth - 22).coerceAtLeast(120)
+                    height = 92
+                }
                 onInput = { event ->
                     window.stylesheetEditorValue = event.value
                 }
@@ -41,10 +50,16 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             })
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button("Save", {
                     key = "styles.editor.save"
-                    width = 50
+                    style = { width = 50 }
                     onMouseClick = { event ->
                         window.saveStylesheetEditorToFile("styles section save")
                         window.logHook("styles.editor.save", event)
@@ -52,7 +67,7 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 })
                 button("Load", {
                     key = "styles.editor.load"
-                    width = 50
+                    style = { width = 50 }
                     onMouseClick = { event ->
                         window.loadStylesheetEditorFromFile("styles section load")
                         window.logHook("styles.editor.load", event)
@@ -62,7 +77,7 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     key = "styles.reload.button"
                     id = "stylesReloadButton"
                     className = "primary"
-                    width = 112
+                    style = { width = 112 }
                     onMouseClick = { event ->
                         window.reloadStylesheetsProgrammatically("styles section button")
                         window.logHook("styles.reload.onMouseClick", event)
@@ -71,26 +86,34 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
             }
             text(
                 "status=${window.stylesheetEditorStatus}; reloads=${window.stylesheetReloadCount}; clicks=${window.stylesheetDemoClickCount}",
-                { color = DEMO_MUTED }
+                { style = { color = DEMO_MUTED } }
             )
         }
 
         div({
-            key = "styles.selectors.card"
             id = "stylesSelectorsCard"
+            key = "styles.selectors.card"
             className = "style-card selectors"
-            padding = 4
-            gap = 3
-            style = { border(1, 0xFF5E6A77.toInt()) }
+            style = {
+                padding = 4
+                gap = 3
+                border(1, 0xFF5E6A77.toInt())
+            }
         }) {
             text("Selector matrix", {
                 id = "stylesSelectorsTitle"
             })
             text("Targets: button, .accent, button.primary, #dangerAction", {
-                color = DEMO_MUTED
+                style = { color = DEMO_MUTED }
             })
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button("button", {
                     key = "styles.selector.type"
                     onMouseClick = { event ->
@@ -116,7 +139,13 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 })
             }
 
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button("#dangerAction", {
                     key = "styles.selector.id"
                     id = "dangerAction"
@@ -143,15 +172,23 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
         }
 
         div({
-            key = "styles.states.card"
             id = "stylesStatesCard"
+            key = "styles.states.card"
             className = "style-card states"
-            padding = 4
-            gap = 3
-            style = { border(1, 0xFF5E6A77.toInt()) }
+            style = {
+                padding = 4
+                gap = 3
+                border(1, 0xFF5E6A77.toInt())
+            }
         }) {
             text("Pseudo-states: :hover, :active, :focus, :disabled")
-            div({ gap = 4; asFlexRow() }) {
+            div({
+                style = {
+                    gap = 4
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
                 button("Hover / Active target", {
                     key = "styles.state.hoverActive"
                     id = "hoverActiveTarget"
@@ -170,7 +207,7 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                         key = "styles.state.focusInput"
                         id = "focusInput"
                         className = "interactive-demo"
-                        width = 98
+                        style = { width = 98 }
                         onInput = { event ->
                             window.stylesheetDemoTextValue = event.value
                             window.logHook("styles.state.focusInput.onInput", event, "value=${event.value}")
@@ -190,17 +227,67 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
             key = "styles.variables.card"
             id = "stylesVarsCard"
             className = "style-card vars-demo"
-            padding = 4
-            gap = 2
-            style = { border(1, 0xFF5E6A77.toInt()) }
+            style = {
+                padding = 4
+                gap = 2
+                border(1, 0xFF5E6A77.toInt())
+            }
         }) {
             text("Variable demo uses :root { --primary: ... } and var(--primary)")
             text("Try: .vars-demo { backgroundColor: var(--primary); borderColor: var(--accent); }", {
-                color = DEMO_MUTED
+                style = { color = DEMO_MUTED }
             })
             text("focusInputValue='${window.stylesheetDemoTextValue}'", {
-                color = DEMO_MUTED
+                style = { color = DEMO_MUTED }
             })
+        }
+
+        div({
+            id = "stylesUnitsCard"
+            key = "styles.units.card"
+            className = "style-card units-demo"
+            style = {
+                padding = 4
+                gap = 3
+                border(1, 0xFF5E6A77.toInt())
+            }
+        }) {
+            text("CSS units demo: px, em, %, vw, vh")
+            text("Resize window to see vw/vh change; % is relative to the playground.", {
+                style = { color = DEMO_MUTED }
+            })
+
+            div({
+                key = "styles.units.vwChip"
+                className = "units-vw-chip"
+                style = { height = 12 }
+            }) {
+                text("20vw")
+            }
+
+            div({
+                key = "styles.units.playground"
+                className = "units-playground"
+                style = { height = 66 }
+            }) {
+                div({
+                    key = "styles.units.percentBox"
+                    className = "units-percent-box"
+                }) {
+                    text("50% x 40%")
+                }
+            }
+
+            text("1.25em text with 1em spacing", {
+                className = "units-em-text"
+            })
+
+            div({
+                key = "styles.units.vhBar"
+                className = "units-vh-bar"
+            }) {
+                text("8vh")
+            }
         }
     }
 }

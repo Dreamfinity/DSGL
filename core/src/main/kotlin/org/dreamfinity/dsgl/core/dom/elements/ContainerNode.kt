@@ -30,7 +30,7 @@ class ContainerNode(
         return measureWithConstraint(ctx, null)
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+    override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val constrainedContentWidth = if (availableOuterWidth != null) {
             constrainContentWidthForOuterLimit(availableOuterWidth, this@ContainerNode)
         } else {
@@ -133,7 +133,8 @@ class ContainerNode(
             val size = measureChildForLayout(
                 ctx = ctx,
                 child = child,
-                availableOuterWidth = cw
+                availableOuterWidth = cw,
+                availableOuterHeight = ch
             )
             val childWidth = size.width
             val childHeight = size.height
@@ -240,7 +241,8 @@ class ContainerNode(
             val measured = measureChildForLayout(
                 ctx = ctx,
                 child = child,
-                availableOuterWidth = cw
+                availableOuterWidth = cw,
+                availableOuterHeight = ch
             )
             if (child.display == Display.Inline) {
                 val outerWidth = measured.width + child.margin.horizontal
@@ -340,7 +342,8 @@ class ContainerNode(
             val measured = measureChildForLayout(
                 ctx = ctx,
                 child = child,
-                availableOuterWidth = cw
+                availableOuterWidth = cw,
+                availableOuterHeight = ch
             )
             val outerWidth = measured.width + child.margin.horizontal
             val outerHeight = measured.height + child.margin.vertical
@@ -369,7 +372,8 @@ class ContainerNode(
         val crossMarginStart: Int,
         val crossMarginEnd: Int,
         val explicitMain: Int?,
-        val explicitCross: Int?
+        val explicitCross: Int?,
+        val resolvedFlexBasis: Int?
     )
 
     private fun measureFlex(ctx: UiMeasureContext, children: List<DOMNode>, wrapWidth: Int?): Size {
@@ -400,11 +404,17 @@ class ContainerNode(
         val availableMain = if (isRow) contentWidth() else contentHeight()
         val availableCross = if (isRow) contentHeight() else contentWidth()
         val availableOuterWidth = contentWidth()
+        val availableOuterHeight = contentHeight()
 
         if (children.isEmpty()) return
 
         val items = children.map { child ->
-            val measured = measureChildForLayout(ctx, child, availableOuterWidth)
+            val measured = measureChildForLayout(
+                ctx = ctx,
+                child = child,
+                availableOuterWidth = availableOuterWidth,
+                availableOuterHeight = availableOuterHeight
+            )
             FlexItem(
                 child = child,
                 measuredMain = if (isRow) measured.width else measured.height,
@@ -414,7 +424,13 @@ class ContainerNode(
                 crossMarginStart = if (isRow) child.margin.top else child.margin.left,
                 crossMarginEnd = if (isRow) child.margin.bottom else child.margin.right,
                 explicitMain = if (isRow) child.width else child.height,
-                explicitCross = if (isRow) child.height else child.width
+                explicitCross = if (isRow) child.height else child.width,
+                resolvedFlexBasis = child.resolveFlexBasisForAxis(
+                    ctx = ctx,
+                    parentContentWidth = availableOuterWidth,
+                    parentContentHeight = availableOuterHeight,
+                    axis = flexDirection
+                ),
             )
         }
 
@@ -423,7 +439,7 @@ class ContainerNode(
         var totalGrow = 0.0
         var totalShrinkWeight = 0.0
         items.forEachIndexed { index, item ->
-            val base = (item.explicitMain ?: item.child.flexBasis ?: item.measuredMain).coerceAtLeast(0)
+            val base = (item.explicitMain ?: item.resolvedFlexBasis ?: item.measuredMain).coerceAtLeast(0)
             baseMain[index] = base.toDouble()
             totalOuterBaseMain += base + item.mainMarginStart + item.mainMarginEnd
             totalGrow += item.child.flexGrow.coerceAtLeast(0f).toDouble()
@@ -590,7 +606,8 @@ class ContainerNode(
             val measured = measureChildForLayout(
                 ctx = ctx,
                 child = child,
-                availableOuterWidth = cellWidth.coerceAtLeast(0)
+                availableOuterWidth = cellWidth.coerceAtLeast(0),
+                availableOuterHeight = cellHeight.coerceAtLeast(0)
             )
 
             val childWidth = when {
@@ -619,7 +636,18 @@ class ContainerNode(
 
             val childX = cellX + child.margin.left + xOffset
             val childY = cellY + child.margin.top + yOffset
-            renderContainedChild(ctx, child, cellX, cellY, cellWidth, cellHeight, childX, childY, childWidth, childHeight)
+            renderContainedChild(
+                ctx,
+                child,
+                cellX,
+                cellY,
+                cellWidth,
+                cellHeight,
+                childX,
+                childY,
+                childWidth,
+                childHeight
+            )
         }
     }
 
@@ -758,8 +786,14 @@ class ContainerNode(
     private fun measureChildForLayout(
         ctx: UiMeasureContext,
         child: DOMNode,
-        availableOuterWidth: Int?
+        availableOuterWidth: Int?,
+        availableOuterHeight: Int? = null
     ): Size {
+        child.resolveLayoutStyleValues(
+            ctx = ctx,
+            parentContentWidth = availableOuterWidth,
+            parentContentHeight = availableOuterHeight
+        )
         return child.measureForLayout(ctx, availableOuterWidth)
     }
 
