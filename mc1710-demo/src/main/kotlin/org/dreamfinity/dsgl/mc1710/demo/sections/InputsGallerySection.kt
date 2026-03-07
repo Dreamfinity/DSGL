@@ -14,12 +14,14 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
 
     div({
         key = "section.inputs"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("All InputType variants are interactive below.")
         text(
@@ -36,10 +38,12 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
         }) {
             div({
                 key = "inputs.left"
-                style = { width = halfWidth.px
+                style = {
+                    width = halfWidth.px
                     gap = 3.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column }
+                    flexDirection = FlexDirection.Column
+                }
             }) {
                 text("Text (A-F/0-9, max 8)")
                 input(
@@ -115,10 +119,12 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
 
             div({
                 key = "inputs.right"
-                style = { width = halfWidth.px
+                style = {
+                    width = halfWidth.px
                     gap = 3.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column }
+                    flexDirection = FlexDirection.Column
+                }
             }) {
                 text("Checkbox (min 1, max 2)")
                 input(
@@ -167,8 +173,10 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             placeholder = "Multiline example"
             key = "input.textarea"
             placeholder = "Type multiple lines"
-            style = { width = (contentWidth - 8).px
-                height = 40.px }
+            style = {
+                width = (contentWidth - 8).px
+                height = 40.px
+            }
         })
 
         text("Clipping + internal scrolling demo (100 lines prefilled)", { style = { color = DEMO_MUTED } })
@@ -196,18 +204,22 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
         }) {
             div({
                 key = "input.textarea.clip.left"
-                style = { width = 42.px
+                style = {
+                    width = 42.px
                     height = 84.px
                     backgroundColor = 0xFF5A3434.toInt()
-                    padding = 2.px }
+                    padding = 2.px
+                }
             }) {
                 text("L", { style = { color = 0xFFFFD0D0.toInt() } })
             }
             textarea({
                 placeholder = "Scroll with wheel / PgUp / PgDn"
                 key = "input.textarea.clip"
-                style = { width = ((contentWidth - 100).coerceAtLeast(90)).px
-                    height = 84.px }
+                style = {
+                    width = ((contentWidth - 100).coerceAtLeast(90)).px
+                    height = 84.px
+                }
                 value = window.clippingScrollDemoText
                 onInput = { event ->
                     window.clippingScrollDemoText = event.value
@@ -218,10 +230,12 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             })
             div({
                 key = "input.textarea.clip.right"
-                style = { width = 42.px
+                style = {
+                    width = 42.px
                     height = 84.px
                     backgroundColor = 0xFF345A34.toInt()
-                    padding = 2.px }
+                    padding = 2.px
+                }
             }) {
                 text("R", { style = { color = 0xFFD0FFD0.toInt() } })
             }

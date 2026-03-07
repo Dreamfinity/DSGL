@@ -10,11 +10,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.modals"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Declarative modal stack (state-driven list order).")
         text("Last modal in list is topmost. Background button proves input blocking.", {

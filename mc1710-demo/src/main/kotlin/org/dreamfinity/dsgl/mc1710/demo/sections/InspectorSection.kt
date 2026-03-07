@@ -10,12 +10,14 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.inspector"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("In-game Inspector is global (works on every DSGL screen).")
         text("F8: toggle inspector overlay", { style = { color = DEMO_MUTED } })
@@ -73,7 +75,7 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
             div({
                 key = "inspector.sample.grid"
                 style = {
-                gap = 3.px
+                    gap = 3.px
                     display = Display.Grid
                     gridColumns = 3
                 }

@@ -12,12 +12,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
 fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.overview"
-        style = { width = contentWidth.px
-            height = contentHeight.px
+        style = {
+//            width = contentWidth.px
+//            height = contentHeight.px
             gap = 4.px
-
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Use left navigation to open each capability group.")
         text("Event Inspector and Checklist stay visible while switching sections.", {

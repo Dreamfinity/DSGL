@@ -21,12 +21,14 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.layoutDebug"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Layout validator")
         text("Checks containment, invalid sizes, and wrapped text line-stack invariants.", {
@@ -92,21 +94,25 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             key = "layoutDebug.wrapCase"
-            style = { width = wrapWidth.px
+            style = {
+                width = wrapWidth.px
                 padding = 3.px
                 gap = 2.px
                 backgroundColor = 0xFF2D3745.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1.px, 0xFF70859C.toInt()) }
+                border(1.px, 0xFF70859C.toInt())
+            }
 
         }) {
             text("Case: wrapped text stack", { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_A, { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_B, { style = { textWrap = TextWrap.Wrap } })
             button("button label wraps too: long_unbroken_word_to_force_hard_break_123456789", {
-                style = { width = (wrapWidth - 8).px
-                    textWrap = TextWrap.Wrap }
+                style = {
+                    width = (wrapWidth - 8).px
+                    textWrap = TextWrap.Wrap
+                }
             })
         }
     }

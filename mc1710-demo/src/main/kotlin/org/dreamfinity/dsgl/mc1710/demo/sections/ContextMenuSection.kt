@@ -52,11 +52,13 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.contextMenu"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Pseudo filesystem: tile view + context menu + drag/drop")
         text(
@@ -98,13 +100,15 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
         }) {
             div({
                 key = "section.contextMenu.pathbar"
-                style = { width = (contentWidth - 16).px
+                style = {
+                    width = (contentWidth - 16).px
                     padding = 2.px
                     gap = 2.px
                     backgroundColor = 0xFF25303A.toInt()
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
-                    border(1.px, 0xFF4F6175.toInt()) }
+                    border(1.px, 0xFF4F6175.toInt())
+                }
             }) {
                 button("<", {
                     key = "section.contextMenu.path.back"
@@ -223,12 +227,14 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             val listNode = div({
                 key = "section.contextMenu.list"
-                style = { width = listWidth.px
+                style = {
+                    width = listWidth.px
                     gap = 8.px
                     padding = 4.px
                     backgroundColor =
                         if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
-                            0xFF2F4358.toInt() } else {
+                            0xFF2F4358.toInt()
+                        } else {
                             0xFF2B343F.toInt()
                         }
                     border(1.px, 0xFF4F6175.toInt())
@@ -240,8 +246,10 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
             }) {
                 if (entries.isEmpty()) {
                     div({
-                        style = { width = (listWidth - 8).px
-                            padding = 2.px }
+                        style = {
+                            width = (listWidth - 8).px
+                            padding = 2.px
+                        }
                     }) {
                         text(
                             "Folder is empty. Right-click to create file/folder.",
@@ -357,8 +365,10 @@ private fun UiScope.contextMenuEntryTile(
         }
     }) {
         img(iconURL, {
-            style = { width = TILE_ICON_SIZE.px
-                height = TILE_ICON_SIZE.px }
+            style = {
+                width = TILE_ICON_SIZE.px
+                height = TILE_ICON_SIZE.px
+            }
         })
         if (isEditingName) {
             input(

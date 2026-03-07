@@ -357,6 +357,8 @@ class ShowcaseWindow : DsglWindow() {
                     style = {
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
+                        width = 100.vw
+                        height = 100.vh
                         padding = 4.px
                         gap = 4.px
                         backgroundColor = DEMO_BG
@@ -381,8 +383,6 @@ class ShowcaseWindow : DsglWindow() {
                             style = {
                                 display = Display.Flex
                                 flexDirection = FlexDirection.Column
-//                                width = navWidth.px
-                                height = bodyHeight.px
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
@@ -408,8 +408,6 @@ class ShowcaseWindow : DsglWindow() {
                             style = {
                                 display = Display.Flex
                                 flexDirection = FlexDirection.Column
-                                width = contentWidth.px
-                                height = bodyHeight.px
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
@@ -545,11 +543,11 @@ class ShowcaseWindow : DsglWindow() {
 
                         div({
                             key = "showcase.side"
-                            style = { width = sidebarWidth.px
-                                height = bodyHeight.px
+                            style = {
                                 gap = 4.px
                                 display = Display.Flex
-                                flexDirection = FlexDirection.Column }
+                                flexDirection = FlexDirection.Column
+                            }
                         }) {
                             renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
                             renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)

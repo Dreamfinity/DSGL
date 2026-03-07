@@ -22,11 +22,13 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
 
     div({
         key = "section.textWrap"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Text Wrap: wrap / nowrap")
         text(
@@ -98,16 +100,20 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             text("Text node (lambda)")
             text(WRAP_SAMPLE_WORD, { style = { textWrap = mode } })
             button("Button label: $WRAP_SAMPLE_WORD", {
-                style = { width = (panelWidth - 6).px
-                    textWrap = mode }
+                style = {
+                    width = (panelWidth - 6).px
+                    textWrap = mode
+                }
             })
             textarea({
                 placeholder = "Wrap demo area"
                 key = "textWrap.textarea"
                 value = WRAP_TEXTAREA_SAMPLE
-                style = { width = (panelWidth - 6).px
+                style = {
+                    width = (panelWidth - 6).px
                     height = 36.px
-                    textWrap = mode }
+                    textWrap = mode
+                }
             })
         }
     }

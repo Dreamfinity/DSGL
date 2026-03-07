@@ -18,11 +18,13 @@ fun UiScope.refsSection(
 ) {
     div({
         key = "section.refs"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Refs: object refs + callback refs (commit-phase attach/detach).")
         text("Focus via ref uses ElementHandle.requestFocus().", { style = { color = DEMO_MUTED } })
@@ -82,10 +84,12 @@ fun UiScope.refsSection(
         div(
             {
                 key = "refs.bounds.panel"
-                style = { width = (contentWidth - 10).px
+                style = {
+                    width = (contentWidth - 10).px
                     height = 34.px
                     padding = 4.px
-                    backgroundColor = 0xFF313844.toInt() }
+                    backgroundColor = 0xFF313844.toInt()
+                }
             },
             ref = panelRef
         ) {
@@ -106,10 +110,12 @@ fun UiScope.refsSection(
             div(
                 {
                     key = "refs.callback.target"
-                    style = { width = (contentWidth - 10).px
+                    style = {
+                        width = (contentWidth - 10).px
                         height = 24.px
                         backgroundColor = 0xFF2F3C2F.toInt()
-                        padding = 4.px }
+                        padding = 4.px
+                    }
                 },
                 ref = window.refsCallbackRef
             ) {

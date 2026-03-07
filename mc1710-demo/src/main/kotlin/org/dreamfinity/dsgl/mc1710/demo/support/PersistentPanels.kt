@@ -12,9 +12,8 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
-            width = panelWidth.px
-            height = panelHeight.px
             gap = 4.px
+            padding = 20.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
             border(1.px, DsglColors.BORDER)
@@ -29,7 +28,7 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
         }) {
             text("Event Inspector")
             button("Clear", {
-                style = { width = 44.px }
+                style = { }
                 onMouseClick = { window.clearEventLogs() }
             })
         }
@@ -64,8 +63,7 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
-            width = panelWidth.px
-            height = panelHeight.px
+            padding = 20.px
             gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT

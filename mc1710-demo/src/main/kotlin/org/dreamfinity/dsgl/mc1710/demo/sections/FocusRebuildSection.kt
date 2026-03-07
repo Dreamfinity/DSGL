@@ -11,11 +11,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.focusRebuild"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }
     ) {
         text("Stable key focus test: focus first field, press Enter to rebuild, keep typing.")

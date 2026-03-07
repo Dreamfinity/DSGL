@@ -10,11 +10,13 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.stylesheets"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("This section demonstrates DSS selectors, pseudo-states, vars and inline override.")
         text("Edit <gameDir>/dsgl/styles/*.dss then click Reload stylesheets.", {
@@ -36,8 +38,10 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 placeholder = "Stylesheet content"
                 key = "styles.editor.textarea"
                 value = window.stylesheetEditorValue
-                style = { width = ((contentWidth - 22).coerceAtLeast(120)).px
-                    height = 92.px }
+                style = {
+                    width = ((contentWidth - 22).coerceAtLeast(120)).px
+                    height = 92.px
+                }
                 onInput = { event ->
                     window.stylesheetEditorValue = event.value
                 }

@@ -64,11 +64,13 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.msdfFonts"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("MSDF Fonts")
         text(
@@ -211,13 +213,15 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         div({
             key = "msdf.panel"
-            style = { width = panelWidth.px
+            style = {
+                width = panelWidth.px
                 padding = 4.px
                 gap = 2.px
                 backgroundColor = 0xFF233040.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1.px, 0xFF5F7288.toInt()) }
+                border(1.px, 0xFF5F7288.toInt())
+            }
 
         }) {
             text("Header text", {

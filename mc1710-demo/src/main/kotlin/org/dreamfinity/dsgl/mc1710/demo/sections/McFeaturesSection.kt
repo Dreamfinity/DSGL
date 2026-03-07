@@ -1,9 +1,9 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.UiScope
-import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.DsglColors
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
@@ -13,19 +13,25 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.mcFeatures"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         val guiScaleValue = window.currentGuiScale()
         val boardWidth = (contentWidth - 10).coerceIn(220, 360)
         val boardRightColumnWidth = (boardWidth - 168).coerceAtLeast(96)
 
         text(
-            "DSGL viewport=${window.viewportWidthPx}x${window.viewportHeightPx}px, guiScale=${window.guiScaleLabel(guiScaleValue)}",
+            "DSGL viewport=${window.viewportWidthPx}x${window.viewportHeightPx}px, guiScale=${
+                window.guiScaleLabel(
+                    guiScaleValue
+                )
+            }",
             { style = { color = DsglColors.WHITE } }
         )
         text(
@@ -41,28 +47,38 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             }
         }) {
             button("Auto", {
-                style = { width = 42.px
-                    backgroundColor = if (guiScaleValue == 0) 0xFF2F556E.toInt() else DsglColors.BUTTON }
+                style = {
+                    width = 42.px
+                    backgroundColor = if (guiScaleValue == 0) 0xFF2F556E.toInt() else DsglColors.BUTTON
+                }
                 onMouseClick = { window.setGuiScale(0) }
             })
             button("1x", {
-                style = { width = 30.px
-                    backgroundColor = if (guiScaleValue == 1) 0xFF2F556E.toInt() else DsglColors.BUTTON }
+                style = {
+                    width = 30.px
+                    backgroundColor = if (guiScaleValue == 1) 0xFF2F556E.toInt() else DsglColors.BUTTON
+                }
                 onMouseClick = { window.setGuiScale(1) }
             })
             button("2x", {
-                style = { width = 30.px
-                    backgroundColor = if (guiScaleValue == 2) 0xFF2F556E.toInt() else DsglColors.BUTTON }
+                style = {
+                    width = 30.px
+                    backgroundColor = if (guiScaleValue == 2) 0xFF2F556E.toInt() else DsglColors.BUTTON
+                }
                 onMouseClick = { window.setGuiScale(2) }
             })
             button("3x", {
-                style = { width = 30.px
-                    backgroundColor = if (guiScaleValue == 3) 0xFF2F556E.toInt() else DsglColors.BUTTON }
+                style = {
+                    width = 30.px
+                    backgroundColor = if (guiScaleValue == 3) 0xFF2F556E.toInt() else DsglColors.BUTTON
+                }
                 onMouseClick = { window.setGuiScale(3) }
             })
             button("4x", {
-                style = { width = 30.px
-                    backgroundColor = if (guiScaleValue == 4) 0xFF2F556E.toInt() else DsglColors.BUTTON }
+                style = {
+                    width = 30.px
+                    backgroundColor = if (guiScaleValue == 4) 0xFF2F556E.toInt() else DsglColors.BUTTON
+                }
                 onMouseClick = { window.setGuiScale(4) }
             })
             button("-", {
@@ -78,13 +94,15 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
         text("Pixel board (1px borders) + nested layout + clipping + ItemStack positioning")
         div({
             key = "mc.pixel.board"
-            style = { width = boardWidth.px
+            style = {
+                width = boardWidth.px
                 padding = 4.px
                 border(1.px, 0xFF5D6A76.toInt())
                 backgroundColor = 0xFF1A222A.toInt()
                 gap = 4.px
                 display = Display.Flex
-                flexDirection = FlexDirection.Column }
+                flexDirection = FlexDirection.Column
+            }
         }) {
             for (row in 0 until 4) {
                 div({
@@ -96,10 +114,12 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 }) {
                     for (col in 0 until 8) {
                         div({
-                            style = { width = 18.px
+                            style = {
+                                width = 18.px
                                 height = 10.px
                                 border(1.px, 0xFF3F4B56.toInt())
-                                backgroundColor = if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt() }
+                                backgroundColor = if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt()
+                            }
                         }) {
                         }
                     }
@@ -116,14 +136,16 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             }) {
                 div({
                     key = "mc.pixel.board.nested"
-                    style = { width = 160.px
+                    style = {
+                        width = 160.px
                         height = 102.px
                         padding = 4.px
                         border(1.px, 0xFF6A7784.toInt())
                         backgroundColor = 0xFF111922.toInt()
                         gap = 3.px
                         display = Display.Flex
-                        flexDirection = FlexDirection.Column }
+                        flexDirection = FlexDirection.Column
+                    }
                 }) {
                     div({
                         style = {
@@ -158,9 +180,11 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                             size = 20
                             rotYDeg = window.itemRotY
                             rotXDeg = window.itemRotX
-                            style = { width = 28.px
+                            style = {
+                                width = 28.px
                                 transform {
-                                    rotate(5f) }
+                                    rotate(5f)
+                                }
                             }
                         })
                     }
@@ -187,8 +211,10 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                     key = "mc.pixel.clip.textarea"
                     placeholder = "Clipped/scrollable viewport check"
                     value = window.clippingScrollDemoText
-                    style = { width = boardRightColumnWidth.px
-                        height = 102.px }
+                    style = {
+                        width = boardRightColumnWidth.px
+                        height = 102.px
+                    }
                     onInput = { event ->
                         window.clippingScrollDemoText = event.value
                     }
@@ -225,9 +251,11 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 text("Resource", { style = { color = DEMO_MUTED } })
                 img(window.resourceImageSource, {
                     key = "mc.image.resource"
-                    style = { width = 36.px
+                    style = {
+                        width = 36.px
                         height = 36.px
-                        border(1.px, 0xFF66737F.toInt()) }
+                        border(1.px, 0xFF66737F.toInt())
+                    }
                 })
             }
             div({
@@ -241,9 +269,11 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 text("file://", { style = { color = DEMO_MUTED } })
                 img(window.fileImageSource, {
                     key = "mc.image.file"
-                    style = { width = 36.px
+                    style = {
+                        width = 36.px
                         height = 36.px
-                        border(1.px, 0xFF66737F.toInt()) }
+                        border(1.px, 0xFF66737F.toInt())
+                    }
                 })
             }
             div({
@@ -257,9 +287,11 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 text("http://", { style = { color = DEMO_MUTED } })
                 img(window.httpImageSource, {
                     key = "mc.image.http"
-                    style = { width = 36.px
+                    style = {
+                        width = 36.px
                         height = 36.px
-                        border(1.px, 0xFF66737F.toInt()) }
+                        border(1.px, 0xFF66737F.toInt())
+                    }
                 })
             }
         }
@@ -276,16 +308,20 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             itemStack(window.flatItemRef, {
                 size = 18
                 key = "mc.item.2d"
-                style = { width = 64.px
-                    border(1.px, 0xFF586A7A.toInt()) }
+                style = {
+                    width = 64.px
+                    border(1.px, 0xFF586A7A.toInt())
+                }
             })
             itemStack(window.blockItemRef, {
                 size = 20
                 rotYDeg = window.itemRotY
                 rotXDeg = window.itemRotX
                 key = "mc.item.3d"
-                style = { width = 70.px
-                    border(1.px, 0xFF586A7A.toInt()) }
+                style = {
+                    width = 70.px
+                    border(1.px, 0xFF586A7A.toInt())
+                }
             })
         }
 

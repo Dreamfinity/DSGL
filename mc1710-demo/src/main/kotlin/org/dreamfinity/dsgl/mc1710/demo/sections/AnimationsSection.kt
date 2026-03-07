@@ -55,11 +55,13 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
     div({
         key = "section.animations"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Transforms + Transitions + Keyframes")
         text(
@@ -227,7 +229,8 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
         div({
             key = "animations.cards"
-            style = { width = ((contentWidth - 8).coerceAtLeast(120)).px
+            style = {
+                width = ((contentWidth - 8).coerceAtLeast(120)).px
                 padding = 4.px
                 gap = 6.px
                 backgroundColor = 0xFF222B37.toInt()
@@ -235,13 +238,15 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                 flexDirection = FlexDirection.Row
                 alignItems = AlignItems.Center
                 justifyContent = JustifyContent.Start
-                border(1.px, 0xFF3F4D5E.toInt()) }
+                border(1.px, 0xFF3F4D5E.toInt())
+            }
         }) {
             div({
                 key = "animations.transition.card"
                 onMouseEnter = { window.animationsHover = true }
                 onMouseLeave = { window.animationsHover = false }
-                style = { width = 120.px
+                style = {
+                    width = 120.px
                     height = 52.px
                     backgroundColor = 0xFF2E3C4F.toInt()
                     display = Display.Flex
@@ -249,7 +254,8 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                     transition {
                         property(StyleAnimProps.transform, 220, easing = Easings.EASE_IN_OUT)
                         property(StyleAnimProps.opacity, 200, easing = Easings.EASE_OUT)
-                        property(StyleAnimProps.color, 260, easing = Easings.EASE_IN) }
+                        property(StyleAnimProps.color, 260, easing = Easings.EASE_IN)
+                    }
                     val tx = if (window.animationsToggle) 20f else 0f
                     val lift = if (window.animationsHover) -8f else 0f
                     val scale = if (window.animationsToggle) 1.08f else 1f
@@ -271,7 +277,8 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
             div({
                 key = "animations.keyframes.card"
-                style = { width = 120.px
+                style = {
+                    width = 120.px
                     height = 52.px
                     backgroundColor = 0xFF31313C.toInt()
                     display = Display.Flex
@@ -285,7 +292,8 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
                             direction = direction,
                             fillMode = fillMode,
                             playState = playState
-                        ) }
+                        )
+                    }
                     transformOrigin(0.5f, 0.5f)
                     border(1.px, 0xFF5F5F72.toInt())
                     padding(4.px)
@@ -297,12 +305,14 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
 
             div({
                 key = "animations.nested.parent"
-                style = { width = 110.px
+                style = {
+                    width = 110.px
                     height = 52.px
                     backgroundColor = 0xFF2A3442.toInt()
                     padding = 4.px
                     transform {
-                        rotate(if (window.animationsToggle) 12f else 0f) }
+                        rotate(if (window.animationsToggle) 12f else 0f)
+                    }
                     transformOrigin(0.5f, 0.5f)
                     transition {
                         property(StyleAnimProps.transform, 260, easing = Easings.EASE_IN_OUT)
@@ -312,14 +322,16 @@ fun UiScope.animationsSection(window: ShowcaseWindow, contentWidth: Int, content
             }) {
                 div({
                     key = "animations.nested.child"
-                    style = { width = 64.px
+                    style = {
+                        width = 64.px
                         height = 22.px
                         backgroundColor = 0xFF3F5571.toInt()
                         transform {
                             translate(
                                 if (window.animationsToggle) 10f else 0f,
                                 if (window.animationsToggle) 4f else 0f
-                            ) }
+                            )
+                        }
                         transition {
                             property(StyleAnimProps.transform, 220, easing = Easings.EASE_OUT)
                         }

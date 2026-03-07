@@ -29,11 +29,13 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
 
     div({
         key = "section.cssCascade"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("CSS-like cascade demo: descendant/child/sibling selectors, specificity, source order, !important, inheritance.")
         text(

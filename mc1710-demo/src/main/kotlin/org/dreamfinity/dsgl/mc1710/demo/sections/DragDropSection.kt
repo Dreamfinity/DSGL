@@ -35,11 +35,13 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.dragDrop"
-        style = { width = contentWidth.px
+        style = {
+            width = contentWidth.px
             height = contentHeight.px
             gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
     }) {
         text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
         text({
@@ -106,12 +108,14 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         if (splitAllowed) {
             div({
                 key = "dnd.row.main"
-                style = { width = (leftWidth + rightWidth + PANELS_GAP).px
+                style = {
+                    width = (leftWidth + rightWidth + PANELS_GAP).px
                     height = ((contentHeight - 70).coerceAtLeast(96)).px
                     gap = PANELS_GAP.px
 
                     display = Display.Flex
-                    flexDirection = FlexDirection.Row }
+                    flexDirection = FlexDirection.Row
+                }
             }) {
                 originalModeReorder(window, leftWidth)
                 renderGhostModeBoxes(window, rightWidth)
@@ -119,11 +123,13 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         } else {
             div({
                 key = "dnd.col.main"
-                style = { width = (contentWidth.coerceAtLeast(0)).px
+                style = {
+                    width = (contentWidth.coerceAtLeast(0)).px
                     height = ((contentHeight - 70).coerceAtLeast(96)).px
                     gap = 4.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column }
+                    flexDirection = FlexDirection.Column
+                }
             }) {
                 originalModeReorder(window, contentWidth.coerceAtLeast(0))
                 renderGhostModeBoxes(window, contentWidth.coerceAtLeast(0))
@@ -138,13 +144,15 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
     div({
         key = "dnd.original.panel"
-        style = { width = panelWidth.px
+        style = {
+            width = panelWidth.px
             gap = 3.px
             padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
             border(1.px, 0xFF6B7785.toInt())
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
 
     }) {
         text("ORIGINAL mode: reorder list")
@@ -214,11 +222,13 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
                 if (window.shouldShowLaneAppendGap(monitor.sourceKey)) {
                     div({
                         key = "dnd.lane.append.gap"
-                        style = { width = laneCardSize.px
+                        style = {
+                            width = laneCardSize.px
                             height = laneCardSize.px
                             backgroundColor = 0x2A9EC4E3
                             border(1.px, 0xFF9EC4E3.toInt())
-                            borderRadius(3.px) }
+                            borderRadius(3.px)
+                        }
                     }) {
                         text("APPEND", { style = { color = 0xFFD3E8FB.toInt() } })
                     }
@@ -240,13 +250,15 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
 private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int) {
     div({
         key = "dnd.ghost.panel"
-        style = { width = ghostWidth.px
+        style = {
+            width = ghostWidth.px
             gap = 4.px
             padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
             border(1.px, 0xFF6B7785.toInt())
             display = Display.Flex
-            flexDirection = FlexDirection.Column }
+            flexDirection = FlexDirection.Column
+        }
 
     }) {
         text("Buckets: drop card to move it into a box")
@@ -282,8 +294,10 @@ private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int
 
         button("Reset DnD", {
             onMouseClick = { window.resetDndItems("button") }
-            style = { width = (ghostWidth - 8).px
-                backgroundImage("file://demo/local_showcase.png") }
+            style = {
+                width = (ghostWidth - 8).px
+                backgroundImage("file://demo/local_showcase.png")
+            }
         })
     }
 }
@@ -310,14 +324,16 @@ private fun UiScope.cardWithItem(
             borderColor = accent
             borderWidth = 1
         }
-        style = { width = cardSize.px
+        style = {
+            width = cardSize.px
             height = cardSize.px
             padding = 2.px
             gap = 1.px
             backgroundColor = when {
                 draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
                 highlighted -> lighten(base, HIGHLIGHT_DELTA)
-                else -> base }
+                else -> base
+            }
             border(1.px, accent)
             borderRadius(3.px)
             when (insertionIndicator) {
@@ -338,17 +354,21 @@ private fun UiScope.cardWithItem(
     }) {
         div({
             key = "$cardKey.accent"
-            style = { width = (cardSize - 8).px
+            style = {
+                width = (cardSize - 8).px
                 height = 3.px
                 backgroundColor = lighten(accent, 12)
-                borderRadius(2.px) }
+                borderRadius(2.px)
+            }
         })
         itemStack(item.stack, {
             size = (cardSize / 2).coerceAtLeast(16)
             key = "dnd.stack.${item.id}"
-            style = { width = ((cardSize - 12).coerceAtLeast(18)).px
+            style = {
+                width = ((cardSize - 12).coerceAtLeast(18)).px
                 border(1.px, 0x553A4452)
-                backgroundColor(0x2219222B) }
+                backgroundColor(0x2219222B)
+            }
         })
         text(item.label, {
             style = { color = if (draggingThis) 0xFFFFFFFF.toInt() else 0xFFEAF2FD.toInt() }
@@ -385,13 +405,15 @@ private fun UiScope.dropBox(
     )
     div({
         key = boxKey
-        style = { width = null
+        style = {
+            width = null
             height = BOX_HEIGHT.px
             padding = 4.px
             gap = 2.px
             backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
             border(1.px, 0xFF8A94A2.toInt())
-            borderRadius(3.px) }
+            borderRadius(3.px)
+        }
         applyDroppable(dropDescriptor)
     }) {
         text("$title (${cards.size})")
