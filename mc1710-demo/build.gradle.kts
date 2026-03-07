@@ -87,7 +87,7 @@ tasks {
 
         if (hotReload.toBoolean()) {
             jvmArgs =
-                jvmArgs + listOf("-agentpath:${project.rootDir}/hot-reload-agent/target/debug/dsgl_hot_reload_agent.dll")
+                jvmArgs + listOf("-agentpath:${project.rootDir}/dsgl-hot-reload-agent/target/debug/dsgl_hot_reload_agent.dll")
         }
 
         jvmArgs(jvmArgs)
