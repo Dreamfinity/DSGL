@@ -1,0 +1,3 @@
+[submodule "dsgl-hot-reload-agent"]
+	path = dsgl-hot-reload-agent
+	url = git@github.com:Dreamfinity/dsgl-hot-reload-agent.git

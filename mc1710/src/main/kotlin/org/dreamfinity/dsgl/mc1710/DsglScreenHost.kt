@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.mc1710
 
+import org.dreamfinity.dsgl.core.HotReloadBridge
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.gui.GuiScreen
@@ -302,7 +303,10 @@ abstract class DsglScreenHost(
     }
 
     private fun rebuildIfNeeded(): Boolean {
-        if (!needsRender && domTree != null) return false
+        if (!HotReloadBridge.consumeHotSwap() && !needsRender && domTree != null) {
+            return false
+        }
+
         return try {
             tracePhase("rebuild.start")
             rendersCount++

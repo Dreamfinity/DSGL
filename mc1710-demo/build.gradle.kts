@@ -12,6 +12,13 @@ val modCredits: String by project
 val modIcon: String by project
 val gameVersion: String by project
 
+val hotReload: String by project
+val msdfDebug: String by project
+val msdfDebugDecorations: String by project
+val msdfDebugPerformance: String by project
+val rebuildTrace: String by project
+val perfDebug: String by project
+
 val baseModMetadataTokens = mapOf(
     "modId" to modId,
     "modGroup" to modGroup,
@@ -77,6 +84,13 @@ tasks {
             "-Ddsgl.rebuild.trace=$rebuildTrace",
             "-Ddsgl.perf.debug=$perfDebug",
         )
+
+        if (hotReload.toBoolean()) {
+            jvmArgs =
+                jvmArgs + listOf("-agentpath:${project.rootDir}/hot-reload-agent/target/debug/dsgl_hot_reload_agent.dll")
+        }
+
+        jvmArgs(jvmArgs)
 
         if (project.hasProperty("clientRunArgs")) {
             println("clientRunArgs: ${project.property("clientRunArgs")}")
