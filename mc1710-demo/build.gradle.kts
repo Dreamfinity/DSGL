@@ -1,8 +1,3 @@
-import java.io.File
-import org.gradle.api.GradleException
-import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
-import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
-
 plugins {
     id("dsgl-mc1710.conventions")
 }
@@ -75,12 +70,12 @@ val generateModMetadata by tasks.registering {
 
 tasks {
     runClient {
-        jvmArgs(
-            "-Ddsgl.msdf.debug=false",
-            "-Ddsgl.msdf.debug.decorations=false",
-            "-Ddsgl.msdf.debug.performance=false",
-            "-Ddsgl.rebuild.trace=false",
-            "-Ddsgl.perf.debug=false",
+        var jvmArgs = listOf(
+            "-Ddsgl.msdf.debug=$msdfDebug",
+            "-Ddsgl.msdf.debug.decorations=$msdfDebugDecorations",
+            "-Ddsgl.msdf.debug.performance=$msdfDebugPerformance",
+            "-Ddsgl.rebuild.trace=$rebuildTrace",
+            "-Ddsgl.perf.debug=$perfDebug",
         )
 
         if (project.hasProperty("clientRunArgs")) {
