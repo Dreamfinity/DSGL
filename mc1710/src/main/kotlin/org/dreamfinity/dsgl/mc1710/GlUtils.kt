@@ -22,7 +22,6 @@ inline fun withStack(
     block: () -> Unit
 ) {
     if (attributesBitMask > 0) {
-        GL11.GL_MAX_TEXTURE_SIZE
         GL11.glPushAttrib(attributesBitMask)
     }
     GL11.glPushMatrix()
