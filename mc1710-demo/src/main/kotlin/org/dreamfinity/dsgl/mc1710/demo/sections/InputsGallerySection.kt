@@ -3,6 +3,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.FocusManager
+import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
@@ -11,6 +13,18 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     val halfWidth = ((contentWidth - 6) / 2).coerceAtLeast(88)
     val inputWidth = (halfWidth - 6).coerceAtLeast(76)
+    SelectRuntime.engine.setStyle(
+        SelectStyle(
+            panelBackgroundColor = 0xFF202A35.toInt(),
+            panelBorderColor = 0xFF607286.toInt(),
+            panelShadowColor = 0x70101926,
+            optionHoverBackgroundColor = 0xFF33506B.toInt(),
+            optionSelectedBackgroundColor = 0xFF2A4258.toInt(),
+            groupTextColor = 0xFFB7C6D6.toInt(),
+            openDurationMs = 120L,
+            closeDurationMs = 90L
+        )
+    )
 
     div({
         key = "section.inputs"
@@ -130,27 +144,41 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 input(
                     InputType.Checkbox(
                         variants = window.checkboxOptions,
-                        selected = setOf("alpha"),
+                        selected = window.inputEventCheckboxValue,
                         minSelected = 1,
                         maxSelected = 2
                     ),
                     {
                         key = "input.checkbox"
                         style = { width = inputWidth.px }
+                        onInput = { event ->
+                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
+                        }
+                        onValueChange = { event ->
+                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
+                        }
                     }
                 )
+                text("Selected: ${window.checkboxValueString()}", { style = { color = DEMO_MUTED } })
 
                 text("Radio")
                 input(
                     InputType.Radio(
                         variants = window.radioOptions,
-                        selected = "center"
+                        selected = window.inputEventRadioValue
                     ),
                     {
                         key = "input.radio"
                         style = { width = inputWidth.px }
+                        onInput = { event ->
+                            window.inputEventRadioValue = event.parsedValue as? String
+                        }
+                        onValueChange = { event ->
+                            window.inputEventRadioValue = event.parsedValue as? String
+                        }
                     }
                 )
+                text("Selected: ${window.inputEventRadioValue ?: "-"}", { style = { color = DEMO_MUTED } })
 
                 text("Date (dd.MM.yyyy HH:mm)")
                 input(
@@ -178,6 +206,126 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 height = 40.px
             }
         })
+
+        text("Select (overlay popup + keyboard + disabled options)")
+        text(
+            "Use Enter/Space/ArrowDown when focused. Esc closes popup. Wheel scrolls long list.",
+            { style = { color = DEMO_MUTED } }
+        )
+
+        div({
+            key = "inputs.select.row"
+            style = {
+                gap = 6.px
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+            }
+        }) {
+            div({
+                key = "inputs.select.left"
+                style = {
+                    width = halfWidth.px
+                    gap = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
+                text("Basic")
+                select({
+                    key = "input.select.basic"
+                    value = window.selectBasicValue
+                    style = { width = inputWidth.px }
+                    onValueChange = { event ->
+                        window.selectBasicValue = event.value
+                    }
+                }) {
+                    placeholder("Choose a fruit")
+                    option("apple", "Apple")
+                    option("banana", "Banana")
+                    separator("sep-1")
+                    group("Citrus") {
+                        option("orange", "Orange")
+                        option("lemon", "Lemon")
+                        option("pomelo", "Pomelo") { enabled(false) }
+                    }
+                }
+
+                text("Many options (scroll)")
+                select({
+                    key = "input.select.many"
+                    value = window.selectManyValue
+                    style = { width = inputWidth.px }
+                    onValueChange = { event ->
+                        window.selectManyValue = event.value
+                    }
+                }) {
+                    placeholder("Pick one")
+                    repeat(100) { index ->
+                        val id = "item-${index.toString().padStart(2, '0')}"
+                        option(id, "Item ${index.toString().padStart(2, '0')}") {
+                            enabled(index % 9 != 0)
+                        }
+                    }
+                }
+            }
+
+            div({
+                key = "inputs.select.right"
+                style = {
+                    width = halfWidth.px
+                    gap = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                }
+            }) {
+                text("Disabled select")
+                select({
+                    key = "input.select.disabled"
+                    value = window.selectDisabledValue
+                    disabled = true
+                    style = { width = inputWidth.px }
+                    onValueChange = { event ->
+                        window.selectDisabledValue = event.value
+                    }
+                }) {
+                    option("locked", "Locked value")
+                    option("alt", "Alternative")
+                }
+
+                button(
+                    if (window.selectDynamicAlt) "Use option set A" else "Use option set B",
+                    {
+                        onMouseClick = {
+                            window.selectDynamicAlt = !window.selectDynamicAlt
+                        }
+                    }
+                )
+                text("Dynamic options")
+                select({
+                    key = "input.select.dynamic"
+                    value = window.selectDynamicValue
+                    style = { width = inputWidth.px }
+                    onValueChange = { event ->
+                        window.selectDynamicValue = event.value
+                    }
+                }) {
+                    placeholder("Dynamic set")
+                    if (window.selectDynamicAlt) {
+                        option("alpha", "Alpha")
+                        option("beta", "Beta")
+                        option("gamma", "Gamma")
+                    } else {
+                        option("delta", "Delta")
+                        option("epsilon", "Epsilon")
+                        option("theta", "Theta")
+                    }
+                }
+            }
+        }
+        text(
+            "Select state: basic=${window.selectBasicValue ?: "-"} many=${window.selectManyValue ?: "-"} dynamic=${window.selectDynamicValue ?: "-"}",
+            { style = { color = DEMO_MUTED } }
+        )
 
         text("Clipping + internal scrolling demo (100 lines prefilled)", { style = { color = DEMO_MUTED } })
         div({
@@ -242,4 +390,3 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
         }
     }
 }
-

@@ -213,6 +213,10 @@ object DomReconciler {
                 current.boxColor = template.boxColor
                 current.dotColor = template.dotColor
             }
+
+            is SelectNode if template is SelectNode -> {
+                current.syncFrom(template)
+            }
         }
     }
 

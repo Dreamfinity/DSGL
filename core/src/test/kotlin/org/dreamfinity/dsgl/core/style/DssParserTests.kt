@@ -221,6 +221,19 @@ class DssParserTests {
     }
 
     @Test
+    fun `parses open pseudo state`() {
+        val data = DssParser.parse(
+            """
+            select:open { border-color: #7CB6FF; }
+            """.trimIndent(),
+            "open-pseudo.dss"
+        )
+
+        assertEquals(1, data.rules.size)
+        assertEquals(StylePseudoState.OPEN, data.rules.single().selector.pseudoState)
+    }
+
+    @Test
     fun parsesImportantDeclarationFlag() {
         val data = DssParser.parse(
             """

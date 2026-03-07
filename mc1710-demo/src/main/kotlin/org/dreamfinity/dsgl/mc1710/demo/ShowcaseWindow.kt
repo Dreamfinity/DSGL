@@ -230,6 +230,11 @@ class ShowcaseWindow : DsglWindow() {
     internal var inputEventLogEntries by state(emptyList<String>())
     private val inputEventLogLimit = 8
     private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+    internal var selectBasicValue by state<String?>(null)
+    internal var selectManyValue by state<String?>("item-05")
+    internal var selectDisabledValue by state<String?>("locked")
+    internal var selectDynamicValue by state<String?>("alpha")
+    internal var selectDynamicAlt by state(false)
     internal var sharedRangeValue by state(35L)
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
     internal var textEditingSingleValue by state("Edit this line")
@@ -1746,6 +1751,33 @@ class ShowcaseWindow : DsglWindow() {
                       border-color: #000000;
                       padding: 3px 6px;
                     }
+
+                    select {
+                      background-color: #2B3744;
+                      border-color: #5A6D80;
+                      border-width: 1px;
+                      color: #EAF2FD;
+                      padding: 3px 6px;
+                    }
+
+                    select:hover {
+                      background-color: #324456;
+                    }
+
+                    select:focus {
+                      border-color: #7CB6FF;
+                    }
+
+                    select:open {
+                      border-color: #9BD3FF;
+                      background-color: #35506B;
+                    }
+
+                    select:disabled {
+                      background-color: #2B2B2B;
+                      border-color: #555555;
+                      color: #8E8E8E;
+                    }
                     
                     .style-card {
                       margin: 2px 0px 0px 0px;
@@ -1901,6 +1933,41 @@ class ShowcaseWindow : DsglWindow() {
                         """.trimIndent()
                     )
                     appendInfo("Patched demo stylesheet with CSS units section")
+                    created = true
+                }
+                if (!existing.contains("select:open")) {
+                    stylesheetFile.appendText(
+                        """
+
+                        select {
+                          background-color: #2B3744;
+                          border-color: #5A6D80;
+                          border-width: 1px;
+                          color: #EAF2FD;
+                          padding: 3px 6px;
+                        }
+
+                        select:hover {
+                          background-color: #324456;
+                        }
+
+                        select:focus {
+                          border-color: #7CB6FF;
+                        }
+
+                        select:open {
+                          border-color: #9BD3FF;
+                          background-color: #35506B;
+                        }
+
+                        select:disabled {
+                          background-color: #2B2B2B;
+                          border-color: #555555;
+                          color: #8E8E8E;
+                        }
+                        """.trimIndent()
+                    )
+                    appendInfo("Patched demo stylesheet with select styles")
                     created = true
                 }
             }
@@ -2427,5 +2494,3 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
-
-

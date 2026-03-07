@@ -68,6 +68,7 @@ abstract class DOMNode(
                 styleHovered = false
                 styleActive = false
                 styleFocused = false
+                styleOpen = false
                 if (FocusManager.isFocused(this)) {
                     FocusManager.clearFocus()
                 }
@@ -113,6 +114,8 @@ abstract class DOMNode(
         private set
     var styleFocused: Boolean = false
         private set
+    var styleOpen: Boolean = false
+        private set
     var styleDisabled: Boolean = false
         set(value) {
             val changed = field != value
@@ -121,6 +124,7 @@ abstract class DOMNode(
                 styleHovered = false
                 styleActive = false
                 styleFocused = false
+                styleOpen = false
                 if (FocusManager.isFocused(this)) {
                     FocusManager.clearFocus()
                 }
@@ -633,6 +637,13 @@ abstract class DOMNode(
         val normalized = value && !styleDisabled
         if (styleFocused == normalized) return
         styleFocused = normalized
+        StyleEngine.markPseudoStateChanged(this)
+    }
+
+    fun setOpenState(value: Boolean) {
+        val normalized = value && !styleDisabled
+        if (styleOpen == normalized) return
+        styleOpen = normalized
         StyleEngine.markPseudoStateChanged(this)
     }
 

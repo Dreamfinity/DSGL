@@ -198,6 +198,7 @@ data class StyleSelector(
                             "active" -> StylePseudoState.ACTIVE
                             "focus" -> StylePseudoState.FOCUS
                             "disabled" -> StylePseudoState.DISABLED
+                            "open" -> StylePseudoState.OPEN
                             else -> throw IllegalArgumentException("Unsupported pseudo-state '$pseudoValue' in '$rawSelector'.")
                         }
                         pseudoState = parsedPseudo

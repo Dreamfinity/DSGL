@@ -10,6 +10,8 @@ import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
+import org.dreamfinity.dsgl.core.select.SelectModelBuilder
+import org.dreamfinity.dsgl.core.select.selectModel
 import org.dreamfinity.dsgl.core.style.*
 import java.time.Instant
 import java.time.ZoneId
@@ -115,6 +117,25 @@ open class TextAreaProps(var placeholder: String = "") : TextProps()
 
 /** Input node props, driven by [InputType]. */
 open class InputProps(val type: InputType) : TextProps()
+
+/** Select input props. */
+open class SelectProps : ComponentProps() {
+    var closeOnSelect: Boolean = true
+    var defaultValue: String? = null
+
+    var value: String?
+        get() = valueInternal
+        set(newValue) {
+            valueSpecified = true
+            valueInternal = newValue
+        }
+
+    internal fun hasControlledValue(): Boolean = valueSpecified
+    internal fun controlledValue(): String? = valueInternal
+
+    private var valueSpecified: Boolean = false
+    private var valueInternal: String? = null
+}
 
 /** Image node props; accepts resource id, file://, or http(s) URLs in MC host. */
 open class ImageProps(var url: String) : ComponentProps()
@@ -388,6 +409,28 @@ class UiScope internal constructor(private val parent: DOMNode) {
                 key = props.key
             )
         }.apply {
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
+    }
+
+    fun select(
+        props: SelectProps.() -> Unit = {},
+        ref: RefTarget<ElementHandle>? = null,
+        block: SelectModelBuilder.() -> Unit
+    ) = withProps(SelectProps().apply(props)) { props ->
+        val model = selectModel(block = block)
+        val controlled = props.hasControlledValue()
+        SelectNode(
+            model = model,
+            controlled = controlled,
+            value = if (controlled) props.controlledValue() else null,
+            defaultValue = props.defaultValue,
+            closeOnSelect = props.closeOnSelect,
+            key = props.key
+        ).apply {
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)

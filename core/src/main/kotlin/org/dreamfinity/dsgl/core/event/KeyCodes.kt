@@ -8,6 +8,7 @@ object KeyCodes {
     const val BACKSPACE: Int = 14
     const val DELETE: Int = 211
     const val ENTER: Int = 28
+    const val SPACE: Int = 57
     const val TAB: Int = 15
     const val A: Int = 30
     const val C: Int = 46

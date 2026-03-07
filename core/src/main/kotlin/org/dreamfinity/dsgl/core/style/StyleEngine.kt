@@ -33,6 +33,7 @@ object StyleEngine {
         val active: Boolean,
         val focused: Boolean,
         val disabled: Boolean,
+        val open: Boolean,
         val stylesheetVersion: Long,
         val themeVersion: Long,
         val defaultsHash: Int,
@@ -499,6 +500,7 @@ object StyleEngine {
             active = node.styleActive,
             focused = node.styleFocused,
             disabled = node.styleDisabled,
+            open = node.styleOpen,
             stylesheetVersion = snapshot.version,
             themeVersion = themeVersion,
             defaultsHash = defaults.hashCode(),
@@ -766,6 +768,7 @@ object StyleEngine {
             StylePseudoState.ACTIVE -> node.styleActive && !node.styleDisabled
             StylePseudoState.FOCUS -> node.styleFocused && !node.styleDisabled
             StylePseudoState.DISABLED -> node.styleDisabled
+            StylePseudoState.OPEN -> node.styleOpen && !node.styleDisabled
         }
     }
 
@@ -783,6 +786,7 @@ object StyleEngine {
                     StylePseudoState.ACTIVE -> append(":active")
                     StylePseudoState.FOCUS -> append(":focus")
                     StylePseudoState.DISABLED -> append(":disabled")
+                    StylePseudoState.OPEN -> append(":open")
                     null -> Unit
                 }
             }
@@ -830,6 +834,7 @@ object StyleEngine {
         result = 31 * result + if (node.styleActive) 1 else 0
         result = 31 * result + if (node.styleFocused) 1 else 0
         result = 31 * result + if (node.styleDisabled) 1 else 0
+        result = 31 * result + if (node.styleOpen) 1 else 0
         return result
     }
 

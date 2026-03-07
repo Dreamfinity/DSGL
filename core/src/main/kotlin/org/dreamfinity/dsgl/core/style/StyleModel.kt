@@ -7,7 +7,8 @@ enum class StylePseudoState {
     HOVER,
     ACTIVE,
     FOCUS,
-    DISABLED
+    DISABLED,
+    OPEN
 }
 
 enum class StyleAlign {
