@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.StyleEngine
 
 /**
  * Root node for modal host composition:
@@ -24,13 +25,33 @@ internal class ModalHostNode(
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-        children.firstOrNull()?.render(ctx, x, y, width, height)
+        val parentNode = parent
+        val resolvedBounds = if (parentNode != null && parentNode.parent == null) {
+            Rect(
+                x = 0,
+                y = 0,
+                width = StyleEngine.viewportWidthPx().coerceAtLeast(0),
+                height = StyleEngine.viewportHeightPx().coerceAtLeast(0)
+            )
+        } else if (parentNode != null) {
+            Rect(
+                x = parentNode.bounds.x + parentNode.border.left + parentNode.padding.left,
+                y = parentNode.bounds.y + parentNode.border.top + parentNode.padding.top,
+                width = (parentNode.bounds.width - parentNode.border.horizontal - parentNode.padding.horizontal).coerceAtLeast(0),
+                height = (parentNode.bounds.height - parentNode.border.vertical - parentNode.padding.vertical).coerceAtLeast(0)
+            )
+        } else {
+            Rect(x, y, width, height)
+        }
+        bounds = resolvedBounds
+        children.firstOrNull()
+            ?.render(ctx, resolvedBounds.x, resolvedBounds.y, resolvedBounds.width, resolvedBounds.height)
         if (children.size <= 1) return
         for (i in 1 until children.size) {
-            children[i].render(ctx, x, y, width, height)
+            children[i].render(ctx, resolvedBounds.x, resolvedBounds.y, resolvedBounds.width, resolvedBounds.height)
         }
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
 }
+

@@ -89,7 +89,7 @@ fun UiScope.modalHost(
                 flexDirection = FlexDirection.Column
                 alignItems = AlignItems.Center
                 justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
-                padding(if (spec.centered) 6 else 10)
+                padding((if (spec.centered) 6 else 10).px)
             }
 
         }) {
@@ -113,8 +113,8 @@ fun UiScope.modalHost(
             }
         }
         style = {
-            width = 0
-            height = 0
+            width = 0.px
+            height = 0.px
             display = Display.None
         }
     })
@@ -154,14 +154,14 @@ fun UiScope.modalDialog(
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
-            width = presetWidth
-            padding = 0
-            gap = 0
+            width = presetWidth.px
+            padding = 0.px
+            gap = 0.px
             backgroundColor = 0xFF2F3A46.toInt()
             if (!centered) {
-                margin(6, 0, 0, 0)
+                margin(6.px, 0.px, 0.px, 0.px)
             }
-            border(1, 0xFF6E7D8C.toInt())
+            border(1.px, 0xFF6E7D8C.toInt())
         }
 
     }) {
@@ -177,8 +177,8 @@ fun UiScope.modalHeader(
     div({
         key = "modal.header"
         style = {
-            padding = 4
-            gap = 4
+            padding = 4.px
+            gap = 4.px
             backgroundColor = 0xFF334255.toInt()
             display = Display.Flex
             flexDirection = FlexDirection.Row
@@ -197,7 +197,7 @@ fun UiScope.modalHeader(
         }
         if (closeButton) {
             button("x", {
-                style = { width = 18 }
+                style = { width = 18.px }
                 onMouseClick = { onHide?.invoke() }
             })
         }
@@ -227,8 +227,8 @@ fun UiScope.modalBody(
     div({
         key = modalBodyKey
         style = {
-            padding = 4
-            gap = 3
+            padding = 4.px
+            gap = 3.px
             backgroundColor = 0xFF2F3A46.toInt()
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -247,8 +247,8 @@ fun UiScope.modalFooter(
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Row
-            padding = 4
-            gap = 4
+            padding = 4.px
+            gap = 4.px
             backgroundColor = 0xFF334255.toInt()
             display = Display.Flex
             flexDirection = FlexDirection.Row
@@ -338,7 +338,7 @@ fun promptModal(
             input(
                 InputType.Text(value = value, placeholder = "Enter value"), {
                     this.key = "modal.prompt.input.$key"
-                    style = { width = 150 }
+                    style = { width = 150.px }
                     onInput = { event ->
                         onValueInput(event.value)
                     }
@@ -364,3 +364,4 @@ private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
     }
     return false
 }
+

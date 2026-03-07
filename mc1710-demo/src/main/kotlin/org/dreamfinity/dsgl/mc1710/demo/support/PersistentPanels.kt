@@ -12,12 +12,12 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
-            width = panelWidth
-            height = panelHeight
-            gap = 4
+            width = panelWidth.px
+            height = panelHeight.px
+            gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border(1, DsglColors.BORDER)
+            border(1.px, DsglColors.BORDER)
         }
 
     }) {
@@ -29,7 +29,7 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
         }) {
             text("Event Inspector")
             button("Clear", {
-                style = { width = 44 }
+                style = { width = 44.px }
                 onMouseClick = { window.clearEventLogs() }
             })
         }
@@ -64,12 +64,12 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
-            width = panelWidth
-            height = panelHeight
-            gap = 4
+            width = panelWidth.px
+            height = panelHeight.px
+            gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border(1, DsglColors.BORDER)
+            border(1.px, DsglColors.BORDER)
         }
 
     }) {
@@ -81,12 +81,12 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
             }
         }) {
             button("<", {
-                style = { width = 22 }
+                style = { width = 22.px }
                 onMouseClick = { window.moveChecklistPage(-1) }
             })
             text("Page ${window.checklistPage + 1}/$pageCount", { style = { color = DEMO_MUTED } })
             button(">", {
-                style = { width = 22 }
+                style = { width = 22.px }
                 onMouseClick = { window.moveChecklistPage(1) }
             })
         }
@@ -100,3 +100,4 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
         text("Missing: $missing / ${required.size}", { style = { color = if (missing == 0) DEMO_OK else DEMO_ERR } })
     }
 }
+

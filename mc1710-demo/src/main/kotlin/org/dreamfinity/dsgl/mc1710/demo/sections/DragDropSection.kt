@@ -35,13 +35,11 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.dragDrop"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
         text({
@@ -64,7 +62,7 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         div({
             style = {
-                gap = 3
+                gap = 3.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -90,17 +88,17 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         }
         div({
             style = {
-                gap = 3
+                gap = 3.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             button("k-", {
-                style = { width = 26 }
+                style = { width = 26.px }
                 onMouseClick = { window.updateDndSmoothing(-4.0) }
             })
             button("k+", {
-                style = { width = 26 }
+                style = { width = 26.px }
                 onMouseClick = { window.updateDndSmoothing(4.0) }
             })
             text("smoothing k=${"%.1f".format(window.dndSmoothFactor)}", { style = { color = DEMO_MUTED } })
@@ -108,14 +106,12 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         if (splitAllowed) {
             div({
                 key = "dnd.row.main"
-                style = {
-                    width = leftWidth + rightWidth + PANELS_GAP
-                    height = (contentHeight - 70).coerceAtLeast(96)
-                    gap = PANELS_GAP
+                style = { width = (leftWidth + rightWidth + PANELS_GAP).px
+                    height = ((contentHeight - 70).coerceAtLeast(96)).px
+                    gap = PANELS_GAP.px
 
                     display = Display.Flex
-                    flexDirection = FlexDirection.Row
-                }
+                    flexDirection = FlexDirection.Row }
             }) {
                 originalModeReorder(window, leftWidth)
                 renderGhostModeBoxes(window, rightWidth)
@@ -123,13 +119,11 @@ fun UiScope.dragNDropSection(window: ShowcaseWindow, contentWidth: Int, contentH
         } else {
             div({
                 key = "dnd.col.main"
-                style = {
-                    width = contentWidth.coerceAtLeast(0)
-                    height = (contentHeight - 70).coerceAtLeast(96)
-                    gap = 4
+                style = { width = (contentWidth.coerceAtLeast(0)).px
+                    height = ((contentHeight - 70).coerceAtLeast(96)).px
+                    gap = 4.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column
-                }
+                    flexDirection = FlexDirection.Column }
             }) {
                 originalModeReorder(window, contentWidth.coerceAtLeast(0))
                 renderGhostModeBoxes(window, contentWidth.coerceAtLeast(0))
@@ -144,15 +138,13 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
     val previewOrder = window.resolveLanePreviewOrder(monitor.sourceKey)
     div({
         key = "dnd.original.panel"
-        style = {
-            width = panelWidth
-            gap = 3
-            padding = 3
+        style = { width = panelWidth.px
+            gap = 3.px
+            padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
-            border(1, 0xFF6B7785.toInt())
+            border(1.px, 0xFF6B7785.toInt())
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
 
     }) {
         text("ORIGINAL mode: reorder list")
@@ -172,10 +164,10 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
             div({
                 key = "dnd.lane.column"
                 style = {
-                    gap = 2
+                    gap = 2.px
                     backgroundColor = if (window.isLaneAppendHighlighted()) 0x2A9EC4E3 else 0x00000000
                     border(
-                        1,
+                        1.px,
                         if (window.isLaneAppendHighlighted()) 0xFF9EC4E3.toInt() else 0x44405058
                     )
                     display = Display.Flex
@@ -222,13 +214,11 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
                 if (window.shouldShowLaneAppendGap(monitor.sourceKey)) {
                     div({
                         key = "dnd.lane.append.gap"
-                        style = {
-                            width = laneCardSize
-                            height = laneCardSize
+                        style = { width = laneCardSize.px
+                            height = laneCardSize.px
                             backgroundColor = 0x2A9EC4E3
-                            border(1, 0xFF9EC4E3.toInt())
-                            borderRadius(3)
-                        }
+                            border(1.px, 0xFF9EC4E3.toInt())
+                            borderRadius(3.px) }
                     }) {
                         text("APPEND", { style = { color = 0xFFD3E8FB.toInt() } })
                     }
@@ -250,15 +240,13 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
 private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int) {
     div({
         key = "dnd.ghost.panel"
-        style = {
-            width = ghostWidth
-            gap = 4
-            padding = 3
+        style = { width = ghostWidth.px
+            gap = 4.px
+            padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
-            border(1, 0xFF6B7785.toInt())
+            border(1.px, 0xFF6B7785.toInt())
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
 
     }) {
         text("Buckets: drop card to move it into a box")
@@ -294,10 +282,8 @@ private fun UiScope.renderGhostModeBoxes(window: ShowcaseWindow, ghostWidth: Int
 
         button("Reset DnD", {
             onMouseClick = { window.resetDndItems("button") }
-            style = {
-                width = ghostWidth - 8
-                backgroundImage("file://demo/local_showcase.png")
-            }
+            style = { width = (ghostWidth - 8).px
+                backgroundImage("file://demo/local_showcase.png") }
         })
     }
 }
@@ -324,21 +310,19 @@ private fun UiScope.cardWithItem(
             borderColor = accent
             borderWidth = 1
         }
-        style = {
-            width = cardSize
-            height = cardSize
-            padding = 2
-            gap = 1
+        style = { width = cardSize.px
+            height = cardSize.px
+            padding = 2.px
+            gap = 1.px
             backgroundColor = when {
                 draggingThis -> lighten(base, HIGHLIGHT_DELTA + 8)
                 highlighted -> lighten(base, HIGHLIGHT_DELTA)
-                else -> base
-            }
-            border(1, accent)
-            borderRadius(3)
+                else -> base }
+            border(1.px, accent)
+            borderRadius(3.px)
             when (insertionIndicator) {
-                ShowcaseWindow.DndLaneIndicator.BEFORE -> margin(insertionGap, 0, 0, 0)
-                ShowcaseWindow.DndLaneIndicator.AFTER -> margin(0, 0, insertionGap, 0)
+                ShowcaseWindow.DndLaneIndicator.BEFORE -> margin(insertionGap.px, 0.px, 0.px, 0.px)
+                ShowcaseWindow.DndLaneIndicator.AFTER -> margin(0.px, 0.px, insertionGap.px, 0.px)
                 ShowcaseWindow.DndLaneIndicator.NONE -> Unit
             }
         }
@@ -354,21 +338,17 @@ private fun UiScope.cardWithItem(
     }) {
         div({
             key = "$cardKey.accent"
-            style = {
-                width = cardSize - 8
-                height = 3
+            style = { width = (cardSize - 8).px
+                height = 3.px
                 backgroundColor = lighten(accent, 12)
-                borderRadius(2)
-            }
+                borderRadius(2.px) }
         })
         itemStack(item.stack, {
             size = (cardSize / 2).coerceAtLeast(16)
             key = "dnd.stack.${item.id}"
-            style = {
-                width = (cardSize - 12).coerceAtLeast(18)
-                border(1, 0x553A4452)
-                backgroundColor(0x2219222B)
-            }
+            style = { width = ((cardSize - 12).coerceAtLeast(18)).px
+                border(1.px, 0x553A4452)
+                backgroundColor(0x2219222B) }
         })
         text(item.label, {
             style = { color = if (draggingThis) 0xFFFFFFFF.toInt() else 0xFFEAF2FD.toInt() }
@@ -405,15 +385,13 @@ private fun UiScope.dropBox(
     )
     div({
         key = boxKey
-        style = {
-            width = null
-            height = BOX_HEIGHT
-            padding = 4
-            gap = 2
+        style = { width = null
+            height = BOX_HEIGHT.px
+            padding = 4.px
+            gap = 2.px
             backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
-            border(1, 0xFF8A94A2.toInt())
-            borderRadius(3)
-        }
+            border(1.px, 0xFF8A94A2.toInt())
+            borderRadius(3.px) }
         applyDroppable(dropDescriptor)
     }) {
         text("$title (${cards.size})")
@@ -424,7 +402,8 @@ private fun UiScope.dropBox(
             val maxVisibleCards = ((rowBudget + 2) / (BOX_CARD_SIZE + 2)).coerceAtLeast(1)
             div({
                 style = {
-                    gap = 2; key = "$boxKey.cards"
+                    key = "$boxKey.cards"
+                    gap = 2.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -505,3 +484,4 @@ private fun resolveInsertAfter(event: DropEvent): Boolean {
     val splitY = target.bounds.y + (target.bounds.height / 2)
     return event.mouseY >= splitY
 }
+

@@ -12,14 +12,12 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
 fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.overview"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Use left navigation to open each capability group.")
         text("Event Inspector and Checklist stay visible while switching sections.", {
@@ -44,20 +42,20 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             button("Auto state +1", {
-                style = { width = 90 }
+                style = { width = 90.px }
                 onMouseClick = {
                     window.bumpAutoRebuildCounter()
                     window.appendInfo("Overview: state-driven rebuild")
                 }
             })
             button("Manual invalidate", {
-                style = { width = 96 }
+                style = { width = 96.px }
                 onMouseClick = {
                     window.requestManualInvalidate("overview button")
                     window.appendInfo("Overview: manual invalidate requested")
@@ -77,3 +75,5 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
         }
     }
 }
+
+

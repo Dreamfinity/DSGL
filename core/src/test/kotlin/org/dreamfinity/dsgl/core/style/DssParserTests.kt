@@ -208,6 +208,19 @@ class DssParserTests {
     }
 
     @Test
+    fun `parses universal selector`() {
+        val data = DssParser.parse(
+            """
+            * { padding: 2px; }
+            """.trimIndent(),
+            "universal.dss"
+        )
+
+        assertEquals(1, data.rules.size)
+        assertTrue(data.rules[0].selector.steps.single().part.universal)
+    }
+
+    @Test
     fun parsesImportantDeclarationFlag() {
         val data = DssParser.parse(
             """
@@ -234,6 +247,20 @@ class DssParserTests {
         assertIs<StyleExpression.Literal>(data.rules[0].declarations.get(StyleProperty.FOREGROUND_COLOR))
         assertEquals(1, data.warnings.size)
         assertTrue(data.warnings.single().contains("foreground-color"))
+    }
+
+    @Test
+    fun `root block supports variables and root selector declarations`() {
+        val data = DssParser.parse(
+            """
+            :root { --base: #222222; color: #abcdef; }
+            """.trimIndent(),
+            "root-rule.dss"
+        )
+
+        assertEquals("#222222", data.rootVariables["--base"])
+        assertEquals(1, data.rules.size)
+        assertEquals("dsgl-root", data.rules.single().selector.typeName)
     }
 
     @Test

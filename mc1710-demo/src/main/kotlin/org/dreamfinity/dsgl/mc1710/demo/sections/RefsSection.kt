@@ -18,13 +18,11 @@ fun UiScope.refsSection(
 ) {
     div({
         key = "section.refs"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Refs: object refs + callback refs (commit-phase attach/detach).")
         text("Focus via ref uses ElementHandle.requestFocus().", { style = { color = DEMO_MUTED } })
@@ -36,7 +34,7 @@ fun UiScope.refsSection(
             ),
             {
                 key = "refs.input.primary"
-                style = { width = contentWidth - 10 }
+                style = { width = (contentWidth - 10).px }
                 onInput = { event ->
                     window.refsInputValue = event.value
                     window.logHook("refs.input.onInput", event, "value=${event.value}")
@@ -47,27 +45,27 @@ fun UiScope.refsSection(
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             button("Focus via ref", {
-                style = { width = 82 }
+                style = { width = 82.px }
                 onMouseClick = {
                     inputRef.current?.requestFocus()
                     window.appendInfo("Refs: requestFocus() called via object ref")
                 }
             })
             button("Rebuild", {
-                style = { width = 56 }
+                style = { width = 56.px }
                 onMouseClick = {
                     window.refsRebuildCount += 1
                     window.requestManualInvalidate("refs section rebuild")
                 }
             })
             button(if (window.refsCallbackMounted) "Unmount callback target" else "Mount callback target", {
-                style = { width = 136 }
+                style = { width = 136.px }
                 onMouseClick = {
                     window.refsCallbackMounted = !window.refsCallbackMounted
                     window.appendInfo("Refs: callback target mounted=${window.refsCallbackMounted}")
@@ -84,12 +82,10 @@ fun UiScope.refsSection(
         div(
             {
                 key = "refs.bounds.panel"
-                style = {
-                    width = contentWidth - 10
-                    height = 34
-                    padding = 4
-                    backgroundColor = 0xFF313844.toInt()
-                }
+                style = { width = (contentWidth - 10).px
+                    height = 34.px
+                    padding = 4.px
+                    backgroundColor = 0xFF313844.toInt() }
             },
             ref = panelRef
         ) {
@@ -110,12 +106,10 @@ fun UiScope.refsSection(
             div(
                 {
                     key = "refs.callback.target"
-                    style = {
-                        width = contentWidth - 10
-                        height = 24
+                    style = { width = (contentWidth - 10).px
+                        height = 24.px
                         backgroundColor = 0xFF2F3C2F.toInt()
-                        padding = 4
-                    }
+                        padding = 4.px }
                 },
                 ref = window.refsCallbackRef
             ) {
@@ -129,3 +123,4 @@ fun UiScope.refsSection(
         )
     }
 }
+

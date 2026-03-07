@@ -21,14 +21,12 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.layoutDebug"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Layout validator")
         text("Checks containment, invalid sizes, and wrapped text line-stack invariants.", {
@@ -37,7 +35,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -45,7 +43,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
             button(
                 if (window.layoutDebugStrict) "strict: on" else "strict: off",
                 {
-                    style = { width = 64 }
+                    style = { width = 64.px }
                     onMouseClick = {
                         window.layoutDebugStrict = !window.layoutDebugStrict
                         LayoutDebug.strictBounds = window.layoutDebugStrict
@@ -56,7 +54,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
             button(
                 if (window.layoutDebugDraw) "draw bounds: on" else "draw bounds: off",
                 {
-                    style = { width = 86 }
+                    style = { width = 86.px }
                     onMouseClick = {
                         window.layoutDebugDraw = !window.layoutDebugDraw
                         LayoutDebug.drawBounds = window.layoutDebugDraw
@@ -65,7 +63,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             )
             button("clear logs", {
-                style = { width = 54 }
+                style = { width = 54.px }
                 onMouseClick = { window.clearEventLogs() }
             })
         }
@@ -83,7 +81,7 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = "layoutDebug.wrapWidth"
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: wrapWidth.toLong()
                     window.layoutDebugWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
@@ -94,26 +92,24 @@ fun UiScope.layoutDebugSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             key = "layoutDebug.wrapCase"
-            style = {
-                width = wrapWidth
-                padding = 3
-                gap = 2
+            style = { width = wrapWidth.px
+                padding = 3.px
+                gap = 2.px
                 backgroundColor = 0xFF2D3745.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1, 0xFF70859C.toInt())
-            }
+                border(1.px, 0xFF70859C.toInt()) }
 
         }) {
             text("Case: wrapped text stack", { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_A, { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_B, { style = { textWrap = TextWrap.Wrap } })
             button("button label wraps too: long_unbroken_word_to_force_hard_break_123456789", {
-                style = {
-                    width = wrapWidth - 8
-                    textWrap = TextWrap.Wrap
-                }
+                style = { width = (wrapWidth - 8).px
+                    textWrap = TextWrap.Wrap }
             })
         }
     }
 }
+
+

@@ -7,7 +7,6 @@ import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.*
-import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
@@ -442,6 +441,19 @@ class UiScope internal constructor(private val parent: DOMNode) {
  * Styling DSL attached to a [DOMNode].
  */
 class StyleScope internal constructor(private val node: DOMNode) {
+    val Number.px: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Px)
+    val Number.rem: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Rem)
+    val Number.em: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Em)
+    val Number.vw: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Vw)
+    val Number.vh: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Vh)
+    val Number.percent: CssLength
+        get() = CssLength(value = this.toFloat(), unit = CssUnit.Percent)
+
     var display: Display
         get() = Display.Block
         set(value) {
@@ -472,32 +484,32 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.JUSTIFY_ITEMS, value.toCssLiteral())
         }
 
-    var padding: Int
-        get() = 0
+    var padding: CssLength
+        get() = CssLength.ZERO_PX
         set(value) {
-            setLiteral(
-                StyleProperty.PADDING,
-                "${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)} ${value.coerceAtLeast(0)}"
-            )
+            requireNonNegative(value, "padding")
+            setSpacing(StyleProperty.PADDING, value, value, value, value)
         }
 
-    var width: Int?
+    var width: CssLength?
         get() = null
         set(value) {
             if (value == null) {
                 setLiteral(StyleProperty.WIDTH, "auto")
             } else {
-                setLiteral(StyleProperty.WIDTH, value.coerceAtLeast(0).toString())
+                requireNonNegative(value, "width")
+                setLiteral(StyleProperty.WIDTH, value.toCssLiteral())
             }
         }
 
-    var height: Int?
+    var height: CssLength?
         get() = null
         set(value) {
             if (value == null) {
                 setLiteral(StyleProperty.HEIGHT, "auto")
             } else {
-                setLiteral(StyleProperty.HEIGHT, value.coerceAtLeast(0).toString())
+                requireNonNegative(value, "height")
+                setLiteral(StyleProperty.HEIGHT, value.toCssLiteral())
             }
         }
 
@@ -517,10 +529,11 @@ class StyleScope internal constructor(private val node: DOMNode) {
             }
         }
 
-    var gap: Int
-        get() = 0
+    var gap: CssLength
+        get() = CssLength.ZERO_PX
         set(value) {
-            setLiteral(StyleProperty.GAP, value.coerceAtLeast(0).toString())
+            requireNonNegative(value, "gap")
+            setLiteral(StyleProperty.GAP, value.toCssLiteral())
         }
 
     var flexGrow: Float
@@ -535,13 +548,14 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.FLEX_SHRINK, value.coerceAtLeast(0f).toString())
         }
 
-    var flexBasis: Int?
+    var flexBasis: CssLength?
         get() = null
         set(value) {
             if (value == null) {
                 setLiteral(StyleProperty.FLEX_BASIS, "auto")
             } else {
-                setLiteral(StyleProperty.FLEX_BASIS, value.coerceAtLeast(0).toString())
+                requireNonNegative(value, "flex-basis")
+                setLiteral(StyleProperty.FLEX_BASIS, value.toCssLiteral())
             }
         }
 
@@ -643,46 +657,55 @@ class StyleScope internal constructor(private val node: DOMNode) {
         node.animationSpecs = AnimationListBuilder().apply(block).build()
     }
 
-    fun margin(all: Int) {
-        setSpacing(StyleProperty.MARGIN, Insets.all(all))
+    fun margin(all: CssLength) {
+        setSpacing(StyleProperty.MARGIN, all, all, all, all)
     }
 
-    fun margin(horizontal: Int, vertical: Int) {
-        setSpacing(StyleProperty.MARGIN, Insets.horizontalVertical(horizontal, vertical))
+    fun margin(horizontal: CssLength, vertical: CssLength) {
+        setSpacing(StyleProperty.MARGIN, vertical, horizontal, vertical, horizontal)
     }
 
-    fun margin(top: Int, right: Int, bottom: Int, left: Int) {
-        setSpacing(StyleProperty.MARGIN, Insets(top, right, bottom, left))
+    fun margin(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength) {
+        setSpacing(StyleProperty.MARGIN, top, right, bottom, left)
     }
 
-    fun padding(all: Int) {
-        setSpacing(StyleProperty.PADDING, Insets.all(all))
+    fun padding(all: CssLength) {
+        requireNonNegative(all, "padding")
+        setSpacing(StyleProperty.PADDING, all, all, all, all)
     }
 
-    fun padding(horizontal: Int, vertical: Int) {
-        setSpacing(StyleProperty.PADDING, Insets.horizontalVertical(horizontal, vertical))
+    fun padding(horizontal: CssLength, vertical: CssLength) {
+        requireNonNegative(horizontal, "padding")
+        requireNonNegative(vertical, "padding")
+        setSpacing(StyleProperty.PADDING, vertical, horizontal, vertical, horizontal)
     }
 
-    fun padding(top: Int, right: Int, bottom: Int, left: Int) {
-        setSpacing(StyleProperty.PADDING, Insets(top, right, bottom, left))
+    fun padding(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength) {
+        requireNonNegative(top, "padding")
+        requireNonNegative(right, "padding")
+        requireNonNegative(bottom, "padding")
+        requireNonNegative(left, "padding")
+        setSpacing(StyleProperty.PADDING, top, right, bottom, left)
     }
 
-    fun border(width: Int) {
+    fun border(width: CssLength) {
+        requireNonNegative(width, "border-width")
         borderWidth(width)
         borderColor(DsglColors.BORDER)
     }
 
-    fun border(width: Int, color: Int) {
+    fun border(width: CssLength, color: Int) {
+        requireNonNegative(width, "border-width")
         borderWidth(width)
         borderColor(color)
     }
 
-    fun border(horizontal: Int, vertical: Int, color: Int = DsglColors.BORDER) {
-        border(maxOf(horizontal, vertical), color)
+    fun border(horizontal: CssLength, vertical: CssLength, color: Int = DsglColors.BORDER) {
+        border(maxLength(horizontal, vertical), color)
     }
 
-    fun border(top: Int, right: Int, bottom: Int, left: Int, color: Int = DsglColors.BORDER) {
-        border(maxOf(top, right, bottom, left), color)
+    fun border(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength, color: Int = DsglColors.BORDER) {
+        border(maxLength(top, right, bottom, left), color)
     }
 
     fun backgroundColor(color: Int) {
@@ -709,16 +732,18 @@ class StyleScope internal constructor(private val node: DOMNode) {
         setExpression(StyleProperty.BORDER_COLOR, variable)
     }
 
-    fun borderWidth(value: Int) {
-        setLiteral(StyleProperty.BORDER_WIDTH, value.toString())
+    fun borderWidth(value: CssLength) {
+        requireNonNegative(value, "border-width")
+        setLiteral(StyleProperty.BORDER_WIDTH, value.toCssLiteral())
     }
 
     fun borderWidth(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BORDER_WIDTH, variable)
     }
 
-    fun borderRadius(value: Int) {
-        setLiteral(StyleProperty.BORDER_RADIUS, value.toString())
+    fun borderRadius(value: CssLength) {
+        requireNonNegative(value, "border-radius")
+        setLiteral(StyleProperty.BORDER_RADIUS, value.toCssLiteral())
     }
 
     fun borderRadius(variable: StyleExpression.VariableRef) {
@@ -741,24 +766,27 @@ class StyleScope internal constructor(private val node: DOMNode) {
         setExpression(StyleProperty.FONT_ID, variable)
     }
 
-    fun fontSize(value: Int) {
-        setLiteral(StyleProperty.FONT_SIZE, value.toString())
+    fun fontSize(value: CssLength) {
+        requireNonNegative(value, "font-size")
+        setLiteral(StyleProperty.FONT_SIZE, value.toCssLiteral())
     }
 
     fun fontSize(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.FONT_SIZE, variable)
     }
 
-    fun width(value: Int) {
-        setLiteral(StyleProperty.WIDTH, value.toString())
+    fun width(value: CssLength) {
+        requireNonNegative(value, "width")
+        setLiteral(StyleProperty.WIDTH, value.toCssLiteral())
     }
 
     fun width(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.WIDTH, variable)
     }
 
-    fun height(value: Int) {
-        setLiteral(StyleProperty.HEIGHT, value.toString())
+    fun height(value: CssLength) {
+        requireNonNegative(value, "height")
+        setLiteral(StyleProperty.HEIGHT, value.toCssLiteral())
     }
 
     fun height(variable: StyleExpression.VariableRef) {
@@ -778,8 +806,34 @@ class StyleScope internal constructor(private val node: DOMNode) {
         return StyleExpression.VariableRef(normalized)
     }
 
-    private fun setSpacing(property: StyleProperty, value: Insets) {
-        setLiteral(property, "${value.top} ${value.right} ${value.bottom} ${value.left}")
+    private fun setSpacing(
+        property: StyleProperty,
+        top: CssLength,
+        right: CssLength,
+        bottom: CssLength,
+        left: CssLength
+    ) {
+        setLiteral(
+            property,
+            "${top.toCssLiteral()} ${right.toCssLiteral()} ${bottom.toCssLiteral()} ${left.toCssLiteral()}"
+        )
+    }
+
+    private fun requireNonNegative(value: CssLength, propertyName: String) {
+        require(value.value >= 0f) { "$propertyName cannot be negative: ${value.toCssLiteral()}" }
+    }
+
+    private fun maxLength(first: CssLength, second: CssLength): CssLength {
+        require(first.unit == second.unit) {
+            "Border shorthand with mixed units is not supported: ${first.toCssLiteral()} and ${second.toCssLiteral()}"
+        }
+        return if (first.value >= second.value) first else second
+    }
+
+    private fun maxLength(first: CssLength, second: CssLength, third: CssLength, fourth: CssLength): CssLength {
+        val firstMax = maxLength(first, second)
+        val secondMax = maxLength(third, fourth)
+        return maxLength(firstMax, secondMax)
     }
 
     private fun setLiteral(property: StyleProperty, rawValue: String) {

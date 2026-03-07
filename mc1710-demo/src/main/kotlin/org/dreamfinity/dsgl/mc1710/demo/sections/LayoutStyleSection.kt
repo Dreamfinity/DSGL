@@ -19,22 +19,18 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     overlay({
         key = "section.layoutStyle.stack"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 0
-        }
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 0.px }
     }) {
         div({
             key = "section.layoutStyle"
-            style = {
-                width = contentWidth
-                height = contentHeight
-                gap = 4
+            style = { width = contentWidth.px
+                height = contentHeight.px
+                gap = 4.px
 
                 display = Display.Flex
-                flexDirection = FlexDirection.Column
-            }
+                flexDirection = FlexDirection.Column }
         }) {
             text(
                 "Toggle values and click boxes to verify row/column behavior.",
@@ -43,7 +39,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -51,7 +47,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button(
                     if (window.styleLargeGap) "Gap: Large" else "Gap: Compact",
                     {
-                        style = { width = 82 }
+                        style = { width = 82.px }
                         onMouseClick = {
                             window.styleLargeGap = !window.styleLargeGap
                             window.appendInfo("Layout: gap=${if (window.styleLargeGap) "large" else "compact"}")
@@ -60,7 +56,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button(
                     if (window.styleFixedSize) "Size: Fixed" else "Size: Auto",
                     {
-                        style = { width = 82 }
+                        style = { width = 82.px }
                         onMouseClick = {
                             window.styleFixedSize = !window.styleFixedSize
                             window.appendInfo("Layout: fixedSize=${window.styleFixedSize}")
@@ -71,7 +67,8 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 style = {
-                    gap = demoGap; key = "layout.row.demo"
+                    key = "layout.row.demo"
+                    gap = demoGap.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -82,13 +79,11 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                         onMouseClick = { event ->
                             window.logHook("layout.row.onMouseClick", event, "box=$index")
                         }
-                        style = {
-                            width = fixedSize
-                            height = fixedSize
-                            padding = 2
+                        style = { width = fixedSize?.px
+                            height = fixedSize?.px
+                            padding = 2.px
                             backgroundColor = 0xFF3A4A5A.toInt()
-                            border(1, 0xFF5E89B5.toInt())
-                        }
+                            border(1.px, 0xFF5E89B5.toInt()) }
                     }) {
                         text("R${index + 1}")
                     }
@@ -97,7 +92,8 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 style = {
-                    gap = demoGap; key = "layout.column.demo"
+                    key = "layout.column.demo"
+                    gap = demoGap.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -108,12 +104,10 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                         onMouseClick = { event ->
                             window.logHook("layout.column.onMouseClick", event, "box=$index")
                         }
-                        style = {
-                            width = if (window.styleFixedSize) 72 else null
-                            padding = 2
+                        style = { width = if (window.styleFixedSize) 72.px else null
+                            padding = 2.px
                             backgroundColor = 0xFF43404F.toInt()
-                            border(1, 0xFF786AA6.toInt())
-                        }
+                            border(1.px, 0xFF786AA6.toInt()) }
                     }) {
                         text("Column box ${index + 1}")
                     }
@@ -122,7 +116,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -130,21 +124,21 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button(
                     if (window.styleUseMargin) "Margin ON" else "Margin OFF",
                     {
-                        style = { width = 62 }
+                        style = { width = 62.px }
                         onMouseClick = { window.styleUseMargin = !window.styleUseMargin }
                     }
                 )
                 button(
                     if (window.styleUsePadding) "Padding ON" else "Padding OFF",
                     {
-                        style = { width = 66 }
+                        style = { width = 66.px }
                         onMouseClick = { window.styleUsePadding = !window.styleUsePadding }
                     }
                 )
                 button(
                     if (window.styleUseBorder) "Border ON" else "Border OFF",
                     {
-                        style = { width = 62 }
+                        style = { width = 62.px }
                         onMouseClick = { window.styleUseBorder = !window.styleUseBorder }
                     }
                 )
@@ -155,13 +149,11 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 onMouseClick = { event ->
                     window.logHook("layout.style.onMouseClick", event)
                 }
-                style = {
-                    width = 168
+                style = { width = 168.px
                     backgroundColor = DEMO_SURFACE_ALT
-                    if (window.styleUseMargin) margin(4, 0, 0, 8)
-                    if (window.styleUsePadding) padding(4)
-                    if (window.styleUseBorder) border(1, 0xFF90A4AE.toInt())
-                }
+                    if (window.styleUseMargin) margin(4.px, 0.px, 0.px, 8.px)
+                    if (window.styleUsePadding) padding(4.px)
+                    if (window.styleUseBorder) border(1.px, 0xFF90A4AE.toInt()) }
             }) {
                 text("Style target (margin/padding/border)")
                 text(
@@ -172,7 +164,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -180,7 +172,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button(
                     if (window.stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF",
                     {
-                        style = { width = 116 }
+                        style = { width = 116.px }
                         onMouseClick = {
                             window.stackOverlayEnabled = !window.stackOverlayEnabled
                             window.appendInfo("Layout: stackOverlay=${window.stackOverlayEnabled}")
@@ -188,7 +180,7 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                     }
                 )
                 button("Reset Overlay", {
-                    style = { width = 86 }
+                    style = { width = 86.px }
                     onMouseClick = {
                         window.layoutOverlayX = 8
                         window.layoutOverlayY = 92
@@ -215,14 +207,12 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
                 onMouseUp = { event ->
                     window.finishLayoutOverlayDrag(event)
                 }
-                style = {
-                    width = overlayWidth
-                    height = overlayHeight
+                style = { width = overlayWidth.px
+                    height = overlayHeight.px
                     backgroundColor = 0xCC5A3131.toInt()
-                    margin(overlayY, 0, 0, overlayX)
-                    padding(4)
-                    border(1, 0xFF8D4848.toInt())
-                }
+                    margin(overlayY.px, 0.px, 0.px, overlayX.px)
+                    padding(4.px)
+                    border(1.px, 0xFF8D4848.toInt()) }
             }) {
                 text(
                     if (window.layoutOverlayDragging) "Overlay (dragging...)" else "Overlay (drag me)",
@@ -232,3 +222,4 @@ fun UiScope.layoutStyleSection(window: ShowcaseWindow, contentWidth: Int, conten
         }
     }
 }
+

@@ -17,13 +17,11 @@ private const val FAIL_COLOR = 0xFFFF8A8A.toInt()
 fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.textEditing"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("HTML-like text editing: caret blink, selection and clipboard shortcuts")
         text("Use Ctrl on Windows/Linux or Cmd on macOS for copy/cut/paste/select-all/undo/redo.", {
@@ -38,7 +36,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = SINGLE_KEY
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onFocusGain = {
                     window.textEditingSawFocus = true
                     window.logHook("textEditing.single.focus", it)
@@ -64,7 +62,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
             ),
             {
                 key = PASSWORD_KEY
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onFocusGain = {
                     window.textEditingSawFocus = true
                     window.logHook("textEditing.password.focus", it)
@@ -86,10 +84,8 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
         textarea({
             placeholder = "Multiline editing"
             key = AREA_KEY
-            style = {
-                width = contentWidth - 8
-                height = 62
-            }
+            style = { width = (contentWidth - 8).px
+                height = 62.px }
             value = window.textEditingAreaValue
             onFocusGain = {
                 window.textEditingSawFocus = true
@@ -114,7 +110,7 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
         checklistLine("copy/cut/paste/undo/redo shortcuts are handled", window.textEditingSawClipboardShortcut)
 
         button("Reset Checklist", {
-            style = { width = 72 }
+            style = { width = 72.px }
             onMouseClick = {
                 window.textEditingSawSelectionDrag = false
                 window.textEditingSawShiftSelection = false
@@ -171,3 +167,5 @@ private fun isClipboardShortcut(keyCode: Int): Boolean {
             keyCode == KeyCodes.A ||
             keyCode == KeyCodes.Z
 }
+
+

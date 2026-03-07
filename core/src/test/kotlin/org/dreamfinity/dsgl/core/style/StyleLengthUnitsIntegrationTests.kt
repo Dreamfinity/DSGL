@@ -120,6 +120,31 @@ class StyleLengthUnitsIntegrationTests {
         assertEquals(3, child.padding.left)
     }
 
+    @Test
+    fun `rem resolves against root font size`() {
+        installStylesheet(
+            """
+            :root { font-size: 20px; }
+            .child {
+              width: 2rem;
+              font-size: 0.5rem;
+              padding: 1rem;
+            }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val child = ContainerNode(key = "child").applyParent(root)
+        child.setClassNames("child")
+
+        DomTree(root).render(ctx, 240, 160)
+
+        assertEquals(40, child.width)
+        assertEquals(10, child.fontSize)
+        assertEquals(20, child.padding.top)
+        assertEquals(20, child.padding.left)
+    }
+
     private fun installStylesheet(contents: String) {
         val dir = Files.createTempDirectory("dsgl-style-units-test").toFile()
         dir.resolve("test.dss").writeText(contents)

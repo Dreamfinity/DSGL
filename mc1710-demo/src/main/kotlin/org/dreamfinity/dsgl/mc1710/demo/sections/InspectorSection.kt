@@ -10,14 +10,12 @@ import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
         key = "section.inspector"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("In-game Inspector is global (works on every DSGL screen).")
         text("F8: toggle inspector overlay", { style = { color = DEMO_MUTED } })
@@ -35,10 +33,10 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
         div({
             key = "inspector.sample.panel"
             style = {
-                gap = 4
-                padding = 4
+                gap = 4.px
+                padding = 4.px
                 backgroundColor = 0x3338424F
-                border(1, 0xFF5F6E80.toInt())
+                border(1.px, 0xFF5F6E80.toInt())
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -50,7 +48,7 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
             })
             div({
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -64,7 +62,7 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
                 input(
                     InputType.Text(window.focusStableValue, "Focusable input"),
                     {
-                        style = { width = 116 }
+                        style = { width = 116.px }
                         key = "inspector.sample.input"
                         onInput = { event ->
                             window.focusStableValue = event.value
@@ -75,7 +73,7 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
             div({
                 key = "inspector.sample.grid"
                 style = {
-                gap = 3
+                gap = 3.px
                     display = Display.Grid
                     gridColumns = 3
                 }
@@ -84,9 +82,9 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
                     div({
                         key = "inspector.sample.cell.$index"
                         style = {
-                            padding = 2
+                            padding = 2.px
                             backgroundColor = 0x22496699
-                            border(1, 0x665A9CE0)
+                            border(1.px, 0x665A9CE0)
                         }
 
                     }) {
@@ -97,3 +95,5 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
         }
     }
 }
+
+

@@ -23,5 +23,5 @@ enum class DemoSection(
     DRAG_DROP("Drag & Drop", "HTML-like drag events, DataTransfer and smooth ghost"),
     INTERACTIONS("Interactions", "Mouse/key hooks, bubbling, cancellation"),
     FOCUS_REBUILD("Focus & Rebuild", "Focus retention and invalidation"),
-    MC_FEATURES("MC Features", "Image sources and item stack rendering")
+    MC_FEATURES("MC Features", "Pixel viewport rendering, clipping and item stacks")
 }

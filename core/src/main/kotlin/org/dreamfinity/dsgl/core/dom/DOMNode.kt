@@ -413,6 +413,7 @@ abstract class DOMNode(
         parentContentWidth: Int?,
         parentContentHeight: Int?
     ): LengthResolveContext {
+        val rootFontSizePx = rootNode().resolveFontSize(ctx).toFloat()
         val inheritedFontSizePx = (
             parent?.resolveFontSize(ctx)
                 ?: resolveFontSize(ctx)
@@ -423,9 +424,18 @@ abstract class DOMNode(
             viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
             containingBlockWidthPx = parentContentWidth?.toFloat(),
             containingBlockHeightPx = parentContentHeight?.toFloat(),
+            rootFontSizePx = rootFontSizePx,
             currentFontSizePx = currentFontSizePx,
             inheritedFontSizePx = inheritedFontSizePx
         )
+    }
+
+    private fun rootNode(): DOMNode {
+        var current: DOMNode = this
+        while (current.parent != null) {
+            current = current.parent!!
+        }
+        return current
     }
 
     /** Measures the node's desired size. */

@@ -5,6 +5,7 @@ import kotlin.math.roundToInt
 
 enum class CssUnit(val token: String) {
     Px("px"),
+    Rem("rem"),
     Em("em"),
     Vw("vw"),
     Vh("vh"),
@@ -15,11 +16,19 @@ data class CssLength(
     val value: Float,
     val unit: CssUnit
 ) {
+    override fun toString(): String {
+        return toCssLiteral()
+    }
+
     companion object {
         val ZERO_PX: CssLength = CssLength(0f, CssUnit.Px)
 
         fun px(value: Number): CssLength = CssLength(value.toFloat(), CssUnit.Px)
     }
+}
+
+fun CssLength.coerceAtLeast(minimumValue: Int): String {
+    return CssLength(value.coerceAtLeast(minimumValue.toFloat()), unit).toCssLiteral()
 }
 
 fun Number.px(): CssLength {
@@ -28,6 +37,10 @@ fun Number.px(): CssLength {
 
 fun Number.em(): CssLength {
     return CssLength(value = this.toFloat(), unit = CssUnit.Em)
+}
+
+fun Number.rem(): CssLength {
+    return CssLength(value = this.toFloat(), unit = CssUnit.Rem)
 }
 
 fun Number.vw(): CssLength {
@@ -76,6 +89,7 @@ data class LengthResolveContext(
     val viewportHeightPx: Float = 0f,
     val containingBlockWidthPx: Float? = null,
     val containingBlockHeightPx: Float? = null,
+    val rootFontSizePx: Float = 16f,
     val currentFontSizePx: Float = 16f,
     val inheritedFontSizePx: Float = 16f
 )
@@ -84,7 +98,7 @@ fun interface StyleWarningReporter {
     fun warnOnce(key: String, message: String)
 }
 
-private val knownLengthUnits: Set<String> = linkedSetOf("px", "em", "vw", "vh", "%")
+private val knownLengthUnits: Set<String> = linkedSetOf("px", "rem", "em", "vw", "vh", "%")
 private val knownLengthUnitsPattern = knownLengthUnits.joinToString("|") { Regex.escape(it) }
 private val cssLengthRegex = Regex(
     pattern = """^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:($knownLengthUnitsPattern))?$""",
@@ -106,7 +120,7 @@ fun parseCssLength(
             if (anyUnitMatch != null) {
                 val unknownUnit = anyUnitMatch.groupValues.getOrNull(2).orEmpty().trim()
                 if (unknownUnit.isNotEmpty()) {
-                    error("Unknown length unit '$unknownUnit'. Supported units: px, em, vw, vh, %.")
+                    error("Unknown length unit '$unknownUnit'. Supported units: px, rem, em, vw, vh, %.")
                 }
             }
             error("Expected CSS length but got '$raw'.")
@@ -121,11 +135,12 @@ fun parseCssLength(
     }
     val unit = when (unitToken) {
         "px" -> CssUnit.Px
+        "rem" -> CssUnit.Rem
         "em" -> CssUnit.Em
         "vw" -> CssUnit.Vw
         "vh" -> CssUnit.Vh
         "%" -> CssUnit.Percent
-        else -> error("Unknown length unit '$unitToken'. Supported units: px, em, vw, vh, %.")
+        else -> error("Unknown length unit '$unitToken'. Supported units: px, rem, em, vw, vh, %.")
     }
     return CssLength(value = value, unit = unit)
 }
@@ -138,7 +153,7 @@ fun parseOptionalCssLength(raw: String, allowUnitlessZero: Boolean = true): CssL
 
 fun CssLength.toCssLiteral(): String {
     if (value == 0f && unit == CssUnit.Px) {
-        return "0"
+        return "0px"
     }
     val asLong = value.toLong()
     val number = if (asLong.toFloat() == value) {
@@ -155,6 +170,7 @@ fun CssLength.resolvePx(
 ): Float {
     return when (unit) {
         CssUnit.Px -> value
+        CssUnit.Rem -> value * context.rootFontSizePx
         CssUnit.Em -> value * context.currentFontSizePx
         CssUnit.Vw -> (value / 100f) * context.viewportWidthPx
         CssUnit.Vh -> (value / 100f) * context.viewportHeightPx

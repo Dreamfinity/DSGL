@@ -8,8 +8,49 @@ import org.dreamfinity.dsgl.core.DsglWindow
 data class Viewport(
     val width: Int,
     val height: Int,
-    val scale: Float
+    val scale: Float = 1f,
+    val x: Int = 0,
+    val y: Int = 0
 )
+
+data class ViewportPoint(
+    val x: Int,
+    val y: Int
+)
+
+data class GlScissorRect(
+    val x: Int,
+    val y: Int,
+    val width: Int,
+    val height: Int
+)
+
+fun Viewport.rawMouseToDsgl(rawX: Int, rawY: Int): ViewportPoint {
+    return ViewportPoint(
+        x = rawX - x,
+        y = (y + height) - rawY - 1
+    )
+}
+
+fun Viewport.rawMouseToDsglX(rawX: Int): Int = rawX - x
+
+fun Viewport.rawMouseToDsglY(rawY: Int): Int = (y + height) - rawY - 1
+
+fun Viewport.dsglRectToGlScissor(
+    dsglX: Int,
+    dsglY: Int,
+    dsglWidth: Int,
+    dsglHeight: Int
+): GlScissorRect {
+    val widthPx = dsglWidth.coerceAtLeast(0)
+    val heightPx = dsglHeight.coerceAtLeast(0)
+    return GlScissorRect(
+        x = x + dsglX,
+        y = y + height - (dsglY + heightPx),
+        width = widthPx,
+        height = heightPx
+    )
+}
 
 /**
  * Platform host contract that drives [org.dreamfinity.dsgl.core.DsglWindow] lifecycles.

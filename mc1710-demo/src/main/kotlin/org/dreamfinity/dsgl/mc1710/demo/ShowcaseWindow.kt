@@ -71,6 +71,10 @@ class ShowcaseWindow : DsglWindow() {
 
     private var viewportWidth: Int = 320
     private var viewportHeight: Int = 240
+    internal val viewportWidthPx: Int
+        get() = viewportWidth
+    internal val viewportHeightPx: Int
+        get() = viewportHeight
 
     internal var selectedSection by state(DemoSection.OVERVIEW)
     internal var checklistPage by state(0)
@@ -351,11 +355,11 @@ class ShowcaseWindow : DsglWindow() {
                 div({
                     key = "showcase.root"
                     style = {
-                        padding = 4
-                        gap = 4
-                        backgroundColor = DEMO_BG
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
+                        padding = 4.px
+                        gap = 4.px
+                        backgroundColor = DEMO_BG
                     }
                 }) {
                     text("DSGL Showcase Window", { style = { color = DsglColors.WHITE } })
@@ -367,7 +371,7 @@ class ShowcaseWindow : DsglWindow() {
                     div({
                         key = "showcase.body"
                         style = {
-                            gap = 4
+                            gap = 4.px
                             display = Display.Flex
                             flexDirection = FlexDirection.Row
                         }
@@ -377,12 +381,12 @@ class ShowcaseWindow : DsglWindow() {
                             style = {
                                 display = Display.Flex
                                 flexDirection = FlexDirection.Column
-                                width = navWidth
-                                height = bodyHeight
-                                gap = 4
+//                                width = navWidth.px
+                                height = bodyHeight.px
+                                gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border(1, DsglColors.BORDER)
+                                border(1.px, DsglColors.BORDER)
                             }
 
                         }) {
@@ -404,12 +408,12 @@ class ShowcaseWindow : DsglWindow() {
                             style = {
                                 display = Display.Flex
                                 flexDirection = FlexDirection.Column
-                                width = contentWidth
-                                height = bodyHeight
-                                gap = 4
+                                width = contentWidth.px
+                                height = bodyHeight.px
+                                gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border(1, DsglColors.BORDER)
+                                border(1.px, DsglColors.BORDER)
                             }
                         }) {
                             text(selectedSection.title, { style = { color = DsglColors.WHITE } })
@@ -541,13 +545,11 @@ class ShowcaseWindow : DsglWindow() {
 
                         div({
                             key = "showcase.side"
-                            style = {
-                                width = sidebarWidth
-                                height = bodyHeight
-                                gap = 4
+                            style = { width = sidebarWidth.px
+                                height = bodyHeight.px
+                                gap = 4.px
                                 display = Display.Flex
-                                flexDirection = FlexDirection.Column
-                            }
+                                flexDirection = FlexDirection.Column }
                         }) {
                             renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
                             renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)
@@ -989,6 +991,36 @@ class ShowcaseWindow : DsglWindow() {
     internal fun adjustItemRotation(deltaY: Double = 0.0, deltaX: Double = 0.0) {
         itemRotY = normalizeAngle(itemRotY + deltaY)
         itemRotX = (itemRotX + deltaX).coerceIn(-89.0, 89.0)
+    }
+
+    internal fun currentGuiScale(): Int {
+        return Minecraft.getMinecraft().gameSettings.guiScale.coerceIn(0, 4)
+    }
+
+    internal fun guiScaleLabel(value: Int = currentGuiScale()): String {
+        return when (value.coerceIn(0, 4)) {
+            0 -> "Auto"
+            1 -> "1x"
+            2 -> "2x"
+            3 -> "3x"
+            else -> "4x"
+        }
+    }
+
+    internal fun setGuiScale(value: Int) {
+        val mc = Minecraft.getMinecraft()
+        val normalized = value.coerceIn(0, 4)
+        if (mc.gameSettings.guiScale == normalized) return
+        mc.gameSettings.guiScale = normalized
+        mc.gameSettings.saveOptions()
+        appendInfo("guiScale -> ${guiScaleLabel(normalized)}")
+        requestManualInvalidate("guiScale change")
+    }
+
+    internal fun cycleGuiScale(step: Int) {
+        val current = currentGuiScale()
+        val next = (current + step).coerceIn(0, 4)
+        setGuiScale(next)
     }
 
     internal fun setItemRotationFromSlider(isY: Boolean, deltaPixels: Int) {
@@ -2397,3 +2429,5 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
+
+

@@ -12,6 +12,7 @@ class DssParseException(
 object DssParser {
     private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
     private const val DEPRECATED_FOREGROUND_COLOR_WARNING_KEY = "deprecated.property.foreground-color"
+    private const val ROOT_SELECTOR_ALIAS = "dsgl-root"
 
     fun parse(file: File): StylesheetData {
         val text = file.readText()
@@ -55,12 +56,21 @@ object DssParser {
                 warnings = warnings
             )
 
-            if (selectorText != ":root") {
-                val selector = try {
+            val selector = when (selectorText) {
+                ":root" -> {
+                    if (declarations.values.isEmpty()) {
+                        null
+                    } else {
+                        StyleSelector.parse(ROOT_SELECTOR_ALIAS)
+                    }
+                }
+                else -> try {
                     StyleSelector.parse(selectorText)
                 } catch (ex: IllegalArgumentException) {
                     throw parseError(sourceName, text, selectorStart, ex.message ?: "Invalid selector.")
                 }
+            }
+            if (selector != null) {
                 rules += StyleRule(
                     selector = selector,
                     declarations = declarations,

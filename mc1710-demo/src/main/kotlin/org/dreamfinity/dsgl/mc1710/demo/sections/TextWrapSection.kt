@@ -22,13 +22,11 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
 
     div({
         key = "section.textWrap"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Text Wrap: wrap / nowrap")
         text(
@@ -38,7 +36,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -46,7 +44,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             button(
                 if (mode == TextWrap.Wrap) "Mode: wrap" else "Mode: nowrap",
                 {
-                    style = { width = 82 }
+                    style = { width = 82.px }
                     onMouseClick = {
                         window.textWrapNoWrap = !window.textWrapNoWrap
                         window.appendInfo("TextWrap mode=${if (window.textWrapNoWrap) "nowrap" else "wrap"}")
@@ -54,7 +52,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
                 }
             )
             button("Reset width", {
-                style = { width = 62 }
+                style = { width = 62.px }
                 onMouseClick = {
                     window.textWrapWidth = ((minWidth + maxWidth) / 2).toLong()
                 }
@@ -70,7 +68,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             ),
             {
                 key = "textWrap.width"
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
                     window.textWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
@@ -87,11 +85,11 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                width = panelWidth
-                padding = 3
+                width = panelWidth.px
+                padding = 3.px
                 backgroundColor = 0xFF2B3542.toInt()
-                gap = 2
-                border(1, 0xFF6F8298.toInt())
+                gap = 2.px
+                border(1.px, 0xFF6F8298.toInt())
             }
 
         }) {
@@ -100,21 +98,19 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             text("Text node (lambda)")
             text(WRAP_SAMPLE_WORD, { style = { textWrap = mode } })
             button("Button label: $WRAP_SAMPLE_WORD", {
-                style = {
-                    width = panelWidth - 6
-                    textWrap = mode
-                }
+                style = { width = (panelWidth - 6).px
+                    textWrap = mode }
             })
             textarea({
                 placeholder = "Wrap demo area"
                 key = "textWrap.textarea"
                 value = WRAP_TEXTAREA_SAMPLE
-                style = {
-                    width = panelWidth - 6
-                    height = 36
-                    textWrap = mode
-                }
+                style = { width = (panelWidth - 6).px
+                    height = 36.px
+                    textWrap = mode }
             })
         }
     }
 }
+
+

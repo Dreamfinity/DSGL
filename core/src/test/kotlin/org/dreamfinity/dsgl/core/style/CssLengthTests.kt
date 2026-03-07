@@ -9,6 +9,7 @@ class CssLengthTests {
     @Test
     fun `parses supported units`() {
         assertEquals(CssLength(12f, CssUnit.Px), parseCssLength("12px"))
+        assertEquals(CssLength(2f, CssUnit.Rem), parseCssLength("2rem"))
         assertEquals(CssLength(1.25f, CssUnit.Em), parseCssLength("1.25em"))
         assertEquals(CssLength(50f, CssUnit.Vw), parseCssLength("50vw"))
         assertEquals(CssLength(70f, CssUnit.Vh), parseCssLength("70vh"))
@@ -27,7 +28,7 @@ class CssLengthTests {
     @Test
     fun `unknown units are rejected`() {
         val error = assertFailsWith<IllegalStateException> {
-            parseCssLength("1rem")
+            parseCssLength("1q")
         }
         assertTrue(error.message?.contains("Unknown length unit") == true)
     }
@@ -93,15 +94,19 @@ class CssLengthTests {
             viewportHeightPx = 0f,
             containingBlockWidthPx = 0f,
             containingBlockHeightPx = 0f,
+            rootFontSizePx = 24f,
             currentFontSizePx = 12f,
             inheritedFontSizePx = 20f
         )
 
+        val rem = CssLength(0.5f, CssUnit.Rem)
+            .resolvePx(context, LengthPercentBase.ContainerWidth)
         val paddingEm = CssLength(1.5f, CssUnit.Em)
             .resolvePx(context, LengthPercentBase.ContainerWidth)
         val fontPercent = CssLength(125f, CssUnit.Percent)
             .resolvePx(context, LengthPercentBase.InheritedFontSize)
 
+        assertEquals(12f, rem)
         assertEquals(18f, paddingEm)
         assertEquals(25f, fontPercent)
     }

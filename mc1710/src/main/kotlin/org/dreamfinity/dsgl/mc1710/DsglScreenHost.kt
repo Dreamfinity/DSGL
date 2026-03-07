@@ -12,9 +12,12 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
+import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
+import org.dreamfinity.dsgl.core.host.rawMouseToDsglX
+import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.InspectorController
@@ -49,6 +52,7 @@ abstract class DsglScreenHost(
     private var domTree: DomTree? = null
     private var lastWidth: Int = 0
     private var lastHeight: Int = 0
+    private var lastViewport: Viewport = Viewport(width = 0, height = 0)
     private var needsRender: Boolean = true
     private var needsLayout: Boolean = true
     private var lastMouseEvent: Long = 0
@@ -126,6 +130,8 @@ abstract class DsglScreenHost(
         frameIndex += 1
         tracePhase("draw.start")
         updateSize(force = false)
+        val dsglMouseX = lastViewport.rawMouseToDsglX(Mouse.getX())
+        val dsglMouseY = lastViewport.rawMouseToDsglY(Mouse.getY())
         window.onFrame(System.currentTimeMillis())
         val rebuiltThisFrame = rebuildIfNeeded()
         val tree = domTree ?: return
@@ -159,11 +165,11 @@ abstract class DsglScreenHost(
             }
         }
         inspector.onLayoutCommitted(tree.root, layoutRevision)
-        inspector.onCursorMoved(mouseX, mouseY)
+        inspector.onCursorMoved(dsglMouseX, dsglMouseY)
         if (inspectorPointerCaptured) {
-            inspector.onCapturedPointerMove(mouseX, mouseY, lastWidth, lastHeight)
+            inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
-        val inspectorBlocks = inspectorPointerCaptured || inspector.shouldConsumePointer(mouseX, mouseY)
+        val inspectorBlocks = inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
         tracePhase("commands.start")
         if (!stylesAlreadyApplied) {
             tracePhase("style.start")
@@ -183,34 +189,33 @@ abstract class DsglScreenHost(
         if (!stylesAlreadyApplied) {
             tracePhase("style.end")
         }
-        val viewportScale = adapter.scaledResolution().scaleFactor.toFloat()
-        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, viewportScale)
+        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         if (!inspectorBlocks && !contextMenuBlocks) {
-            DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
+            DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
         }
         DndRuntime.engine.onFrame(tree.root, dtSeconds)
-        val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
-        val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
-        val dx = mouseX - prevX
-        val dy = mouseY - prevY
+        val prevX = if (lastMoveX == Int.MIN_VALUE) dsglMouseX else lastMoveX
+        val prevY = if (lastMoveY == Int.MIN_VALUE) dsglMouseY else lastMoveY
+        val dx = dsglMouseX - prevX
+        val dy = dsglMouseY - prevY
         if (inspectorBlocks || contextMenuBlocks) {
             clearHoverChainStates()
             hoverTarget = null
         } else {
-            updateHover(tree.root, hoverChain, mouseX, mouseY, dx, dy)
+            updateHoverLocal(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
             hoverTarget = hoverChain.lastOrNull()
             if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
                 releaseDragCapture()
             }
             if (dx != 0 || dy != 0) {
-                val moveEvent = MouseMoveEvent(mouseX, mouseY, prevX, prevY)
+                val moveEvent = MouseMoveEvent(dsglMouseX, dsglMouseY, prevX, prevY)
                 moveEvent.target = dragCaptureTarget ?: hoverTarget
                 EventBus.post(moveEvent)
             }
         }
-        lastMoveX = mouseX
-        lastMoveY = mouseY
+        lastMoveX = dsglMouseX
+        lastMoveY = dsglMouseY
         stagingCommandsBuffer.clear()
         stagingCommandsBuffer.addAll(commands)
         DndRuntime.engine.appendPlaceholderCommands(stagingCommandsBuffer)
@@ -278,14 +283,14 @@ abstract class DsglScreenHost(
     }
 
     override fun getViewport(): Viewport {
-        val scale = adapter.scaledResolution().scaleFactor.toFloat()
-        return Viewport(lastWidth, lastHeight, scale)
+        return lastViewport
     }
 
     private fun updateSize(force: Boolean) {
-        val scaled = adapter.scaledResolution()
-        val width = scaled.scaledWidth
-        val height = scaled.scaledHeight
+        val viewport = adapter.viewport()
+        val width = viewport.width
+        val height = viewport.height
+        lastViewport = viewport
         if (force || width != lastWidth || height != lastHeight) {
             ContextMenuRuntime.engine.closeAll()
             lastWidth = width
@@ -427,8 +432,8 @@ abstract class DsglScreenHost(
             }
         }
 
-        val mouseX = Mouse.getEventX() * width / mc.displayWidth
-        val mouseY = height - Mouse.getEventY() * height / mc.displayHeight - 1
+        val mouseX = lastViewport.rawMouseToDsglX(Mouse.getEventX())
+        val mouseY = lastViewport.rawMouseToDsglY(Mouse.getEventY())
         val dWheel = Mouse.getDWheel()
         val mouseButton = Mouse.getEventButton()
         inspector.onCursorMoved(mouseX, mouseY)
@@ -436,7 +441,7 @@ abstract class DsglScreenHost(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
-            viewportScale = adapter.scaledResolution().scaleFactor.toFloat()
+            viewportScale = 1f
         )
 
         if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
@@ -750,7 +755,7 @@ abstract class DsglScreenHost(
                 return
             }
         }
-        val chain = collectHoverChain(tree.root, mouseX, mouseY)
+        val chain = collectHoverChainLocal(tree.root, mouseX, mouseY)
         hoverTarget = chain.lastOrNull()
     }
 
@@ -779,6 +784,108 @@ abstract class DsglScreenHost(
             node.setHoveredState(false)
         }
         hoverChain.clear()
+    }
+
+    private fun collectHoverChainLocal(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
+        val out = ArrayList<DOMNode>(8)
+        collectHoverChainLocal(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
+        return out
+    }
+
+    private fun collectHoverChainLocal(
+        root: DOMNode,
+        mouseX: Int,
+        mouseY: Int,
+        parentTransform: AffineTransform2D,
+        out: MutableList<DOMNode>
+    ): Boolean {
+        if (root.styleDisabled) return false
+        if (!root.isHitTestVisible()) return false
+        val worldTransform = parentTransform.times(root.localTransformMatrix())
+        val inverse = worldTransform.inverseOrNull() ?: return false
+        val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
+        if (!root.bounds.contains(local.first, local.second)) return false
+        out.add(root)
+        for (i in root.children.size - 1 downTo 0) {
+            val child = root.children[i]
+            if (collectHoverChainLocal(child, mouseX, mouseY, worldTransform, out)) return true
+        }
+        return true
+    }
+
+    private fun updateHoverLocal(
+        root: DOMNode,
+        prevHoverChain: MutableList<DOMNode>,
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int
+    ) {
+        val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
+        collectHoverChainLocal(root, mouseX, mouseY, AffineTransform2D.IDENTITY, currHoverChain)
+        val minSize = minOf(prevHoverChain.size, currHoverChain.size)
+        var commonPrefixLen = 0
+        while (
+            commonPrefixLen < minSize &&
+            isSameHoverNodeLocal(prevHoverChain[commonPrefixLen], currHoverChain[commonPrefixLen])
+        ) {
+            commonPrefixLen++
+        }
+        for (i in prevHoverChain.size - 1 downTo commonPrefixLen) {
+            prevHoverChain[i].setHoveredState(false)
+            postMouseLeaveEventLocal(prevHoverChain[i], mouseX, mouseY)
+        }
+        for (i in commonPrefixLen until currHoverChain.size) {
+            currHoverChain[i].setHoveredState(true)
+            postMouseEnterEventLocal(currHoverChain[i], mouseX, mouseY)
+        }
+        for (i in 0 until commonPrefixLen) {
+            currHoverChain[i].setHoveredState(true)
+        }
+        if (mouseDX != 0 || mouseDY != 0) {
+            for (i in 0 until currHoverChain.size) {
+                postMouseOverEventLocal(currHoverChain[i], mouseX, mouseY)
+            }
+        }
+        prevHoverChain.clear()
+        prevHoverChain.addAll(currHoverChain)
+    }
+
+    private fun isSameHoverNodeLocal(prev: DOMNode, curr: DOMNode): Boolean {
+        if (prev === curr) return true
+        val prevKey = prev.key
+        val currKey = curr.key
+        if (prevKey != null || currKey != null) {
+            return prevKey != null &&
+                    currKey != null &&
+                    prevKey == currKey &&
+                    prev.javaClass == curr.javaClass
+        }
+        if (prev.parent == null && curr.parent == null) {
+            return prev.javaClass == curr.javaClass
+        }
+        return false
+    }
+
+    private fun postMouseEnterEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
+        val event = MouseEnterEvent(mouseX, mouseY)
+        event.target = target
+        EventBus.post(event)
+        target.onmouseenter?.invoke(event)
+    }
+
+    private fun postMouseLeaveEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
+        val event = MouseLeaveEvent(mouseX, mouseY)
+        event.target = target
+        EventBus.post(event)
+        target.onmouseleave?.invoke(event)
+    }
+
+    private fun postMouseOverEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
+        val event = MouseOverEvent(mouseX, mouseY)
+        event.target = target
+        EventBus.post(event)
+        target.onmouseover?.invoke(event)
     }
 
     private fun logInspectorInput(message: String) {
@@ -852,16 +959,19 @@ abstract class DsglScreenHost(
                     clipDepth -= 1
                     if (clipDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
                 }
+
                 is RenderCommand.PushTransform -> transformDepth += 1
                 is RenderCommand.PopTransform -> {
                     transformDepth -= 1
                     if (transformDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
                 }
+
                 is RenderCommand.PushOpacity -> opacityDepth += 1
                 is RenderCommand.PopOpacity -> {
                     opacityDepth -= 1
                     if (opacityDepth < 0) return CommandShape(false, clipDepth, transformDepth, opacityDepth)
                 }
+
                 else -> Unit
             }
         }
@@ -905,9 +1015,9 @@ abstract class DsglScreenHost(
         val styleStats = StyleEngine.lastStyleApplyReport()
         println(
             "[DSGL-PERF] frames=${paintStats.frames} commandRebuilds=${paintStats.commandRebuilds} " +
-                "chunkVisited=${paintStats.chunkNodesVisitedLastFrame} chunkRebuilt=${paintStats.chunkNodesRebuiltLastFrame} " +
-                "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
-                "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips"
+                    "chunkVisited=${paintStats.chunkNodesVisitedLastFrame} chunkRebuilt=${paintStats.chunkNodesRebuiltLastFrame} " +
+                    "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
+                    "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips"
         )
     }
 }

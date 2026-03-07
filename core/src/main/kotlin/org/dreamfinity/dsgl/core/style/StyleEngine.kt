@@ -39,6 +39,7 @@ object StyleEngine {
         val parentInheritedHash: Int,
         val ancestorSelectorHash: Int,
         val siblingSelectorHash: Int,
+        val rootFontSizePx: Int,
         val viewportWidthPx: Int,
         val viewportHeightPx: Int
     )
@@ -109,6 +110,7 @@ object StyleEngine {
         cacheHits = 0,
         recomputedNodes = 0
     )
+    private const val DEFAULT_ROOT_FONT_SIZE_PX = 16
 
     fun inspectorOverrideTarget(node: DOMNode): Any {
         node.key?.let { return it }
@@ -240,6 +242,7 @@ object StyleEngine {
             inline = node.inlineStyleDeclarations,
             inspector = inspector
         )
+        val rootFontSizePx = rootFontSizeFor(node)
 
         val sources = linkedMapOf<StyleProperty, StylePropertySource>()
         StyleProperty.entries.forEach { property ->
@@ -255,7 +258,14 @@ object StyleEngine {
             val winner = winners[property]
             if (winner != null) {
                 val applied = runCatching {
-                    applyProperty(result, parentComputed, property, winner.expression, variables)
+                    applyProperty(
+                        current = result,
+                        parentComputed = parentComputed,
+                        property = property,
+                        expression = winner.expression,
+                        variables = variables,
+                        rootFontSizePx = rootFontSizePx
+                    )
                 }.onFailure { error ->
                     println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
                 }.getOrNull()
@@ -301,6 +311,7 @@ object StyleEngine {
                 variables = variables,
                 metrics = metrics,
                 parentComputed = null,
+                rootFontSizePx = DEFAULT_ROOT_FONT_SIZE_PX,
                 passMode = StylePassMode.Full
             )
         }
@@ -389,6 +400,7 @@ object StyleEngine {
                 variables = variables,
                 metrics = metrics,
                 parentComputed = null,
+                rootFontSizePx = DEFAULT_ROOT_FONT_SIZE_PX,
                 passMode = StylePassMode.Full
             )
         }
@@ -408,6 +420,7 @@ object StyleEngine {
                 variables = variables,
                 metrics = metrics,
                 parentComputed = subtreeRoot.parent?.appliedComputedStyleSnapshot(),
+                rootFontSizePx = rootFontSizeFor(subtreeRoot),
                 passMode = StylePassMode.Targeted
             )
             flags = NodeApplyFlags(
@@ -424,9 +437,17 @@ object StyleEngine {
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
         parentComputed: ComputedStyle?,
+        rootFontSizePx: Int,
         passMode: StylePassMode
     ): NodeApplyFlags {
-        val nodeResult = applyStyleToNode(root, snapshot, variables, metrics, parentComputed)
+        val nodeResult = applyStyleToNode(
+            node = root,
+            snapshot = snapshot,
+            variables = variables,
+            metrics = metrics,
+            parentComputed = parentComputed,
+            rootFontSizePx = rootFontSizePx
+        )
         var flags = nodeResult.flags
         val canSkipSubtree = passMode == StylePassMode.Targeted &&
             nodeResult.cacheHit &&
@@ -435,6 +456,11 @@ object StyleEngine {
             return flags
         }
         val nodeComputed = root.appliedComputedStyleSnapshot()
+        val nextRootFontSizePx = if (root.parent == null) {
+            nodeComputed?.fontSize ?: rootFontSizePx
+        } else {
+            rootFontSizePx
+        }
         root.children.forEach { child ->
             val childFlags = applyStylesRecursively(
                 root = child,
@@ -442,6 +468,7 @@ object StyleEngine {
                 variables = variables,
                 metrics = metrics,
                 parentComputed = nodeComputed,
+                rootFontSizePx = nextRootFontSizePx,
                 passMode = passMode
             )
             flags = NodeApplyFlags(
@@ -457,7 +484,8 @@ object StyleEngine {
         snapshot: StylesheetSnapshot,
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
-        parentComputed: ComputedStyle?
+        parentComputed: ComputedStyle?,
+        rootFontSizePx: Int
     ): NodeApplyResult {
         metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
@@ -483,6 +511,7 @@ object StyleEngine {
             } else {
                 0
             },
+            rootFontSizePx = rootFontSizePx,
             viewportWidthPx = viewportWidthPx,
             viewportHeightPx = viewportHeightPx
         )
@@ -505,7 +534,8 @@ object StyleEngine {
             defaults = defaults,
             snapshot = snapshot,
             variables = variables,
-            parentComputed = parentComputed
+            parentComputed = parentComputed,
+            rootFontSizePx = rootFontSizePx
         )
         cache[node] = CachedStyle(key = key, style = computed)
         metrics.recomputedNodes += 1
@@ -524,7 +554,8 @@ object StyleEngine {
         defaults: ComputedStyleDefaults,
         snapshot: StylesheetSnapshot,
         variables: Map<String, String>,
-        parentComputed: ComputedStyle?
+        parentComputed: ComputedStyle?,
+        rootFontSizePx: Int
     ): ComputedStyle {
         val candidates = matchingCandidates(node, snapshot.index)
         val winners = resolveCascadeWinners(
@@ -538,7 +569,14 @@ object StyleEngine {
             val winner = winners[property]
             if (winner != null) {
                 val applied = runCatching {
-                    applyProperty(result, parentComputed, property, winner.expression, variables)
+                    applyProperty(
+                        current = result,
+                        parentComputed = parentComputed,
+                        property = property,
+                        expression = winner.expression,
+                        variables = variables,
+                        rootFontSizePx = rootFontSizePx
+                    )
                 }.onFailure { error ->
                     println("[DSGL-Style] Failed to apply '${property.key}': ${error.message}")
                 }.getOrNull()
@@ -656,6 +694,9 @@ object StyleEngine {
             index.idIndex[id]?.let { out.addAll(it) }
         }
         index.typeIndex[node.styleType]?.let { out.addAll(it) }
+        if (node.parent == null) {
+            index.typeIndex[ROOT_SELECTOR_INTERNAL]?.let { out.addAll(it) }
+        }
         node.styleClasses.forEach { className ->
             index.classIndex[className]?.let { out.addAll(it) }
         }
@@ -711,7 +752,13 @@ object StyleEngine {
 
     private fun selectorPartMatches(node: DOMNode, part: StyleSelectorPart): Boolean {
         if (part.id != null && part.id != selectorNodeId(node)) return false
-        if (part.typeName != null && part.typeName != node.styleType) return false
+        part.typeName?.let { typeName ->
+            val typeMatches = when (typeName) {
+                ROOT_SELECTOR_INTERNAL -> node.parent == null
+                else -> typeName == node.styleType
+            }
+            if (!typeMatches) return false
+        }
         if (part.classes.isNotEmpty() && !node.styleClasses.containsAll(part.classes)) return false
         val pseudo = part.pseudoState ?: return true
         return when (pseudo) {
@@ -786,6 +833,16 @@ object StyleEngine {
         return result
     }
 
+    private fun rootFontSizeFor(node: DOMNode): Int {
+        var current: DOMNode = node
+        while (current.parent != null) {
+            current = current.parent!!
+        }
+        return current.appliedComputedStyleSnapshot()?.fontSize
+            ?: current.fontSize
+            ?: DEFAULT_ROOT_FONT_SIZE_PX
+    }
+
     private fun inheritProperty(current: ComputedStyle, parent: ComputedStyle, property: StyleProperty): ComputedStyle {
         return when (property) {
             StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parent.foregroundColor)
@@ -796,6 +853,8 @@ object StyleEngine {
             else -> current
         }
     }
+
+    private const val ROOT_SELECTOR_INTERNAL = "dsgl-root"
 
     private fun inheritedHash(parentComputed: ComputedStyle?): Int {
         if (parentComputed == null) return 0
@@ -813,7 +872,8 @@ object StyleEngine {
         parentComputed: ComputedStyle?,
         property: StyleProperty,
         expression: StyleExpression,
-        variables: Map<String, String>
+        variables: Map<String, String>,
+        rootFontSizePx: Int
     ): ComputedStyle {
         val literal = resolveExpressionToLiteral(expression, variables)
         return when (property) {
@@ -846,7 +906,8 @@ object StyleEngine {
                     fontSize = resolveFontSizePx(
                         fontSizeValue = fontSizeValue,
                         current = current,
-                        parentComputed = parentComputed
+                        parentComputed = parentComputed,
+                        rootFontSizePx = rootFontSizePx
                     ).coerceAtLeast(1),
                     fontSizeValue = fontSizeValue
                 )
@@ -903,7 +964,8 @@ object StyleEngine {
     private fun resolveFontSizePx(
         fontSizeValue: CssLength,
         current: ComputedStyle,
-        parentComputed: ComputedStyle?
+        parentComputed: ComputedStyle?,
+        rootFontSizePx: Int
     ): Int {
         val inheritedFontPx = (
             parentComputed?.fontSize
@@ -915,6 +977,7 @@ object StyleEngine {
             viewportHeightPx = viewportHeightPx.toFloat(),
             containingBlockWidthPx = viewportWidthPx.toFloat(),
             containingBlockHeightPx = viewportHeightPx.toFloat(),
+            rootFontSizePx = rootFontSizePx.toFloat(),
             currentFontSizePx = inheritedFontPx,
             inheritedFontSizePx = inheritedFontPx
         )

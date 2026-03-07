@@ -29,13 +29,11 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
 
     div({
         key = "section.cssCascade"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("CSS-like cascade demo: descendant/child/sibling selectors, specificity, source order, !important, inheritance.")
         text(
@@ -46,7 +44,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
         div({
             key = "section.cssCascade.controls"
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -55,7 +53,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 if (window.cascadeParentDark) "Parent class: dark" else "Parent class: light",
                 {
                     key = "section.cssCascade.toggleParentClass"
-                    style = { width = 132 }
+                    style = { width = 132.px }
                     onMouseClick = { event ->
                         window.cascadeParentDark = !window.cascadeParentDark
                         window.logHook("css.cascade.toggle.parentClass", event, "dark=${window.cascadeParentDark}")
@@ -64,7 +62,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             )
             button(if (window.cascadeRuleAEnabled) "Rule block: A" else "Rule block: B", {
                 key = "section.cssCascade.toggleRuleBlock"
-                style = { width = 108 }
+                style = { width = 108.px }
                 onMouseClick = { event ->
                     window.cascadeRuleAEnabled = !window.cascadeRuleAEnabled
                     window.logHook("css.cascade.toggle.ruleBlock", event, "ruleA=${window.cascadeRuleAEnabled}")
@@ -76,7 +74,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             key = "section.cssCascade.demoRoot"
             className = "cascade-demo-root $parentThemeClass $ruleBlockClass"
             style = {
-                gap = 3
+                gap = 3.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -91,7 +89,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 key = "section.cssCascade.panel"
                 className = "panel"
                 style = {
-                    gap = 2
+                    gap = 2.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -103,7 +101,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 div({
                     key = "section.cssCascade.nestedWrap"
                     style = {
-                        gap = 1
+                        gap = 1.px
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
                     }
@@ -146,7 +144,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
         div({
             key = "section.cssCascade.siblings"
             style = {
-                gap = 3
+                gap = 3.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -158,7 +156,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             div({
                 key = "section.cssCascade.adj.controls"
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -167,7 +165,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                     if (window.cascadeAdjacentSourceEnabled) "Source class: ON" else "Source class: OFF",
                     {
                         key = "section.cssCascade.adj.toggleSource"
-                        style = { width = 118 }
+                        style = { width = 118.px }
                         onMouseClick = { event ->
                             window.cascadeAdjacentSourceEnabled = !window.cascadeAdjacentSourceEnabled
                             window.logHook(
@@ -180,7 +178,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 )
                 button(if (window.cascadeAdjacentSwapOrder) "Order: swapped" else "Order: default", {
                     key = "section.cssCascade.adj.swap"
-                    style = { width = 108 }
+                    style = { width = 108.px }
                     onMouseClick = { event ->
                         window.cascadeAdjacentSwapOrder = !window.cascadeAdjacentSwapOrder
                         window.logHook("css.cascade.adj.swap", event, "swap=${window.cascadeAdjacentSwapOrder}")
@@ -191,7 +189,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 key = "section.cssCascade.adj.demo"
                 className = "cascade-sibling-adj"
                 style = {
-                    gap = 3
+                    gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -222,14 +220,14 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             div({
                 key = "section.cssCascade.gen.controls"
                 style = {
-                    gap = 4
+                    gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
             }) {
                 button("Move warning", {
                     key = "section.cssCascade.gen.moveWarning"
-                    style = { width = 96 }
+                    style = { width = 96.px }
                     onMouseClick = { event ->
                         val size = generalItems.size.coerceAtLeast(1)
                         window.cascadeGeneralWarningIndex =
@@ -243,7 +241,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 })
                 button(if (window.cascadeGeneralInsertExtra) "Extra sibling: ON" else "Extra sibling: OFF", {
                     key = "section.cssCascade.gen.toggleExtra"
-                    style = { width = 118 }
+                    style = { width = 118.px }
                     onMouseClick = { event ->
                         window.cascadeGeneralInsertExtra = !window.cascadeGeneralInsertExtra
                         window.logHook(
@@ -258,7 +256,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 key = "section.cssCascade.gen.demo"
                 className = "cascade-sibling-general"
                 style = {
-                    gap = 3
+                    gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
                 }
@@ -278,7 +276,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             )
             button(if (window.cascadeMixedSpacerEnabled) "Spacer: ON (break +)" else "Spacer: OFF (adjacent)", {
                 key = "section.cssCascade.mixed.toggleSpacer"
-                style = { width = 156 }
+                style = { width = 156.px }
                 onMouseClick = { event ->
                     window.cascadeMixedSpacerEnabled = !window.cascadeMixedSpacerEnabled
                     window.logHook(
@@ -292,7 +290,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 key = "section.cssCascade.mixed.demo"
                 className = "cascade-mixed"
                 style = {
-                    gap = 2
+                    gap = 2.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -311,7 +309,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                     key = "section.cssCascade.mixed.body"
                     className = "body"
                     style = {
-                        gap = 1
+                        gap = 1.px
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
                     }
@@ -325,3 +323,5 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
         }
     }
 }
+
+

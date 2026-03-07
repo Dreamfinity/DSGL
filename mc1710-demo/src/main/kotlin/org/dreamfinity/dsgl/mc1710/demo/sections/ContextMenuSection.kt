@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mc1710.demo.sections
+package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
@@ -52,13 +52,11 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.contextMenu"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("Pseudo filesystem: tile view + context menu + drag/drop")
         text(
@@ -72,7 +70,7 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -90,25 +88,23 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                width = contentWidth - 8
-                height = (contentHeight - 58).coerceAtLeast(80)
-                padding = 3
-                gap = 2
+                width = (contentWidth - 8).px
+                height = ((contentHeight - 58).coerceAtLeast(80)).px
+                padding = 3.px
+                gap = 2.px
                 backgroundColor = 0xFF2A313B.toInt()
-                border(1, 0xFF5B6A7A.toInt())
+                border(1.px, 0xFF5B6A7A.toInt())
             }
         }) {
             div({
                 key = "section.contextMenu.pathbar"
-                style = {
-                    width = contentWidth - 16
-                    padding = 2
-                    gap = 2
+                style = { width = (contentWidth - 16).px
+                    padding = 2.px
+                    gap = 2.px
                     backgroundColor = 0xFF25303A.toInt()
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
-                    border(1, 0xFF4F6175.toInt())
-                }
+                    border(1.px, 0xFF4F6175.toInt()) }
             }) {
                 button("<", {
                     key = "section.contextMenu.path.back"
@@ -176,7 +172,7 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
                                 isCurrent -> 0xFF364A5E.toInt()
                                 else -> 0xFF2B3A4A.toInt()
                             }
-                            border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
+                            border(1.px, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
                         }
                         applyDroppable(breadcrumbDrop)
                     })
@@ -227,29 +223,25 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             val listNode = div({
                 key = "section.contextMenu.list"
-                style = {
-                    width = listWidth
-                    gap = 8
-                    padding = 4
+                style = { width = listWidth.px
+                    gap = 8.px
+                    padding = 4.px
                     backgroundColor =
                         if (window.contextMenuDragHoverDirectoryId == window.contextMenuCurrentDirectoryId) {
-                            0xFF2F4358.toInt()
-                        } else {
+                            0xFF2F4358.toInt() } else {
                             0xFF2B343F.toInt()
                         }
-                    border(1, 0xFF4F6175.toInt())
+                    border(1.px, 0xFF4F6175.toInt())
                     display = Display.Grid
                     this.gridColumns = gridColumns
-                    gap = 4
+                    gap = 4.px
                 }
                 applyDroppable(listDroppable)
             }) {
                 if (entries.isEmpty()) {
                     div({
-                        style = {
-                            width = listWidth - 8
-                            padding = 2
-                        }
+                        style = { width = (listWidth - 8).px
+                            padding = 2.px }
                     }) {
                         text(
                             "Folder is empty. Right-click to create file/folder.",
@@ -353,7 +345,7 @@ private fun UiScope.contextMenuEntryTile(
                 isSelected -> 0xFF3A5168.toInt()
                 else -> 0xFF33414E.toInt()
             }
-            border(1, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
+            border(1.px, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
             display = Display.Flex
             flexDirection = FlexDirection.Column
             alignItems = AlignItems.Center
@@ -365,10 +357,8 @@ private fun UiScope.contextMenuEntryTile(
         }
     }) {
         img(iconURL, {
-            style = {
-                width = TILE_ICON_SIZE
-                height = TILE_ICON_SIZE
-            }
+            style = { width = TILE_ICON_SIZE.px
+                height = TILE_ICON_SIZE.px }
         })
         if (isEditingName) {
             input(
@@ -502,3 +492,5 @@ private fun buildEntryMenu(window: ShowcaseWindow, file: ShowcaseWindow.ContextM
             onClick { window.contextMenuCopyFile(file) }
         }
     }
+
+

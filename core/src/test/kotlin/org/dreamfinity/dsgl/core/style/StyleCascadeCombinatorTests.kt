@@ -271,6 +271,40 @@ class StyleCascadeCombinatorTests {
         assertEquals(canonical.color, alias.color)
     }
 
+    @Test
+    fun `universal selector applies to all nodes`() {
+        installStylesheet(
+            """
+            * { align: end; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val child = ContainerNode(key = "child").applyParent(root)
+        val leaf = TextNode(TextSource.Static("leaf"), key = "leaf").applyParent(child)
+
+        StyleEngine.applyStylesRecursively(root)
+        assertEquals(StyleAlign.END, root.align)
+        assertEquals(StyleAlign.END, child.align)
+        assertEquals(StyleAlign.END, leaf.align)
+    }
+
+    @Test
+    fun `root pseudo selector applies to root node`() {
+        installStylesheet(
+            """
+            :root { align: end; }
+            """.trimIndent()
+        )
+
+        val root = ContainerNode(key = "root")
+        val child = ContainerNode(key = "child").applyParent(root)
+
+        StyleEngine.applyStylesRecursively(root)
+        assertEquals(StyleAlign.END, root.align)
+        assertEquals(StyleAlign.START, child.align)
+    }
+
     private fun installStylesheet(contents: String) {
         val dir = Files.createTempDirectory("dsgl-style-cascade-test").toFile()
         dir.resolve("test.dss").writeText(contents)

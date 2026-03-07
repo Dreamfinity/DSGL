@@ -17,14 +17,12 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
     div({
         key = "section.inputEvents"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
 
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("HTML-like events demo: onFocus/onBlur/onInput/onChange")
         text(
@@ -34,26 +32,24 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             style = {
-                gap = 6
+                gap = 6.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             div({
                 key = "inputEvents.left"
-                style = {
-                    width = halfWidth
-                    gap = 3
+                style = { width = halfWidth.px
+                    gap = 3.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column
-                }
+                    flexDirection = FlexDirection.Column }
             }) {
                 text("Text input")
                 input(
                     InputType.Text(value = window.inputEventTextValue, placeholder = "Type then blur"),
                     {
                         key = "inputEvents.text"
-                        style = { width = halfWidth - 6 }
+                        style = { width = (halfWidth - 6).px }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("text", "focus", window.inputEventTextValue, event)
                         }
@@ -75,10 +71,8 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 textarea({
                     placeholder = "Multiline event sample"
                     key = "inputEvents.textarea"
-                    style = {
-                        width = halfWidth - 6
-                        height = 46
-                    }
+                    style = { width = (halfWidth - 6).px
+                        height = 46.px }
                     value = window.inputEventTextareaValue
                     onFocusGain = { event: FocusGainEvent ->
                         window.recordInputEvent("textarea", "focus", window.inputEventTextareaValue, event)
@@ -99,12 +93,10 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
             div({
                 key = "inputEvents.right"
-                style = {
-                    width = halfWidth
-                    gap = 3
+                style = { width = halfWidth.px
+                    gap = 3.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Column
-                }
+                    flexDirection = FlexDirection.Column }
             }) {
                 text("Checkbox")
                 input(
@@ -116,7 +108,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.checkbox"
-                        style = { width = halfWidth - 6 }
+                        style = { width = (halfWidth - 6).px }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("checkbox", "focus", window.checkboxValueString(), event)
                         }
@@ -142,7 +134,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.radio"
-                        style = { width = halfWidth - 6 }
+                        style = { width = (halfWidth - 6).px }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("radio", "focus", window.inputEventRadioValue ?: "", event)
                         }
@@ -170,7 +162,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     ),
                     {
                         key = "inputEvents.range"
-                        style = { width = halfWidth - 6 }
+                        style = { width = (halfWidth - 6).px }
                         onFocusGain = { event: FocusGainEvent ->
                             window.recordInputEvent("range", "focus", window.inputEventRangeValue.toString(), event)
                         }
@@ -196,13 +188,13 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             button("Clear Log", {
-                style = { width = 62 }
+                style = { width = 62.px }
                 onMouseClick = { window.clearInputEventLog() }
             })
             text(
@@ -213,13 +205,11 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
 
         div({
             key = "inputEvents.logPanel"
-            style = {
-                width = contentWidth - 8
-                height = 54
+            style = { width = (contentWidth - 8).px
+                height = 54.px
                 backgroundColor = DEMO_SURFACE_ALT
-                padding = 3
-                border(1, 0xFF6A7785.toInt())
-            }
+                padding = 3.px
+                border(1.px, 0xFF6A7785.toInt()) }
         }) {
             if (window.inputEventLogEntries.isEmpty()) {
                 text("No input events yet.", { style = { color = DEMO_MUTED } })
@@ -231,3 +221,4 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
         }
     }
 }
+

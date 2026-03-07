@@ -54,7 +54,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
     val minWrapWidth = 120
     val maxWrapWidth = (contentWidth - 8).coerceAtLeast(minWrapWidth)
     val panelWidth = window.msdfWrapWidth.toInt().coerceIn(minWrapWidth, maxWrapWidth)
-    val opacity = (window.msdfOpacityPercent.toFloat() / 100f).coerceIn(0f, 1f)
+    val textOpacity = (window.msdfOpacityPercent.toFloat() / 100f).coerceIn(0f, 1f)
     val fontSize = window.msdfFontSizePx.toInt().coerceIn(6, 48)
     val selectedFontIndex = window.msdfFontIndex.coerceIn(0, (selectableFonts.size - 1).coerceAtLeast(0))
     val selectedFont = selectableFonts[selectedFontIndex]
@@ -64,13 +64,11 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
     div({
         key = "section.msdfFonts"
-        style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
+        style = { width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
+            flexDirection = FlexDirection.Column }
     }) {
         text("MSDF Fonts")
         text(
@@ -81,19 +79,19 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
         }) {
             button("Font: $fontId", {
-                style = { width = 82 }
+                style = { width = 82.px }
                 onMouseClick = {
                     window.msdfFontIndex = (window.msdfFontIndex + 1) % selectableFonts.size.coerceAtLeast(1)
                 }
             })
             button("Color", {
-                style = { width = 58 }
+                style = { width = 58.px }
                 onMouseClick = {
                     window.msdfColorIndex = (window.msdfColorIndex + 1) % COLOR_PRESETS.size
                 }
@@ -105,7 +103,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                     "Formatting OFF"
                 },
                 {
-                    style = { width = 104 }
+                    style = { width = 104.px }
                     onMouseClick = {
                         window.msdfParseMinecraftFormatting = !window.msdfParseMinecraftFormatting
                         window.appendInfo("MSDF formatting=${window.msdfParseMinecraftFormatting}")
@@ -119,7 +117,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
                     "Guides OFF"
                 },
                 {
-                    style = { width = 84 }
+                    style = { width = 84.px }
                     onMouseClick = {
                         window.msdfShowBaselineGuides = !window.msdfShowBaselineGuides
                         MsdfRuntimeDebugSettings.decorationGuidesEnabled = window.msdfShowBaselineGuides
@@ -142,7 +140,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.opacity"
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.msdfOpacityPercent
                     window.msdfOpacityPercent = next.coerceIn(0, 100)
@@ -158,7 +156,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.fontSize"
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.msdfFontSizePx
                     window.msdfFontSizePx = next.coerceIn(6, 48)
@@ -174,7 +172,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             ),
             {
                 key = "msdf.wrapWidth"
-                style = { width = contentWidth - 8 }
+                style = { width = (contentWidth - 8).px }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
                     window.msdfWrapWidth = next.coerceIn(minWrapWidth.toLong(), maxWrapWidth.toLong())
@@ -183,7 +181,7 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
         )
 
         text(
-            "fontId=$fontId source=${selectedFont.source.name.lowercase()} fontSize=$fontSize opacity=$opacity panelWidth=$panelWidth formatting=${formattingMode.name.lowercase()} guides=${window.msdfShowBaselineGuides}",
+            "fontId=$fontId source=${selectedFont.source.name.lowercase()} fontSize=$fontSize opacity=$textOpacity panelWidth=$panelWidth formatting=${formattingMode.name.lowercase()} guides=${window.msdfShowBaselineGuides}",
             { style = { this.color = DEMO_MUTED } }
         )
         text(
@@ -213,23 +211,21 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         div({
             key = "msdf.panel"
-            style = {
-                width = panelWidth
-                padding = 4
-                gap = 2
+            style = { width = panelWidth.px
+                padding = 4.px
+                gap = 2.px
                 backgroundColor = 0xFF233040.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1, 0xFF5F7288.toInt())
-            }
+                border(1.px, 0xFF5F7288.toInt()) }
 
         }) {
             text("Header text", {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -237,9 +233,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text("Style only: bold + italic", {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     fontWeight = org.dreamfinity.dsgl.core.style.FontWeight.Bold
                     fontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Italic
                 }
@@ -247,63 +243,63 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text("Style only: underline + strikethrough", {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textDecoration = org.dreamfinity.dsgl.core.style.TextDecoration.UnderlineStrikethrough
                 }
             })
             text("Style only: obfuscated text sample 12345", {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     obfuscated = true
                 }
             })
             text(LONG_CH_SENTENCE, {
                 style = {
                     fontId("Noto_Sans_SC/NotoSansSC")
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_CH_SENTENCE, {
                 style = {
                     fontId("Noto_Sans_TC/NotoSansTC")
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_JP_SENTENCE, {
                 style = {
                     fontId("Noto_Sans_JP/NotoSansJP")
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_KR_SENTENCE, {
                 style = {
                     fontId("Noto_Sans_KR/NotoSansKR")
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(SAMPLE_PARAGRAPH, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -311,9 +307,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text(SAMPLE_WORD, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -321,9 +317,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text(SAMPLE_SPACES_A, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -331,9 +327,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text(SAMPLE_SPACES_B, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -344,9 +340,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text(SAMPLE_MC_COLORS, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -354,9 +350,9 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
             text(SAMPLE_MC_FLAGS, {
                 style = {
                     fontId(fontId)
-                    fontSize(fontSize)
+                    fontSize(fontSize.px)
                     foregroundColor(textColor)
-                    this.opacity = opacity
+                    this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
                 }
@@ -364,3 +360,5 @@ fun UiScope.msdfFontsSection(window: ShowcaseWindow, contentWidth: Int, contentH
         }
     }
 }
+
+

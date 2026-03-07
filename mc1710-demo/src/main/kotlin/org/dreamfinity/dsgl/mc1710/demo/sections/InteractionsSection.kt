@@ -13,10 +13,9 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
     div({
         key = "section.interactions"
         style = {
-            width = contentWidth
-            height = contentHeight
-            gap = 4
-
+            width = contentWidth.px
+            height = contentHeight.px
+            gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
@@ -73,11 +72,11 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
                 window.logHook("onMouseWheel", event)
             }
             style = {
-                width = contentWidth - 8
-                height = 52
-                padding = 4
+                width = (contentWidth - 8).px
+                height = 52.px
+                padding = 4.px
                 backgroundColor = DEMO_SURFACE_ALT
-                border(1, 0xFF6E7A89.toInt())
+                border(1.px, 0xFF6E7A89.toInt())
             }
         }) {
             text("Move, click, drag and wheel here")
@@ -89,7 +88,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -97,7 +96,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             input(
                 InputType.Text(placeholder = "onKeyDown/onKeyUp"), {
                     key = "interactions.key.downUp"
-                    style = { width = (contentWidth / 2) - 6 }
+                    style = { width = ((contentWidth / 2) - 6).px }
                     onKeyDown = { event ->
                         window.keyDownCount += 1
                         if (event.keyCode == KeyCodes.ENTER) {
@@ -116,7 +115,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             input(
                 InputType.Text(placeholder = "onKeyPressed/onKeyReleased"), {
                     key = "interactions.key.aliases"
-                    style = { width = (contentWidth / 2) - 6 }
+                    style = { width = ((contentWidth / 2) - 6).px }
                     onKeyPressed = { event ->
                         window.keyPressedCount += 1
                         window.logHook("onKeyPressed", event)
@@ -136,7 +135,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
 
         div({
             style = {
-                gap = 4
+                gap = 4.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -144,7 +143,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             button(
                 if (window.cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF",
                 {
-                    style = { width = 126 }
+                    style = { width = 126.px }
                     onMouseClick = {
                         window.cancellationEnabled = !window.cancellationEnabled
                         window.appendInfo("Interactions: cancellation=${window.cancellationEnabled}")
@@ -164,10 +163,10 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
                 window.logHook("parent.onMouseClick", event)
             }
             style = {
-                width = contentWidth - 8
-                padding = 3
+                width = (contentWidth - 8).px
+                padding = 3.px
                 backgroundColor = 0xFF353D46.toInt()
-                border(1, 0xFF708090.toInt())
+                border(1.px, 0xFF708090.toInt())
             }
         }) {
             text("Parent click area")
@@ -185,10 +184,10 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
                     )
                 }
                 style = {
-                    width = 118
-                    padding = 3
+                    width = 118.px
+                    padding = 3.px
                     backgroundColor = 0xFF4D5560.toInt()
-                    border(1, 0xFF9AA5B1.toInt())
+                    border(1.px, 0xFF9AA5B1.toInt())
                 }
             }) {
                 text("Child area")
@@ -196,3 +195,4 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
         }
     }
 }
+
