@@ -229,6 +229,18 @@ object StyleEngine {
         return inspectorOverrideFor(inspectorOverrideTarget(node), property)
     }
 
+    fun resolveInspectorExpression(expression: StyleExpression): Result<String> {
+        return runCatching {
+            val snapshot = StylesheetManager.snapshot()
+            val variables = resolvedVariables(snapshot)
+            resolveExpressionToLiteral(expression, variables)
+        }
+    }
+
+    fun resolveInspectorVariable(name: String): Result<String> {
+        return resolveInspectorExpression(StyleExpression.VariableRef(name))
+    }
+
     fun inspect(node: DOMNode): StyleInspection {
         val snapshot = StylesheetManager.snapshot()
         val defaults = node.captureStyleDefaults()

@@ -381,6 +381,11 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
+            if (inspector.active && inspector.handleKeyDown(keyCode, keyChar)) {
+                logInspectorInput("keyboard down consumed by inspector editor keyCode=$keyCode")
+                mc.dispatchKeypresses()
+                return
+            }
             val keyboardBlocked = inspector.active && (
                     inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
                             inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked

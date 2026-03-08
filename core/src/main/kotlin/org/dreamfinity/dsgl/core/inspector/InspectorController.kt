@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.inspector
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
@@ -23,7 +24,12 @@ class InspectorController {
         CycleNext,
         Decrement,
         Increment,
-        ResetProperty
+        ResetProperty,
+        BeginTextEdit,
+        ToggleValueSelect,
+        SelectValueOption,
+        ToggleUnitSelect,
+        SelectUnitOption
     }
 
     private enum class ActionKind {
@@ -42,7 +48,8 @@ class InspectorController {
         val childIndex: Int = -1,
         val property: StyleProperty? = null,
         val editOperation: EditOperation? = null,
-        val step: Float = 1f
+        val step: Float = 1f,
+        val payload: String? = null
     )
 
     private data class SelectionStyleCache(
@@ -71,7 +78,8 @@ class InspectorController {
         ResizeTopRight,
         ResizeBottomLeft,
         ResizeBottomRight,
-        MinimizedMove
+        MinimizedMove,
+        ScrollbarThumb
     }
 
     var active: Boolean = false
@@ -113,7 +121,7 @@ class InspectorController {
     private val panelActions: MutableList<PanelAction> = ArrayList()
     private var cachedStyle: SelectionStyleCache? = null
     private var styleEditorError: String? = null
-    private var expandedRect: Rect = Rect(22, 18, 360, 280)
+    private var expandedRect: Rect = Rect(22, 18, 760, 680)
     private var minimizedPosX: Int = 22
     private var minimizedPosY: Int = 18
     private var dragMode: DragMode = DragMode.None
@@ -130,6 +138,9 @@ class InspectorController {
     private var hoverPickEnabled: Boolean = true
     private var panelScrollY: Int = 0
     private var panelContentHeight: Int = 0
+    private var scrollbarTrackRect: Rect = Rect(0, 0, 0, 0)
+    private var scrollbarThumbRect: Rect = Rect(0, 0, 0, 0)
+    private var scrollbarDragOffsetY: Int = 0
     private var hoverDirty: Boolean = true
     private var lastHoverMouseX: Int = Int.MIN_VALUE
     private var lastHoverMouseY: Int = Int.MIN_VALUE
@@ -137,13 +148,26 @@ class InspectorController {
     private var tooltipNodeRef: DOMNode? = null
     private var tooltipNodeBounds: Rect = Rect(0, 0, 0, 0)
     private var tooltipLabelCache: String = ""
+    private var activeEditProperty: StyleProperty? = null
+    private var activeEditBuffer: String = ""
+    private var activeEditUnit: CssUnit? = null
+    private var activeEditIsNumeric: Boolean = false
+    private var openValueSelectProperty: StyleProperty? = null
+    private var openUnitSelectProperty: StyleProperty? = null
+    private var variableTooltipText: String? = null
+    private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
 
     private val minPanelWidth: Int = 240
     private val minPanelHeight: Int = 160
-    private val minChipWidth: Int = 160
-    private val chipHeight: Int = 26
+    private val minChipWidth: Int = 260
+    private val chipHeight: Int = 56
     private val viewportMargin: Int = 2
     private val resizeHandleSize: Int = 8
+    private val titleFontSizePx: Int = parseLengthPxInt("36px", allowNegative = false)
+    private val textFontSizePx: Int = parseLengthPxInt("24px", allowNegative = false)
+    private val secondaryFontSizePx: Int = parseLengthPxInt("24px", allowNegative = false)
+    private val lineHeightPx: Int = (textFontSizePx + 8).coerceAtLeast(28)
+    private val rowHeightPx: Int = (textFontSizePx + 10).coerceAtLeast(32)
 
     fun toggle() {
         active = !active
@@ -281,6 +305,49 @@ class InspectorController {
         return true
     }
 
+    fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
+        if (!active) return false
+        if (activeEditProperty == null) {
+            if (keyCode == KeyCodes.ESCAPE) {
+                openValueSelectProperty = null
+                openUnitSelectProperty = null
+                variableTooltipText = null
+                return true
+            }
+            return false
+        }
+        when (keyCode) {
+            KeyCodes.ESCAPE -> {
+                activeEditProperty = null
+                activeEditBuffer = ""
+                styleEditorError = null
+                return true
+            }
+
+            KeyCodes.ENTER -> {
+                commitActiveTextEdit()
+                return true
+            }
+
+            KeyCodes.BACKSPACE -> {
+                if (activeEditBuffer.isNotEmpty()) {
+                    activeEditBuffer = activeEditBuffer.dropLast(1)
+                }
+                return true
+            }
+
+            KeyCodes.DELETE -> {
+                activeEditBuffer = ""
+                return true
+            }
+        }
+        if (keyChar >= ' ' && !Character.isISOControl(keyChar)) {
+            activeEditBuffer += keyChar
+            return true
+        }
+        return false
+    }
+
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         if (!active) return false
         if (button != MouseButton.LEFT) {
@@ -288,6 +355,7 @@ class InspectorController {
         }
         this.mouseX = mouseX
         this.mouseY = mouseY
+        variableTooltipText = null
         if (panelState == InspectorPanelState.Minimized) {
             if (minimizedBounds.contains(mouseX, mouseY)) {
                 startMinimizedMoveDrag(mouseX, mouseY)
@@ -300,9 +368,14 @@ class InspectorController {
             return false
         }
 
+        if (startScrollbarDrag(mouseX, mouseY)) {
+            return true
+        }
         if (resolvePanelAction(mouseX, mouseY)) {
             return true
         }
+        openValueSelectProperty = null
+        openUnitSelectProperty = null
         val resizeMode = resolveResizeDragMode(mouseX, mouseY)
         if (resizeMode != DragMode.None) {
             startExpandedDrag(resizeMode, mouseX, mouseY)
@@ -312,7 +385,8 @@ class InspectorController {
             startExpandedDrag(DragMode.Move, mouseX, mouseY)
             return true
         }
-        if (panelBounds.contains(mouseX, mouseY)) {
+        val hitPanel = if (panelBounds.width > 0 && panelBounds.height > 0) panelBounds else expandedRect
+        if (hitPanel.contains(mouseX, mouseY)) {
             return true
         }
         if (mode == InspectorMode.Pick) {
@@ -333,6 +407,9 @@ class InspectorController {
         dragMode = DragMode.None
         dragMoved = false
         if (!wasDragging) return false
+        if (endedMode == DragMode.ScrollbarThumb) {
+            return true
+        }
         if (endedMode == DragMode.MinimizedMove &&
             clickLike &&
             panelState == InspectorPanelState.Minimized &&
@@ -362,6 +439,8 @@ class InspectorController {
             DragMode.ResizeTopRight,
             DragMode.ResizeBottomLeft,
             DragMode.ResizeBottomRight -> updateExpandedDrag(mouseX, mouseY, viewportWidth, viewportHeight)
+
+            DragMode.ScrollbarThumb -> updateScrollbarDrag(mouseY)
             DragMode.None -> Unit
         }
     }
@@ -396,6 +475,7 @@ class InspectorController {
             appendMinimizedPanel(viewportWidth, viewportHeight, out)
         } else {
             appendPanel(currentRoot, viewportWidth, viewportHeight, out)
+            appendVariableTooltip(viewportWidth, viewportHeight, out)
         }
         if (hoverPickEnabled) {
             appendCursorTooltip(viewportWidth, viewportHeight, out)
@@ -434,6 +514,17 @@ class InspectorController {
         dragMoved = false
         panelScrollY = 0
         panelContentHeight = 0
+        scrollbarTrackRect = Rect(0, 0, 0, 0)
+        scrollbarThumbRect = Rect(0, 0, 0, 0)
+        scrollbarDragOffsetY = 0
+        activeEditProperty = null
+        activeEditBuffer = ""
+        activeEditUnit = null
+        activeEditIsNumeric = false
+        openValueSelectProperty = null
+        openUnitSelectProperty = null
+        variableTooltipText = null
+        variableTooltipRect = Rect(0, 0, 0, 0)
     }
 
     private fun rebindSelection() {
@@ -522,12 +613,41 @@ class InspectorController {
         if (!hoverPickEnabled) return
         val node = hoveredNode ?: return
         val label = resolveTooltipLabel(node)
-        val boxW = (label.length * 6 + 8).coerceIn(96, viewportWidth - 8)
-        val boxH = 14
+        val boxW = (label.length * (secondaryFontSizePx / 2) + 18).coerceIn(140, viewportWidth - 8)
+        val boxH = (secondaryFontSizePx + 10).coerceAtLeast(26)
         val tooltipRect = resolveTooltipRect(viewportWidth, viewportHeight, boxW, boxH)
         addFill(out, tooltipRect, 0xDD11151A.toInt())
         addOutline(out, tooltipRect, 0xCC3F4A57.toInt())
-        out += RenderCommand.DrawText(label, tooltipRect.x + 4, tooltipRect.y + 3, 0xFFE6EDF6.toInt())
+        out += RenderCommand.DrawText(
+            text = label,
+            x = tooltipRect.x + 4,
+            y = tooltipRect.y + 3,
+            color = 0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+    }
+
+    private fun appendVariableTooltip(
+        viewportWidth: Int,
+        viewportHeight: Int,
+        out: MutableList<RenderCommand>
+    ) {
+        val text = variableTooltipText ?: return
+        var rect = variableTooltipRect
+        rect = if (rect.width <= 0 || rect.height <= 0) {
+            resolveTooltipRect(viewportWidth, viewportHeight, 280, lineHeightPx + 10)
+        } else {
+            clampTooltipRect(rect.x, rect.y, rect.width, rect.height, viewportWidth, viewportHeight)
+        }
+        addFill(out, rect, 0xEE141A22.toInt())
+        addOutline(out, rect, 0xCC60758F.toInt())
+        out += RenderCommand.DrawText(
+            text = ellipsize(text, 54),
+            x = rect.x + 6,
+            y = rect.y + 4,
+            color = 0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
     }
 
     private fun resolveTooltipLabel(node: DOMNode): String {
@@ -553,50 +673,93 @@ class InspectorController {
         minimizedBounds = Rect(0, 0, 0, 0)
         contentBounds = Rect(0, 0, 0, 0)
         panelActions.clear()
+        variableTooltipText = null
+        variableTooltipRect = Rect(0, 0, 0, 0)
 
         addFill(out, panelBounds, 0xE0141820.toInt())
         addOutline(out, panelBounds, 0xCC425062.toInt())
 
-        val headerRect = Rect(clamped.x + 6, clamped.y + 5, clamped.width - 12, 14)
+        val headerRect =
+            Rect(clamped.x + 6, clamped.y + 5, clamped.width - 12, (titleFontSizePx + 16).coerceAtLeast(44))
         headerBounds = headerRect
         addFill(out, headerRect, 0x222D3846)
         addOutline(out, headerRect, 0x553F4A57)
         val pickOn = mode == InspectorMode.Pick
         val selectedShort = selectedNode?.key?.toString()?.take(18) ?: "none"
-        appendPanelLine(
-            out,
-            headerRect.x + 4,
-            headerRect.y + 2,
-            "Inspector Pick:${if (pickOn) "ON" else "OFF"} Sel:$selectedShort"
+        out += RenderCommand.DrawText(
+            text = "Inspector  Pick:${if (pickOn) "ON" else "OFF"}  Sel:$selectedShort",
+            x = headerRect.x + 8,
+            y = headerRect.y + 7,
+            color = 0xFFE6EDF6.toInt(),
+            fontSize = titleFontSizePx
         )
-        val pickRect = Rect(headerRect.x + headerRect.width - 120, headerRect.y + 2, 82, 10)
+        val headerButtonHeight = (secondaryFontSizePx + 10).coerceAtLeast(26)
+        val headerButtonY = headerRect.y + ((headerRect.height - headerButtonHeight) / 2)
+        val minimizeRect = Rect(headerRect.x + headerRect.width - 96, headerButtonY, 86, headerButtonHeight)
+        val pickRect = Rect(headerRect.x + headerRect.width - 264, headerButtonY, 160, headerButtonHeight)
         addFill(out, pickRect, if (pickOn) 0x33599F5D else 0x3346596E)
         addOutline(out, pickRect, if (pickOn) 0x8896D49A.toInt() else 0x775E738C)
-        appendPanelLine(out, pickRect.x + 3, pickRect.y + 1, "Select elem")
+        out += RenderCommand.DrawText(
+            "Select Element",
+            pickRect.x + 8,
+            pickRect.y + 4,
+            0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
         panelActions += PanelAction(pickRect, ActionKind.TogglePick)
-        val minimizeRect = Rect(headerRect.x + headerRect.width - 32, headerRect.y + 2, 28, 10)
         addFill(out, minimizeRect, 0x3346596E)
         addOutline(out, minimizeRect, 0x775E738C)
-        appendPanelLine(out, minimizeRect.x + 5, minimizeRect.y + 1, "Min")
+        out += RenderCommand.DrawText(
+            "Minimize",
+            minimizeRect.x + 8,
+            minimizeRect.y + 4,
+            0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
         panelActions += PanelAction(minimizeRect, ActionKind.Minimize)
 
         val resizeHandle = Rect(clamped.x + clamped.width - 10, clamped.y + clamped.height - 10, 8, 8)
         addFill(out, resizeHandle, 0x55748AA1)
         addOutline(out, resizeHandle, 0xAA90A7BF.toInt())
 
-        val bodyRect = Rect(clamped.x + 6, clamped.y + 24, clamped.width - 12, (clamped.height - 28).coerceAtLeast(24))
+        val bodyTop = headerRect.y + headerRect.height + 6
+        val bodyRect = Rect(
+            clamped.x + 6,
+            bodyTop,
+            clamped.width - 12,
+            (clamped.height - (bodyTop - clamped.y) - 4).coerceAtLeast(24)
+        )
         contentBounds = bodyRect
         panelScrollY = panelScrollY.coerceIn(0, maxOf(0, panelContentHeight - bodyRect.height))
-        val maxChars = ((bodyRect.width - 12) / 6).coerceAtLeast(8)
+        val maxChars = estimateMaxChars(bodyRect.width - 12, textFontSizePx)
 
         addFill(out, bodyRect, 0x18212C39)
         out += RenderCommand.PushClip(bodyRect.x, bodyRect.y, bodyRect.width, bodyRect.height)
 
         var y = bodyRect.y
         y = appendPanelLine(out, bodyRect, y, "F8 toggle, F9 mode, Esc cancel pick", maxChars, panelScrollY)
-        y = appendPanelLine(out, bodyRect, y, "Hovered: ${hoveredNode?.let { nodeLabel(it) } ?: "none"}", maxChars, panelScrollY)
-        y = appendPanelLine(out, bodyRect, y, "Selected: ${selectedNode?.let { nodeLabel(it) } ?: "none"}", maxChars, panelScrollY)
-        y = appendPanelLine(out, bodyRect, y, "Inspector handled last: $lastHandledPointerEvent", maxChars, panelScrollY)
+        y = appendPanelLine(
+            out,
+            bodyRect,
+            y,
+            "Hovered: ${hoveredNode?.let { nodeLabel(it) } ?: "none"}",
+            maxChars,
+            panelScrollY)
+        y = appendPanelLine(
+            out,
+            bodyRect,
+            y,
+            "Selected: ${selectedNode?.let { nodeLabel(it) } ?: "none"}",
+            maxChars,
+            panelScrollY)
+        y = appendPanelLine(
+            out,
+            bodyRect,
+            y,
+            "Inspector handled last: $lastHandledPointerEvent",
+            maxChars,
+            panelScrollY
+        )
         y = appendPanelLine(out, bodyRect, y, "Pointer over Inspector: $pointerOverInspectorUi", maxChars, panelScrollY)
         y = appendPanelLine(out, bodyRect, y, "Hover pick enabled: $hoverPickEnabled", maxChars, panelScrollY)
         y += 2
@@ -634,12 +797,18 @@ class InspectorController {
 
         val parent = selected.parent
         if (parent != null) {
-            val row = Rect(clamped.x + 8, y - panelScrollY, clamped.width - 16, 10)
+            val row = Rect(clamped.x + 8, y - panelScrollY, clamped.width - 16, rowHeightPx)
             addFill(out, row, 0x222D3846)
             addOutline(out, row, 0x553F4A57)
-            appendPanelLine(out, row.x + 3, row.y + 1, "[Parent] ${nodeLabel(parent)}")
+            out += RenderCommand.DrawText(
+                "[Parent] ${nodeLabel(parent)}",
+                row.x + 8,
+                row.y + 4,
+                0xFFDCE5EF.toInt(),
+                fontSize = secondaryFontSizePx
+            )
             panelActions += PanelAction(row, ActionKind.Parent)
-            y += 11
+            y += rowHeightPx + 2
         }
 
         val children = selected.children.filter { it.display != Display.None }
@@ -647,12 +816,18 @@ class InspectorController {
             y = appendPanelLine(out, bodyRect, y, "Children:", maxChars, panelScrollY)
             for (index in children.indices) {
                 val child = children[index]
-                val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, 10)
+                val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, rowHeightPx)
                 addFill(out, row, 0x1E263241)
                 addOutline(out, row, 0x55394654)
-                appendPanelLine(out, row.x + 3, row.y + 1, "[$index] ${nodeLabel(child)}")
+                out += RenderCommand.DrawText(
+                    "[$index] ${nodeLabel(child)}",
+                    row.x + 8,
+                    row.y + 4,
+                    0xFFDCE5EF.toInt(),
+                    fontSize = secondaryFontSizePx
+                )
                 panelActions += PanelAction(row, ActionKind.Child, index)
-                y += 11
+                y += rowHeightPx + 2
             }
         }
 
@@ -694,11 +869,22 @@ class InspectorController {
         val badge = if (mode == InspectorMode.Pick) "[Pick]" else "[Locked]"
         val selectedShort = selectedNode?.key?.toString()?.let { " $it" } ?: ""
         val title = "Inspector $badge$selectedShort"
-        val maxChars = ((chipRect.width - 12) / 6).coerceAtLeast(4)
+        val maxChars = estimateMaxChars(chipRect.width - 12, secondaryFontSizePx)
         val lines = wrapMinimizedLabel(title, maxChars, maxLines = 2)
-        val startY = if (lines.size == 1) chipRect.y + 8 else chipRect.y + 4
+        val compactLineHeight = (secondaryFontSizePx + 4).coerceAtLeast(20)
+        val startY = if (lines.size == 1) {
+            chipRect.y + ((chipRect.height - compactLineHeight) / 2)
+        } else {
+            chipRect.y + ((chipRect.height - compactLineHeight * lines.size) / 2)
+        }
         lines.forEachIndexed { index, line ->
-            out += RenderCommand.DrawText(line, chipRect.x + 6, startY + index * 9, 0xFFE6EDF6.toInt())
+            out += RenderCommand.DrawText(
+                text = line,
+                x = chipRect.x + 8,
+                y = startY + index * compactLineHeight,
+                color = 0xFFE6EDF6.toInt(),
+                fontSize = secondaryFontSizePx
+            )
         }
     }
 
@@ -737,7 +923,8 @@ class InspectorController {
             StyleProperty.BACKGROUND_COLOR to (computed.backgroundColor?.let(::colorLabel) ?: "none"),
             StyleProperty.FOREGROUND_COLOR to colorLabel(computed.foregroundColor),
             StyleProperty.FONT_ID to (computed.fontId ?: "minecraft"),
-            StyleProperty.FONT_SIZE to (computed.fontSizeValue?.toCssLiteral() ?: (computed.fontSize?.let(::pxLiteral) ?: "auto")),
+            StyleProperty.FONT_SIZE to (computed.fontSizeValue?.toCssLiteral() ?: (computed.fontSize?.let(::pxLiteral)
+                ?: "auto")),
             StyleProperty.FONT_WEIGHT to computed.fontWeight.name.lowercase(),
             StyleProperty.FONT_STYLE to computed.fontStyle.name.lowercase(),
             StyleProperty.TEXT_DECORATION to computed.textDecoration.name,
@@ -799,7 +986,7 @@ class InspectorController {
                 val property = action.property
                 val operation = action.editOperation
                 if (selected != null && property != null && operation != null) {
-                    applyStyleEdit(selected, property, operation, action.step)
+                    applyStyleEdit(selected, property, operation, action.step, action.payload)
                 }
                 mode = InspectorMode.Locked
             }
@@ -885,17 +1072,30 @@ class InspectorController {
             )
         }
 
-        val resetRect = Rect(rowLeft, y - scrollY, 74, 10)
-        val clearRect = Rect(rowLeft + 80, y - scrollY, 96, 10)
+        val actionHeight = (secondaryFontSizePx + 10).coerceAtLeast(28)
+        val resetRect = Rect(rowLeft, y - scrollY, 140, actionHeight)
+        val clearRect = Rect(rowLeft + 148, y - scrollY, 160, actionHeight)
         addFill(out, resetRect, 0x2A465968)
         addOutline(out, resetRect, 0x775E738C)
         addFill(out, clearRect, 0x2A4E3F56)
         addOutline(out, clearRect, 0x777A5C84)
-        out += RenderCommand.DrawText("Reset node", resetRect.x + 4, resetRect.y + 1, 0xFFDCE5EF.toInt())
-        out += RenderCommand.DrawText("Clear all", clearRect.x + 4, clearRect.y + 1, 0xFFDCE5EF.toInt())
+        out += RenderCommand.DrawText(
+            "Reset node",
+            resetRect.x + 8,
+            resetRect.y + 4,
+            0xFFDCE5EF.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+        out += RenderCommand.DrawText(
+            "Clear all",
+            clearRect.x + 8,
+            clearRect.y + 4,
+            0xFFDCE5EF.toInt(),
+            fontSize = secondaryFontSizePx
+        )
         panelActions += PanelAction(resetRect, ActionKind.ResetSelectedOverrides)
         panelActions += PanelAction(clearRect, ActionKind.ClearAllOverrides)
-        y += 11
+        y += actionHeight + 4
 
         return y
     }
@@ -912,21 +1112,28 @@ class InspectorController {
         maxChars: Int,
         out: MutableList<RenderCommand>
     ): Int {
-        val descriptor = StylePropertyRegistry.descriptor(property)
-        val row = Rect(x, y - scrollY, width, 10)
+        val row = Rect(x, y - scrollY, width, rowHeightPx)
         addFill(out, row, 0x1B293746)
         addOutline(out, row, 0x553F4A57)
 
         val overrideExpr = StyleEngine.inspectorOverrideFor(selected, property)
         val effectiveValue = overrideExpr?.let(::expressionLabel) ?: literalFromComputed(inspection.computed, property)
         val sourceTag = if (overrideExpr != null) "ins" else (inspection.propertySources[property]?.source ?: "default")
-        val label = "${property.key}: ${effectiveValue.take(20)} <$sourceTag>"
-        appendPanelLine(out, bodyRect, y, label.take(56), maxChars, scrollY, 1)
+        val labelWidth = (width * 0.34f).toInt().coerceIn(220, 300)
+        out += RenderCommand.DrawText(
+            text = "${property.key} [$sourceTag]",
+            x = row.x + 8,
+            y = row.y + 6,
+            color = 0xFFDCE5EF.toInt(),
+            fontSize = secondaryFontSizePx
+        )
 
-        val buttonsRight = row.x + row.width - 2
-        val btnWidth = 10
-        val gap = 2
-        val resetRect = Rect(buttonsRight - btnWidth, row.y, btnWidth, 10)
+        val buttonsRight = row.x + row.width - 8
+        val btnWidth = 40
+        val gap = 6
+        val controlX = (row.x + labelWidth).coerceAtMost(buttonsRight - btnWidth - 40)
+        val controlWidth = (buttonsRight - controlX - btnWidth - gap).coerceAtLeast(36)
+        val resetRect = Rect(buttonsRight - btnWidth, row.y + 4, btnWidth, rowHeightPx - 8)
         drawActionButton(resetRect, "x", out)
         panelActions += PanelAction(
             bounds = resetRect,
@@ -935,52 +1142,264 @@ class InspectorController {
             editOperation = EditOperation.ResetProperty
         )
 
-        val cycleOptions = enumOptions(property)
-        if (cycleOptions != null) {
-            val nextRect = Rect(resetRect.x - gap - btnWidth, row.y, btnWidth, 10)
-            val prevRect = Rect(nextRect.x - gap - btnWidth, row.y, btnWidth, 10)
-            drawActionButton(prevRect, "<", out)
-            drawActionButton(nextRect, ">", out)
-            panelActions += PanelAction(
-                bounds = prevRect,
-                kind = ActionKind.EditProperty,
-                property = property,
-                editOperation = EditOperation.CyclePrev
-            )
-            panelActions += PanelAction(
-                bounds = nextRect,
-                kind = ActionKind.EditProperty,
-                property = property,
-                editOperation = EditOperation.CycleNext
-            )
-        } else {
-            val step = descriptor.numericStep
-            val incRect = Rect(resetRect.x - gap - btnWidth, row.y, btnWidth, 10)
-            val decRect = Rect(incRect.x - gap - btnWidth, row.y, btnWidth, 10)
-            drawActionButton(decRect, "-", out)
-            drawActionButton(incRect, "+", out)
-            panelActions += PanelAction(
-                bounds = decRect,
-                kind = ActionKind.EditProperty,
-                property = property,
-                editOperation = EditOperation.Decrement,
-                step = step
-            )
-            panelActions += PanelAction(
-                bounds = incRect,
-                kind = ActionKind.EditProperty,
-                property = property,
-                editOperation = EditOperation.Increment,
-                step = step
+        val editor = InspectorEditorRegistry.describe(
+            property = property,
+            literal = effectiveValue,
+            expression = overrideExpr
+        )
+        val contentRect = Rect(controlX, row.y + 4, controlWidth, rowHeightPx - 8)
+
+        when (editor.kind) {
+            InspectorEditorKind.EnumSelect,
+            InspectorEditorKind.FontSelect -> {
+                drawValueSelector(
+                    bounds = contentRect,
+                    value = effectiveValue,
+                    isOpen = openValueSelectProperty == property,
+                    out = out
+                )
+                panelActions += PanelAction(
+                    bounds = contentRect,
+                    kind = ActionKind.EditProperty,
+                    property = property,
+                    editOperation = EditOperation.ToggleValueSelect
+                )
+            }
+
+            InspectorEditorKind.StringInput -> {
+                val isActiveInput = activeEditProperty == property && !activeEditIsNumeric
+                drawTextInput(
+                    bounds = contentRect,
+                    value = if (isActiveInput) activeEditBuffer else effectiveValue,
+                    active = isActiveInput,
+                    out = out
+                )
+                panelActions += PanelAction(
+                    bounds = contentRect,
+                    kind = ActionKind.EditProperty,
+                    property = property,
+                    editOperation = EditOperation.BeginTextEdit
+                )
+                if (editor.showColorPreview) {
+                    appendColorPreview(contentRect, if (isActiveInput) activeEditBuffer else effectiveValue, out)
+                }
+            }
+
+            InspectorEditorKind.NumericInput -> {
+                val step = StylePropertyRegistry.descriptor(property).numericStep
+                val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                val numericValue = if (activeEditProperty == property && activeEditIsNumeric) {
+                    activeEditBuffer
+                } else {
+                    parsed?.numberText ?: "0"
+                }
+                val unit = if (activeEditProperty == property && activeEditIsNumeric) {
+                    activeEditUnit ?: parsed?.unit ?: CssUnit.Px
+                } else {
+                    parsed?.unit ?: CssUnit.Px
+                }
+                val buttonWidth = 34
+                val unitWidth = if (editor.supportsUnits) 68 else 0
+                val inputWidth =
+                    (contentRect.width - buttonWidth * 2 - unitWidth - (if (editor.supportsUnits) 12 else 6))
+                        .coerceAtLeast(64)
+                val decRect = Rect(contentRect.x, contentRect.y, buttonWidth, contentRect.height)
+                val inputRect = Rect(decRect.x + decRect.width + 4, contentRect.y, inputWidth, contentRect.height)
+                val incRect = Rect(inputRect.x + inputRect.width + 4, contentRect.y, buttonWidth, contentRect.height)
+                drawActionButton(decRect, "-", out)
+                drawTextInput(inputRect, numericValue, activeEditProperty == property && activeEditIsNumeric, out)
+                drawActionButton(incRect, "+", out)
+                panelActions += PanelAction(
+                    decRect,
+                    ActionKind.EditProperty,
+                    property = property,
+                    editOperation = EditOperation.Decrement,
+                    step = step
+                )
+                panelActions += PanelAction(
+                    inputRect,
+                    ActionKind.EditProperty,
+                    property = property,
+                    editOperation = EditOperation.BeginTextEdit
+                )
+                panelActions += PanelAction(
+                    incRect,
+                    ActionKind.EditProperty,
+                    property = property,
+                    editOperation = EditOperation.Increment,
+                    step = step
+                )
+                if (editor.supportsUnits) {
+                    val unitRect = Rect(incRect.x + incRect.width + 4, contentRect.y, unitWidth, contentRect.height)
+                    drawValueSelector(unitRect, unit.token, openUnitSelectProperty == property, out)
+                    panelActions += PanelAction(
+                        bounds = unitRect,
+                        kind = ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.ToggleUnitSelect
+                    )
+                }
+            }
+        }
+
+        if (overrideExpr is StyleExpression.VariableRef && row.contains(mouseX, mouseY)) {
+            val resolved = StyleEngine.resolveInspectorVariable(overrideExpr.name)
+            val body = resolved.getOrElse { "unresolved (${it.message ?: "unknown error"})" }
+            variableTooltipText = "${overrideExpr.name} = $body"
+            variableTooltipRect = Rect(
+                x = (row.x + row.width - 360).coerceAtLeast(panelBounds.x + 8),
+                y = (row.y - lineHeightPx - 8).coerceAtLeast(panelBounds.y + 8),
+                width = 352,
+                height = lineHeightPx + 10
             )
         }
-        return y + 11
+
+        var nextY = y + rowHeightPx + 4
+        if (openValueSelectProperty == property && editor.options.isNotEmpty()) {
+            nextY += appendOptionsPopup(
+                x = contentRect.x,
+                y = nextY,
+                width = contentRect.width,
+                options = editor.options,
+                property = property,
+                bodyRect = bodyRect,
+                scrollY = scrollY,
+                out = out,
+                operation = EditOperation.SelectValueOption
+            )
+        }
+        if (openUnitSelectProperty == property && editor.supportsUnits) {
+            val units = InspectorEditorRegistry.unitOptions().map { it.token }
+            nextY += appendOptionsPopup(
+                x = contentRect.x + contentRect.width - 90,
+                y = nextY,
+                width = 90,
+                options = units,
+                property = property,
+                bodyRect = bodyRect,
+                scrollY = scrollY,
+                out = out,
+                operation = EditOperation.SelectUnitOption
+            )
+        }
+        return nextY
     }
 
     private fun drawActionButton(rect: Rect, text: String, out: MutableList<RenderCommand>) {
         addFill(out, rect, 0x3346596E)
         addOutline(out, rect, 0x775E738C)
-        out += RenderCommand.DrawText(text, rect.x + 3, rect.y + 1, 0xFFDCE5EF.toInt())
+        out += RenderCommand.DrawText(
+            text = text,
+            x = rect.x + 8,
+            y = rect.y + 4,
+            color = 0xFFDCE5EF.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+    }
+
+    private fun drawTextInput(bounds: Rect, value: String, active: Boolean, out: MutableList<RenderCommand>) {
+        addFill(out, bounds, if (active) 0x334D5D70 else 0x22313D4B)
+        addOutline(out, bounds, if (active) 0xFFA8C6E6.toInt() else 0x77607084)
+        val suffix = if (active) "|" else ""
+        out += RenderCommand.DrawText(
+            text = ellipsize(value + suffix, 34),
+            x = bounds.x + 8,
+            y = bounds.y + 4,
+            color = 0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+    }
+
+    private fun drawValueSelector(bounds: Rect, value: String, isOpen: Boolean, out: MutableList<RenderCommand>) {
+        addFill(out, bounds, if (isOpen) 0x334D5D70 else 0x22313D4B)
+        addOutline(out, bounds, if (isOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+        val arrow = if (isOpen) "^" else "v"
+        out += RenderCommand.DrawText(
+            text = ellipsize(value, 26),
+            x = bounds.x + 8,
+            y = bounds.y + 4,
+            color = 0xFFE6EDF6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+        out += RenderCommand.DrawText(
+            text = arrow,
+            x = bounds.x + bounds.width - 18,
+            y = bounds.y + 4,
+            color = 0xFFA8C6E6.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+    }
+
+    private fun appendColorPreview(bounds: Rect, literal: String, out: MutableList<RenderCommand>) {
+        val previewSize = (bounds.height - 8).coerceAtLeast(10)
+        val previewRect = Rect(
+            x = bounds.x + bounds.width - previewSize - 6,
+            y = bounds.y + 4,
+            width = previewSize,
+            height = previewSize
+        )
+        val parsed = runCatching { parseColor(literal) }.getOrNull()
+        addFill(out, previewRect, parsed ?: 0x663F4A57)
+        addOutline(out, previewRect, 0xCC9BB2C9.toInt())
+    }
+
+    private fun appendOptionsPopup(
+        x: Int,
+        y: Int,
+        width: Int,
+        options: List<String>,
+        property: StyleProperty,
+        bodyRect: Rect,
+        scrollY: Int,
+        out: MutableList<RenderCommand>,
+        operation: EditOperation
+    ): Int {
+        if (options.isEmpty()) return 0
+        val maxRows = 8
+        val shown = options.take(maxRows)
+        val optionHeight = rowHeightPx
+        val popupHeight = optionHeight * shown.size + 6
+        val popupRect = Rect(x, y - scrollY, width, popupHeight)
+        addFill(out, popupRect, 0xEE202A36.toInt())
+        addOutline(out, popupRect, 0xCC596A80.toInt())
+        var optionY = popupRect.y + 3
+        shown.forEach { option ->
+            val optionRect = Rect(popupRect.x + 3, optionY, popupRect.width - 6, optionHeight - 2)
+            addFill(out, optionRect, 0x22313D4B)
+            addOutline(out, optionRect, 0x664F6076)
+            out += RenderCommand.DrawText(
+                text = ellipsize(option, 30),
+                x = optionRect.x + 6,
+                y = optionRect.y + 4,
+                color = 0xFFE6EDF6.toInt(),
+                fontSize = secondaryFontSizePx
+            )
+            panelActions += PanelAction(
+                bounds = optionRect,
+                kind = ActionKind.EditProperty,
+                property = property,
+                editOperation = operation,
+                payload = option
+            )
+            optionY += optionHeight
+        }
+        if (options.size > shown.size) {
+            out += RenderCommand.DrawText(
+                text = "+${options.size - shown.size} more...",
+                x = popupRect.x + 6,
+                y = popupRect.y + popupRect.height - (secondaryFontSizePx + 4),
+                color = 0xFF8EA6BF.toInt(),
+                fontSize = secondaryFontSizePx
+            )
+        }
+        return popupHeight + 4
+    }
+
+    private fun ellipsize(raw: String, maxChars: Int): String {
+        if (maxChars <= 1) return raw.take(1)
+        if (raw.length <= maxChars) return raw
+        val keep = (maxChars - 3).coerceAtLeast(0)
+        return raw.take(keep) + "..."
     }
 
     private fun editablePropertiesFor(selected: DOMNode): List<StyleProperty> {
@@ -1009,7 +1428,8 @@ class InspectorController {
         selected: DOMNode,
         property: StyleProperty,
         operation: EditOperation,
-        step: Float
+        step: Float,
+        payload: String?
     ) {
         runCatching {
             when (operation) {
@@ -1039,11 +1459,108 @@ class InspectorController {
                     val next = adjustNumericLiteral(selected, property, step)
                     StyleEngine.setInspectorOverrideLiteral(selected, property, next).getOrThrow()
                 }
+
+                EditOperation.BeginTextEdit -> beginTextEdit(selected, property)
+                EditOperation.ToggleValueSelect -> {
+                    val wasOpen = openValueSelectProperty == property
+                    openValueSelectProperty = if (wasOpen) null else property
+                    openUnitSelectProperty = null
+                    activeEditProperty = null
+                    activeEditBuffer = ""
+                    activeEditUnit = null
+                    activeEditIsNumeric = false
+                }
+
+                EditOperation.SelectValueOption -> {
+                    val option = payload ?: error("Missing option payload.")
+                    StyleEngine.setInspectorOverrideLiteral(selected, property, option).getOrThrow()
+                    openValueSelectProperty = null
+                    activeEditProperty = null
+                    activeEditBuffer = ""
+                    activeEditUnit = null
+                    activeEditIsNumeric = false
+                }
+
+                EditOperation.ToggleUnitSelect -> {
+                    val wasOpen = openUnitSelectProperty == property
+                    openUnitSelectProperty = if (wasOpen) null else property
+                    openValueSelectProperty = null
+                }
+
+                EditOperation.SelectUnitOption -> {
+                    val unit = parseCssUnitToken(payload ?: error("Missing unit payload."))
+                    val current = literalForEdit(selected, property)
+                    val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                    val numberText = parsed?.numberText ?: "0"
+                    val nextLiteral = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+                    StyleEngine.setInspectorOverrideLiteral(selected, property, nextLiteral).getOrThrow()
+                    openUnitSelectProperty = null
+                }
             }
             cachedStyle = null
             styleEditorError = null
         }.onFailure { error ->
             styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
+        }
+    }
+
+    private fun beginTextEdit(selected: DOMNode, property: StyleProperty) {
+        val current = literalForEdit(selected, property)
+        val descriptor = InspectorEditorRegistry.describe(
+            property = property,
+            literal = current,
+            expression = StyleEngine.inspectorOverrideFor(selected, property)
+        )
+        activeEditProperty = property
+        if (descriptor.kind == InspectorEditorKind.NumericInput) {
+            val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+            activeEditBuffer = parsed?.numberText ?: "0"
+            activeEditUnit = parsed?.unit ?: CssUnit.Px
+            activeEditIsNumeric = true
+        } else {
+            activeEditBuffer = current
+            activeEditUnit = null
+            activeEditIsNumeric = false
+        }
+        openUnitSelectProperty = null
+        openValueSelectProperty = null
+    }
+
+    private fun commitActiveTextEdit() {
+        val selected = selectedNode ?: return
+        val property = activeEditProperty ?: return
+        runCatching {
+            val literal = if (activeEditIsNumeric) {
+                InspectorEditorRegistry.formatNumberUnit(activeEditBuffer, activeEditUnit ?: CssUnit.Px)
+            } else {
+                activeEditBuffer.trim()
+            }
+            val normalized = if (literal.isEmpty()) {
+                if (activeEditIsNumeric) "0px" else ""
+            } else {
+                literal
+            }
+            StyleEngine.setInspectorOverrideLiteral(selected, property, normalized).getOrThrow()
+            cachedStyle = null
+            styleEditorError = null
+        }.onFailure { error ->
+            styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
+        }
+        activeEditProperty = null
+        activeEditBuffer = ""
+        activeEditUnit = null
+        activeEditIsNumeric = false
+    }
+
+    private fun parseCssUnitToken(raw: String): CssUnit {
+        return when (raw.trim().lowercase()) {
+            "px" -> CssUnit.Px
+            "em" -> CssUnit.Em
+            "rem" -> CssUnit.Rem
+            "vw" -> CssUnit.Vw
+            "vh" -> CssUnit.Vh
+            "%" -> CssUnit.Percent
+            else -> error("Unsupported unit '$raw'.")
         }
     }
 
@@ -1145,7 +1662,9 @@ class InspectorController {
             StyleProperty.BORDER_RADIUS -> style.borderRadius.toCssLiteral()
             StyleProperty.FOREGROUND_COLOR -> colorLabel(style.foregroundColor)
             StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
-            StyleProperty.FONT_SIZE -> style.fontSizeValue?.toCssLiteral() ?: (style.fontSize?.let(::pxLiteral) ?: "auto")
+            StyleProperty.FONT_SIZE -> style.fontSizeValue?.toCssLiteral() ?: (style.fontSize?.let(::pxLiteral)
+                ?: "auto")
+
             StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
             StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
             StyleProperty.TEXT_DECORATION -> when (style.textDecoration) {
@@ -1154,6 +1673,7 @@ class InspectorController {
                 TextDecoration.Strikethrough -> "strikethrough"
                 TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
             }
+
             StyleProperty.OBFUSCATED -> style.obfuscated.toString()
             StyleProperty.WIDTH -> style.width?.toCssLiteral() ?: "auto"
             StyleProperty.HEIGHT -> style.height?.toCssLiteral() ?: "auto"
@@ -1163,6 +1683,7 @@ class InspectorController {
             StyleProperty.JUSTIFY_CONTENT -> style.justifyContent.name
                 .replace(Regex("([a-z])([A-Z])"), "$1-$2")
                 .lowercase()
+
             StyleProperty.ALIGN_ITEMS -> style.alignItems.name.lowercase()
             StyleProperty.JUSTIFY_ITEMS -> style.justifyItems.name.lowercase()
             StyleProperty.GAP -> style.gap.toCssLiteral()
@@ -1179,6 +1700,7 @@ class InspectorController {
                 TextFormatting.None -> "none"
                 TextFormatting.Minecraft -> "minecraft"
             }
+
             StyleProperty.TRANSFORM -> buildString {
                 append("translate(")
                 append(style.transform.translateX)
@@ -1192,6 +1714,7 @@ class InspectorController {
                 append(style.transform.rotateDeg)
                 append("deg)")
             }
+
             StyleProperty.TRANSFORM_ORIGIN -> "${style.transformOrigin.originX} ${style.transformOrigin.originY}"
             StyleProperty.OPACITY -> formatFloatLiteral(style.opacity)
         }
@@ -1218,8 +1741,14 @@ class InspectorController {
         y: Int,
         text: String
     ): Int {
-        out += RenderCommand.DrawText(text.take(74), x, y, 0xFFDCE5EF.toInt())
-        return y + 10
+        out += RenderCommand.DrawText(
+            text = text.take(74),
+            x = x,
+            y = y,
+            color = 0xFFDCE5EF.toInt(),
+            fontSize = secondaryFontSizePx
+        )
+        return y + lineHeightPx
     }
 
     private fun appendPanelLine(
@@ -1240,9 +1769,10 @@ class InspectorController {
                 line,
                 bodyRect.x + 2 + leftInset,
                 drawY,
-                color
+                color,
+                fontSize = textFontSizePx
             )
-            logicalY += 10
+            logicalY += lineHeightPx
         }
         return logicalY
     }
@@ -1274,6 +1804,11 @@ class InspectorController {
         return lines
     }
 
+    private fun estimateMaxChars(pixelWidth: Int, fontSize: Int): Int {
+        val approxCharWidth = (fontSize * 0.56f).toInt().coerceAtLeast(6)
+        return (pixelWidth / approxCharWidth).coerceAtLeast(8)
+    }
+
     private fun wrapText(text: String, maxChars: Int): List<String> {
         val limit = maxChars.coerceAtLeast(1)
         if (text.length <= limit) return listOf(text)
@@ -1299,7 +1834,11 @@ class InspectorController {
     }
 
     private fun appendScrollbarIndicator(out: MutableList<RenderCommand>, bodyRect: Rect) {
-        if (panelContentHeight <= bodyRect.height || bodyRect.height <= 0) return
+        if (panelContentHeight <= bodyRect.height || bodyRect.height <= 0) {
+            scrollbarTrackRect = Rect(0, 0, 0, 0)
+            scrollbarThumbRect = Rect(0, 0, 0, 0)
+            return
+        }
         val trackWidth = 4
         val track = Rect(
             bodyRect.x + bodyRect.width - trackWidth - 2,
@@ -1313,6 +1852,8 @@ class InspectorController {
         val travel = (track.height - thumbHeight).coerceAtLeast(0)
         val thumbY = track.y + ((panelScrollY.toFloat() / maxScroll.toFloat()) * travel.toFloat()).toInt()
         val thumb = Rect(track.x, thumbY, track.width, thumbHeight)
+        scrollbarTrackRect = track
+        scrollbarThumbRect = thumb
         addFill(out, track, 0x22384A5D)
         addFill(out, thumb, 0x887E97B1.toInt())
         addOutline(out, thumb, 0xCC9BB2C9.toInt())
@@ -1374,6 +1915,48 @@ class InspectorController {
         dragStartOffsetX = mouseX - minimizedPosX
         dragStartOffsetY = mouseY - minimizedPosY
         dragMoved = false
+    }
+
+    private fun startScrollbarDrag(mouseX: Int, mouseY: Int): Boolean {
+        if (panelState != InspectorPanelState.Expanded) return false
+        if (scrollbarTrackRect.width <= 0 || scrollbarTrackRect.height <= 0) return false
+        if (!scrollbarTrackRect.contains(mouseX, mouseY)) return false
+        if (scrollbarThumbRect.contains(mouseX, mouseY)) {
+            dragMode = DragMode.ScrollbarThumb
+            scrollbarDragOffsetY = (mouseY - scrollbarThumbRect.y).coerceIn(0, scrollbarThumbRect.height)
+            dragMoved = false
+            return true
+        }
+        val targetThumbCenterY = mouseY
+        scrollbarDragOffsetY = (scrollbarThumbRect.height / 2).coerceAtLeast(1)
+        updateScrollbarFromThumbTop(targetThumbCenterY - scrollbarDragOffsetY)
+        dragMode = DragMode.ScrollbarThumb
+        dragMoved = true
+        return true
+    }
+
+    private fun updateScrollbarDrag(mouseY: Int) {
+        if (scrollbarTrackRect.height <= 0 || scrollbarThumbRect.height <= 0) return
+        updateScrollbarFromThumbTop(mouseY - scrollbarDragOffsetY)
+        dragMoved = true
+    }
+
+    private fun updateScrollbarFromThumbTop(rawThumbTop: Int) {
+        val maxScroll = (panelContentHeight - contentBounds.height).coerceAtLeast(0)
+        if (maxScroll <= 0) {
+            panelScrollY = 0
+            return
+        }
+        val travel = (scrollbarTrackRect.height - scrollbarThumbRect.height).coerceAtLeast(0)
+        if (travel <= 0) {
+            panelScrollY = 0
+            return
+        }
+        val minTop = scrollbarTrackRect.y
+        val maxTop = scrollbarTrackRect.y + travel
+        val thumbTop = rawThumbTop.coerceIn(minTop, maxTop)
+        val progress = (thumbTop - minTop).toFloat() / travel.toFloat()
+        panelScrollY = (progress * maxScroll.toFloat()).toInt().coerceIn(0, maxScroll)
     }
 
     private fun startExpandedDrag(mode: DragMode, mouseX: Int, mouseY: Int) {
@@ -1444,14 +2027,18 @@ class InspectorController {
         if (right - left < minPanelWidth) {
             when (dragMode) {
                 DragMode.ResizeLeft, DragMode.ResizeTopLeft, DragMode.ResizeBottomLeft -> left = right - minPanelWidth
-                DragMode.ResizeRight, DragMode.ResizeTopRight, DragMode.ResizeBottomRight -> right = left + minPanelWidth
+                DragMode.ResizeRight, DragMode.ResizeTopRight, DragMode.ResizeBottomRight -> right =
+                    left + minPanelWidth
+
                 else -> Unit
             }
         }
         if (bottom - top < minPanelHeight) {
             when (dragMode) {
                 DragMode.ResizeTop, DragMode.ResizeTopLeft, DragMode.ResizeTopRight -> top = bottom - minPanelHeight
-                DragMode.ResizeBottom, DragMode.ResizeBottomLeft, DragMode.ResizeBottomRight -> bottom = top + minPanelHeight
+                DragMode.ResizeBottom, DragMode.ResizeBottomLeft, DragMode.ResizeBottomRight -> bottom =
+                    top + minPanelHeight
+
                 else -> Unit
             }
         }

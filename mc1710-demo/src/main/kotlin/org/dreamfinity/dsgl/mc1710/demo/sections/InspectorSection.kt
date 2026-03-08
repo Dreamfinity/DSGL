@@ -5,7 +5,8 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
-import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
+
+private const val INSPECTOR_MUTED_TEXT: Int = 0xFFB0B7C1.toInt()
 
 fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
     div({
@@ -20,16 +21,22 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
         }
     }) {
         text("In-game Inspector is global (works on every DSGL screen).")
-        text("F8: toggle inspector overlay", { style = { color = DEMO_MUTED } })
-        text("F9: switch mode (Pick/Locked)", { style = { color = DEMO_MUTED } })
-        text("Expanded panel: click Min to collapse into floating chip.", { style = { color = DEMO_MUTED } })
-        text("Minimized chip: drag to move, click (no drag) to restore.", { style = { color = DEMO_MUTED } })
-        text("Expanded panel: drag header to move; drag edges/corners to resize.", { style = { color = DEMO_MUTED } })
+        text("F8: toggle inspector overlay", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("F9: switch mode (Pick/Locked)", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("Expanded panel: click Min to collapse into floating chip.", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("Minimized chip: drag to move, click (no drag) to restore.", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("Expanded panel: drag header to move; drag edges/corners to resize.", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("Style editor now uses typed controls: dropdowns, text inputs, numeric input + units.", {
+            style = { color = INSPECTOR_MUTED_TEXT }
+        })
+        text("Hover var(--token) values in style overrides to preview resolved values.", {
+            style = { color = INSPECTOR_MUTED_TEXT }
+        })
         text("Pick mode captures clicks for selection; Locked mode blocks input in inspector rect.", {
-            style = { color = DEMO_MUTED }
+            style = { color = INSPECTOR_MUTED_TEXT }
         })
         text("Click-through check: clicking inspector must NOT increment the counter below.", {
-            style = { color = DEMO_MUTED }
+            style = { color = INSPECTOR_MUTED_TEXT }
         })
 
         div({
@@ -97,5 +104,3 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
         }
     }
 }
-
-

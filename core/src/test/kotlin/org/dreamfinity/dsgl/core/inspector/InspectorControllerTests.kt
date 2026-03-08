@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -82,8 +83,8 @@ class InspectorControllerTests {
         assertTrue(controller.handleMouseUp(999, 999, MouseButton.LEFT))
 
         val (x, y) = controller.panelPosition
-        assertEquals(58, x)
-        assertEquals(112, y)
+        assertEquals(2, x)
+        assertEquals(82, y)
         assertEquals(InspectorPanelState.Minimized, controller.panelState)
     }
 
@@ -95,10 +96,10 @@ class InspectorControllerTests {
         controller.onLayoutCommitted(root, 1L)
         controller.appendOverlayCommands(800, 600, mutableListOf())
 
-        assertTrue(controller.handleMouseDown(381, 120, MouseButton.LEFT))
+        assertTrue(controller.handleMouseDown(778, 120, MouseButton.LEFT))
         assertTrue(controller.isDraggingPanel)
-        controller.onCapturedPointerMove(500, 120, 800, 600)
-        assertTrue(controller.handleMouseUp(500, 120, MouseButton.LEFT))
+        controller.onCapturedPointerMove(720, 120, 800, 600)
+        assertTrue(controller.handleMouseUp(720, 120, MouseButton.LEFT))
         assertFalse(controller.isDraggingPanel)
     }
 
@@ -120,7 +121,7 @@ class InspectorControllerTests {
         val (chipX, chipY) = controller.panelPosition
         val chipTextLines = commands
             .filterIsInstance<RenderCommand.DrawText>()
-            .filter { it.x >= chipX && it.y in chipY..(chipY + 25) }
+            .filter { it.x >= chipX && it.y in chipY..(chipY + 56) }
 
         assertTrue(chipTextLines.isNotEmpty())
         assertTrue(chipTextLines.size <= 2)
@@ -141,9 +142,9 @@ class InspectorControllerTests {
         assertTrue(controller.shouldConsumePointer(30, 30))
         assertTrue(controller.shouldConsumeWheel(30, 30))
         assertTrue(controller.shouldConsumeKeyboard(30, 30))
-        assertFalse(controller.shouldConsumePointer(700, 500))
-        assertFalse(controller.shouldConsumeWheel(700, 500))
-        assertFalse(controller.shouldConsumeKeyboard(700, 500))
+        assertFalse(controller.shouldConsumePointer(795, 500))
+        assertFalse(controller.shouldConsumeWheel(795, 500))
+        assertFalse(controller.shouldConsumeKeyboard(795, 500))
     }
 
     @Test
@@ -164,23 +165,23 @@ class InspectorControllerTests {
         val controller = InspectorController()
         controller.toggle()
 
-        val root = container("root", 0, 0, 800, 600)
+        val root = container("root", 0, 0, 1200, 700)
         container("inside-panel", 36, 36, 80, 24).applyParent(root)
-        container("outside-panel", 560, 140, 80, 24).applyParent(root)
+        container("outside-panel", 980, 140, 80, 24).applyParent(root)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(800, 600, mutableListOf())
+        controller.appendOverlayCommands(1200, 700, mutableListOf())
 
         controller.onCursorMoved(40, 40)
         assertNull(controller.hoveredKey)
 
         val overPanelCommands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(800, 600, overPanelCommands)
+        controller.appendOverlayCommands(1200, 700, overPanelCommands)
         val tooltipTextsOverPanel = overPanelCommands
             .filterIsInstance<RenderCommand.DrawText>()
             .filter { it.text.contains("div[") && it.text.contains("x") && it.text.contains("@") }
         assertTrue(tooltipTextsOverPanel.isEmpty())
 
-        controller.onCursorMoved(564, 144)
+        controller.onCursorMoved(984, 144)
         assertEquals("outside-panel", controller.hoveredKey)
     }
 
@@ -189,17 +190,17 @@ class InspectorControllerTests {
         val controller = InspectorController()
         controller.toggle()
 
-        val root = container("root", 0, 0, 800, 600)
-        container("target", 560, 320, 80, 24).applyParent(root)
+        val root = container("root", 0, 0, 1200, 700)
+        container("target", 980, 320, 80, 24).applyParent(root)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(800, 600, mutableListOf())
+        controller.appendOverlayCommands(1200, 700, mutableListOf())
 
         controller.setPickMode(false)
-        controller.onCursorMoved(564, 324)
+        controller.onCursorMoved(984, 324)
         assertNull(controller.hoveredKey)
 
         controller.setPickMode(true)
-        controller.onCursorMoved(564, 324)
+        controller.onCursorMoved(984, 324)
         assertEquals("target", controller.hoveredKey)
     }
 
@@ -233,23 +234,69 @@ class InspectorControllerTests {
     }
 
     @Test
+    fun `expanded inspector panel scrolls by dragging scrollbar thumb`() {
+        val controller = InspectorController()
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1600, 1200)
+        val selected = container("selected-scroll-target", 980, 220, 260, 180)
+        selected.applyParent(root)
+        repeat(60) { index ->
+            container("scroll-child-$index", 980, 240 + index * 14, 180, 10).applyParent(selected)
+        }
+        controller.onLayoutCommitted(root, 1L)
+        controller.appendOverlayCommands(1400, 900, mutableListOf())
+        controller.onCursorMoved(990, 230)
+        controller.handleMouseDown(990, 230, MouseButton.LEFT)
+
+        val commands = mutableListOf<RenderCommand>()
+        controller.appendOverlayCommands(420, 280, commands)
+        val thumb = commands
+            .filterIsInstance<RenderCommand.DrawRect>()
+            .lastOrNull { it.width == 4 && it.color == 0x887E97B1.toInt() }
+            ?: fail("Expected inspector scrollbar thumb to be rendered.")
+
+        val thumbCenterX = thumb.x + 1
+        val thumbCenterY = thumb.y + (thumb.height / 2)
+        assertTrue(controller.handleMouseDown(thumbCenterX, thumbCenterY, MouseButton.LEFT))
+        controller.onCapturedPointerMove(thumbCenterX, thumbCenterY + 80, 420, 280)
+        controller.handleMouseUp(thumbCenterX, thumbCenterY + 80, MouseButton.LEFT)
+        assertTrue(controller.panelScrollOffsetY > 0)
+    }
+
+    @Test
+    fun `header click is captured and starts panel drag`() {
+        val controller = InspectorController()
+        controller.toggle()
+        val root = container("root", 0, 0, 900, 700)
+        controller.onLayoutCommitted(root, 1L)
+        controller.appendOverlayCommands(900, 700, mutableListOf())
+
+        assertTrue(controller.handleMouseDown(38, 30, MouseButton.LEFT))
+        assertTrue(controller.isDraggingPanel)
+        controller.onCapturedPointerMove(96, 60, 900, 700)
+        assertTrue(controller.handleMouseUp(96, 60, MouseButton.LEFT))
+        assertFalse(controller.isDraggingPanel)
+    }
+
+    @Test
     fun `path breadcrumb wraps to multiple lines inside narrow panel`() {
         val controller = InspectorController()
         controller.toggle()
 
-        val root = container("root-with-an-extremely-long-token-for-wrapping", 0, 0, 1200, 800)
-        val middle = container("middle-node-with-very-long-name-segment", 600, 100, 140, 90)
-        val leaf = container("leaf-node-with-even-longer-name-segment-for-wrapping", 620, 120, 120, 40)
+        val root = container("root-with-an-extremely-long-token-for-wrapping", 0, 0, 1400, 900)
+        val middle = container("middle-node-with-very-long-name-segment", 980, 100, 140, 90)
+        val leaf = container("leaf-node-with-even-longer-name-segment-for-wrapping", 1000, 120, 120, 40)
         middle.applyParent(root)
         leaf.applyParent(middle)
 
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(900, 640, mutableListOf())
-        controller.onCursorMoved(626, 126)
-        controller.handleMouseDown(626, 126, MouseButton.LEFT)
+        controller.appendOverlayCommands(1200, 700, mutableListOf())
+        controller.onCursorMoved(1006, 126)
+        controller.handleMouseDown(1006, 126, MouseButton.LEFT)
 
         val commands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(260, 220, commands)
+        controller.appendOverlayCommands(520, 340, commands)
         val pathLines = commands
             .filterIsInstance<RenderCommand.DrawText>()
             .map { it.text }
