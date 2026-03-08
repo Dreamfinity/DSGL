@@ -52,6 +52,23 @@ class InspectorController {
         val payload: String? = null
     )
 
+    private data class DropdownOverlay(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val options: List<String>,
+        val property: StyleProperty,
+        val operation: EditOperation
+    )
+
+    private data class DropdownLayout(
+        val rect: Rect,
+        val property: StyleProperty,
+        val isUnit: Boolean,
+        val totalOptions: Int,
+        val visibleRows: Int
+    )
+
     private data class SelectionStyleCache(
         val key: Any?,
         val nodeClass: Class<out DOMNode>,
@@ -119,6 +136,8 @@ class InspectorController {
     private var headerBounds: Rect = Rect(0, 0, 0, 0)
     private var contentBounds: Rect = Rect(0, 0, 0, 0)
     private val panelActions: MutableList<PanelAction> = ArrayList()
+    private val dropdownOverlays: MutableList<DropdownOverlay> = ArrayList()
+    private val dropdownLayouts: MutableList<DropdownLayout> = ArrayList()
     private var cachedStyle: SelectionStyleCache? = null
     private var styleEditorError: String? = null
     private var expandedRect: Rect = Rect(22, 18, 760, 680)
@@ -153,7 +172,9 @@ class InspectorController {
     private var activeEditUnit: CssUnit? = null
     private var activeEditIsNumeric: Boolean = false
     private var openValueSelectProperty: StyleProperty? = null
+    private var openValueSelectScrollIndex: Int = 0
     private var openUnitSelectProperty: StyleProperty? = null
+    private var openUnitSelectScrollIndex: Int = 0
     private var variableTooltipText: String? = null
     private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
 
@@ -168,6 +189,7 @@ class InspectorController {
     private val secondaryFontSizePx: Int = parseLengthPxInt("24px", allowNegative = false)
     private val lineHeightPx: Int = (textFontSizePx + 8).coerceAtLeast(28)
     private val rowHeightPx: Int = (textFontSizePx + 10).coerceAtLeast(32)
+    private val caretBlinkPeriodMs: Long = 500L
 
     fun toggle() {
         active = !active
@@ -286,6 +308,7 @@ class InspectorController {
         this.mouseX = mouseX
         this.mouseY = mouseY
         if (dragMode != DragMode.None) return true
+        if (handleDropdownWheel(mouseX, mouseY, delta)) return true
         if (panelState != InspectorPanelState.Expanded) {
             return hitTestUi(mouseX, mouseY) || mode == InspectorMode.Pick
         }
@@ -305,12 +328,36 @@ class InspectorController {
         return true
     }
 
+    private fun handleDropdownWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
+        if (dropdownLayouts.isEmpty()) return false
+        val target = dropdownLayouts.lastOrNull { it.rect.contains(mouseX, mouseY) } ?: return false
+        val steps = (kotlin.math.abs(delta) / 120).coerceAtLeast(1)
+        val maxFirst = (target.totalOptions - target.visibleRows).coerceAtLeast(0)
+        if (maxFirst <= 0) return true
+        if (target.isUnit) {
+            openUnitSelectScrollIndex = if (delta < 0) {
+                (openUnitSelectScrollIndex + steps).coerceAtMost(maxFirst)
+            } else {
+                (openUnitSelectScrollIndex - steps).coerceAtLeast(0)
+            }
+        } else {
+            openValueSelectScrollIndex = if (delta < 0) {
+                (openValueSelectScrollIndex + steps).coerceAtMost(maxFirst)
+            } else {
+                (openValueSelectScrollIndex - steps).coerceAtLeast(0)
+            }
+        }
+        return true
+    }
+
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
         if (!active) return false
         if (activeEditProperty == null) {
             if (keyCode == KeyCodes.ESCAPE) {
                 openValueSelectProperty = null
+                openValueSelectScrollIndex = 0
                 openUnitSelectProperty = null
+                openUnitSelectScrollIndex = 0
                 variableTooltipText = null
                 return true
             }
@@ -368,14 +415,21 @@ class InspectorController {
             return false
         }
 
+        val action = findPanelAction(mouseX, mouseY)
+        if (shouldCommitActiveEdit(action)) {
+            commitActiveTextEdit()
+        }
         if (startScrollbarDrag(mouseX, mouseY)) {
             return true
         }
-        if (resolvePanelAction(mouseX, mouseY)) {
+        if (action != null) {
+            performPanelAction(action)
             return true
         }
         openValueSelectProperty = null
+        openValueSelectScrollIndex = 0
         openUnitSelectProperty = null
+        openUnitSelectScrollIndex = 0
         val resizeMode = resolveResizeDragMode(mouseX, mouseY)
         if (resizeMode != DragMode.None) {
             startExpandedDrag(resizeMode, mouseX, mouseY)
@@ -452,6 +506,8 @@ class InspectorController {
     ) {
         if (!active || viewportWidth <= 0 || viewportHeight <= 0) {
             panelActions.clear()
+            dropdownOverlays.clear()
+            dropdownLayouts.clear()
             return
         }
         viewportW = viewportWidth
@@ -503,6 +559,8 @@ class InspectorController {
         tooltipNodeRef = null
         tooltipLabelCache = ""
         panelActions.clear()
+        dropdownOverlays.clear()
+        dropdownLayouts.clear()
         panelBounds = Rect(0, 0, 0, 0)
         minimizedBounds = Rect(0, 0, 0, 0)
         headerBounds = Rect(0, 0, 0, 0)
@@ -522,7 +580,9 @@ class InspectorController {
         activeEditUnit = null
         activeEditIsNumeric = false
         openValueSelectProperty = null
+        openValueSelectScrollIndex = 0
         openUnitSelectProperty = null
+        openUnitSelectScrollIndex = 0
         variableTooltipText = null
         variableTooltipRect = Rect(0, 0, 0, 0)
     }
@@ -673,6 +733,8 @@ class InspectorController {
         minimizedBounds = Rect(0, 0, 0, 0)
         contentBounds = Rect(0, 0, 0, 0)
         panelActions.clear()
+        dropdownOverlays.clear()
+        dropdownLayouts.clear()
         variableTooltipText = null
         variableTooltipRect = Rect(0, 0, 0, 0)
 
@@ -771,6 +833,7 @@ class InspectorController {
             panelContentHeight = (y - bodyRect.y).coerceAtLeast(0)
             panelScrollY = panelScrollY.coerceIn(0, maxOf(0, panelContentHeight - bodyRect.height))
             appendScrollbarIndicator(out, bodyRect)
+            appendDropdownOverlays(out)
             return
         }
 
@@ -845,6 +908,7 @@ class InspectorController {
         panelContentHeight = (y - bodyRect.y).coerceAtLeast(0)
         panelScrollY = panelScrollY.coerceIn(0, maxOf(0, panelContentHeight - bodyRect.height))
         appendScrollbarIndicator(out, bodyRect)
+        appendDropdownOverlays(out)
     }
 
     private fun appendMinimizedPanel(
@@ -863,6 +927,8 @@ class InspectorController {
         panelScrollY = 0
         panelContentHeight = 0
         panelActions.clear()
+        dropdownOverlays.clear()
+        dropdownLayouts.clear()
 
         addFill(out, chipRect, if (dragMode == DragMode.MinimizedMove) 0xEE1C2430.toInt() else 0xDD1A202A.toInt())
         addOutline(out, chipRect, 0xCC4F6076.toInt())
@@ -957,18 +1023,20 @@ class InspectorController {
         return rows
     }
 
-    private fun resolvePanelAction(mouseX: Int, mouseY: Int): Boolean {
-        if (!panelBounds.contains(mouseX, mouseY)) return false
-        val action = panelActions.lastOrNull { it.bounds.contains(mouseX, mouseY) } ?: return false
+    private fun findPanelAction(mouseX: Int, mouseY: Int): PanelAction? {
+        return panelActions.lastOrNull { it.bounds.contains(mouseX, mouseY) }
+    }
+
+    private fun performPanelAction(action: PanelAction) {
         when (action.kind) {
             ActionKind.Minimize -> {
                 minimize()
-                return true
+                return
             }
 
             ActionKind.TogglePick -> {
                 setPickMode(mode != InspectorMode.Pick)
-                return true
+                return
             }
 
             ActionKind.Parent -> {
@@ -1005,7 +1073,6 @@ class InspectorController {
                 cachedStyle = null
             }
         }
-        return true
     }
 
     private fun selectParent() {
@@ -1052,9 +1119,7 @@ class InspectorController {
                 x = rowLeft,
                 y = y,
                 width = rowWidth,
-                bodyRect = bodyRect,
                 scrollY = scrollY,
-                maxChars = maxChars,
                 out = out
             )
         }
@@ -1107,9 +1172,7 @@ class InspectorController {
         x: Int,
         y: Int,
         width: Int,
-        bodyRect: Rect,
         scrollY: Int,
-        maxChars: Int,
         out: MutableList<RenderCommand>
     ): Int {
         val row = Rect(x, y - scrollY, width, rowHeightPx)
@@ -1156,6 +1219,7 @@ class InspectorController {
                     bounds = contentRect,
                     value = effectiveValue,
                     isOpen = openValueSelectProperty == property,
+                    hovered = contentRect.contains(mouseX, mouseY),
                     out = out
                 )
                 panelActions += PanelAction(
@@ -1231,7 +1295,13 @@ class InspectorController {
                 )
                 if (editor.supportsUnits) {
                     val unitRect = Rect(incRect.x + incRect.width + 4, contentRect.y, unitWidth, contentRect.height)
-                    drawValueSelector(unitRect, unit.token, openUnitSelectProperty == property, out)
+                    drawValueSelector(
+                        bounds = unitRect,
+                        value = unit.token,
+                        isOpen = openUnitSelectProperty == property,
+                        hovered = unitRect.contains(mouseX, mouseY),
+                        out = out
+                    )
                     panelActions += PanelAction(
                         bounds = unitRect,
                         kind = ActionKind.EditProperty,
@@ -1254,31 +1324,25 @@ class InspectorController {
             )
         }
 
-        var nextY = y + rowHeightPx + 4
+        val nextY = y + rowHeightPx + 4
         if (openValueSelectProperty == property && editor.options.isNotEmpty()) {
-            nextY += appendOptionsPopup(
+            queueDropdownOverlay(
                 x = contentRect.x,
-                y = nextY,
+                y = contentRect.y + contentRect.height + 2,
                 width = contentRect.width,
                 options = editor.options,
                 property = property,
-                bodyRect = bodyRect,
-                scrollY = scrollY,
-                out = out,
                 operation = EditOperation.SelectValueOption
             )
         }
         if (openUnitSelectProperty == property && editor.supportsUnits) {
             val units = InspectorEditorRegistry.unitOptions().map { it.token }
-            nextY += appendOptionsPopup(
+            queueDropdownOverlay(
                 x = contentRect.x + contentRect.width - 90,
-                y = nextY,
+                y = contentRect.y + contentRect.height + 2,
                 width = 90,
                 options = units,
                 property = property,
-                bodyRect = bodyRect,
-                scrollY = scrollY,
-                out = out,
                 operation = EditOperation.SelectUnitOption
             )
         }
@@ -1300,7 +1364,7 @@ class InspectorController {
     private fun drawTextInput(bounds: Rect, value: String, active: Boolean, out: MutableList<RenderCommand>) {
         addFill(out, bounds, if (active) 0x334D5D70 else 0x22313D4B)
         addOutline(out, bounds, if (active) 0xFFA8C6E6.toInt() else 0x77607084)
-        val suffix = if (active) "|" else ""
+        val suffix = if (active && caretVisible()) "|" else ""
         out += RenderCommand.DrawText(
             text = ellipsize(value + suffix, 34),
             x = bounds.x + 8,
@@ -1310,9 +1374,29 @@ class InspectorController {
         )
     }
 
-    private fun drawValueSelector(bounds: Rect, value: String, isOpen: Boolean, out: MutableList<RenderCommand>) {
-        addFill(out, bounds, if (isOpen) 0x334D5D70 else 0x22313D4B)
-        addOutline(out, bounds, if (isOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+    private fun caretVisible(): Boolean {
+        return ((System.currentTimeMillis() / caretBlinkPeriodMs) % 2L) == 0L
+    }
+
+    private fun drawValueSelector(
+        bounds: Rect,
+        value: String,
+        isOpen: Boolean,
+        hovered: Boolean,
+        out: MutableList<RenderCommand>
+    ) {
+        val fill = when {
+            isOpen -> 0x334D5D70
+            hovered -> 0x2A425164
+            else -> 0x22313D4B
+        }
+        val stroke = when {
+            isOpen -> 0xFFA8C6E6.toInt()
+            hovered -> 0xCC89A7C8.toInt()
+            else -> 0x77607084
+        }
+        addFill(out, bounds, fill)
+        addOutline(out, bounds, stroke)
         val arrow = if (isOpen) "^" else "v"
         out += RenderCommand.DrawText(
             text = ellipsize(value, 26),
@@ -1343,35 +1427,89 @@ class InspectorController {
         addOutline(out, previewRect, 0xCC9BB2C9.toInt())
     }
 
+    private fun queueDropdownOverlay(
+        x: Int,
+        y: Int,
+        width: Int,
+        options: List<String>,
+        property: StyleProperty,
+        operation: EditOperation
+    ) {
+        if (options.isEmpty()) return
+        dropdownOverlays += DropdownOverlay(
+            x = x,
+            y = y,
+            width = width,
+            options = options,
+            property = property,
+            operation = operation
+        )
+    }
+
+    private fun appendDropdownOverlays(out: MutableList<RenderCommand>) {
+        if (dropdownOverlays.isEmpty()) return
+        dropdownOverlays.forEach { overlay ->
+            appendOptionsPopup(
+                x = overlay.x,
+                y = overlay.y,
+                width = overlay.width,
+                options = overlay.options,
+                property = overlay.property,
+                out = out,
+                operation = overlay.operation
+            )
+        }
+    }
+
     private fun appendOptionsPopup(
         x: Int,
         y: Int,
         width: Int,
         options: List<String>,
         property: StyleProperty,
-        bodyRect: Rect,
-        scrollY: Int,
         out: MutableList<RenderCommand>,
         operation: EditOperation
-    ): Int {
-        if (options.isEmpty()) return 0
+    ) {
+        if (options.isEmpty()) return
         val maxRows = 8
-        val shown = options.take(maxRows)
+        val visibleRows = minOf(maxRows, options.size)
+        val maxFirst = (options.size - visibleRows).coerceAtLeast(0)
+        val isUnit = operation == EditOperation.SelectUnitOption
+        val rawFirst = if (isUnit) openUnitSelectScrollIndex else openValueSelectScrollIndex
+        val first = rawFirst.coerceIn(0, maxFirst)
+        if (isUnit) {
+            openUnitSelectScrollIndex = first
+        } else {
+            openValueSelectScrollIndex = first
+        }
+        val shown = options.subList(first, first + visibleRows)
         val optionHeight = rowHeightPx
         val popupHeight = optionHeight * shown.size + 6
-        val popupRect = Rect(x, y - scrollY, width, popupHeight)
+        val viewportWidth = viewportW.coerceAtLeast(1)
+        val viewportHeight = viewportH.coerceAtLeast(1)
+        val clampedX = x.coerceIn(2, (viewportWidth - width - 2).coerceAtLeast(2))
+        val clampedY = y.coerceIn(2, (viewportHeight - popupHeight - 2).coerceAtLeast(2))
+        val popupRect = Rect(clampedX, clampedY, width, popupHeight)
+        dropdownLayouts += DropdownLayout(
+            rect = popupRect,
+            property = property,
+            isUnit = isUnit,
+            totalOptions = options.size,
+            visibleRows = visibleRows
+        )
         addFill(out, popupRect, 0xEE202A36.toInt())
         addOutline(out, popupRect, 0xCC596A80.toInt())
         var optionY = popupRect.y + 3
         shown.forEach { option ->
             val optionRect = Rect(popupRect.x + 3, optionY, popupRect.width - 6, optionHeight - 2)
-            addFill(out, optionRect, 0x22313D4B)
-            addOutline(out, optionRect, 0x664F6076)
+            val hovered = optionRect.contains(mouseX, mouseY)
+            addFill(out, optionRect, if (hovered) 0x2D4C6279 else 0x22313D4B)
+            addOutline(out, optionRect, if (hovered) 0xCC95B3D3.toInt() else 0x664F6076)
             out += RenderCommand.DrawText(
                 text = ellipsize(option, 30),
                 x = optionRect.x + 6,
                 y = optionRect.y + 4,
-                color = 0xFFE6EDF6.toInt(),
+                color = if (hovered) 0xFFFFFFFF.toInt() else 0xFFE6EDF6.toInt(),
                 fontSize = secondaryFontSizePx
             )
             panelActions += PanelAction(
@@ -1383,16 +1521,15 @@ class InspectorController {
             )
             optionY += optionHeight
         }
-        if (options.size > shown.size) {
+        if (options.size > visibleRows) {
             out += RenderCommand.DrawText(
-                text = "+${options.size - shown.size} more...",
+                text = "${first + 1}-${first + visibleRows}/${options.size}",
                 x = popupRect.x + 6,
                 y = popupRect.y + popupRect.height - (secondaryFontSizePx + 4),
                 color = 0xFF8EA6BF.toInt(),
                 fontSize = secondaryFontSizePx
             )
         }
-        return popupHeight + 4
     }
 
     private fun ellipsize(raw: String, maxChars: Int): String {
@@ -1464,7 +1601,9 @@ class InspectorController {
                 EditOperation.ToggleValueSelect -> {
                     val wasOpen = openValueSelectProperty == property
                     openValueSelectProperty = if (wasOpen) null else property
+                    openValueSelectScrollIndex = 0
                     openUnitSelectProperty = null
+                    openUnitSelectScrollIndex = 0
                     activeEditProperty = null
                     activeEditBuffer = ""
                     activeEditUnit = null
@@ -1475,6 +1614,7 @@ class InspectorController {
                     val option = payload ?: error("Missing option payload.")
                     StyleEngine.setInspectorOverrideLiteral(selected, property, option).getOrThrow()
                     openValueSelectProperty = null
+                    openValueSelectScrollIndex = 0
                     activeEditProperty = null
                     activeEditBuffer = ""
                     activeEditUnit = null
@@ -1484,7 +1624,9 @@ class InspectorController {
                 EditOperation.ToggleUnitSelect -> {
                     val wasOpen = openUnitSelectProperty == property
                     openUnitSelectProperty = if (wasOpen) null else property
+                    openUnitSelectScrollIndex = 0
                     openValueSelectProperty = null
+                    openValueSelectScrollIndex = 0
                 }
 
                 EditOperation.SelectUnitOption -> {
@@ -1495,6 +1637,7 @@ class InspectorController {
                     val nextLiteral = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
                     StyleEngine.setInspectorOverrideLiteral(selected, property, nextLiteral).getOrThrow()
                     openUnitSelectProperty = null
+                    openUnitSelectScrollIndex = 0
                 }
             }
             cachedStyle = null
@@ -1523,7 +1666,17 @@ class InspectorController {
             activeEditIsNumeric = false
         }
         openUnitSelectProperty = null
+        openUnitSelectScrollIndex = 0
         openValueSelectProperty = null
+        openValueSelectScrollIndex = 0
+    }
+
+    private fun shouldCommitActiveEdit(action: PanelAction?): Boolean {
+        val editing = activeEditProperty ?: return false
+        if (action == null) return true
+        if (action.kind != ActionKind.EditProperty) return true
+        if (action.property != editing) return true
+        return action.editOperation != EditOperation.BeginTextEdit
     }
 
     private fun commitActiveTextEdit() {
