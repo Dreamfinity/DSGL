@@ -7,6 +7,9 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -107,6 +110,15 @@ abstract class DsglScreenHost(
         DsglFonts.ensureInitialized(mc.mcDataDir, javaClass.classLoader)
         adapter = Mc1710UiAdapter(mc)
         ClipboardBridge.install(clipboardAccess)
+        ScreenColorSamplerBridge.install(
+            object : ScreenColorSampler {
+                override fun sampleColorAt(x: Int, y: Int): Int? = adapter.sampleScreenColor(x, y)
+
+                override fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
+                    return adapter.sampleScreenArea(x, y, width, height, outArgb)
+                }
+            }
+        )
         inspector.deactivate()
         inspectorPointerCaptured = false
         inspectorOwnedMouseButton = -1
@@ -163,6 +175,7 @@ abstract class DsglScreenHost(
                 adapter.paint(composedCommandsBuffer)
                 flushPendingCleanup()
                 super.drawScreen(mouseX, mouseY, partialTicks)
+                ColorPickerRuntime.engine.captureEyedropperSample()
                 return
             }
         }
@@ -186,6 +199,7 @@ abstract class DsglScreenHost(
             adapter.paint(composedCommandsBuffer)
             flushPendingCleanup()
             super.drawScreen(mouseX, mouseY, partialTicks)
+            ColorPickerRuntime.engine.captureEyedropperSample()
             return
         }
         if (!stylesAlreadyApplied) {
@@ -193,9 +207,12 @@ abstract class DsglScreenHost(
         }
         ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+        ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         val selectBlocks = !inspectorBlocks && SelectRuntime.engine.isOpen()
-        if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks) {
+        val colorPickerBlocks = !inspectorBlocks && ColorPickerRuntime.engine.isOpen()
+        if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
         }
         DndRuntime.engine.onFrame(tree.root, dtSeconds)
@@ -203,7 +220,7 @@ abstract class DsglScreenHost(
         val prevY = if (lastMoveY == Int.MIN_VALUE) dsglMouseY else lastMoveY
         val dx = dsglMouseX - prevX
         val dy = dsglMouseY - prevY
-        if (inspectorBlocks || contextMenuBlocks || selectBlocks) {
+        if (inspectorBlocks || contextMenuBlocks || selectBlocks || colorPickerBlocks) {
             clearHoverChainStates()
             hoverTarget = null
         } else {
@@ -227,6 +244,7 @@ abstract class DsglScreenHost(
         SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         inspector.appendOverlayCommands(lastWidth, lastHeight, stagingCommandsBuffer)
+        ColorPickerRuntime.engine.appendOverlayCommands(stagingCommandsBuffer)
         val keepPrevious = shouldKeepPreviousFrameCommands(
             tree = tree,
             rebuiltThisFrame = rebuiltThisFrame,
@@ -246,6 +264,7 @@ abstract class DsglScreenHost(
         maybeLogPerf(tree)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
+        ColorPickerRuntime.engine.captureEyedropperSample()
     }
 
     override fun keyTyped(typedChar: Char, keyCode: Int) {
@@ -254,8 +273,10 @@ abstract class DsglScreenHost(
 
     override fun onGuiClosed() {
         ClipboardBridge.install(null)
+        ScreenColorSamplerBridge.install(null)
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
+        ColorPickerRuntime.engine.closeAll()
         SelectRuntime.engine.closeAll()
         ContextMenuRuntime.engine.closeAll()
         clearActiveTarget()
@@ -381,6 +402,10 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
+            if (ColorPickerRuntime.engine.handleKeyDown(keyCode, keyChar)) {
+                mc.dispatchKeypresses()
+                return
+            }
             if (inspector.active && inspector.handleKeyDown(keyCode, keyChar)) {
                 logInspectorInput("keyboard down consumed by inspector editor keyCode=$keyCode")
                 mc.dispatchKeypresses()
@@ -467,6 +492,42 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f
         )
+        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+
+        if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            return
+        }
+
+        if (mouseButton != -1) {
+            val mappedButton = mapButton(mouseButton)
+            if (mappedButton != null) {
+                val consumedByColorPicker = if (Mouse.getEventButtonState()) {
+                    ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                if (consumedByColorPicker) {
+                    eventButton = -1
+                    clearActiveTarget()
+                    releaseDragCapture()
+                    lastMouseX = mouseX
+                    lastMouseY = mouseY
+                    return
+                }
+            }
+        } else if (ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            return
+        }
 
         if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
             inspector.markPointerHandled("wheel in inspector")

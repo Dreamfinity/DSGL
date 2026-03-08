@@ -5,6 +5,8 @@ import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
 
@@ -26,6 +28,7 @@ class InspectorController {
         Increment,
         ResetProperty,
         BeginTextEdit,
+        OpenColorPicker,
         ToggleValueSelect,
         SelectValueOption,
         ToggleUnitSelect,
@@ -150,6 +153,7 @@ class InspectorController {
     private var dragStartOffsetX: Int = 0
     private var dragStartOffsetY: Int = 0
     private var dragMoved: Boolean = false
+    private val paneMoveDrag: FloatingPaneDragModel = FloatingPaneDragModel()
     private var viewportW: Int = 0
     private var viewportH: Int = 0
     private var lastHandledPointerEvent: String = "none"
@@ -177,6 +181,7 @@ class InspectorController {
     private var openUnitSelectScrollIndex: Int = 0
     private var variableTooltipText: String? = null
     private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
+    private val colorPickerManager: ColorPickerPopupManager = ColorPickerPopupManager()
 
     private val minPanelWidth: Int = 240
     private val minPanelHeight: Int = 160
@@ -459,6 +464,7 @@ class InspectorController {
         val endedMode = dragMode
         val clickLike = !dragMoved
         dragMode = DragMode.None
+        paneMoveDrag.end()
         dragMoved = false
         if (!wasDragging) return false
         if (endedMode == DragMode.ScrollbarThumb) {
@@ -585,6 +591,7 @@ class InspectorController {
         openUnitSelectScrollIndex = 0
         variableTooltipText = null
         variableTooltipRect = Rect(0, 0, 0, 0)
+        colorPickerManager.close()
     }
 
     private fun rebindSelection() {
@@ -1054,7 +1061,7 @@ class InspectorController {
                 val property = action.property
                 val operation = action.editOperation
                 if (selected != null && property != null && operation != null) {
-                    applyStyleEdit(selected, property, operation, action.step, action.payload)
+                    applyStyleEdit(selected, property, operation, action.step, action.payload, action.bounds)
                 }
                 mode = InspectorMode.Locked
             }
@@ -1245,7 +1252,14 @@ class InspectorController {
                     editOperation = EditOperation.BeginTextEdit
                 )
                 if (editor.showColorPreview) {
-                    appendColorPreview(contentRect, if (isActiveInput) activeEditBuffer else effectiveValue, out)
+                    val previewRect =
+                        appendColorPreview(contentRect, if (isActiveInput) activeEditBuffer else effectiveValue, out)
+                    panelActions += PanelAction(
+                        bounds = previewRect,
+                        kind = ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.OpenColorPicker
+                    )
                 }
             }
 
@@ -1414,7 +1428,7 @@ class InspectorController {
         )
     }
 
-    private fun appendColorPreview(bounds: Rect, literal: String, out: MutableList<RenderCommand>) {
+    private fun appendColorPreview(bounds: Rect, literal: String, out: MutableList<RenderCommand>): Rect {
         val previewSize = (bounds.height - 8).coerceAtLeast(10)
         val previewRect = Rect(
             x = bounds.x + bounds.width - previewSize - 6,
@@ -1425,6 +1439,7 @@ class InspectorController {
         val parsed = runCatching { parseColor(literal) }.getOrNull()
         addFill(out, previewRect, parsed ?: 0x663F4A57)
         addOutline(out, previewRect, 0xCC9BB2C9.toInt())
+        return previewRect
     }
 
     private fun queueDropdownOverlay(
@@ -1566,7 +1581,8 @@ class InspectorController {
         property: StyleProperty,
         operation: EditOperation,
         step: Float,
-        payload: String?
+        payload: String?,
+        actionBounds: Rect
     ) {
         runCatching {
             when (operation) {
@@ -1598,6 +1614,7 @@ class InspectorController {
                 }
 
                 EditOperation.BeginTextEdit -> beginTextEdit(selected, property)
+                EditOperation.OpenColorPicker -> openColorPicker(selected, property, actionBounds)
                 EditOperation.ToggleValueSelect -> {
                     val wasOpen = openValueSelectProperty == property
                     openValueSelectProperty = if (wasOpen) null else property
@@ -1669,6 +1686,46 @@ class InspectorController {
         openUnitSelectScrollIndex = 0
         openValueSelectProperty = null
         openValueSelectScrollIndex = 0
+    }
+
+    private fun openColorPicker(selected: DOMNode, property: StyleProperty, anchorRect: Rect) {
+        val literal = literalForEdit(selected, property)
+        val parsedByStyle = runCatching { RgbaColor.fromArgbInt(parseColor(literal)) }.getOrNull()
+        val parsedByCodec = ColorTextCodec.parse(literal)
+        val initialColor = (parsedByStyle ?: parsedByCodec?.color ?: RgbaColor.WHITE).normalized()
+        val initialMode = parsedByCodec?.detectedMode ?: ColorFormatMode.HEX
+        colorPickerManager.open(
+            anchorRect = anchorRect,
+            title = "Edit ${property.key}",
+            state = ColorPickerState(
+                color = initialColor,
+                previous = initialColor,
+                mode = initialMode,
+                alphaEnabled = true,
+                closeOnSelect = false
+            ),
+            closeOnOutsideClick = false,
+            onPreview = { color ->
+                applyInspectorColorLiteral(selected, property, color)
+            },
+            onChange = { color ->
+                applyInspectorColorLiteral(selected, property, color)
+            },
+            onCommit = { color ->
+                applyInspectorColorLiteral(selected, property, color)
+            }
+        )
+    }
+
+    private fun applyInspectorColorLiteral(selected: DOMNode, property: StyleProperty, color: RgbaColor) {
+        runCatching {
+            val argb = color.toArgbInt().toUInt().toString(16).uppercase().padStart(8, '0')
+            StyleEngine.setInspectorOverrideLiteral(selected, property, "#$argb").getOrThrow()
+            cachedStyle = null
+            styleEditorError = null
+        }.onFailure { error ->
+            styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
+        }
     }
 
     private fun shouldCommitActiveEdit(action: PanelAction?): Boolean {
@@ -2119,6 +2176,11 @@ class InspectorController {
         dragStartRect = expandedRect
         dragStartOffsetX = mouseX - expandedRect.x
         dragStartOffsetY = mouseY - expandedRect.y
+        if (mode == DragMode.Move) {
+            paneMoveDrag.begin(mouseX, mouseY, expandedRect)
+        } else {
+            paneMoveDrag.end()
+        }
         dragMoved = false
     }
 
@@ -2153,17 +2215,17 @@ class InspectorController {
 
         when (dragMode) {
             DragMode.Move -> {
-                val targetX = mouseX - dragStartOffsetX
-                val targetY = mouseY - dragStartOffsetY
-                val moved = clampExpandedRect(
-                    Rect(targetX, targetY, dragStartRect.width, dragStartRect.height),
-                    viewportWidth,
-                    viewportHeight
+                val movedRect = paneMoveDrag.update(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    viewportWidth = viewportWidth,
+                    viewportHeight = viewportHeight,
+                    clamp = ::clampExpandedRect
                 )
-                if (!dragMoved && (kotlin.math.abs(moved.x - dragStartRect.x) >= 2 || kotlin.math.abs(moved.y - dragStartRect.y) >= 2)) {
+                expandedRect = movedRect
+                if (paneMoveDrag.moved) {
                     dragMoved = true
                 }
-                expandedRect = moved
                 return
             }
 

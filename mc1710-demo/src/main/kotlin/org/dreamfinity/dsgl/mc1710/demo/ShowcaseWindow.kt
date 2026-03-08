@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.keyframes
+import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
@@ -235,6 +236,16 @@ class ShowcaseWindow : DsglWindow() {
     internal var selectDisabledValue by state<String?>("locked")
     internal var selectDynamicValue by state<String?>("alpha")
     internal var selectDynamicAlt by state(false)
+    internal var colorInlineValue by state(RgbaColor(0.28f, 0.52f, 0.88f, 1f))
+    internal var colorInlineMode by state(ColorFormatMode.HEX)
+    internal var colorPopupValue by state(RgbaColor(0.82f, 0.31f, 0.41f, 0.9f))
+    internal var colorPopupSecondValue by state(RgbaColor(0.29f, 0.73f, 0.46f, 1f))
+    internal var colorSharedA by state(RgbaColor(0.91f, 0.73f, 0.19f, 1f))
+    internal var colorSharedB by state(RgbaColor(0.45f, 0.41f, 0.96f, 0.8f))
+    internal var colorSharedTarget by state("A")
+    internal var colorPickerLastCommit by state("none")
+    internal var colorPickerAlphaEnabled by state(true)
+    private val sharedColorPickerManager: ColorPickerPopupManager = ColorPickerPopupManager()
     internal var sharedRangeValue by state(35L)
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
     internal var textEditingSingleValue by state("Edit this line")
@@ -501,6 +512,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.INPUT_EVENTS -> inputEventsSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.COLOR_PICKER -> colorPickerSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30
@@ -2133,6 +2150,49 @@ class ShowcaseWindow : DsglWindow() {
     private fun demoStylesheetFile(): File {
         val dataDir = Minecraft.getMinecraft().mcDataDir
         return File(dataDir, "dsgl/styles/showcase_styles.dss")
+    }
+
+    internal fun openSharedColorPicker(mouseX: Int, mouseY: Int, target: String) {
+        colorSharedTarget = target
+        val current = if (target == "A") colorSharedA else colorSharedB
+        sharedColorPickerManager.open(
+            anchorRect = org.dreamfinity.dsgl.core.dom.layout.Rect(mouseX, mouseY, 1, 1),
+            title = "Shared Picker [$target]",
+            state = ColorPickerState(
+                color = current,
+                previous = current,
+                mode = colorInlineMode,
+                alphaEnabled = colorPickerAlphaEnabled,
+                closeOnSelect = false
+            ),
+            closeOnOutsideClick = false,
+            onPreview = { color ->
+                if (colorSharedTarget == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+            },
+            onChange = { color ->
+                if (colorSharedTarget == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+            },
+            onCommit = { color ->
+                if (colorSharedTarget == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+                colorPickerLastCommit = ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
+            }
+        )
+    }
+
+    internal fun colorLabel(color: RgbaColor): String {
+        return ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
     }
 
     private fun cascadeStylesheetFile(): File {

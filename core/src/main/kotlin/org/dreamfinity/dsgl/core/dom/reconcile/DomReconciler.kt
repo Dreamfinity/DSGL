@@ -217,6 +217,14 @@ object DomReconciler {
             is SelectNode if template is SelectNode -> {
                 current.syncFrom(template)
             }
+
+            is ColorPickerInlineNode if template is ColorPickerInlineNode -> {
+                current.syncFrom(template)
+            }
+
+            is ColorPickerPopupPaneNode if template is ColorPickerPopupPaneNode -> {
+                current.syncFrom(template)
+            }
         }
     }
 

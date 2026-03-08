@@ -230,6 +230,15 @@ object CapabilityChecklistCatalog {
             CapabilityId.HOOK_CHANGE
         )
 
+        DemoSection.COLOR_PICKER -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_TEXT_LAMBDA,
+            CapabilityId.HOOK_MOUSE_DOWN,
+            CapabilityId.HOOK_MOUSE_CLICK
+        )
+
         DemoSection.TEXT_EDITING -> setOf(
             CapabilityId.BUILDER_INPUT,
             CapabilityId.BUILDER_TEXTAREA,

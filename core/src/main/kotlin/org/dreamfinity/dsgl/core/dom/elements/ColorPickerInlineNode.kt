@@ -1,0 +1,254 @@
+package org.dreamfinity.dsgl.core.dom.elements
+
+import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.Size
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.render.RenderCommand
+
+class ColorPickerInlineNode(
+    controlled: Boolean = false,
+    value: RgbaColor? = null,
+    defaultValue: RgbaColor = RgbaColor.WHITE,
+    previousValue: RgbaColor? = null,
+    mode: ColorFormatMode = ColorFormatMode.HEX,
+    alphaEnabled: Boolean = true,
+    key: Any? = null
+) : DOMNode(key) {
+    override val styleType: String = "color-picker"
+    override val focusable: Boolean = true
+
+    var controlled: Boolean = controlled
+    var controlledValue: RgbaColor? = value
+    var defaultValue: RgbaColor = defaultValue
+    var previousValue: RgbaColor? = previousValue
+    var mode: ColorFormatMode = mode
+    var alphaEnabled: Boolean = alphaEnabled
+    var closeOnSelect: Boolean = true
+    var onPreviewColor: ((RgbaColor) -> Unit)? = null
+    var onChangeColor: ((RgbaColor) -> Unit)? = null
+    var onCommitColor: ((RgbaColor) -> Unit)? = null
+    var onRequestClose: (() -> Unit)? = null
+    var eyedropperEnabled: Boolean = true
+
+    private var uncontrolledValue: RgbaColor = value ?: defaultValue
+    private var uncontrolledPrevious: RgbaColor = previousValue ?: uncontrolledValue
+    private val recentHistory: ColorRecentHistory = ColorRecentHistory(64)
+    private val controller: ColorPickerController = ColorPickerController(
+        initial = ColorPickerState(
+            color = effectiveColor(),
+            previous = effectivePreviousColor(),
+            mode = mode,
+            alphaEnabled = alphaEnabled,
+            closeOnSelect = closeOnSelect
+        ),
+        recentHistory = recentHistory
+    )
+    private var layout: ColorPickerLayout? = null
+    private var dragCaptured: Boolean = false
+    private var syncedColorArgb: Int = Int.MIN_VALUE
+    private var syncedPreviousArgb: Int = Int.MIN_VALUE
+    private var syncedMode: ColorFormatMode = mode
+    private var syncedAlphaEnabled: Boolean = alphaEnabled
+    private var syncedCloseOnSelect: Boolean = closeOnSelect
+
+    init {
+        bindController()
+        EventBus.run {
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
+                if (this@ColorPickerInlineNode.styleDisabled) return@addEventListener
+                if (!this@ColorPickerInlineNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
+                FocusManager.requestFocus(this@ColorPickerInlineNode)
+                val currentLayout = layout ?: return@addEventListener
+                val consumed = controller.handleMouseDown(event.mouseX, event.mouseY, event.mouseButton, currentLayout)
+                if (consumed) {
+                    dragCaptured = event.mouseButton == MouseButton.LEFT
+                    event.cancelled = true
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                val consumed = controller.handleMouseUp(event.mouseX, event.mouseY, event.mouseButton)
+                if (consumed) {
+                    dragCaptured = false
+                    event.cancelled = true
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
+                if (!dragCaptured) return@addEventListener
+                val currentLayout = layout ?: return@addEventListener
+                val mouseX = event.lastMouseX + event.dx
+                val mouseY = event.lastMouseY + event.dy
+                if (controller.handleMouseMove(mouseX, mouseY, currentLayout)) {
+                    event.cancelled = true
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSEOVER) { event: MouseOverEvent ->
+                val currentLayout = layout ?: return@addEventListener
+                if (controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)) {
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                if (!FocusManager.isFocused(this@ColorPickerInlineNode)) return@addEventListener
+                if (controller.handleKeyDown(event.keyCode, event.keyChar)) {
+                    event.cancelled = true
+                    markRenderCommandsDirty()
+                }
+            }
+        }
+    }
+
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean {
+        return dragCaptured || containsGlobalPoint(mouseX, mouseY)
+    }
+
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
+        return measureWithConstraint(availableOuterWidth)
+    }
+
+    override fun measure(ctx: UiMeasureContext): Size {
+        return measureWithConstraint(null)
+    }
+
+    private fun measureWithConstraint(availableOuterWidth: Int?): Size {
+        val minWidth = controller.style().minWidth
+        val contentLimit = resolvedContentLimit(availableOuterWidth)
+        val contentWidth = contentLimit?.let { minOf(it, width ?: minWidth) } ?: (width ?: minWidth)
+        val contentHeight = height ?: controller.preferredHeight(alphaEnabled)
+        val totalWidth = contentWidth + padding.horizontal + border.horizontal
+        val totalHeight = contentHeight + padding.vertical + border.vertical
+        return Size(totalWidth, totalHeight)
+    }
+
+    private fun resolvedContentLimit(availableOuterWidth: Int?): Int? {
+        val explicit = width
+        val extras = margin.horizontal + padding.horizontal + border.horizontal
+        val constrainedByParent = availableOuterWidth?.let { (it - extras).coerceAtLeast(0) }
+        return when {
+            explicit != null && constrainedByParent != null -> minOf(explicit, constrainedByParent)
+            explicit != null -> explicit
+            else -> constrainedByParent
+        }
+    }
+
+    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        bounds = Rect(x, y, width, height)
+        syncControllerStateIfNeeded()
+        layout = controller.buildLayout(
+            Rect(
+                contentX(),
+                contentY(),
+                contentWidth().coerceAtLeast(1),
+                contentHeight().coerceAtLeast(1)
+            )
+        )
+    }
+
+    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        syncControllerStateIfNeeded()
+        val currentLayout = layout ?: return
+        controller.appendCommands(currentLayout, out)
+        addBorderCommands(out)
+    }
+
+    internal fun syncFrom(template: ColorPickerInlineNode) {
+        controlled = template.controlled
+        controlledValue = template.controlledValue
+        defaultValue = template.defaultValue
+        previousValue = template.previousValue
+        mode = template.mode
+        alphaEnabled = template.alphaEnabled
+        closeOnSelect = template.closeOnSelect
+        onPreviewColor = template.onPreviewColor
+        onChangeColor = template.onChangeColor
+        onCommitColor = template.onCommitColor
+        onRequestClose = template.onRequestClose
+        eyedropperEnabled = template.eyedropperEnabled
+        if (!controlled) {
+            uncontrolledValue = template.uncontrolledValue
+            uncontrolledPrevious = template.uncontrolledPrevious
+        }
+        bindController()
+        syncControllerStateIfNeeded(force = true)
+    }
+
+    private fun syncControllerStateIfNeeded(force: Boolean = false) {
+        val current = effectiveColor()
+        val previous = effectivePreviousColor()
+        val currentArgb = current.toArgbInt()
+        val previousArgb = previous.toArgbInt()
+        if (!force &&
+            currentArgb == syncedColorArgb &&
+            previousArgb == syncedPreviousArgb &&
+            mode == syncedMode &&
+            alphaEnabled == syncedAlphaEnabled &&
+            closeOnSelect == syncedCloseOnSelect
+        ) {
+            return
+        }
+        syncedColorArgb = currentArgb
+        syncedPreviousArgb = previousArgb
+        syncedMode = mode
+        syncedAlphaEnabled = alphaEnabled
+        syncedCloseOnSelect = closeOnSelect
+        controller.setState(
+            ColorPickerState(
+                color = current,
+                previous = previous,
+                mode = mode,
+                alphaEnabled = alphaEnabled,
+                closeOnSelect = closeOnSelect
+            )
+        )
+        bindController()
+    }
+
+    private fun bindController() {
+        controller.onPreview = { color ->
+            if (!controlled) {
+                uncontrolledValue = color
+            }
+            onPreviewColor?.invoke(color)
+            onChangeColor?.invoke(color)
+            postInput(this, color.toArgbInt().toString(), color.toArgbInt())
+        }
+        controller.onChange = { color ->
+            if (!controlled) {
+                uncontrolledValue = color
+            }
+            onChangeColor?.invoke(color)
+        }
+        controller.onCommit = { color ->
+            if (!controlled) {
+                uncontrolledValue = color
+                uncontrolledPrevious = color
+            }
+            onCommitColor?.invoke(color)
+            postChange(this, color.toArgbInt().toString(), color.toArgbInt())
+        }
+        controller.onRequestClose = {
+            onRequestClose?.invoke()
+        }
+    }
+
+    private fun effectiveColor(): RgbaColor {
+        return if (controlled) {
+            (controlledValue ?: defaultValue).normalized()
+        } else {
+            uncontrolledValue.normalized()
+        }
+    }
+
+    private fun effectivePreviousColor(): RgbaColor {
+        return if (controlled) {
+            (previousValue ?: controlledValue ?: defaultValue).normalized()
+        } else {
+            (previousValue ?: uncontrolledPrevious).normalized()
+        }
+    }
+}

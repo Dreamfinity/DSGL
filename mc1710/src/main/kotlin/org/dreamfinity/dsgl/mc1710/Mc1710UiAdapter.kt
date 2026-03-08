@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.host.dsglRectToGlScissor
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
 import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
+import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
 import java.io.File
@@ -34,6 +35,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private val opacityStack: MutableList<Float> = ArrayList(8)
     private var opacityMultiplier: Float = 1f
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
+    private val samplePixelBuffer = BufferUtils.createByteBuffer(4)
+    private var sampleAreaBuffer = BufferUtils.createByteBuffer(4 * 256)
     private var cachedViewport: Viewport = Viewport(width = 1, height = 1, scale = 1f, x = 0, y = 0)
     private var cachedDisplayWidth: Int = -1
     private var cachedDisplayHeight: Int = -1
@@ -65,6 +68,78 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             )
         }
         return cachedViewport
+    }
+
+    fun sampleScreenColor(x: Int, y: Int): Int? {
+        val viewport = viewport()
+        if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) return null
+        val readY = viewport.height - 1 - y
+        samplePixelBuffer.clear()
+        return try {
+            GL11.glReadBuffer(GL11.GL_BACK)
+            GL11.glReadPixels(x, readY, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, samplePixelBuffer)
+            val r = samplePixelBuffer.get(0).toInt() and 0xFF
+            val g = samplePixelBuffer.get(1).toInt() and 0xFF
+            val b = samplePixelBuffer.get(2).toInt() and 0xFF
+            val a = samplePixelBuffer.get(3).toInt() and 0xFF
+            (a shl 24) or (r shl 16) or (g shl 8) or b
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun sampleScreenArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
+        if (width <= 0 || height <= 0) return false
+        val required = width * height
+        if (outArgb.size < required) return false
+        val viewport = viewport()
+        var i = 0
+        while (i < required) {
+            outArgb[i] = 0
+            i++
+        }
+
+        val srcX = x.coerceIn(0, viewport.width)
+        val srcY = y.coerceIn(0, viewport.height)
+        val maxW = viewport.width - srcX
+        val maxH = viewport.height - srcY
+        val srcW = minOf(width, maxW).coerceAtLeast(0)
+        val srcH = minOf(height, maxH).coerceAtLeast(0)
+        if (srcW <= 0 || srcH <= 0) return false
+
+        val byteCount = srcW * srcH * 4
+        if (sampleAreaBuffer.capacity() < byteCount) {
+            sampleAreaBuffer = BufferUtils.createByteBuffer(byteCount)
+        }
+        sampleAreaBuffer.clear()
+        sampleAreaBuffer.limit(byteCount)
+        return try {
+            val readY = viewport.height - (srcY + srcH)
+            GL11.glReadBuffer(GL11.GL_BACK)
+            GL11.glReadPixels(srcX, readY, srcW, srcH, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, sampleAreaBuffer)
+            val dstOffsetX = (srcX - x).coerceAtLeast(0)
+            val dstOffsetY = (srcY - y).coerceAtLeast(0)
+            var row = 0
+            while (row < srcH) {
+                val glRow = srcH - 1 - row
+                var col = 0
+                while (col < srcW) {
+                    val srcIndex = (glRow * srcW + col) * 4
+                    val r = sampleAreaBuffer.get(srcIndex).toInt() and 0xFF
+                    val g = sampleAreaBuffer.get(srcIndex + 1).toInt() and 0xFF
+                    val b = sampleAreaBuffer.get(srcIndex + 2).toInt() and 0xFF
+                    val a = sampleAreaBuffer.get(srcIndex + 3).toInt() and 0xFF
+                    val dstX = dstOffsetX + col
+                    val dstY = dstOffsetY + row
+                    outArgb[dstY * width + dstX] = (a shl 24) or (r shl 16) or (g shl 8) or b
+                    col++
+                }
+                row++
+            }
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     /** Executes DSGL render commands using Minecraft rendering APIs. */

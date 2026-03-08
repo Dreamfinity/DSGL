@@ -18,6 +18,7 @@ enum class DemoSection(
     CONTEXT_MENU("Context Menu", "Right-click nested menus with overlay-first hit testing"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),
+    COLOR_PICKER("Color Picker", "Reusable inline + popup pane color picker with eyedropper/history"),
     TEXT_EDITING("Text Editing", "Caret blink, selection and clipboard shortcuts"),
     REFS("Refs", "Object refs + callback refs + imperative handles"),
     DRAG_DROP("Drag & Drop", "HTML-like drag events, DataTransfer and smooth ghost"),
