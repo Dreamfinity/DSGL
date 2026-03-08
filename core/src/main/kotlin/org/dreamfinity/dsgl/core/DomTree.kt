@@ -13,6 +13,7 @@ import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
+import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -24,7 +25,10 @@ import java.util.WeakHashMap
  * Hosts should call [render] when size changes or when a rebuild is requested,
  * and [paint] every frame to obtain render commands.
  */
-class DomTree(var root: DOMNode) {
+class DomTree(
+    var root: DOMNode,
+    private val styleScope: StyleApplicationScope = StyleApplicationScope.Application
+) {
     data class PaintStats(
         val frames: Long,
         val commandRebuilds: Long,
@@ -66,8 +70,8 @@ class DomTree(var root: DOMNode) {
         lastWidth = width
         lastHeight = height
         StyleEngine.setViewportSize(width, height)
-        lastStyleReport = StyleEngine.applyStylesRecursivelyDetailed(root)
-        lastStyleRevision = StyleEngine.currentStyleRevision()
+        lastStyleReport = StyleEngine.applyStylesRecursivelyDetailed(root, styleScope)
+        lastStyleRevision = StyleEngine.currentStyleRevision(styleScope)
         root.resolveLayoutStyleValues(
             ctx = ctx,
             parentContentWidth = width,
@@ -84,9 +88,9 @@ class DomTree(var root: DOMNode) {
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
         frames += 1
         StyleEngine.setViewportSize(lastWidth, lastHeight)
-        val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision() else lastStyleRevision
+        val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
         val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
-            StyleEngine.applyStylesRecursivelyDetailed(root).also {
+            StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
                 lastStyleReport = it
                 lastStyleRevision = styleRevision
             }

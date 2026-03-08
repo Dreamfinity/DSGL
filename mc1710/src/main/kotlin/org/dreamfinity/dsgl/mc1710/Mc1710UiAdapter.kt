@@ -173,6 +173,35 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                             )
                         }
 
+                        is RenderCommand.DrawColorField -> {
+                            drawColorField(
+                                x = command.x,
+                                y = command.y,
+                                width = command.width,
+                                height = command.height,
+                                hueDeg = command.hueDeg
+                            )
+                        }
+
+                        is RenderCommand.DrawHueBar -> {
+                            drawHueBar(
+                                x = command.x,
+                                y = command.y,
+                                width = command.width,
+                                height = command.height
+                            )
+                        }
+
+                        is RenderCommand.DrawAlphaBar -> {
+                            drawAlphaBar(
+                                x = command.x,
+                                y = command.y,
+                                width = command.width,
+                                height = command.height,
+                                rgbColor = command.rgbColor
+                            )
+                        }
+
                         is RenderCommand.DrawText -> {
                             try {
                                 textRenderer.draw(
@@ -280,6 +309,109 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val alpha = ((color ushr 24) and 0xFF)
         val scaled = (alpha * opacityMultiplier).toInt().coerceIn(0, 255)
         return (color and 0x00FF_FFFF) or (scaled shl 24)
+    }
+
+    private fun drawColorField(x: Int, y: Int, width: Int, height: Int, hueDeg: Float) {
+        if (width <= 0 || height <= 0) return
+        val normalizedHue = ((hueDeg % 360f) + 360f) % 360f
+        val hueRgb = hsvToArgbInt(normalizedHue, 1f, 1f)
+        val leftColor = applyOpacity(0xFFFFFFFF.toInt())
+        val rightColor = applyOpacity(hueRgb)
+        val topShade = applyOpacity(0x00000000)
+        val bottomShade = applyOpacity(0xFF000000.toInt())
+        drawHorizontalGradientRect(x, y, width, height, leftColor, rightColor)
+        drawVerticalGradientRect(x, y, width, height, topShade, bottomShade)
+    }
+
+    private fun drawHueBar(x: Int, y: Int, width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        val segments = 6
+        val hueStops = floatArrayOf(0f, 60f, 120f, 180f, 240f, 300f, 360f)
+        var index = 0
+        while (index < segments) {
+            val startX = x + (width * index) / segments
+            val endX = if (index == segments - 1) x + width else x + (width * (index + 1)) / segments
+            val segmentWidth = (endX - startX).coerceAtLeast(1)
+            val startColor = applyOpacity(hsvToArgbInt(hueStops[index], 1f, 1f))
+            val endColor = applyOpacity(hsvToArgbInt(hueStops[index + 1], 1f, 1f))
+            drawHorizontalGradientRect(startX, y, segmentWidth, height, startColor, endColor)
+            index += 1
+        }
+    }
+
+    private fun drawAlphaBar(x: Int, y: Int, width: Int, height: Int, rgbColor: Int) {
+        if (width <= 0 || height <= 0) return
+        val rgbOnly = rgbColor and 0x00FF_FFFF
+        val leftColor = applyOpacity(rgbOnly)
+        val rightColor = applyOpacity(rgbOnly or (0xFF shl 24))
+        drawHorizontalGradientRect(x, y, width, height, leftColor, rightColor)
+    }
+
+    private fun drawHorizontalGradientRect(x: Int, y: Int, width: Int, height: Int, leftColor: Int, rightColor: Int) {
+        if (width <= 0 || height <= 0) return
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glShadeModel(GL11.GL_SMOOTH)
+        GL11.glBegin(GL11.GL_QUADS)
+        glColor(leftColor)
+        GL11.glVertex2f(x.toFloat(), y.toFloat())
+        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
+        glColor(rightColor)
+        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
+        GL11.glEnd()
+        GL11.glShadeModel(GL11.GL_FLAT)
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
+    }
+
+    private fun drawVerticalGradientRect(x: Int, y: Int, width: Int, height: Int, topColor: Int, bottomColor: Int) {
+        if (width <= 0 || height <= 0) return
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glShadeModel(GL11.GL_SMOOTH)
+        GL11.glBegin(GL11.GL_QUADS)
+        glColor(topColor)
+        GL11.glVertex2f(x.toFloat(), y.toFloat())
+        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
+        glColor(bottomColor)
+        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
+        GL11.glEnd()
+        GL11.glShadeModel(GL11.GL_FLAT)
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
+    }
+
+    private fun glColor(argb: Int) {
+        val a = ((argb ushr 24) and 0xFF) / 255f
+        val r = ((argb ushr 16) and 0xFF) / 255f
+        val g = ((argb ushr 8) and 0xFF) / 255f
+        val b = (argb and 0xFF) / 255f
+        GL11.glColor4f(r, g, b, a)
+    }
+
+    private fun hsvToArgbInt(hueDeg: Float, saturation: Float, value: Float): Int {
+        val h = ((hueDeg % 360f) + 360f) % 360f
+        val s = saturation.coerceIn(0f, 1f)
+        val v = value.coerceIn(0f, 1f)
+        val c = v * s
+        val x = c * (1f - kotlin.math.abs((h / 60f) % 2f - 1f))
+        val m = v - c
+        val (r1, g1, b1) = when {
+            h < 60f -> Triple(c, x, 0f)
+            h < 120f -> Triple(x, c, 0f)
+            h < 180f -> Triple(0f, c, x)
+            h < 240f -> Triple(0f, x, c)
+            h < 300f -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+        val r = ((r1 + m) * 255f).toInt().coerceIn(0, 255)
+        val g = ((g1 + m) * 255f).toInt().coerceIn(0, 255)
+        val b = ((b1 + m) * 255f).toInt().coerceIn(0, 255)
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
     }
 
     private fun logRateLimited(key: String, message: String) {

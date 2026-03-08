@@ -42,7 +42,8 @@ object StyleEngine {
         val siblingSelectorHash: Int,
         val rootFontSizePx: Int,
         val viewportWidthPx: Int,
-        val viewportHeightPx: Int
+        val viewportHeightPx: Int,
+        val scope: StyleApplicationScope
     )
 
     private data class CachedStyle(
@@ -232,7 +233,7 @@ object StyleEngine {
     fun resolveInspectorExpression(expression: StyleExpression): Result<String> {
         return runCatching {
             val snapshot = StylesheetManager.snapshot()
-            val variables = resolvedVariables(snapshot)
+            val variables = resolvedVariables(snapshot, StyleApplicationScope.Application)
             resolveExpressionToLiteral(expression, variables)
         }
     }
@@ -244,7 +245,7 @@ object StyleEngine {
     fun inspect(node: DOMNode): StyleInspection {
         val snapshot = StylesheetManager.snapshot()
         val defaults = node.captureStyleDefaults()
-        val variables = resolvedVariables(snapshot)
+        val variables = resolvedVariables(snapshot, StyleApplicationScope.Application)
         val candidates = matchingCandidates(node, snapshot.index)
         val matchedRules = candidates.map { "${selectorLabel(it.selector)} @ ${it.fileName}" }
         val inspector = inspectorOverrides[inspectorOverrideTarget(node)]
@@ -307,15 +308,22 @@ object StyleEngine {
         )
     }
 
-    fun applyStylesRecursively(root: DOMNode): Boolean {
-        return applyStylesRecursivelyDetailed(root).layoutDirty
+    fun applyStylesRecursively(
+        root: DOMNode,
+        scope: StyleApplicationScope = StyleApplicationScope.Application
+    ): Boolean {
+        return applyStylesRecursivelyDetailed(root, scope).layoutDirty
     }
 
-    fun applyStylesRecursivelyDetailed(root: DOMNode): StyleApplyReport {
-        val snapshot = StylesheetManager.snapshot()
+    fun applyStylesRecursivelyDetailed(
+        root: DOMNode,
+        scope: StyleApplicationScope = StyleApplicationScope.Application
+    ): StyleApplyReport {
+        val snapshot = snapshotForScope(scope)
         val metrics = MutableApplyMetrics()
-        val variables = resolvedVariables(snapshot)
-        val result = if (shouldApplyTargetedPseudoPass(snapshot)) {
+        val variables = resolvedVariables(snapshot, scope)
+        val allowInspectorOverrides = scope == StyleApplicationScope.Application
+        val result = if (scope == StyleApplicationScope.Application && shouldApplyTargetedPseudoPass(snapshot)) {
             applyStylesToDirtySubtrees(root, snapshot, variables, metrics)
         } else {
             applyStylesRecursively(
@@ -325,18 +333,22 @@ object StyleEngine {
                 metrics = metrics,
                 parentComputed = null,
                 rootFontSizePx = DEFAULT_ROOT_FONT_SIZE_PX,
-                passMode = StylePassMode.Full
+                passMode = StylePassMode.Full,
+                scope = scope,
+                allowInspectorOverrides = allowInspectorOverrides
             )
         }
-        pseudoDirtyNodes.clear()
-        selectorDirtyNodes.clear()
-        pseudoDirtyGlobal = false
-        selectorDirtyGlobal = false
-        lastAppliedStylesheetVersion = snapshot.version
-        lastAppliedThemeVersion = themeVersion
-        lastAppliedInspectorOverridesVersion = inspectorOverridesVersion
-        lastAppliedPseudoStateVersion = pseudoStateVersion
-        lastAppliedSelectorStateVersion = selectorStateVersion
+        if (scope == StyleApplicationScope.Application) {
+            pseudoDirtyNodes.clear()
+            selectorDirtyNodes.clear()
+            pseudoDirtyGlobal = false
+            selectorDirtyGlobal = false
+            lastAppliedStylesheetVersion = snapshot.version
+            lastAppliedThemeVersion = themeVersion
+            lastAppliedInspectorOverridesVersion = inspectorOverridesVersion
+            lastAppliedPseudoStateVersion = pseudoStateVersion
+            lastAppliedSelectorStateVersion = selectorStateVersion
+        }
 
         val report = StyleApplyReport(
             layoutDirty = result.layoutDirty,
@@ -351,14 +363,24 @@ object StyleEngine {
 
     fun lastStyleApplyReport(): StyleApplyReport = lastApplyReport
 
-    fun currentStyleRevision(): Long {
-        return (StylesheetManager.snapshot().version shl 2) xor
-            (themeVersion shl 1) xor
-            inspectorOverridesVersion xor
+    fun currentStyleRevision(
+        scope: StyleApplicationScope = StyleApplicationScope.Application
+    ): Long {
+        val base = when (scope) {
+            StyleApplicationScope.Application -> {
+                (StylesheetManager.snapshot().version shl 2) xor
+                    (themeVersion shl 1) xor
+                    inspectorOverridesVersion
+            }
+
+            StyleApplicationScope.SystemOverlay -> 0L
+        }
+        return base xor
             (pseudoStateVersion shl 3) xor
             (selectorStateVersion shl 4) xor
             (viewportWidthPx.toLong() shl 5) xor
-            (viewportHeightPx.toLong() shl 6)
+            (viewportHeightPx.toLong() shl 6) xor
+            (scope.ordinal.toLong() shl 20)
     }
 
     fun markPseudoStateChanged(node: DOMNode? = null) {
@@ -414,7 +436,9 @@ object StyleEngine {
                 metrics = metrics,
                 parentComputed = null,
                 rootFontSizePx = DEFAULT_ROOT_FONT_SIZE_PX,
-                passMode = StylePassMode.Full
+                passMode = StylePassMode.Full,
+                scope = StyleApplicationScope.Application,
+                allowInspectorOverrides = true
             )
         }
 
@@ -434,7 +458,9 @@ object StyleEngine {
                 metrics = metrics,
                 parentComputed = subtreeRoot.parent?.appliedComputedStyleSnapshot(),
                 rootFontSizePx = rootFontSizeFor(subtreeRoot),
-                passMode = StylePassMode.Targeted
+                passMode = StylePassMode.Targeted,
+                scope = StyleApplicationScope.Application,
+                allowInspectorOverrides = true
             )
             flags = NodeApplyFlags(
                 layoutDirty = flags.layoutDirty || subtreeFlags.layoutDirty,
@@ -451,7 +477,9 @@ object StyleEngine {
         metrics: MutableApplyMetrics,
         parentComputed: ComputedStyle?,
         rootFontSizePx: Int,
-        passMode: StylePassMode
+        passMode: StylePassMode,
+        scope: StyleApplicationScope,
+        allowInspectorOverrides: Boolean
     ): NodeApplyFlags {
         val nodeResult = applyStyleToNode(
             node = root,
@@ -459,7 +487,9 @@ object StyleEngine {
             variables = variables,
             metrics = metrics,
             parentComputed = parentComputed,
-            rootFontSizePx = rootFontSizePx
+            rootFontSizePx = rootFontSizePx,
+            scope = scope,
+            allowInspectorOverrides = allowInspectorOverrides
         )
         var flags = nodeResult.flags
         val canSkipSubtree = passMode == StylePassMode.Targeted &&
@@ -482,7 +512,9 @@ object StyleEngine {
                 metrics = metrics,
                 parentComputed = nodeComputed,
                 rootFontSizePx = nextRootFontSizePx,
-                passMode = passMode
+                passMode = passMode,
+                scope = scope,
+                allowInspectorOverrides = allowInspectorOverrides
             )
             flags = NodeApplyFlags(
                 layoutDirty = flags.layoutDirty || childFlags.layoutDirty,
@@ -498,7 +530,9 @@ object StyleEngine {
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
         parentComputed: ComputedStyle?,
-        rootFontSizePx: Int
+        rootFontSizePx: Int,
+        scope: StyleApplicationScope,
+        allowInspectorOverrides: Boolean
     ): NodeApplyResult {
         metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
@@ -507,14 +541,14 @@ object StyleEngine {
             nodeId = selectorNodeId(node),
             classesHash = node.styleClasses.hashCode(),
             inlineHash = node.inlineStyleDeclarations.toStableHash(),
-            inspectorHash = inspectorOverrideHash(node),
+            inspectorHash = if (allowInspectorOverrides) inspectorOverrideHash(node) else 0,
             hovered = node.styleHovered,
             active = node.styleActive,
             focused = node.styleFocused,
             disabled = node.styleDisabled,
             open = node.styleOpen,
             stylesheetVersion = snapshot.version,
-            themeVersion = themeVersion,
+            themeVersion = if (scope == StyleApplicationScope.Application) themeVersion else 0L,
             defaultsHash = defaults.hashCode(),
             parentInheritedHash = inheritedHash(parentComputed),
             ancestorSelectorHash = if (snapshot.index.hasAncestorDependentSelectors) ancestorSelectorHash(node) else 0,
@@ -527,7 +561,8 @@ object StyleEngine {
             },
             rootFontSizePx = rootFontSizePx,
             viewportWidthPx = viewportWidthPx,
-            viewportHeightPx = viewportHeightPx
+            viewportHeightPx = viewportHeightPx,
+            scope = scope
         )
 
         val cached = cache[node]
@@ -549,7 +584,8 @@ object StyleEngine {
             snapshot = snapshot,
             variables = variables,
             parentComputed = parentComputed,
-            rootFontSizePx = rootFontSizePx
+            rootFontSizePx = rootFontSizePx,
+            allowInspectorOverrides = allowInspectorOverrides
         )
         cache[node] = CachedStyle(key = key, style = computed)
         metrics.recomputedNodes += 1
@@ -569,14 +605,15 @@ object StyleEngine {
         snapshot: StylesheetSnapshot,
         variables: Map<String, String>,
         parentComputed: ComputedStyle?,
-        rootFontSizePx: Int
+        rootFontSizePx: Int,
+        allowInspectorOverrides: Boolean
     ): ComputedStyle {
         val candidates = matchingCandidates(node, snapshot.index)
         val winners = resolveCascadeWinners(
             node = node,
             candidates = candidates,
             inline = node.inlineStyleDeclarations,
-            inspector = inspectorOverrides[inspectorOverrideTarget(node)]
+            inspector = if (allowInspectorOverrides) inspectorOverrides[inspectorOverrideTarget(node)] else null
         )
         var result = defaults.toComputedStyle()
         for (property in StyleProperty.entries) {
@@ -688,7 +725,21 @@ object StyleEngine {
         return true
     }
 
-    private fun resolvedVariables(snapshot: StylesheetSnapshot): Map<String, String> {
+    private fun snapshotForScope(scope: StyleApplicationScope): StylesheetSnapshot {
+        return when (scope) {
+            StyleApplicationScope.Application -> StylesheetManager.snapshot()
+            StyleApplicationScope.SystemOverlay -> StylesheetSnapshot(
+                version = Long.MIN_VALUE,
+                index = RuleIndex.EMPTY,
+                rootVariables = emptyMap()
+            )
+        }
+    }
+
+    private fun resolvedVariables(snapshot: StylesheetSnapshot, scope: StyleApplicationScope): Map<String, String> {
+        if (scope == StyleApplicationScope.SystemOverlay) {
+            return emptyMap()
+        }
         val variables = linkedMapOf<String, String>()
         variables.putAll(snapshot.rootVariables)
         variables.putAll(themeVariables)

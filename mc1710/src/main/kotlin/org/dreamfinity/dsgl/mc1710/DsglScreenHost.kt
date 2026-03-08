@@ -28,6 +28,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.system.SystemOverlayHost
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import java.io.File
@@ -82,6 +83,7 @@ abstract class DsglScreenHost(
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
+    private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
     private val inspectorInputDebug: Boolean = false
     private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
     private val phaseTraceDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.rebuild.trace")
@@ -207,8 +209,23 @@ abstract class DsglScreenHost(
         }
         ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
-        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
-        ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
+        systemOverlayHost.syncFrame(
+            inspectedRoot = tree.root,
+            inspectedLayoutRevision = layoutRevision,
+            cursorX = dsglMouseX,
+            cursorY = dsglMouseY,
+            inspectorPointerCaptured = inspectorPointerCaptured
+        )
+        val systemOverlayCommands = try {
+            systemOverlayHost.render(adapter, lastWidth, lastHeight)
+            systemOverlayHost.paint(adapter)
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "draw.systemOverlay",
+                message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
+            )
+            emptyList()
+        }
         val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         val selectBlocks = !inspectorBlocks && SelectRuntime.engine.isOpen()
         val colorPickerBlocks = !inspectorBlocks && ColorPickerRuntime.engine.isOpen()
@@ -243,8 +260,7 @@ abstract class DsglScreenHost(
         DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
-        inspector.appendOverlayCommands(lastWidth, lastHeight, stagingCommandsBuffer)
-        ColorPickerRuntime.engine.appendOverlayCommands(stagingCommandsBuffer)
+        stagingCommandsBuffer.addAll(systemOverlayCommands)
         val keepPrevious = shouldKeepPreviousFrameCommands(
             tree = tree,
             rebuiltThisFrame = rebuiltThisFrame,
@@ -289,6 +305,7 @@ abstract class DsglScreenHost(
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
         domTree?.clearRefs()
+        systemOverlayHost.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }

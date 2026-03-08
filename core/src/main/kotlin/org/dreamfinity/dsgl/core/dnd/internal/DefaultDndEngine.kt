@@ -603,6 +603,21 @@ object DefaultDndEngine : DndEngine {
                 y = command.y + dy
             )
 
+            is RenderCommand.DrawColorField -> command.copy(
+                x = command.x + dx,
+                y = command.y + dy
+            )
+
+            is RenderCommand.DrawHueBar -> command.copy(
+                x = command.x + dx,
+                y = command.y + dy
+            )
+
+            is RenderCommand.DrawAlphaBar -> command.copy(
+                x = command.x + dx,
+                y = command.y + dy
+            )
+
             is RenderCommand.DrawText -> command.copy(
                 x = command.x + dx,
                 y = command.y + dy

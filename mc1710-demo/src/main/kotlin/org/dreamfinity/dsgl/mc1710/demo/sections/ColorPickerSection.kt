@@ -23,6 +23,10 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
             "Pipette samples current rendered game window surface. Copy/paste accepts hex/rgb/hsl/hsb.",
             { style = { color = DEMO_MUTED } }
         )
+        text(
+            "Inline picker follows app styling. Inspector picker (F8) is rendered in isolated system overlay styles.",
+            { style = { color = DEMO_MUTED } }
+        )
 
         div({
             style = {

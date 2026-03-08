@@ -168,6 +168,24 @@ class ColorPickerControllerTests {
         assertTrue(closeEnough(0x99 / 255f, color.b))
     }
 
+    @Test
+    fun `picker draws gradient bars with dedicated render commands`() {
+        val controller = ColorPickerController(
+            initial = ColorPickerState(
+                color = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true
+            )
+        )
+        val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
+        val out = ArrayList<RenderCommand>()
+        controller.appendCommands(layout, out)
+
+        assertTrue(out.any { it is RenderCommand.DrawColorField })
+        assertTrue(out.any { it is RenderCommand.DrawHueBar })
+        assertTrue(out.any { it is RenderCommand.DrawAlphaBar })
+    }
+
     private class RecordingSampler : ScreenColorSampler {
         var areaCalls: Int = 0
         var lastAreaSize: Pair<Int, Int>? = null

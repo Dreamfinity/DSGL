@@ -1,0 +1,88 @@
+package org.dreamfinity.dsgl.core.system
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
+import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.render.RenderCommand
+
+class SystemOverlayDomBridgeTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
+
+    @Test
+    fun `renderer maps legacy commands to dom nodes`() {
+        val host = ContainerNode(stackLayout = true, key = "host")
+        val commands = listOf(
+            RenderCommand.DrawRect(10, 12, 30, 14, 0xFF112233.toInt()),
+            RenderCommand.DrawText("Hello", 18, 20, 0xFFEEDDCC.toInt())
+        )
+
+        SystemOverlayCommandDslRenderer.rebuildInto(host, commands, "test")
+
+        assertEquals(2, host.children.size)
+        assertTrue(host.children.all { it.styleType == "dsgl-system-raw-render-command" })
+    }
+
+    @Test
+    fun `system inspector overlay creates dom children from controller frame`() {
+        val controller = InspectorController()
+        controller.toggle()
+        val root = ContainerNode(key = "root").apply {
+            bounds = Rect(0, 0, 420, 280)
+        }
+        ContainerNode(key = "child").apply {
+            bounds = Rect(16, 18, 120, 28)
+        }.applyParent(root)
+
+        val overlay = SystemInspectorOverlayNode(controller)
+        overlay.bindInspectedTree(root, layoutRevision = 1L)
+        overlay.updateCursor(mouseX = 22, mouseY = 22, pointerCaptured = false)
+        overlay.render(ctx, 0, 0, 420, 280)
+
+        assertTrue(overlay.children.isNotEmpty())
+        assertTrue(overlay.children.all { it.styleType == "dsgl-system-raw-render-command" })
+    }
+
+    @Test
+    fun `system color picker overlay creates dom children from runtime frame`() {
+        val overlay = SystemColorPickerOverlayNode()
+        try {
+            ColorPickerRuntime.engine.open(
+                ColorPickerPopupRequest(
+                    owner = "test-owner",
+                    anchorRect = Rect(20, 24, 24, 18),
+                    title = "Test Picker",
+                    state = ColorPickerState(
+                        color = RgbaColor(0.4f, 0.7f, 0.2f, 1f),
+                        previous = RgbaColor(0.4f, 0.7f, 0.2f, 1f),
+                        mode = ColorFormatMode.HEX,
+                        alphaEnabled = true,
+                        closeOnSelect = false
+                    )
+                )
+            )
+
+            overlay.updateCursor(28, 32)
+            overlay.render(ctx, 0, 0, 500, 360)
+            assertTrue(overlay.children.isNotEmpty())
+            assertTrue(overlay.children.all { it.styleType == "dsgl-system-raw-render-command" })
+        } finally {
+            ColorPickerRuntime.engine.closeAll()
+        }
+    }
+}

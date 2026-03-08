@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.render
 
+import org.dreamfinity.dsgl.core.ItemStackRef
 import org.dreamfinity.dsgl.core.style.TextFormatting
 
 /**
@@ -13,6 +14,32 @@ sealed class RenderCommand {
         val width: Int,
         val height: Int,
         val color: Int
+    ) : RenderCommand()
+
+    /** Saturation/value picker field for color picker UI. */
+    data class DrawColorField(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int,
+        val hueDeg: Float
+    ) : RenderCommand()
+
+    /** Hue gradient bar for color picker UI. */
+    data class DrawHueBar(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int
+    ) : RenderCommand()
+
+    /** Alpha gradient bar for color picker UI over existing checker background. */
+    data class DrawAlphaBar(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int,
+        val rgbColor: Int
     ) : RenderCommand()
 
     /** Text draw command. */
@@ -78,7 +105,7 @@ sealed class RenderCommand {
 
     /** Item stack draw command. */
     data class DrawItemStack(
-        val stack: org.dreamfinity.dsgl.core.ItemStackRef,
+        val stack: ItemStackRef,
         val x: Int,
         val y: Int,
         val width: Int,

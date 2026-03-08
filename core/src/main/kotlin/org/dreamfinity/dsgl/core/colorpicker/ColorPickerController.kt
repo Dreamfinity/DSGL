@@ -1000,25 +1000,13 @@ class ColorPickerController(
     }
 
     private fun drawColorField(rect: Rect, out: MutableList<RenderCommand>) {
-        val stepX = 2
-        val stepY = 2
-        var x = 0
-        while (x < rect.width) {
-            val sat = x.toFloat() / rect.width.coerceAtLeast(1).toFloat()
-            val color = ColorConversions.hsvToRgb(
-                HsvColor(hueDeg = hueDeg, saturation = sat, brightness = 1f)
-            )
-            out += RenderCommand.DrawRect(rect.x + x, rect.y, stepX.coerceAtMost(rect.width - x), rect.height, color.toArgbInt())
-            x += stepX
-        }
-        var y = 0
-        while (y < rect.height) {
-            val darkness = y.toFloat() / rect.height.coerceAtLeast(1).toFloat()
-            val alpha = (darkness * 255f).roundToInt().coerceIn(0, 255)
-            val shade = (alpha shl 24)
-            out += RenderCommand.DrawRect(rect.x, rect.y + y, rect.width, stepY.coerceAtMost(rect.height - y), shade)
-            y += stepY
-        }
+        out += RenderCommand.DrawColorField(
+            x = rect.x,
+            y = rect.y,
+            width = rect.width,
+            height = rect.height,
+            hueDeg = hueDeg
+        )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
@@ -1031,14 +1019,12 @@ class ColorPickerController(
     }
 
     private fun drawHueSlider(rect: Rect, out: MutableList<RenderCommand>) {
-        val step = 2
-        var x = 0
-        while (x < rect.width) {
-            val hue = (x.toFloat() / rect.width.coerceAtLeast(1).toFloat()) * 360f
-            val color = ColorConversions.hsvToRgb(HsvColor(hue, 1f, 1f))
-            out += RenderCommand.DrawRect(rect.x + x, rect.y, step.coerceAtMost(rect.width - x), rect.height, color.toArgbInt())
-            x += step
-        }
+        out += RenderCommand.DrawHueBar(
+            x = rect.x,
+            y = rect.y,
+            width = rect.width,
+            height = rect.height
+        )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
@@ -1050,14 +1036,13 @@ class ColorPickerController(
     private fun drawAlphaSlider(rect: Rect, out: MutableList<RenderCommand>) {
         drawChecker(rect, out)
         val rgb = state.color.copy(a = 1f)
-        val step = 2
-        var x = 0
-        while (x < rect.width) {
-            val alpha = (x.toFloat() / rect.width.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
-            val color = rgb.copy(a = alpha)
-            out += RenderCommand.DrawRect(rect.x + x, rect.y, step.coerceAtMost(rect.width - x), rect.height, color.toArgbInt())
-            x += step
-        }
+        out += RenderCommand.DrawAlphaBar(
+            x = rect.x,
+            y = rect.y,
+            width = rect.width,
+            height = rect.height,
+            rgbColor = rgb.toArgbInt()
+        )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
