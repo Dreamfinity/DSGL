@@ -5,11 +5,18 @@ annotation class ContextMenuDsl
 
 fun contextMenu(
     id: String? = null,
+    fontId: String? = null,
+    fontSize: Int? = null,
     block: ContextMenuBuilder.() -> Unit
 ): ContextMenuModel {
     val builder = ContextMenuBuilder()
     builder.block()
-    return ContextMenuModel(id = id, entries = builder.buildEntries())
+    return ContextMenuModel(
+        id = id,
+        entries = builder.buildEntries(),
+        fontId = fontId,
+        fontSize = fontSize
+    )
 }
 
 @ContextMenuDsl

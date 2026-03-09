@@ -14,12 +14,16 @@ fun DOMNode.onContextMenu(
     onMouseDown = { event ->
         previous?.invoke(event)
         if (!event.cancelled && event.mouseButton == MouseButton.RIGHT) {
-            val anchor = event.target?.bounds ?: bounds
+            val sourceNode = event.target ?: this
+            val sourceStyle = sourceNode.appliedComputedStyleSnapshot()
+            val anchor = sourceNode.bounds
             handler(
                 ContextMenuTriggerScope(
                     mouseX = event.mouseX,
                     mouseY = event.mouseY,
                     anchorRect = anchor,
+                    inheritedFontId = sourceStyle?.fontId ?: sourceNode.fontId,
+                    inheritedFontSize = sourceStyle?.fontSize ?: sourceNode.fontSize,
                     host = host
                 )
             )

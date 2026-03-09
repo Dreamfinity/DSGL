@@ -161,6 +161,23 @@ class ContextMenuEngineTests {
         assertEquals(anchor.y + anchor.height, panel.y)
     }
 
+    @Test
+    fun `menu model font size is used for rendered text`() {
+        val engine = ContextMenuEngine()
+        val model = contextMenu(id = "font.size", fontSize = 24) {
+            item("Open")
+        }
+
+        engine.openAtCursor(model, 20, 20)
+        engine.onFrame(ctx, 320, 180, 1f)
+        val commands = mutableListOf<RenderCommand>()
+        engine.appendOverlayCommands(ctx, 320, 180, commands)
+
+        val textCommand = commands.filterIsInstance<RenderCommand.DrawText>().firstOrNull()
+        assertNotNull(textCommand)
+        assertEquals(24, textCommand.fontSize)
+    }
+
     private fun requireEntryRect(engine: ContextMenuEngine, level: Int, index: Int): Rect {
         val rect = engine.debugEntryRect(level, index)
         assertNotNull(rect)

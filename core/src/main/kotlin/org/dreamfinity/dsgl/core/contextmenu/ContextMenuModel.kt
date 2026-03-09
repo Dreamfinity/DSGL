@@ -10,6 +10,8 @@ private object ContextMenuIds {
 data class ContextMenuModel(
     val id: String? = null,
     val entries: List<MenuEntry>,
+    val fontId: String? = null,
+    val fontSize: Int? = null,
     internal val token: Long = ContextMenuIds.next()
 )
 

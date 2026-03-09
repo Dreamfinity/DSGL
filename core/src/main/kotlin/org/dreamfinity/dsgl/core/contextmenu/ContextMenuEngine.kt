@@ -16,6 +16,8 @@ class ContextMenuEngine(
         val token: Long,
         val entries: List<MenuEntry>,
         val placementMode: Int,
+        val fontId: String?,
+        val fontSize: Int?,
         var anchorRect: Rect,
         var parentLevelIndex: Int,
         var parentEntryIndex: Int,
@@ -93,6 +95,8 @@ class ContextMenuEngine(
             token = model.token,
             entries = model.entries,
             placementMode = PLACEMENT_CURSOR,
+            fontId = model.fontId,
+            fontSize = model.fontSize,
             anchorRect = Rect(x, y, 0, 0),
             parentLevelIndex = -1,
             parentEntryIndex = -1
@@ -112,6 +116,8 @@ class ContextMenuEngine(
             token = model.token,
             entries = model.entries,
             placementMode = PLACEMENT_ANCHORED,
+            fontId = model.fontId,
+            fontSize = model.fontSize,
             anchorRect = anchorRect,
             parentLevelIndex = -1,
             parentEntryIndex = -1
@@ -174,6 +180,8 @@ class ContextMenuEngine(
         levels.forEach { level ->
             val panel = level.panelRect
             val measurement = level.measurement ?: return@forEach
+            val fontId = level.fontId ?: style.fontId
+            val fontSize = level.fontSize ?: style.fontSize
             val shadowX = panel.x + 2
             val shadowY = panel.y + 2
             out += RenderCommand.DrawRect(shadowX, shadowY, panel.width, panel.height, style.panelShadowColor)
@@ -189,7 +197,7 @@ class ContextMenuEngine(
             val clipH = (panel.height - 2).coerceAtLeast(1)
             out += RenderCommand.PushClip(clipX, clipY, clipW, clipH)
 
-            val fontHeight = measureContext.fontHeight(style.fontId, style.fontSize)
+            val fontHeight = measureContext.fontHeight(fontId, fontSize)
             measurement.snapshots.indices.forEach { index ->
                 val rowRect = entryRect(level, index) ?: return@forEach
                 if (rowRect.y + rowRect.height < clipY || rowRect.y > clipY + clipH) {
@@ -236,8 +244,8 @@ class ContextMenuEngine(
                         x = indicatorX,
                         y = textY,
                         color = indicatorColor,
-                        fontId = style.fontId,
-                        fontSize = style.fontSize
+                        fontId = fontId,
+                        fontSize = fontSize
                     )
                 }
 
@@ -246,8 +254,8 @@ class ContextMenuEngine(
                     x = labelX,
                     y = textY,
                     color = textColor,
-                    fontId = style.fontId,
-                    fontSize = style.fontSize
+                    fontId = fontId,
+                    fontSize = fontSize
                 )
 
                 val hintText = when {
@@ -255,7 +263,7 @@ class ContextMenuEngine(
                     else -> snapshot.hint
                 }
                 if (!hintText.isNullOrEmpty()) {
-                    val hintWidth = measureContext.measureText(hintText, style.fontId, style.fontSize)
+                    val hintWidth = measureContext.measureText(hintText, fontId, fontSize)
                     val hintX = itemRect.x + itemRect.width - style.rowPaddingX - hintWidth
                     val hintColor = when {
                         !snapshot.enabled -> style.disabledTextColor
@@ -269,8 +277,8 @@ class ContextMenuEngine(
                         x = hintX,
                         y = textY,
                         color = hintColor,
-                        fontId = style.fontId,
-                        fontSize = style.fontSize
+                        fontId = fontId,
+                        fontSize = fontSize
                     )
                 }
             }
@@ -443,6 +451,8 @@ class ContextMenuEngine(
                 menuToken = level.token,
                 entries = level.entries,
                 style = style,
+                fontId = level.fontId ?: style.fontId,
+                fontSize = level.fontSize ?: style.fontSize,
                 ctx = ctx,
                 dpiScale = viewportScale
             )
@@ -598,6 +608,8 @@ class ContextMenuEngine(
             token = parentEntry.token,
             entries = parentEntry.entries,
             placementMode = PLACEMENT_SUBMENU,
+            fontId = parent.fontId,
+            fontSize = parent.fontSize,
             anchorRect = parent.anchorRect,
             parentLevelIndex = parentLevelIndex,
             parentEntryIndex = parentEntryIndex

@@ -23,8 +23,8 @@ class ContextMenuMeasurementCacheTests {
             item("Copy")
             item("Paste")
         }
-        val first = cache.measure(model.token, model.entries, ContextMenuStyle(), ctx, 1f)
-        val second = cache.measure(model.token, model.entries, ContextMenuStyle(), ctx, 1f)
+        val first = cache.measure(model.token, model.entries, ContextMenuStyle(), null, null, ctx, 1f)
+        val second = cache.measure(model.token, model.entries, ContextMenuStyle(), null, null, ctx, 1f)
 
         assertSame(first, second)
         assertEquals(1L, cache.computeCount)
@@ -38,9 +38,9 @@ class ContextMenuMeasurementCacheTests {
             item({ dynamicLabel })
         }
 
-        val first = cache.measure(model.token, model.entries, ContextMenuStyle(), ctx, 1f)
+        val first = cache.measure(model.token, model.entries, ContextMenuStyle(), null, null, ctx, 1f)
         dynamicLabel = "Open in new window"
-        val second = cache.measure(model.token, model.entries, ContextMenuStyle(), ctx, 1f)
+        val second = cache.measure(model.token, model.entries, ContextMenuStyle(), null, null, ctx, 1f)
 
         assertEquals(2L, cache.computeCount)
         assertEquals(first.panelWidth < second.panelWidth, true)
@@ -54,8 +54,8 @@ class ContextMenuMeasurementCacheTests {
             item("Rename")
         }
 
-        cache.measure(model.token, model.entries, ContextMenuStyle(), ctx, 1f)
-        cache.measure(model.token, model.entries, ContextMenuStyle(minPanelWidth = 220), ctx, 1f)
+        cache.measure(model.token, model.entries, ContextMenuStyle(), null, null, ctx, 1f)
+        cache.measure(model.token, model.entries, ContextMenuStyle(minPanelWidth = 220), null, null, ctx, 1f)
 
         assertEquals(2L, cache.computeCount)
     }
@@ -73,8 +73,8 @@ class ContextMenuMeasurementCacheTests {
         }
         val style = ContextMenuStyle(minPanelWidth = 1)
 
-        val noIconMeasurement = cache.measure(noIcons.token, noIcons.entries, style, ctx, 1f)
-        val withIconMeasurement = cache.measure(withIcons.token, withIcons.entries, style, ctx, 1f)
+        val noIconMeasurement = cache.measure(noIcons.token, noIcons.entries, style, null, null, ctx, 1f)
+        val withIconMeasurement = cache.measure(withIcons.token, withIcons.entries, style, null, null, ctx, 1f)
 
         assertTrue(withIconMeasurement.indicatorWidth > noIconMeasurement.indicatorWidth)
         assertTrue(withIconMeasurement.panelWidth > noIconMeasurement.panelWidth)

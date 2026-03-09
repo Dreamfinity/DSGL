@@ -50,6 +50,8 @@ class ContextMenuMeasurementCache(
         menuToken: Long,
         entries: List<MenuEntry>,
         style: ContextMenuStyle,
+        fontId: String?,
+        fontSize: Int?,
         ctx: UiMeasureContext,
         dpiScale: Float
     ): Measurement {
@@ -58,7 +60,7 @@ class ContextMenuMeasurementCache(
         val key = Key(
             menuToken = menuToken,
             styleHash = style.hashCode(),
-            fontHash = 31 * (style.fontId?.hashCode() ?: 0) + (style.fontSize ?: 0),
+            fontHash = 31 * (fontId?.hashCode() ?: 0) + (fontSize ?: 0),
             dpiKey = (dpiScale * 1000f).toInt(),
             entriesHash = fingerprint
         )
@@ -67,7 +69,7 @@ class ContextMenuMeasurementCache(
         }
 
         computeCount += 1
-        val rowHeight = (ctx.fontHeight(style.fontId, style.fontSize) + style.rowPaddingY * 2)
+        val rowHeight = (ctx.fontHeight(fontId, fontSize) + style.rowPaddingY * 2)
             .coerceAtLeast(14)
         val separatorHeight = style.separatorHeight.coerceAtLeast(2)
 
@@ -87,7 +89,7 @@ class ContextMenuMeasurementCache(
                 return@forEachIndexed
             }
 
-            val labelWidth = ctx.measureText(snapshot.label, style.fontId, style.fontSize)
+            val labelWidth = ctx.measureText(snapshot.label, fontId, fontSize)
             if (labelWidth > maxLabelWidth) {
                 maxLabelWidth = labelWidth
             }
@@ -98,7 +100,7 @@ class ContextMenuMeasurementCache(
                 else -> null
             }
             if (!indicatorText.isNullOrEmpty()) {
-                val indicatorWidth = ctx.measureText(indicatorText, style.fontId, style.fontSize)
+                val indicatorWidth = ctx.measureText(indicatorText, fontId, fontSize)
                 if (indicatorWidth > maxIndicatorWidth) {
                     maxIndicatorWidth = indicatorWidth
                 }
@@ -110,7 +112,7 @@ class ContextMenuMeasurementCache(
                 else -> null
             }
             if (!hintText.isNullOrEmpty()) {
-                val hintWidth = ctx.measureText(hintText, style.fontId, style.fontSize)
+                val hintWidth = ctx.measureText(hintText, fontId, fontSize)
                 if (hintWidth > maxHintWidth) {
                     maxHintWidth = hintWidth
                 }

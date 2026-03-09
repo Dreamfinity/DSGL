@@ -14,14 +14,17 @@ import kotlin.test.assertTrue
 
 class ContextMenuEventsTests {
     private class RecordingHost : ContextMenuHost {
+        var openedModel: ContextMenuModel? = null
         var openedAtCursor: Pair<Int, Int>? = null
         var openedAnchored: Rect? = null
 
         override fun openAtCursor(model: ContextMenuModel, x: Int, y: Int) {
+            openedModel = model
             openedAtCursor = x to y
         }
 
         override fun openAnchored(model: ContextMenuModel, anchorRect: Rect) {
+            openedModel = model
             openedAnchored = anchorRect
         }
 
@@ -70,5 +73,58 @@ class ContextMenuEventsTests {
         val anchor = host.openedAnchored
         assertNotNull(anchor)
         assertEquals(node.bounds, anchor)
+    }
+
+    @Test
+    fun `context menu inherits font settings from triggering node when model omits them`() {
+        val host = RecordingHost()
+        val node = ContainerNode()
+        node.bounds = Rect(22, 41, 86, 19)
+        node.fontId = "test-font"
+        node.fontSize = 24
+        val model = contextMenu(id = "events.font") {
+            item("Open")
+        }
+        node.onContextMenu(host = host) {
+            openMenu(model)
+        }
+
+        val event = MouseDownEvent(31, 49, MouseButton.RIGHT)
+        event.target = node
+        node.onMouseDown?.invoke(event)
+
+        val openedModel = host.openedModel
+        assertNotNull(openedModel)
+        assertEquals("test-font", openedModel.fontId)
+        assertEquals(24, openedModel.fontSize)
+    }
+
+    @Test
+    fun `context menu inherits font from clicked target on repeated opens`() {
+        val host = RecordingHost()
+        val parent = ContainerNode()
+        val child = ContainerNode()
+        child.parent = parent
+        parent.children += child
+        parent.bounds = Rect(0, 0, 100, 40)
+        child.bounds = Rect(10, 10, 60, 16)
+        child.fontId = "child-font"
+        child.fontSize = 28
+        val model = contextMenu(id = "events.target.font") {
+            item("Open")
+        }
+        parent.onContextMenu(host = host) {
+            openMenu(model)
+        }
+
+        repeat(2) {
+            val event = MouseDownEvent(31, 19, MouseButton.RIGHT)
+            event.target = child
+            parent.onMouseDown?.invoke(event)
+            val openedModel = host.openedModel
+            assertNotNull(openedModel)
+            assertEquals("child-font", openedModel.fontId)
+            assertEquals(28, openedModel.fontSize)
+        }
     }
 }

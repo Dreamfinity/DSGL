@@ -21,17 +21,27 @@ data class ContextMenuTriggerScope(
     val mouseX: Int,
     val mouseY: Int,
     val anchorRect: Rect?,
+    private val inheritedFontId: String?,
+    private val inheritedFontSize: Int?,
     private val host: ContextMenuHost
 ) {
     fun openMenu(model: ContextMenuModel) {
-        host.openAtCursor(model, mouseX, mouseY)
+        host.openAtCursor(resolveModel(model), mouseX, mouseY)
     }
 
     fun openMenuAnchored(model: ContextMenuModel, anchor: Rect = anchorRect ?: Rect(mouseX, mouseY, 0, 0)) {
-        host.openAnchored(model, anchor)
+        host.openAnchored(resolveModel(model), anchor)
     }
 
     fun closeMenus() {
         host.closeAll()
+    }
+
+    private fun resolveModel(model: ContextMenuModel): ContextMenuModel {
+        if (model.fontId != null && model.fontSize != null) return model
+        return model.copy(
+            fontId = model.fontId ?: inheritedFontId,
+            fontSize = model.fontSize ?: inheritedFontSize
+        )
     }
 }
