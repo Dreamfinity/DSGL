@@ -64,15 +64,19 @@ class ColorPickerInlineNode(
                 val currentLayout = layout ?: return@addEventListener
                 val consumed = controller.handleMouseDown(event.mouseX, event.mouseY, event.mouseButton, currentLayout)
                 if (consumed) {
-                    dragCaptured = event.mouseButton == MouseButton.LEFT
+                    refreshLayout()
+                    dragCaptured = event.mouseButton == MouseButton.LEFT && controller.hasActiveDragTarget()
                     event.cancelled = true
                     markRenderCommandsDirty()
                 }
             }
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 val consumed = controller.handleMouseUp(event.mouseX, event.mouseY, event.mouseButton)
-                if (consumed) {
+                if (event.mouseButton == MouseButton.LEFT) {
                     dragCaptured = false
+                }
+                if (consumed) {
+                    refreshLayout()
                     event.cancelled = true
                     markRenderCommandsDirty()
                 }
@@ -83,6 +87,7 @@ class ColorPickerInlineNode(
                 val mouseX = event.lastMouseX + event.dx
                 val mouseY = event.lastMouseY + event.dy
                 if (controller.handleMouseMove(mouseX, mouseY, currentLayout)) {
+                    refreshLayout()
                     event.cancelled = true
                     markRenderCommandsDirty()
                 }
@@ -96,6 +101,7 @@ class ColorPickerInlineNode(
             this@ColorPickerInlineNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
                 if (!FocusManager.isFocused(this@ColorPickerInlineNode)) return@addEventListener
                 if (controller.handleKeyDown(event.keyCode, event.keyChar)) {
+                    refreshLayout()
                     event.cancelled = true
                     markRenderCommandsDirty()
                 }
@@ -139,20 +145,20 @@ class ColorPickerInlineNode(
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
         syncControllerStateIfNeeded()
-        layout = controller.buildLayout(
-            Rect(
-                contentX(),
-                contentY(),
-                contentWidth().coerceAtLeast(1),
-                contentHeight().coerceAtLeast(1)
-            )
-        )
+        refreshLayout()
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         syncControllerStateIfNeeded()
+        refreshLayout()
         val currentLayout = layout ?: return
         controller.appendCommands(currentLayout, out)
+        val rootBounds = rootBounds()
+        controller.appendEyedropperOverlay(
+            viewportWidth = rootBounds.width.coerceAtLeast(1),
+            viewportHeight = rootBounds.height.coerceAtLeast(1),
+            out = out
+        )
         addBorderCommands(out)
     }
 
@@ -253,5 +259,25 @@ class ColorPickerInlineNode(
         } else {
             (previousValue ?: uncontrolledPrevious).normalized()
         }
+    }
+
+    private fun refreshLayout() {
+        if (bounds.width <= 0 || bounds.height <= 0) return
+        layout = controller.buildLayout(
+            Rect(
+                contentX(),
+                contentY(),
+                contentWidth().coerceAtLeast(1),
+                contentHeight().coerceAtLeast(1)
+            )
+        )
+    }
+
+    private fun rootBounds(): Rect {
+        var current: DOMNode = this
+        while (current.parent != null) {
+            current = current.parent!!
+        }
+        return current.bounds
     }
 }
