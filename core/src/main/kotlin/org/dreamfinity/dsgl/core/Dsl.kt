@@ -139,6 +139,32 @@ open class SelectProps : ComponentProps() {
     private var valueInternal: String? = null
 }
 
+/** Toggle/switch input props. */
+open class ToggleProps : ComponentProps() {
+    var defaultChecked: Boolean = false
+    var trackOnColor: Int = 0xFF34C759.toInt()
+    var trackOffColor: Int = 0xFF656A73.toInt()
+    var trackDisabledColor: Int = 0xFF4B4F56.toInt()
+    var thumbColor: Int = 0xFFFFFFFF.toInt()
+    var thumbDisabledColor: Int = 0xFFB7BBC1.toInt()
+    var focusOutlineColor: Int = 0xAA6FB4FF.toInt()
+    var switchWidthPx: Int = 34
+    var switchHeightPx: Int = 20
+
+    var checked: Boolean
+        get() = checkedInternal
+        set(newValue) {
+            checkedSpecified = true
+            checkedInternal = newValue
+        }
+
+    internal fun hasControlledChecked(): Boolean = checkedSpecified
+    internal fun controlledChecked(): Boolean = checkedInternal
+
+    private var checkedSpecified: Boolean = false
+    private var checkedInternal: Boolean = false
+}
+
 /** Color picker inline props. */
 open class ColorPickerProps : ComponentProps() {
     var closeOnSelect: Boolean = true
@@ -468,6 +494,32 @@ class UiScope internal constructor(private val parent: DOMNode) {
             closeOnSelect = props.closeOnSelect,
             key = props.key
         ).apply {
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
+    }
+
+    fun toggle(
+        props: ToggleProps.() -> Unit = {},
+        ref: RefTarget<ElementHandle>? = null
+    ) = withProps(ToggleProps().apply(props)) { props ->
+        val controlled = props.hasControlledChecked()
+        ToggleNode(
+            controlled = controlled,
+            checked = if (controlled) props.controlledChecked() else false,
+            defaultChecked = props.defaultChecked,
+            key = props.key
+        ).apply {
+            trackOnColor = props.trackOnColor
+            trackOffColor = props.trackOffColor
+            trackDisabledColor = props.trackDisabledColor
+            thumbColor = props.thumbColor
+            thumbDisabledColor = props.thumbDisabledColor
+            focusOutlineColor = props.focusOutlineColor
+            switchWidthPx = props.switchWidthPx
+            switchHeightPx = props.switchHeightPx
             applyStyle(this, props.style)
             applyHandlers(this, props)
             applyRef(this, ref)

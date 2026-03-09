@@ -20,7 +20,7 @@ internal class SystemInspectorOverlayNode(
     private var cursorY: Int = 0
     private var pointerCaptured: Boolean = false
     private val commandBuffer: MutableList<RenderCommand> = ArrayList(512)
-    private var renderedCommandsHash: Int = 0
+    private var renderCommandsRevision: Long = 0L
 
     fun bindInspectedTree(root: DOMNode?, layoutRevision: Long) {
         inspectedRoot = root
@@ -48,10 +48,8 @@ internal class SystemInspectorOverlayNode(
         }
         commandBuffer.clear()
         controller.appendOverlayCommands(bounds.width, bounds.height, commandBuffer)
-        val nextHash = commandBuffer.hashCode()
-        if (nextHash != renderedCommandsHash || children.size != commandBuffer.size) {
-            SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-inspector")
-            renderedCommandsHash = nextHash
+        if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-inspector")) {
+            renderCommandsRevision += 1L
             markRenderCommandsDirty()
         }
         children.forEach { child ->
@@ -60,6 +58,6 @@ internal class SystemInspectorOverlayNode(
     }
 
     override fun volatileRenderCommandsSignature(nowMs: Long): Long {
-        return renderedCommandsHash.toLong()
+        return renderCommandsRevision
     }
 }

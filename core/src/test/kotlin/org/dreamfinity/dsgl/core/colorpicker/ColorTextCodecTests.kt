@@ -12,15 +12,20 @@ class ColorTextCodecTests {
     fun `parses supported text formats`() {
         val hex = ColorTextCodec.parse("#3366CC80")
         val rgb = ColorTextCodec.parse("rgba(51, 102, 204, 0.5)")
+        val argb = ColorTextCodec.parse("argb(0.5, 51, 102, 204)")
         val hsl = ColorTextCodec.parse("hsl(220, 60%, 50%)")
         val hsb = ColorTextCodec.parse("hsba(220, 75%, 80%, 50%)")
 
         assertNotNull(hex)
         assertNotNull(rgb)
+        assertNotNull(argb)
         assertNotNull(hsl)
         assertNotNull(hsb)
         assertEquals(ColorFormatMode.HEX, hex.detectedMode)
         assertEquals(ColorFormatMode.RGB, rgb.detectedMode)
+        assertEquals(ColorFormatMode.RGB, argb.detectedMode)
+        assertEquals(RgbChannelOrder.RGBA, rgb.detectedRgbOrder)
+        assertEquals(RgbChannelOrder.ARGB, argb.detectedRgbOrder)
         assertEquals(ColorFormatMode.HSL, hsl.detectedMode)
         assertEquals(ColorFormatMode.HSB, hsb.detectedMode)
     }
@@ -49,10 +54,12 @@ class ColorTextCodecTests {
     fun `rgb hsl and hsb formatting includes mode-specific prefixes`() {
         val source = RgbaColor(0.1f, 0.5f, 0.9f, 0.7f)
         val rgb = ColorTextCodec.format(source, ColorFormatMode.RGB, includeAlpha = true)
+        val argb = ColorTextCodec.format(source, ColorFormatMode.RGB, includeAlpha = true, rgbOrder = RgbChannelOrder.ARGB)
         val hsl = ColorTextCodec.format(source, ColorFormatMode.HSL, includeAlpha = true)
         val hsb = ColorTextCodec.format(source, ColorFormatMode.HSB, includeAlpha = true)
 
         assertTrue(rgb.startsWith("rgba("))
+        assertTrue(argb.startsWith("argb("))
         assertTrue(hsl.startsWith("hsla("))
         assertTrue(hsb.startsWith("hsba("))
     }

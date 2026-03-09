@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.elements.TextSource
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.test.AfterTest
@@ -208,5 +209,13 @@ class DomTreeCachingTests {
         assertEquals(2, drawRectColors.size)
         assertEquals(1, drawRectColors.count { it == 0xFF1255AA.toInt() })
         assertEquals(1, drawRectColors.count { it == 0xFF22AA55.toInt() })
+    }
+
+    @Test
+    fun `render command chunk does not hold dom node references`() {
+        val hasNodeField = RenderCommandChunk::class.java.declaredFields.any { field ->
+            DOMNode::class.java.isAssignableFrom(field.type)
+        }
+        assertTrue(!hasNodeField)
     }
 }

@@ -1,10 +1,6 @@
 package org.dreamfinity.dsgl.core.render
 
-import org.dreamfinity.dsgl.core.dom.DOMNode
-
-internal class RenderCommandChunk(
-    val node: DOMNode
-) {
+internal class RenderCommandChunk {
     val prefixCommands: MutableList<RenderCommand> = ArrayList(4)
     val selfCommands: MutableList<RenderCommand> = ArrayList(16)
     val suffixCommands: MutableList<RenderCommand> = ArrayList(4)

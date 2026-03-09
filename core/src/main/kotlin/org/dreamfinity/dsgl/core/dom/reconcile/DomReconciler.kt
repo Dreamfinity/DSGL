@@ -218,6 +218,10 @@ object DomReconciler {
                 current.syncFrom(template)
             }
 
+            is ToggleNode if template is ToggleNode -> {
+                current.syncFrom(template)
+            }
+
             is ColorPickerInlineNode if template is ColorPickerInlineNode -> {
                 current.syncFrom(template)
             }

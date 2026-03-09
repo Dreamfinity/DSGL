@@ -313,14 +313,22 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
     private fun drawColorField(x: Int, y: Int, width: Int, height: Int, hueDeg: Float) {
         if (width <= 0 || height <= 0) return
+
         val normalizedHue = ((hueDeg % 360f) + 360f) % 360f
-        val hueRgb = hsvToArgbInt(normalizedHue, 1f, 1f)
-        val leftColor = applyOpacity(0xFFFFFFFF.toInt())
-        val rightColor = applyOpacity(hueRgb)
-        val topShade = applyOpacity(0x00000000)
-        val bottomShade = applyOpacity(0xFF000000.toInt())
-        drawHorizontalGradientRect(x, y, width, height, leftColor, rightColor)
-        drawVerticalGradientRect(x, y, width, height, topShade, bottomShade)
+        val hueColor = (hsvToArgbInt(normalizedHue, 1f, 1f) and 0x00FF_FFFF) or (0xFF shl 24)
+
+        drawGradientBlock {
+            drawHorizontalGradientRectRaw(
+                x, y, width, height,
+                applyOpacity(0xFFFFFFFF.toInt()),
+                applyOpacity(hueColor)
+            )
+            drawVerticalGradientRectRaw(
+                x, y, width, height,
+                applyOpacity(0x00000000),
+                applyOpacity(0xFF000000.toInt())
+            )
+        }
     }
 
     private fun drawHueBar(x: Int, y: Int, width: Int, height: Int) {
@@ -353,14 +361,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
         GL11.glShadeModel(GL11.GL_SMOOTH)
-        GL11.glBegin(GL11.GL_QUADS)
-        glColor(leftColor)
-        GL11.glVertex2f(x.toFloat(), y.toFloat())
-        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
-        glColor(rightColor)
-        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
-        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
-        GL11.glEnd()
+        drawHorizontalGradientRectRaw(x, y, width, height, leftColor, rightColor)
         GL11.glShadeModel(GL11.GL_FLAT)
         GL11.glEnable(GL11.GL_TEXTURE_2D)
         GL11.glColor4f(1f, 1f, 1f, 1f)
@@ -369,16 +370,97 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private fun drawVerticalGradientRect(x: Int, y: Int, width: Int, height: Int, topColor: Int, bottomColor: Int) {
         if (width <= 0 || height <= 0) return
         GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glDisable(GL11.GL_ALPHA)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glShadeModel(GL11.GL_SMOOTH)
+        drawVerticalGradientRectRaw(x, y, width, height, topColor, bottomColor)
+        GL11.glEnable(GL11.GL_ALPHA)
+        GL11.glShadeModel(GL11.GL_FLAT)
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
+    }
+
+    private inline fun drawGradientBlock(block: () -> Unit) {
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glDisable(GL11.GL_DEPTH_TEST)
+        GL11.glDepthMask(false)
+        GL11.glDisable(GL11.GL_ALPHA_TEST)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glShadeModel(GL11.GL_SMOOTH)
+
+        block()
+
+        GL11.glShadeModel(GL11.GL_FLAT)
+        GL11.glDisable(GL11.GL_BLEND)
+        GL11.glEnable(GL11.GL_ALPHA_TEST)
+        GL11.glDepthMask(true)
+        GL11.glEnable(GL11.GL_DEPTH_TEST)
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
+    }
+
+    private fun drawHorizontalGradientRectRaw(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        leftColor: Int,
+        rightColor: Int
+    ) {
+        GL11.glBegin(GL11.GL_QUADS)
+        glColor(leftColor)
+        GL11.glVertex2f(x.toFloat(), y.toFloat())
+        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
+        glColor(rightColor)
+        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
+        GL11.glEnd()
+    }
+
+    private fun drawVerticalGradientRectRaw(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        topColor: Int,
+        bottomColor: Int
+    ) {
+        GL11.glBegin(GL11.GL_QUADS)
+        glColor(topColor)
+        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
+        GL11.glVertex2f(x.toFloat(), y.toFloat())
+        glColor(bottomColor)
+        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
+        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        GL11.glEnd()
+    }
+
+    private fun drawBilinearGradientRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        topLeftColor: Int,
+        topRightColor: Int,
+        bottomRightColor: Int,
+        bottomLeftColor: Int
+    ) {
+        if (width <= 0 || height <= 0) return
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
         GL11.glShadeModel(GL11.GL_SMOOTH)
         GL11.glBegin(GL11.GL_QUADS)
-        glColor(topColor)
+        glColor(topLeftColor)
         GL11.glVertex2f(x.toFloat(), y.toFloat())
-        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
-        glColor(bottomColor)
-        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        glColor(bottomLeftColor)
         GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
+        glColor(bottomRightColor)
+        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
+        glColor(topRightColor)
+        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
         GL11.glEnd()
         GL11.glShadeModel(GL11.GL_FLAT)
         GL11.glEnable(GL11.GL_TEXTURE_2D)

@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.system
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
@@ -36,6 +37,27 @@ class SystemOverlayDomBridgeTests {
 
         assertEquals(2, host.children.size)
         assertTrue(host.children.all { it.styleType == "dsgl-system-raw-render-command" })
+    }
+
+    @Test
+    fun `renderer reuses raw nodes instead of recreating them`() {
+        val host = ContainerNode(stackLayout = true, key = "host")
+        val first = listOf(
+            RenderCommand.DrawRect(2, 4, 12, 10, 0xFF223344.toInt()),
+            RenderCommand.DrawText("A", 6, 7, 0xFFFFFFFF.toInt())
+        )
+        val second = listOf(
+            RenderCommand.DrawRect(2, 4, 12, 10, 0xFF556677.toInt()),
+            RenderCommand.DrawText("B", 6, 7, 0xFFFFFFFF.toInt())
+        )
+
+        SystemOverlayCommandDslRenderer.rebuildInto(host, first, "reuse")
+        val firstNode0 = host.children[0]
+        val firstNode1 = host.children[1]
+
+        SystemOverlayCommandDslRenderer.rebuildInto(host, second, "reuse")
+        assertSame(firstNode0, host.children[0])
+        assertSame(firstNode1, host.children[1])
     }
 
     @Test
@@ -83,6 +105,43 @@ class SystemOverlayDomBridgeTests {
             assertTrue(overlay.children.all { it.styleType == "dsgl-system-raw-render-command" })
         } finally {
             ColorPickerRuntime.engine.closeAll()
+        }
+    }
+
+    @Test
+    fun `system overlay raw command nodes do not accumulate across popup open close`() {
+        val overlay = SystemColorPickerOverlayNode()
+        SystemOverlayDebugCounters.setEnabled(true)
+        SystemOverlayDebugCounters.reset()
+        try {
+            repeat(6) { iteration ->
+                ColorPickerRuntime.engine.open(
+                    ColorPickerPopupRequest(
+                        owner = "owner-$iteration",
+                        anchorRect = Rect(32, 28, 20, 18),
+                        title = "Picker $iteration",
+                        state = ColorPickerState(
+                            color = RgbaColor(0.2f, 0.3f, 0.6f, 0.9f),
+                            previous = RgbaColor(0.2f, 0.3f, 0.6f, 0.9f),
+                            mode = ColorFormatMode.RGB,
+                            alphaEnabled = true,
+                            closeOnSelect = false
+                        )
+                    )
+                )
+                overlay.updateCursor(40 + iteration, 42 + iteration)
+                overlay.render(ctx, 0, 0, 640, 360)
+                ColorPickerRuntime.engine.close("owner-$iteration")
+                overlay.render(ctx, 0, 0, 640, 360)
+            }
+            val stats = SystemOverlayDebugCounters.snapshot()
+            assertEquals(0L, stats.rawNodeActive)
+            assertTrue(stats.rawNodeCreated > 0L)
+            assertEquals(stats.rawNodeCreated, stats.rawNodeRemoved)
+        } finally {
+            ColorPickerRuntime.engine.closeAll()
+            SystemOverlayDebugCounters.setEnabled(false)
+            SystemOverlayDebugCounters.reset()
         }
     }
 }

@@ -252,7 +252,7 @@ class DomTree(
 
     private fun rebuildChunkRecursive(node: DOMNode, ctx: UiMeasureContext, nowMs: Long): RenderCommandChunk {
         chunkNodesVisitedLastFrame += 1
-        val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk(node) }
+        val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
         val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
 
         val childSignature = if (nodeHidden) {
@@ -281,7 +281,7 @@ class DomTree(
                 chunkTreeChangedThisFrame = true
                 chunk.children.clear()
                 expectedChildren.forEach { child ->
-                    chunk.children += chunksByNode.getOrPut(child) { RenderCommandChunk(child) }
+                    chunk.children += chunksByNode.getOrPut(child) { RenderCommandChunk() }
                 }
             }
             signature

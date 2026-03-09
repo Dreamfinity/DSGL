@@ -180,6 +180,32 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 )
                 text("Selected: ${window.inputEventRadioValue ?: "-"}", { style = { color = DEMO_MUTED } })
 
+                text("Toggle (iOS-like)")
+                div({
+                    key = "inputs.toggle.row"
+                    style = {
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                        gap = 6.px
+                    }
+                }) {
+                    toggle({
+                        key = "input.toggle.basic"
+                        checked = window.toggleBasicValue
+                        onValueChange = { event ->
+                            window.toggleBasicValue = event.parsedValue as? Boolean ?: false
+                        }
+                    })
+                    text(if (window.toggleBasicValue) "On" else "Off", { style = { color = DEMO_MUTED } })
+                }
+
+                text("Disabled toggle")
+                toggle({
+                    key = "input.toggle.disabled"
+                    checked = window.toggleSecondaryValue
+                    disabled = true
+                })
+
                 text("Date (dd.MM.yyyy HH:mm)")
                 input(
                     InputType.Date(

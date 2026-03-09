@@ -97,6 +97,28 @@ class ColorPickerControllerTests {
     }
 
     @Test
+    fun `rgb channel order switch updates active mode and input order`() {
+        val controller = ColorPickerController(
+            initial = ColorPickerState(
+                color = RgbaColor(0.3f, 0.4f, 0.5f, 0.6f),
+                mode = ColorFormatMode.RGB,
+                rgbOrder = RgbChannelOrder.RGBA,
+                alphaEnabled = true
+            )
+        )
+        val firstLayout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
+        val argbRect = firstLayout.argbOrderRect ?: error("ARGB switch not rendered")
+        controller.handleMouseDown(argbRect.x + 2, argbRect.y + 2, MouseButton.LEFT, firstLayout)
+
+        val after = controller.snapshot()
+        assertEquals(RgbChannelOrder.ARGB, after.rgbOrder)
+
+        val secondLayout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
+        val keys = secondLayout.inputSlots.map { it.key }
+        assertEquals(listOf("a", "r", "g", "b"), keys)
+    }
+
+    @Test
     fun `eyedropper overlay shows mode and formatted value tooltip`() {
         val sampled = 0xFF336699.toInt()
         val sampler = object : ScreenColorSampler {
@@ -106,6 +128,7 @@ class ColorPickerControllerTests {
             initial = ColorPickerState(
                 color = RgbaColor.WHITE,
                 mode = ColorFormatMode.RGB,
+                rgbOrder = RgbChannelOrder.ARGB,
                 alphaEnabled = true
             ),
             screenSampler = sampler
@@ -118,8 +141,13 @@ class ColorPickerControllerTests {
         controller.appendEyedropperOverlay(800, 600, out)
 
         val textCommands = out.filterIsInstance<RenderCommand.DrawText>()
-        assertTrue(textCommands.any { it.text.contains("Mode: RGB") })
-        val expected = ColorTextCodec.format(RgbaColor.fromArgbInt(sampled).normalized(), ColorFormatMode.RGB, true)
+        assertTrue(textCommands.any { it.text.contains("Mode: RGB (ARGB)") })
+        val expected = ColorTextCodec.format(
+            RgbaColor.fromArgbInt(sampled).normalized(),
+            ColorFormatMode.RGB,
+            true,
+            RgbChannelOrder.ARGB
+        )
         assertTrue(textCommands.any { it.text == expected })
     }
 

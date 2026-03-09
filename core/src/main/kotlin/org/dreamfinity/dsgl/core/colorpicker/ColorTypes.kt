@@ -9,6 +9,11 @@ enum class ColorFormatMode {
     HSB
 }
 
+enum class RgbChannelOrder {
+    RGBA,
+    ARGB
+}
+
 data class RgbaColor(
     val r: Float,
     val g: Float,

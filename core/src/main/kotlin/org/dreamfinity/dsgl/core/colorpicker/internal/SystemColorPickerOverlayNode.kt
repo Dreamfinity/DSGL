@@ -16,7 +16,7 @@ internal class SystemColorPickerOverlayNode(
     private var cursorX: Int = 0
     private var cursorY: Int = 0
     private val commandBuffer: MutableList<RenderCommand> = ArrayList(512)
-    private var renderedCommandsHash: Int = 0
+    private var renderCommandsRevision: Long = 0L
 
     fun updateCursor(mouseX: Int, mouseY: Int) {
         cursorX = mouseX
@@ -33,10 +33,8 @@ internal class SystemColorPickerOverlayNode(
         ColorPickerRuntime.engine.onCursorPosition(cursorX, cursorY)
         commandBuffer.clear()
         ColorPickerRuntime.engine.appendOverlayCommands(commandBuffer)
-        val nextHash = commandBuffer.hashCode()
-        if (nextHash != renderedCommandsHash || children.size != commandBuffer.size) {
-            SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-color-picker")
-            renderedCommandsHash = nextHash
+        if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-color-picker")) {
+            renderCommandsRevision += 1L
             markRenderCommandsDirty()
         }
         children.forEach { child ->
@@ -45,6 +43,6 @@ internal class SystemColorPickerOverlayNode(
     }
 
     override fun volatileRenderCommandsSignature(nowMs: Long): Long {
-        return renderedCommandsHash.toLong()
+        return renderCommandsRevision
     }
 }

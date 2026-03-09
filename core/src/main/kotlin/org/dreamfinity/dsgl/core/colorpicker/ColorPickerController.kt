@@ -23,6 +23,8 @@ data class ColorPickerModeOptionSlot(
 data class ColorPickerLayout(
     val bounds: Rect,
     val modeSelectRect: Rect,
+    val rgbaOrderRect: Rect?,
+    val argbOrderRect: Rect?,
     val modeOptionsRect: Rect?,
     val modeOptions: List<ColorPickerModeOptionSlot>,
     val colorFieldRect: Rect,
@@ -127,18 +129,60 @@ class ColorPickerController(
         val innerW = (bounds.width - padding * 2).coerceAtLeast(1)
         val rowGap = style.rowGap
 
-        val modeSelectWidth = minOf(style.modeSelectWidth.coerceAtLeast(84), innerW).coerceAtLeast(1)
+        val orderSlotGap = style.rgbOrderLabelGap.coerceAtLeast(1)
+        val modeRowGap = style.modeRowGap.coerceAtLeast(1)
+        val orderLabelWidth = style.rgbOrderLabelWidth.coerceAtLeast(32)
+        val modeSelectMinWidth = style.modeSelectMinWidth.coerceAtLeast(84)
+        val showRgbOrderSwitch = state.alphaEnabled &&
+            innerW >= (modeSelectMinWidth + modeRowGap + orderLabelWidth * 2 + orderSlotGap)
+        val modeRowReserved = if (showRgbOrderSwitch) {
+            orderLabelWidth * 2 + orderSlotGap + modeRowGap
+        } else {
+            0
+        }
+        val modeSelectMax = (innerW - modeRowReserved).coerceAtLeast(1)
+        val modeSelectWidth = minOf(style.modeSelectWidth.coerceAtLeast(84), modeSelectMax).coerceAtLeast(1)
         val modeSelectRect = Rect(
             x = innerX,
             y = innerY,
             width = modeSelectWidth,
             height = style.modeSelectHeight
         )
-        val modeOptions = ArrayList<ColorPickerModeOptionSlot>(ColorFormatMode.values().size)
+        val rgbaOrderRect: Rect?
+        val argbOrderRect: Rect?
+        if (showRgbOrderSwitch) {
+            val orderStartX = modeSelectRect.x + modeSelectRect.width + modeRowGap
+            val orderAvailable = (innerX + innerW - orderStartX).coerceAtLeast(0)
+            if (orderAvailable >= 2) {
+                val gap = orderSlotGap.coerceAtMost((orderAvailable - 2).coerceAtLeast(1))
+                val firstWidth = ((orderAvailable - gap) / 2).coerceAtLeast(1)
+                val secondX = orderStartX + firstWidth + gap
+                val secondWidth = (innerX + innerW - secondX).coerceAtLeast(1)
+                rgbaOrderRect = Rect(
+                    x = orderStartX,
+                    y = innerY,
+                    width = firstWidth,
+                    height = style.modeSelectHeight
+                )
+                argbOrderRect = Rect(
+                    x = secondX,
+                    y = innerY,
+                    width = secondWidth,
+                    height = style.modeSelectHeight
+                )
+            } else {
+                rgbaOrderRect = null
+                argbOrderRect = null
+            }
+        } else {
+            rgbaOrderRect = null
+            argbOrderRect = null
+        }
+        val modeOptions = ArrayList<ColorPickerModeOptionSlot>(ColorFormatMode.entries.size)
         val modeOptionsRect = if (modeDropdownOpen) {
             val optionHeight = style.modeOptionHeight
             val popupWidth = maxOf(modeSelectRect.width, style.modeSelectMinWidth)
-            val popupHeight = optionHeight * ColorFormatMode.values().size + 2
+            val popupHeight = optionHeight * ColorFormatMode.entries.size + 2
             val minX = innerX
             val maxX = (innerX + innerW - popupWidth).coerceAtLeast(innerX)
             val popupX = if (minX <= maxX) modeSelectRect.x.coerceIn(minX, maxX) else minX
@@ -150,7 +194,7 @@ class ColorPickerController(
             } else {
                 if (minY <= maxY) (modeSelectRect.y - popupHeight - 2).coerceIn(minY, maxY) else minY
             }
-            ColorFormatMode.values().forEachIndexed { index, mode ->
+            ColorFormatMode.entries.forEachIndexed { index, mode ->
                 modeOptions += ColorPickerModeOptionSlot(
                     mode = mode,
                     rect = Rect(
@@ -240,6 +284,8 @@ class ColorPickerController(
         return ColorPickerLayout(
             bounds = bounds,
             modeSelectRect = modeSelectRect,
+            rgbaOrderRect = rgbaOrderRect,
+            argbOrderRect = argbOrderRect,
             modeOptionsRect = modeOptionsRect,
             modeOptions = modeOptions,
             colorFieldRect = fieldRect,
@@ -278,6 +324,7 @@ class ColorPickerController(
         drawBorder(out, bounds, style.panelBorderColor)
 
         drawModeSelect(layout, out)
+        drawRgbOrderSwitch(layout, out)
 
         drawColorField(layout.colorFieldRect, out)
         drawFieldThumb(layout.colorFieldRect, out)
@@ -429,8 +476,12 @@ class ColorPickerController(
         val swatchRect = Rect(panelX + 6, tooltipY + 5, swatchSize, swatchSize)
         drawSwatch(swatchRect, state.color, out)
 
-        val modeText = "Mode: ${state.mode.name}"
-        val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled)
+        val modeText = if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
+            "Mode: ${state.mode.name} (${state.rgbOrder.name})"
+        } else {
+            "Mode: ${state.mode.name}"
+        }
+        val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
         out += RenderCommand.DrawText(
             text = modeText,
             x = swatchRect.x + swatchRect.width + 8,
@@ -517,6 +568,18 @@ class ColorPickerController(
             clearInputEdit()
             return true
         }
+        if (layout.rgbaOrderRect?.contains(globalX, globalY) == true) {
+            state = state.copy(rgbOrder = RgbChannelOrder.RGBA)
+            modeDropdownOpen = false
+            clearInputEdit()
+            return true
+        }
+        if (layout.argbOrderRect?.contains(globalX, globalY) == true) {
+            state = state.copy(rgbOrder = RgbChannelOrder.ARGB)
+            modeDropdownOpen = false
+            clearInputEdit()
+            return true
+        }
         if (layout.modeSelectRect.contains(globalX, globalY)) {
             modeDropdownOpen = !modeDropdownOpen
             clearInputEdit()
@@ -557,7 +620,7 @@ class ColorPickerController(
             return true
         }
         if (layout.copyRect.contains(globalX, globalY)) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled)
+            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
             return true
         }
         if (layout.pasteRect.contains(globalX, globalY)) {
@@ -565,7 +628,10 @@ class ColorPickerController(
             if (parsed != null) {
                 val next = if (state.alphaEnabled) parsed.color else parsed.color.copy(a = 1f)
                 applyColor(next, notifyPreview = true, commit = false)
-                state = state.copy(mode = parsed.detectedMode)
+                state = state.copy(
+                    mode = parsed.detectedMode,
+                    rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder
+                )
             }
             return true
         }
@@ -613,13 +679,16 @@ class ColorPickerController(
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.C) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled)
+            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.V) {
             val parsed = ColorClipboardSupport.paste() ?: return true
             applyColor(parsed.color, notifyPreview = true, commit = false)
-            state = state.copy(mode = parsed.detectedMode)
+            state = state.copy(
+                mode = parsed.detectedMode,
+                rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder
+            )
             return true
         }
         val key = activeInputKey ?: run {
@@ -754,11 +823,16 @@ class ColorPickerController(
             }
 
             ColorFormatMode.RGB -> {
-                values["r"] = ((state.color.r * 255f).roundToInt().coerceIn(0, 255)).toString()
-                values["g"] = ((state.color.g * 255f).roundToInt().coerceIn(0, 255)).toString()
-                values["b"] = ((state.color.b * 255f).roundToInt().coerceIn(0, 255)).toString()
+                val rgbValues = hashMapOf(
+                    "r" to ((state.color.r * 255f).roundToInt().coerceIn(0, 255)).toString(),
+                    "g" to ((state.color.g * 255f).roundToInt().coerceIn(0, 255)).toString(),
+                    "b" to ((state.color.b * 255f).roundToInt().coerceIn(0, 255)).toString()
+                )
                 if (state.alphaEnabled) {
-                    values["a"] = ((state.color.a * 100f).roundToInt().coerceIn(0, 100)).toString()
+                    rgbValues["a"] = ((state.color.a * 100f).roundToInt().coerceIn(0, 100)).toString()
+                }
+                rgbInputOrder().forEach { key ->
+                    rgbValues[key]?.let { values[key] = it }
                 }
             }
 
@@ -790,10 +864,15 @@ class ColorPickerController(
             ColorFormatMode.HEX -> listOf(InputDefinition("hex", "HEX"))
             ColorFormatMode.RGB -> {
                 val defs = ArrayList<InputDefinition>()
-                defs += InputDefinition("r", "R")
-                defs += InputDefinition("g", "G")
-                defs += InputDefinition("b", "B")
-                if (state.alphaEnabled) defs += InputDefinition("a", "A%")
+                rgbInputOrder().forEach { key ->
+                    defs += when (key) {
+                        "r" -> InputDefinition("r", "R")
+                        "g" -> InputDefinition("g", "G")
+                        "b" -> InputDefinition("b", "B")
+                        "a" -> InputDefinition("a", "A%")
+                        else -> return@forEach
+                    }
+                }
                 defs
             }
 
@@ -949,6 +1028,48 @@ class ColorPickerController(
         )
     }
 
+    private fun drawRgbOrderSwitch(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
+        val rgbaRect = layout.rgbaOrderRect ?: return
+        val argbRect = layout.argbOrderRect ?: return
+        drawOrderLabel(
+            rect = rgbaRect,
+            label = "RGBA",
+            active = state.rgbOrder == RgbChannelOrder.RGBA,
+            hovered = rgbaRect.contains(hoverX, hoverY),
+            out = out
+        )
+        drawOrderLabel(
+            rect = argbRect,
+            label = "ARGB",
+            active = state.rgbOrder == RgbChannelOrder.ARGB,
+            hovered = argbRect.contains(hoverX, hoverY),
+            out = out
+        )
+    }
+
+    private fun drawOrderLabel(
+        rect: Rect,
+        label: String,
+        active: Boolean,
+        hovered: Boolean,
+        out: MutableList<RenderCommand>
+    ) {
+        val fill = when {
+            active -> style.buttonActiveColor
+            hovered -> style.buttonHoverColor
+            else -> style.buttonBackgroundColor
+        }
+        out += RenderCommand.DrawRect(rect.x, rect.y, rect.width, rect.height, fill)
+        drawBorder(out, rect, if (active) style.inputActiveBorderColor else style.inputBorderColor)
+        out += RenderCommand.DrawText(
+            text = label,
+            x = rect.x + 6,
+            y = rect.y + 2,
+            color = style.textColor,
+            fontSize = style.fontSize
+        )
+    }
+
     private fun drawModeOptions(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
         val popupRect = layout.modeOptionsRect ?: return
         out += RenderCommand.DrawRect(popupRect.x, popupRect.y, popupRect.width, popupRect.height, style.inputBackgroundColor)
@@ -1093,6 +1214,14 @@ class ColorPickerController(
         var hue = raw % 360f
         if (hue < 0f) hue += 360f
         return hue
+    }
+
+    private fun rgbInputOrder(): List<String> {
+        if (!state.alphaEnabled) return listOf("r", "g", "b")
+        return when (state.rgbOrder) {
+            RgbChannelOrder.RGBA -> listOf("r", "g", "b", "a")
+            RgbChannelOrder.ARGB -> listOf("a", "r", "g", "b")
+        }
     }
 
     private data class InputDefinition(

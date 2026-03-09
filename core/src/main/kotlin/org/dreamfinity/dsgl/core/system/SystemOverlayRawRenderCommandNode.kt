@@ -7,10 +7,20 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class SystemOverlayRawRenderCommandNode(
-    private val renderCommand: RenderCommand,
+    renderCommand: RenderCommand,
     key: Any?
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-raw-render-command"
+    private var renderCommand: RenderCommand = renderCommand
+    private var signature: Long = renderCommand.hashCode().toLong()
+
+    fun updateRenderCommand(next: RenderCommand): Boolean {
+        if (next == renderCommand) return false
+        renderCommand = next
+        signature = next.hashCode().toLong()
+        markRenderCommandsDirty()
+        return true
+    }
 
     override fun measure(ctx: UiMeasureContext): Size = Size(0, 0)
 
@@ -23,6 +33,6 @@ internal class SystemOverlayRawRenderCommandNode(
     }
 
     override fun volatileRenderCommandsSignature(nowMs: Long): Long {
-        return renderCommand.hashCode().toLong()
+        return signature
     }
 }

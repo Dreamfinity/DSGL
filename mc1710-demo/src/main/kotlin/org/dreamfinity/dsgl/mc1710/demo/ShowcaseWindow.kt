@@ -236,6 +236,8 @@ class ShowcaseWindow : DsglWindow() {
     internal var selectDisabledValue by state<String?>("locked")
     internal var selectDynamicValue by state<String?>("alpha")
     internal var selectDynamicAlt by state(false)
+    internal var toggleBasicValue by state(false)
+    internal var toggleSecondaryValue by state(true)
     internal var colorInlineValue by state(RgbaColor(0.28f, 0.52f, 0.88f, 1f))
     internal var colorInlineMode by state(ColorFormatMode.HEX)
     internal var colorPopupValue by state(RgbaColor(0.82f, 0.31f, 0.41f, 0.9f))

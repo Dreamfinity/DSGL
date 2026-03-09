@@ -51,7 +51,16 @@ object ScreenColorSamplerBridge {
 
 object ColorClipboardSupport {
     fun copy(color: RgbaColor, mode: ColorFormatMode, includeAlpha: Boolean) {
-        val text = ColorTextCodec.format(color, mode, includeAlpha)
+        copy(color, mode, includeAlpha, RgbChannelOrder.RGBA)
+    }
+
+    fun copy(
+        color: RgbaColor,
+        mode: ColorFormatMode,
+        includeAlpha: Boolean,
+        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA
+    ) {
+        val text = ColorTextCodec.format(color, mode, includeAlpha, rgbOrder)
         ClipboardBridge.writeText(text)
     }
 
