@@ -174,10 +174,13 @@ class ColorPickerInlineNode(
             uncontrolledPrevious = template.uncontrolledPrevious
         }
         bindController()
-        syncControllerStateIfNeeded(force = true)
+        syncControllerStateIfNeeded(force = !dragCaptured)
     }
 
     private fun syncControllerStateIfNeeded(force: Boolean = false) {
+        if (!force && dragCaptured) {
+            return
+        }
         val current = effectiveColor()
         val previous = effectivePreviousColor()
         val currentArgb = current.toArgbInt()
