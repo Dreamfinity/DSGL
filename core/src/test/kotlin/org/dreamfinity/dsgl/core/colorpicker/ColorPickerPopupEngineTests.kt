@@ -8,6 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ColorPickerPopupEngineTests {
@@ -65,6 +66,55 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
+    fun `popup can be closed and reopened for the same owner`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.onFrame(640, 360)
+        val request = ColorPickerPopupRequest(
+            owner = owner,
+            anchorRect = Rect(100, 80, 32, 20),
+            state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+        )
+
+        engine.open(request)
+        assertNotNull(engine.debugPanelRect(owner))
+        engine.close(owner)
+        assertFalse(engine.isOpen())
+
+        engine.open(request)
+        assertTrue(engine.isOpen())
+        assertNotNull(engine.debugPanelRect(owner))
+        assertNotNull(engine.debugBodyLayout(owner))
+    }
+
+    @Test
+    fun `syncing same owner keeps popup controller identity stable`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.onFrame(640, 360)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(100, 80, 32, 20),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+
+        val firstController = engine.debugController(owner) ?: error("controller missing")
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 90, 32, 20),
+                state = ColorPickerState(color = RgbaColor(0f, 0f, 0f, 1f), closeOnSelect = false)
+            )
+        )
+
+        val secondController = engine.debugController(owner) ?: error("controller missing")
+        assertSame(firstController, secondController)
+        assertTrue(engine.isOpen())
+    }
+
+    @Test
     fun `header drag moves popup and field drag does not`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"
@@ -95,6 +145,108 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseUp(dragStartX + 60, dragStartY + 40, MouseButton.LEFT))
         val panelAfterHeaderDrag = engine.debugPanelRect(owner) ?: error("panel missing")
         assertNotEquals(panelAfterFieldDrag.x, panelAfterHeaderDrag.x)
+    }
+
+    @Test
+    fun `color field drag updates continuously across multiple move events`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        val previews = mutableListOf<RgbaColor>()
+        var committed: RgbaColor? = null
+        engine.onFrame(1000, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
+                onPreview = { previews += it },
+                onCommit = { committed = it }
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val startX = layout.colorFieldRect.x + 4
+        val startY = layout.colorFieldRect.y + layout.colorFieldRect.height - 4
+        val midX = layout.colorFieldRect.x + layout.colorFieldRect.width / 2
+        val midY = layout.colorFieldRect.y + layout.colorFieldRect.height / 2
+        val endX = layout.colorFieldRect.x + layout.colorFieldRect.width - 4
+        val endY = layout.colorFieldRect.y + 4
+
+        assertTrue(engine.handleMouseDown(startX, startY, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(midX, midY))
+        assertTrue(engine.handleMouseMove(endX, endY))
+        assertTrue(engine.handleMouseUp(endX, endY, MouseButton.LEFT))
+
+        assertTrue(previews.size >= 2)
+        assertTrue(previews.map { it.toArgbInt() }.distinct().size >= 2)
+        assertEquals(previews.last().toArgbInt(), committed?.toArgbInt())
+    }
+
+    @Test
+    fun `hue drag updates continuously across multiple move events`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        var committed: RgbaColor? = null
+        engine.onFrame(1000, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
+                onCommit = { committed = it }
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val startX = layout.hueRect.x + 4
+        val midX = layout.hueRect.x + layout.hueRect.width / 3
+        val endX = layout.hueRect.x + (layout.hueRect.width * 2) / 3
+        val y = layout.hueRect.y + layout.hueRect.height / 2
+
+        assertTrue(engine.handleMouseDown(startX, y, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(midX, y))
+        val midColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        assertTrue(engine.handleMouseMove(endX, y))
+        val endColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        assertTrue(engine.handleMouseUp(endX, y, MouseButton.LEFT))
+
+        assertTrue(midColor.toArgbInt() != endColor.toArgbInt())
+        assertEquals(endColor.toArgbInt(), committed?.toArgbInt())
+    }
+
+    @Test
+    fun `alpha drag updates continuously across multiple move events`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        val previews = mutableListOf<RgbaColor>()
+        var committed: RgbaColor? = null
+        engine.onFrame(1000, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(
+                    color = RgbaColor(0.5f, 0.4f, 0.3f, 1f),
+                    closeOnSelect = false,
+                    alphaEnabled = true
+                ),
+                onPreview = { previews += it },
+                onCommit = { committed = it }
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val alphaRect = layout.alphaRect ?: error("alpha rect missing")
+        val startX = alphaRect.x + alphaRect.width - 4
+        val midX = alphaRect.x + alphaRect.width / 2
+        val endX = alphaRect.x + 4
+        val y = alphaRect.y + alphaRect.height / 2
+
+        assertTrue(engine.handleMouseDown(startX, y, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(midX, y))
+        assertTrue(engine.handleMouseMove(endX, y))
+        assertTrue(engine.handleMouseUp(endX, y, MouseButton.LEFT))
+
+        assertTrue(previews.size >= 2)
+        assertTrue(previews.first().a > previews.last().a)
+        assertEquals(previews.last().toArgbInt(), committed?.toArgbInt())
     }
 
     @Test
@@ -224,6 +376,52 @@ class ColorPickerPopupEngineTests {
         val openedLayout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertNotNull(openedLayout.modeOptionsRect)
         assertTrue(openedLayout.modeOptions.isNotEmpty())
+    }
+
+    @Test
+    fun `popup input editing updates color state and keeps popup usable`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        val previews = mutableListOf<RgbaColor>()
+        var committed: RgbaColor? = null
+        engine.onFrame(900, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(
+                    color = RgbaColor.WHITE,
+                    mode = ColorFormatMode.RGB,
+                    alphaEnabled = true,
+                    closeOnSelect = false
+                ),
+                onPreview = { previews += it },
+                onCommit = { committed = it }
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val redInput = layout.inputSlots.firstOrNull { it.key == "r" } ?: error("red input missing")
+        val inputX = redInput.inputRect.x + 4
+        val inputY = redInput.inputRect.y + 4
+
+        assertTrue(engine.handleMouseDown(inputX, inputY, MouseButton.LEFT))
+        assertTrue(engine.handleKeyDown(KeyCodes.DELETE))
+        assertTrue(engine.handleKeyDown(0, '0'))
+        assertTrue(engine.handleKeyDown(KeyCodes.ENTER))
+
+        assertTrue(previews.isNotEmpty())
+        assertEquals(0f, previews.last().r)
+        assertEquals(previews.last().toArgbInt(), committed?.toArgbInt())
+
+        val header = engine.debugHeaderRect(owner) ?: error("header missing")
+        val dragStartX = header.x + 8
+        val dragStartY = header.y + 8
+        val panelBefore = engine.debugPanelRect(owner) ?: error("panel missing")
+        assertTrue(engine.handleMouseDown(dragStartX, dragStartY, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(dragStartX + 40, dragStartY + 30))
+        assertTrue(engine.handleMouseUp(dragStartX + 40, dragStartY + 30, MouseButton.LEFT))
+        val panelAfter = engine.debugPanelRect(owner) ?: error("panel missing")
+        assertNotEquals(panelBefore.x, panelAfter.x)
     }
 
     @Test

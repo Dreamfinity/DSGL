@@ -1,18 +1,32 @@
 package org.dreamfinity.dsgl.core.inspector
 
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleProperty
 
 class InspectorControllerTests {
+    @AfterTest
+    fun cleanup() {
+        StyleEngine.clearAllInspectorOverrides()
+    }
+
     @Test
     fun `selection rebinds by stable key across layout commits`() {
         val controller = InspectorController()
@@ -308,9 +322,100 @@ class InspectorControllerTests {
         }
     }
 
+    @Test
+    fun `inspector opens picker for color property and stays interactive after preview commit`() {
+        val pickerHost = RecordingInspectorColorPickerHost()
+        val controller = InspectorController(colorPickerManager = pickerHost)
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1200, 800)
+        val selected = container("selected-target", 980, 120, 180, 120)
+        selected.applyParent(root)
+        StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
+
+        controller.onLayoutCommitted(root, 1L)
+        controller.appendOverlayCommands(900, 640, mutableListOf())
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+
+        assertTrue(
+            controller.debugOpenColorPickerForSelection(
+                StyleProperty.BACKGROUND_COLOR,
+                Rect(120, 80, 16, 16)
+            )
+        )
+
+        val opened = pickerHost.lastOpen
+        assertNotNull(opened)
+        assertTrue(pickerHost.isOpen())
+
+        opened.onPreview?.invoke(RgbaColor(0.25f, 0.5f, 0.75f, 1f))
+        val previewLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.BACKGROUND_COLOR) as? StyleExpression.Literal)?.value
+        assertEquals("#FF4080BF", previewLiteral)
+
+        opened.onCommit?.invoke(RgbaColor(1f, 0f, 0f, 1f))
+        val committedLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.BACKGROUND_COLOR) as? StyleExpression.Literal)?.value
+        assertEquals("#FFFF0000", committedLiteral)
+
+        pickerHost.close()
+        assertFalse(pickerHost.isOpen())
+        assertTrue(controller.handleMouseDown(38, 30, MouseButton.LEFT))
+        assertTrue(controller.isDraggingPanel)
+        assertTrue(controller.handleMouseUp(38, 30, MouseButton.LEFT))
+        assertFalse(controller.isDraggingPanel)
+    }
+
     private fun container(key: Any, x: Int, y: Int, width: Int, height: Int): ContainerNode {
         return ContainerNode(key = key).apply {
             bounds = Rect(x, y, width, height)
         }
     }
+
+    private class RecordingInspectorColorPickerHost : InspectorColorPickerHost {
+        var lastOpen: OpenCall? = null
+        private var open: Boolean = false
+
+        override fun open(
+            anchorRect: Rect,
+            title: String,
+            state: ColorPickerState,
+            style: ColorPickerStyle,
+            width: Int,
+            draggable: Boolean,
+            closeOnOutsideClick: Boolean,
+            onPreview: ((RgbaColor) -> Unit)?,
+            onChange: ((RgbaColor) -> Unit)?,
+            onCommit: ((RgbaColor) -> Unit)?,
+            onClose: (() -> Unit)?
+        ) {
+            lastOpen = OpenCall(
+                anchorRect = anchorRect,
+                title = title,
+                state = state,
+                onPreview = onPreview,
+                onChange = onChange,
+                onCommit = onCommit,
+                onClose = onClose
+            )
+            open = true
+        }
+
+        override fun close() {
+            if (!open) return
+            open = false
+            lastOpen?.onClose?.invoke()
+        }
+
+        override fun isOpen(): Boolean = open
+    }
+
+    private data class OpenCall(
+        val anchorRect: Rect,
+        val title: String,
+        val state: ColorPickerState,
+        val onPreview: ((RgbaColor) -> Unit)?,
+        val onChange: ((RgbaColor) -> Unit)?,
+        val onCommit: ((RgbaColor) -> Unit)?,
+        val onClose: (() -> Unit)?
+    )
 }

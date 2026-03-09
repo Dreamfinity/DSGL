@@ -109,6 +109,60 @@ class SystemOverlayDomBridgeTests {
     }
 
     @Test
+    fun `system color picker overlay mounts closes and remounts with popup lifecycle`() {
+        val overlay = SystemColorPickerOverlayNode()
+        val request = ColorPickerPopupRequest(
+            owner = "test-owner",
+            anchorRect = Rect(20, 24, 24, 18),
+            title = "Test Picker",
+            state = ColorPickerState(
+                color = RgbaColor(0.4f, 0.7f, 0.2f, 1f),
+                previous = RgbaColor(0.4f, 0.7f, 0.2f, 1f),
+                mode = ColorFormatMode.HEX,
+                alphaEnabled = true,
+                closeOnSelect = false
+            )
+        )
+        try {
+            ColorPickerRuntime.engine.open(request)
+            overlay.updateCursor(28, 32)
+            overlay.render(ctx, 0, 0, 500, 360)
+            assertTrue(overlay.children.isNotEmpty())
+
+            ColorPickerRuntime.engine.close("test-owner")
+            overlay.render(ctx, 0, 0, 500, 360)
+            assertTrue(overlay.children.isEmpty())
+
+            ColorPickerRuntime.engine.open(request)
+            overlay.render(ctx, 0, 0, 500, 360)
+            assertTrue(overlay.children.isNotEmpty())
+        } finally {
+            ColorPickerRuntime.engine.closeAll()
+        }
+    }
+
+    @Test
+    fun `system inspector overlay mounts only while inspector is active`() {
+        val controller = InspectorController()
+        val root = ContainerNode(key = "root").apply {
+            bounds = Rect(0, 0, 420, 280)
+        }
+        val overlay = SystemInspectorOverlayNode(controller)
+
+        overlay.bindInspectedTree(root, layoutRevision = 1L)
+        overlay.render(ctx, 0, 0, 420, 280)
+        assertTrue(overlay.children.isEmpty())
+
+        controller.toggle()
+        overlay.render(ctx, 0, 0, 420, 280)
+        assertTrue(overlay.children.isNotEmpty())
+
+        controller.deactivate()
+        overlay.render(ctx, 0, 0, 420, 280)
+        assertTrue(overlay.children.isEmpty())
+    }
+
+    @Test
     fun `system overlay raw command nodes do not accumulate across popup open close`() {
         val overlay = SystemColorPickerOverlayNode()
         SystemOverlayDebugCounters.setEnabled(true)

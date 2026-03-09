@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -21,7 +22,9 @@ enum class InspectorPanelState {
     Minimized
 }
 
-class InspectorController {
+class InspectorController(
+    private val colorPickerManager: InspectorColorPickerHost = SystemColorPickerPanelManager()
+) {
     private enum class EditOperation {
         CyclePrev,
         CycleNext,
@@ -182,7 +185,6 @@ class InspectorController {
     private var openUnitSelectScrollIndex: Int = 0
     private var variableTooltipText: String? = null
     private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
-    private val colorPickerManager: SystemColorPickerPanelManager = SystemColorPickerPanelManager()
 
     private val minPanelWidth: Int = 240
     private val minPanelHeight: Int = 160
@@ -1033,6 +1035,20 @@ class InspectorController {
 
     private fun findPanelAction(mouseX: Int, mouseY: Int): PanelAction? {
         return panelActions.lastOrNull { it.bounds.contains(mouseX, mouseY) }
+    }
+
+    internal fun debugColorPickerActionBounds(property: StyleProperty): Rect? {
+        return panelActions.lastOrNull {
+            it.kind == ActionKind.EditProperty &&
+                it.property == property &&
+                it.editOperation == EditOperation.OpenColorPicker
+        }?.bounds
+    }
+
+    internal fun debugOpenColorPickerForSelection(property: StyleProperty, anchorRect: Rect): Boolean {
+        val selected = selectedNode ?: return false
+        openColorPicker(selected, property, anchorRect)
+        return true
     }
 
     private fun performPanelAction(action: PanelAction) {

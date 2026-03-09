@@ -159,6 +159,12 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return current.layout
     }
 
+    internal fun debugController(owner: Any): ColorPickerController? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.controller
+    }
+
     fun onFrame(viewportWidth: Int, viewportHeight: Int) {
         if (this.viewportWidth != viewportWidth || this.viewportHeight != viewportHeight) {
             this.viewportWidth = viewportWidth

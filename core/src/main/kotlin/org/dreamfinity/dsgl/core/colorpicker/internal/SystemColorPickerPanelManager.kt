@@ -6,9 +6,7 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 
-internal class SystemColorPickerPanelManager(
-    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager()
-) {
+interface InspectorColorPickerHost {
     fun open(
         anchorRect: Rect,
         title: String,
@@ -21,6 +19,28 @@ internal class SystemColorPickerPanelManager(
         onChange: ((RgbaColor) -> Unit)? = null,
         onCommit: ((RgbaColor) -> Unit)? = null,
         onClose: (() -> Unit)? = null
+    )
+
+    fun close()
+
+    fun isOpen(): Boolean
+}
+
+internal class SystemColorPickerPanelManager(
+    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager()
+) : InspectorColorPickerHost {
+    override fun open(
+        anchorRect: Rect,
+        title: String,
+        state: ColorPickerState,
+        style: ColorPickerStyle,
+        width: Int,
+        draggable: Boolean,
+        closeOnOutsideClick: Boolean,
+        onPreview: ((RgbaColor) -> Unit)?,
+        onChange: ((RgbaColor) -> Unit)?,
+        onCommit: ((RgbaColor) -> Unit)?,
+        onClose: (() -> Unit)?
     ) {
         delegate.open(
             anchorRect = anchorRect,
@@ -37,10 +57,10 @@ internal class SystemColorPickerPanelManager(
         )
     }
 
-    fun close() {
+    override fun close() {
         delegate.close()
     }
 
-    fun isOpen(): Boolean = delegate.isOpen()
+    override fun isOpen(): Boolean = delegate.isOpen()
 }
 
