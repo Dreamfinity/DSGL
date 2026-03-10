@@ -19,6 +19,7 @@ val msdfDebugPerformance: String by project
 val rebuildTrace: String by project
 val perfDebug: String by project
 val dsglOverlayDebug: String by project
+val dsglOverlayControls: String by project
 
 val baseModMetadataTokens = mapOf(
     "modId" to modId,
@@ -85,6 +86,7 @@ tasks {
             "-Ddsgl.rebuild.trace=$rebuildTrace",
             "-Ddsgl.perf.debug=$perfDebug",
             "-Ddsgl.overlay.debug=$dsglOverlayDebug",
+            "-Ddsgl.overlay.controls=$dsglOverlayControls",
         )
 
         if (hotReload.toBoolean()) {

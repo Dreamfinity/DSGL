@@ -11,32 +11,34 @@ import kotlin.test.assertNull
 
 class OverlayLayerContractsTests {
     @Test
-    fun `paint order is app root then app overlay then system overlay`() {
+    fun `paint order is app root then app overlay then system overlay then debug`() {
         assertEquals(
-            listOf(UiLayerId.ApplicationRoot, UiLayerId.ApplicationOverlay, UiLayerId.SystemOverlay),
+            listOf(UiLayerId.ApplicationRoot, UiLayerId.ApplicationOverlay, UiLayerId.SystemOverlay, UiLayerId.Debug),
             OverlayLayerContracts.paintOrder
         )
     }
 
     @Test
-    fun `input priority is system overlay then app overlay then app root`() {
+    fun `input priority is debug then system overlay then app overlay then app root`() {
         assertEquals(
-            listOf(UiLayerId.SystemOverlay, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot),
+            listOf(UiLayerId.Debug, UiLayerId.SystemOverlay, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot),
             OverlayLayerContracts.inputPriority
         )
     }
 
     @Test
     fun `firstInputConsumer respects configured input priority`() {
-        val consumed = OverlayLayerContracts.firstInputConsumer { layer ->
-            layer == UiLayerId.ApplicationOverlay || layer == UiLayerId.ApplicationRoot
-        }
-        assertEquals(UiLayerId.ApplicationOverlay, consumed)
+        val consumed = OverlayLayerContracts.firstInputConsumer(
+            canConsume = { layer ->
+                layer == UiLayerId.Debug || layer == UiLayerId.ApplicationOverlay || layer == UiLayerId.ApplicationRoot
+            }
+        )
+        assertEquals(UiLayerId.Debug, consumed)
     }
 
     @Test
     fun `firstInputConsumer returns null when no layer consumes`() {
-        val consumed = OverlayLayerContracts.firstInputConsumer { false }
+        val consumed = OverlayLayerContracts.firstInputConsumer(canConsume = { false })
         assertNull(consumed)
     }
 
@@ -73,14 +75,88 @@ class OverlayLayerContractsTests {
         val root = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000001.toInt()))
         val appOverlay = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000002.toInt()))
         val system = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000003.toInt()))
+        val debug = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000004.toInt()))
         val out = ArrayList<RenderCommand>()
 
-        OverlayLayerContracts.composePaintCommands(root, appOverlay, system, out)
+        OverlayLayerContracts.composePaintCommands(root, appOverlay, system, debug, out)
 
-        assertEquals(3, out.size)
+        assertEquals(4, out.size)
         assertEquals(0xFF000001.toInt(), (out[0] as RenderCommand.DrawRect).color)
         assertEquals(0xFF000002.toInt(), (out[1] as RenderCommand.DrawRect).color)
         assertEquals(0xFF000003.toInt(), (out[2] as RenderCommand.DrawRect).color)
+        assertEquals(0xFF000004.toInt(), (out[3] as RenderCommand.DrawRect).color)
+    }
+
+    @Test
+    fun `composePaintCommands skips app overlay render when disabled`() {
+        val root = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000001.toInt()))
+        val appOverlay = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000002.toInt()))
+        val system = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000003.toInt()))
+        val debug = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000004.toInt()))
+        val out = ArrayList<RenderCommand>()
+
+        OverlayLayerContracts.composePaintCommands(
+            applicationRoot = root,
+            applicationOverlay = appOverlay,
+            systemOverlay = system,
+            debug = debug,
+            out = out,
+            shouldRenderLayer = { layer -> layer != UiLayerId.ApplicationOverlay }
+        )
+
+        assertEquals(listOf(0xFF000001.toInt(), 0xFF000003.toInt(), 0xFF000004.toInt()), out.map {
+            (it as RenderCommand.DrawRect).color
+        })
+    }
+
+    @Test
+    fun `composePaintCommands skips system overlay render when disabled`() {
+        val root = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000001.toInt()))
+        val appOverlay = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000002.toInt()))
+        val system = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000003.toInt()))
+        val debug = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF000004.toInt()))
+        val out = ArrayList<RenderCommand>()
+
+        OverlayLayerContracts.composePaintCommands(
+            applicationRoot = root,
+            applicationOverlay = appOverlay,
+            systemOverlay = system,
+            debug = debug,
+            out = out,
+            shouldRenderLayer = { layer -> layer != UiLayerId.SystemOverlay }
+        )
+
+        assertEquals(listOf(0xFF000001.toInt(), 0xFF000002.toInt(), 0xFF000004.toInt()), out.map {
+            (it as RenderCommand.DrawRect).color
+        })
+    }
+
+    @Test
+    fun `firstInputConsumer skips app overlay input when disabled`() {
+        val order = ArrayList<UiLayerId>()
+        val consumed = OverlayLayerContracts.firstInputConsumer(
+            canConsume = { layer ->
+                order += layer
+                layer == UiLayerId.ApplicationOverlay || layer == UiLayerId.ApplicationRoot
+            },
+            isLayerInputEnabled = { layer -> layer != UiLayerId.ApplicationOverlay }
+        )
+        assertEquals(UiLayerId.ApplicationRoot, consumed)
+        assertEquals(listOf(UiLayerId.Debug, UiLayerId.SystemOverlay, UiLayerId.ApplicationRoot), order)
+    }
+
+    @Test
+    fun `firstInputConsumer skips system overlay input when disabled`() {
+        val order = ArrayList<UiLayerId>()
+        val consumed = OverlayLayerContracts.firstInputConsumer(
+            canConsume = { layer ->
+                order += layer
+                layer == UiLayerId.SystemOverlay || layer == UiLayerId.ApplicationRoot
+            },
+            isLayerInputEnabled = { layer -> layer != UiLayerId.SystemOverlay }
+        )
+        assertEquals(UiLayerId.ApplicationRoot, consumed)
+        assertEquals(listOf(UiLayerId.Debug, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot), order)
     }
 
     @Test

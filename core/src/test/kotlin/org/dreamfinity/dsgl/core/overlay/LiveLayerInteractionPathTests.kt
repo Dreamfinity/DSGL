@@ -25,9 +25,13 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `runtime layer path resolves in system app-overlay app-root order`() {
-        val callOrder = ArrayList<UiLayerId>(3)
+    fun `runtime layer path resolves in debug system app-overlay app-root order`() {
+        val callOrder = ArrayList<UiLayerId>(4)
         val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ ->
+                callOrder += UiLayerId.Debug
+                false
+            },
             systemOverlayHandler = { _, _, _ ->
                 callOrder += UiLayerId.SystemOverlay
                 false
@@ -44,9 +48,36 @@ class LiveLayerInteractionPathTests {
 
         assertEquals(UiLayerId.ApplicationRoot, consumedBy)
         assertEquals(
-            listOf(UiLayerId.SystemOverlay, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot),
+            listOf(UiLayerId.Debug, UiLayerId.SystemOverlay, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot),
             callOrder
         )
+    }
+
+    @Test
+    fun `debug layer consumption prevents lower-layer fallthrough`() {
+        var systemReceived = false
+        var appOverlayReceived = false
+        var appRootReceived = false
+        val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ -> true },
+            systemOverlayHandler = { _, _, _ ->
+                systemReceived = true
+                false
+            },
+            applicationOverlayHandler = { _, _, _ ->
+                appOverlayReceived = true
+                false
+            }
+        )
+        val consumedBy = harness.dispatchMouseDown(12, 14, MouseButton.LEFT) {
+            appRootReceived = true
+            true
+        }
+
+        assertEquals(UiLayerId.Debug, consumedBy)
+        assertFalse(systemReceived)
+        assertFalse(appOverlayReceived)
+        assertFalse(appRootReceived)
     }
 
     @Test
@@ -60,6 +91,7 @@ class LiveLayerInteractionPathTests {
         val entryState = systemHost.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("panel demo state missing")
         val panelRect = entryState.panelState.currentRectOrNull() ?: error("panel demo rect missing")
         val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ -> false },
             systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
             applicationOverlayHandler = { _, _, _ -> false }
         )
@@ -76,6 +108,7 @@ class LiveLayerInteractionPathTests {
     @Test
     fun `application overlay consumption prevents app-root fallthrough`() {
         val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ -> false },
             systemOverlayHandler = { _, _, _ -> false },
             applicationOverlayHandler = { _, _, _ -> true }
         )
@@ -103,6 +136,7 @@ class LiveLayerInteractionPathTests {
         val buttonRect = demoNode.buttonRect()
         assertNotNull(buttonRect)
         val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ -> false },
             systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
             applicationOverlayHandler = { _, _, _ -> false }
         )
@@ -126,6 +160,7 @@ class LiveLayerInteractionPathTests {
     }
 
     private class LiveLayerInputHarness(
+        private val debugHandler: (Int, Int, MouseButton) -> Boolean,
         private val systemOverlayHandler: (Int, Int, MouseButton) -> Boolean,
         private val applicationOverlayHandler: (Int, Int, MouseButton) -> Boolean
     ) {
@@ -135,13 +170,16 @@ class LiveLayerInteractionPathTests {
             button: MouseButton,
             applicationRootHandler: () -> Boolean
         ): UiLayerId? {
-            return OverlayLayerContracts.firstInputConsumer { layer ->
-                when (layer) {
-                    UiLayerId.SystemOverlay -> systemOverlayHandler(mouseX, mouseY, button)
-                    UiLayerId.ApplicationOverlay -> applicationOverlayHandler(mouseX, mouseY, button)
-                    UiLayerId.ApplicationRoot -> applicationRootHandler()
+            return OverlayLayerContracts.firstInputConsumer(
+                canConsume = { layer ->
+                    when (layer) {
+                        UiLayerId.Debug -> debugHandler(mouseX, mouseY, button)
+                        UiLayerId.SystemOverlay -> systemOverlayHandler(mouseX, mouseY, button)
+                        UiLayerId.ApplicationOverlay -> applicationOverlayHandler(mouseX, mouseY, button)
+                        UiLayerId.ApplicationRoot -> applicationRootHandler()
+                    }
                 }
-            }
+            )
         }
     }
 }

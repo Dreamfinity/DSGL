@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.overlay
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 enum class UiLayerId {
+    Debug,
     ApplicationRoot,
     ApplicationOverlay,
     SystemOverlay
@@ -17,10 +18,12 @@ object OverlayLayerContracts {
     val paintOrder: List<UiLayerId> = listOf(
         UiLayerId.ApplicationRoot,
         UiLayerId.ApplicationOverlay,
-        UiLayerId.SystemOverlay
+        UiLayerId.SystemOverlay,
+        UiLayerId.Debug
     )
 
     val inputPriority: List<UiLayerId> = listOf(
+        UiLayerId.Debug,
         UiLayerId.SystemOverlay,
         UiLayerId.ApplicationOverlay,
         UiLayerId.ApplicationRoot
@@ -37,8 +40,12 @@ object OverlayLayerContracts {
         return resolveTransientLayer(ownerScope)
     }
 
-    fun firstInputConsumer(canConsume: (UiLayerId) -> Boolean): UiLayerId? {
+    fun firstInputConsumer(
+        canConsume: (UiLayerId) -> Boolean,
+        isLayerInputEnabled: (UiLayerId) -> Boolean = { true }
+    ): UiLayerId? {
         inputPriority.forEach { layer ->
+            if (!isLayerInputEnabled(layer)) return@forEach
             if (canConsume(layer)) return layer
         }
         return null
@@ -48,14 +55,18 @@ object OverlayLayerContracts {
         applicationRoot: List<RenderCommand>,
         applicationOverlay: List<RenderCommand>,
         systemOverlay: List<RenderCommand>,
-        out: MutableList<RenderCommand>
+        debug: List<RenderCommand>,
+        out: MutableList<RenderCommand>,
+        shouldRenderLayer: (UiLayerId) -> Boolean = { true }
     ) {
         out.clear()
         paintOrder.forEach { layer ->
+            if (!shouldRenderLayer(layer)) return@forEach
             when (layer) {
                 UiLayerId.ApplicationRoot -> out.addAll(applicationRoot)
                 UiLayerId.ApplicationOverlay -> out.addAll(applicationOverlay)
                 UiLayerId.SystemOverlay -> out.addAll(systemOverlay)
+                UiLayerId.Debug -> out.addAll(debug)
             }
         }
     }

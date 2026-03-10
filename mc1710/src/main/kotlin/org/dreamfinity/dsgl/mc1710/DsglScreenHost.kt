@@ -11,6 +11,8 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.debug.OverlayDebugControlHost
+import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
 import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
@@ -91,6 +93,7 @@ abstract class DsglScreenHost(
     private val inspector: InspectorController = InspectorController()
     private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
     private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
+    private val debugOverlayHost: OverlayDebugControlHost = OverlayDebugControlHost()
     private val inspectorInputDebug: Boolean = false
     private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
     private val phaseTraceDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.rebuild.trace")
@@ -193,7 +196,13 @@ abstract class DsglScreenHost(
         if (inspectorPointerCaptured) {
             inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
-        val inspectorBlocks = inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
+        val appOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.ApplicationOverlay)
+        val systemOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.SystemOverlay)
+        val appOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.ApplicationOverlay)
+        val systemOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.SystemOverlay)
+        val inspectorBlocks = systemOverlayInputEnabled && (
+                inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
+                )
         tracePhase("commands.start")
         if (!stylesAlreadyApplied) {
             tracePhase("style.start")
@@ -218,15 +227,19 @@ abstract class DsglScreenHost(
         SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
-        val applicationOverlayCommands = try {
-            applicationOverlayHost.render(adapter, lastWidth, lastHeight)
-            applicationOverlayHost.paint(adapter)
-        } catch (error: Throwable) {
-            logPipelineError(
-                key = "draw.applicationOverlay",
-                message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}"
-            )
+        val applicationOverlayCommands = if (!appOverlayRenderEnabled) {
             emptyList()
+        } else {
+            try {
+                applicationOverlayHost.render(adapter, lastWidth, lastHeight)
+                applicationOverlayHost.paint(adapter)
+            } catch (error: Throwable) {
+                logPipelineError(
+                    key = "draw.applicationOverlay",
+                    message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}"
+                )
+                emptyList()
+            }
         }
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
@@ -235,20 +248,31 @@ abstract class DsglScreenHost(
             cursorY = dsglMouseY,
             inspectorPointerCaptured = inspectorPointerCaptured
         )
-        val systemOverlayCommands = try {
-            systemOverlayHost.render(adapter, lastWidth, lastHeight)
-            systemOverlayHost.paint(adapter)
-        } catch (error: Throwable) {
-            logPipelineError(
-                key = "draw.systemOverlay",
-                message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
-            )
+        val systemOverlayCommands = if (!systemOverlayRenderEnabled) {
+            emptyList()
+        } else {
+            try {
+                systemOverlayHost.render(adapter, lastWidth, lastHeight)
+                systemOverlayHost.paint(adapter)
+            } catch (error: Throwable) {
+                logPipelineError(
+                    key = "draw.systemOverlay",
+                    message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
+                )
+                emptyList()
+            }
+        }
+        val debugOverlayCommands = runCatching {
+            debugOverlayHost.render(lastWidth, lastHeight)
+            debugOverlayHost.paint()
+        }.getOrElse {
             emptyList()
         }
-        val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
-        val selectBlocks = !inspectorBlocks && SelectRuntime.engine.isOpen()
+        val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
+        val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.engine.isOpen()
         val colorPickerBlocks = !inspectorBlocks && (
-                systemOverlayHost.isSystemColorPickerOpen() || ColorPickerRuntime.engine.isOpen()
+                (systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()) ||
+                        (appOverlayInputEnabled && ColorPickerRuntime.engine.isOpen())
                 )
         if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
@@ -276,18 +300,22 @@ abstract class DsglScreenHost(
         lastMoveX = dsglMouseX
         lastMoveY = dsglMouseY
         applicationOverlayCommandsBuffer.clear()
-        applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
-        DndRuntime.engine.appendPlaceholderCommands(applicationOverlayCommandsBuffer)
-        DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
-        SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
-        ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
-        ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
-        appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
+        if (appOverlayRenderEnabled) {
+            applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
+            DndRuntime.engine.appendPlaceholderCommands(applicationOverlayCommandsBuffer)
+            DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
+            appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
+        }
         OverlayLayerContracts.composePaintCommands(
             applicationRoot = commands,
             applicationOverlay = applicationOverlayCommandsBuffer,
             systemOverlay = systemOverlayCommands,
-            out = stagingCommandsBuffer
+            debug = debugOverlayCommands,
+            out = stagingCommandsBuffer,
+            shouldRenderLayer = OverlayLayerDebugState::isRenderEnabled
         )
         val keepPrevious = shouldKeepPreviousFrameCommands(
             tree = tree,
@@ -335,6 +363,7 @@ abstract class DsglScreenHost(
         domTree?.clearRefs()
         applicationOverlayHost.clearRefs()
         systemOverlayHost.clearRefs()
+        debugOverlayHost.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }
@@ -621,19 +650,23 @@ abstract class DsglScreenHost(
         inspectorMouseX: Int,
         inspectorMouseY: Int
     ): Boolean {
-        val consumedBy = OverlayLayerContracts.firstInputConsumer { layer ->
-            when (layer) {
-                UiLayerId.SystemOverlay -> consumeSystemOverlayKeyDown(
-                    keyCode = keyCode,
-                    keyChar = keyChar,
-                    inspectorMouseX = inspectorMouseX,
-                    inspectorMouseY = inspectorMouseY
-                )
+        val consumedBy = OverlayLayerContracts.firstInputConsumer(
+            canConsume = { layer ->
+                when (layer) {
+                    UiLayerId.Debug -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
+                    UiLayerId.SystemOverlay -> consumeSystemOverlayKeyDown(
+                        keyCode = keyCode,
+                        keyChar = keyChar,
+                        inspectorMouseX = inspectorMouseX,
+                        inspectorMouseY = inspectorMouseY
+                    )
 
-                UiLayerId.ApplicationOverlay -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
-                UiLayerId.ApplicationRoot -> false
-            }
-        }
+                    UiLayerId.ApplicationOverlay -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
+                    UiLayerId.ApplicationRoot -> false
+                }
+            },
+            isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled
+        )
         return consumedBy != null
     }
 
@@ -685,30 +718,66 @@ abstract class DsglScreenHost(
     ): Boolean {
         val mappedButton = mapButton(mouseButton)
         val buttonPressed = Mouse.getEventButtonState()
-        val consumedBy = OverlayLayerContracts.firstInputConsumer { layer ->
-            when (layer) {
-                UiLayerId.SystemOverlay -> consumeSystemOverlayPointerEvent(
-                    mouseX = mouseX,
-                    mouseY = mouseY,
-                    dWheel = dWheel,
-                    mouseButton = mouseButton,
-                    mappedButton = mappedButton,
-                    buttonPressed = buttonPressed
-                )
+        val consumedBy = OverlayLayerContracts.firstInputConsumer(
+            canConsume = { layer ->
+                when (layer) {
+                    UiLayerId.Debug -> consumeDebugPointerEvent(
+                        mouseX = mouseX,
+                        mouseY = mouseY,
+                        dWheel = dWheel,
+                        mappedButton = mappedButton,
+                        mouseButton = mouseButton,
+                        buttonPressed = buttonPressed
+                    )
 
-                UiLayerId.ApplicationOverlay -> consumeApplicationOverlayPointerEvent(
-                    mouseX = mouseX,
-                    mouseY = mouseY,
-                    dWheel = dWheel,
-                    mouseButton = mouseButton,
-                    mappedButton = mappedButton,
-                    buttonPressed = buttonPressed
-                )
+                    UiLayerId.SystemOverlay -> consumeSystemOverlayPointerEvent(
+                        mouseX = mouseX,
+                        mouseY = mouseY,
+                        dWheel = dWheel,
+                        mouseButton = mouseButton,
+                        mappedButton = mappedButton,
+                        buttonPressed = buttonPressed
+                    )
 
-                UiLayerId.ApplicationRoot -> false
+                    UiLayerId.ApplicationOverlay -> consumeApplicationOverlayPointerEvent(
+                        mouseX = mouseX,
+                        mouseY = mouseY,
+                        dWheel = dWheel,
+                        mouseButton = mouseButton,
+                        mappedButton = mappedButton,
+                        buttonPressed = buttonPressed
+                    )
+
+                    UiLayerId.ApplicationRoot -> false
+                }
+            },
+            isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled
+        )
+        return consumedBy != null
+    }
+
+    private fun consumeDebugPointerEvent(
+        mouseX: Int,
+        mouseY: Int,
+        dWheel: Int,
+        mappedButton: MouseButton?,
+        mouseButton: Int,
+        buttonPressed: Boolean
+    ): Boolean {
+        if (dWheel != 0 && debugOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            return if (buttonPressed) {
+                debugOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                debugOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
             }
         }
-        return consumedBy != null
+        if (mouseButton == -1 && debugOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+        return false
     }
 
     private fun consumeSystemOverlayPointerEvent(
