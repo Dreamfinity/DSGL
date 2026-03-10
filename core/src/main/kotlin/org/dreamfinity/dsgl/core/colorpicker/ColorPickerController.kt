@@ -119,6 +119,10 @@ class ColorPickerController(
 
     fun hasActiveDragTarget(): Boolean = dragTarget != ColorPickerDragTarget.None
 
+    fun hasActiveTextInput(): Boolean = activeInputKey != null
+
+    fun hasActiveInteraction(): Boolean = hasActiveDragTarget() || isEyedropperActive() || hasActiveTextInput()
+
     fun beginEyedropper() {
         if (!state.alphaEnabled) {
             eyedropperBaseColor = state.color.copy(a = 1f)

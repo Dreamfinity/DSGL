@@ -216,6 +216,8 @@ abstract class DsglScreenHost(
         }
         ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+        ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         val applicationOverlayCommands = try {
             applicationOverlayHost.render(adapter, lastWidth, lastHeight)
             applicationOverlayHost.paint(adapter)
@@ -279,6 +281,7 @@ abstract class DsglScreenHost(
         DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
         SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
         ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+        ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
         appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
         OverlayLayerContracts.composePaintCommands(
             applicationRoot = commands,
@@ -437,6 +440,13 @@ abstract class DsglScreenHost(
             }
             if (keyCode == Keyboard.KEY_F9 && inspector.active) {
                 inspector.toggleMode()
+                mc.dispatchKeypresses()
+                return
+            }
+            if (keyCode == Keyboard.KEY_F10) {
+                val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
+                val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
+                systemOverlayHost.togglePanelShellDemo(demoAnchorX, demoAnchorY)
                 mc.dispatchKeypresses()
                 return
             }
@@ -914,6 +924,7 @@ abstract class DsglScreenHost(
         if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application) != UiLayerId.ApplicationOverlay) {
             return
         }
+        ColorPickerRuntime.engine.captureEyedropperSample()
         val focused = FocusManager.focusedNode()
         if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
             focused.captureEyedropperSample()

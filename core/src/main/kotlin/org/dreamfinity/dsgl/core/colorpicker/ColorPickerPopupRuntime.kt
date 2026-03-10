@@ -104,7 +104,9 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         current.controller.onRequestClose = {
             close(current.owner)
         }
-        if (previous.state != request.state) {
+        val snapshot = current.controller.snapshot()
+        val requestedDiffersFromController = !sameStateContract(request.state, snapshot)
+        if (requestedDiffersFromController && !current.controller.hasActiveInteraction()) {
             current.controller.setState(request.state)
         }
         if (previous.anchorRect != request.anchorRect ||
@@ -162,6 +164,18 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         val current = popup ?: return null
         if (current.owner != owner) return null
         return current.layout
+    }
+
+    internal fun debugTitle(owner: Any): String? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.request.title
+    }
+
+    internal fun debugStyle(owner: Any): ColorPickerStyle? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.request.style
     }
 
     internal fun debugOwnerScope(owner: Any): OverlayOwnerScope? {
@@ -270,14 +284,32 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         )
 
         out += RenderCommand.PushClip(current.bodyRect.x, current.bodyRect.y, current.bodyRect.width, current.bodyRect.height)
-        current.controller.appendCommands(current.layout, out)
+        appendOverlayBodyCommands(out)
         out += RenderCommand.PopClip
-        current.controller.appendEyedropperOverlay(
+        appendEyedropperOverlayCommands(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out
         )
         out += RenderCommand.PopClip
+    }
+
+    internal fun appendOverlayBodyCommands(out: MutableList<RenderCommand>) {
+        val current = popup ?: return
+        current.controller.appendCommands(current.layout, out)
+    }
+
+    internal fun appendEyedropperOverlayCommands(
+        viewportWidth: Int = this.viewportWidth.coerceAtLeast(1),
+        viewportHeight: Int = this.viewportHeight.coerceAtLeast(1),
+        out: MutableList<RenderCommand>
+    ) {
+        val current = popup ?: return
+        current.controller.appendEyedropperOverlay(
+            viewportWidth = viewportWidth.coerceAtLeast(1),
+            viewportHeight = viewportHeight.coerceAtLeast(1),
+            out = out
+        )
     }
 
     fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
@@ -405,6 +437,15 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         out += RenderCommand.DrawRect(rect.x, rect.y + rect.height - 1, rect.width, 1, color)
         out += RenderCommand.DrawRect(rect.x, rect.y, 1, rect.height, color)
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
+    }
+
+    private fun sameStateContract(a: ColorPickerState, b: ColorPickerState): Boolean {
+        return a.color.toArgbInt() == b.color.toArgbInt() &&
+                a.previous.toArgbInt() == b.previous.toArgbInt() &&
+                a.mode == b.mode &&
+                a.rgbOrder == b.rgbOrder &&
+                a.alphaEnabled == b.alphaEnabled &&
+                a.closeOnSelect == b.closeOnSelect
     }
 }
 

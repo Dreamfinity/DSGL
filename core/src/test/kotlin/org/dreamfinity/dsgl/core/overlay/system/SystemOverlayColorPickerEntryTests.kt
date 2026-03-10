@@ -136,6 +136,22 @@ class SystemOverlayColorPickerEntryTests {
         }
     }
 
+    @Test
+    fun `system picker popup close button closes entry through panel shell`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(80, 86, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 84, cursorY = 92, inspectorPointerCaptured = false)
+        val closeRect = host.debugSystemColorPickerCloseRect() ?: error("close rect missing")
+        assertTrue(host.handleMouseDown(closeRect.x + 1, closeRect.y + 1, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = closeRect.x + 1, cursorY = closeRect.y + 1, inspectorPointerCaptured = false)
+        assertFalse(host.isSystemColorPickerOpen())
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
+    }
+
     private fun popupState(): ColorPickerState {
         return ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),

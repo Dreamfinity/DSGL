@@ -11,6 +11,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class ColorPickerPopupEngineTests {
     @Test
@@ -354,6 +355,46 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
+    fun `pipette capture updates preview continuously while moving`() {
+        ScreenColorSamplerBridge.install(ScreenColorSampler { x, y ->
+            val r = (x and 0xFF)
+            val g = (y and 0xFF)
+            val b = 0x55
+            (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+        })
+        try {
+            val engine = ColorPickerPopupEngine()
+            val owner = "owner"
+            val previews = mutableListOf<RgbaColor>()
+            engine.onFrame(900, 700)
+            engine.open(
+                ColorPickerPopupRequest(
+                    owner = owner,
+                    anchorRect = Rect(120, 80, 18, 18),
+                    state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+                    onPreview = { previews += it }
+                )
+            )
+            val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+            assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
+
+            engine.handleMouseMove(40, 72)
+            engine.captureEyedropperSample()
+            val first = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+
+            engine.handleMouseMove(96, 24)
+            engine.captureEyedropperSample()
+            val second = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+
+            assertNotEquals(first.toArgbInt(), second.toArgbInt())
+            assertTrue(previews.isNotEmpty())
+            assertEquals(second.toArgbInt(), previews.last().toArgbInt())
+        } finally {
+            ScreenColorSamplerBridge.install(null)
+        }
+    }
+
+    @Test
     fun `mode selector opens dropdown in popup engine`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"
@@ -423,6 +464,95 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseUp(dragStartX + 40, dragStartY + 30, MouseButton.LEFT))
         val panelAfter = engine.debugPanelRect(owner) ?: error("panel missing")
         assertNotEquals(panelBefore.x, panelAfter.x)
+    }
+
+    @Test
+    fun `opened popup appends overlay commands after frame sync`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 80, 18, 18),
+                title = "Popup Test",
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        engine.onFrame(900, 700)
+
+        val out = ArrayList<RenderCommand>()
+        engine.appendOverlayCommands(out)
+
+        assertTrue(out.isNotEmpty())
+        assertTrue(out.any { it is RenderCommand.DrawText && it.text == "Popup Test" })
+    }
+
+    @Test
+    fun `sync during drag does not cancel active field drag session`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        val previews = mutableListOf<RgbaColor>()
+        engine.onFrame(1000, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
+                onPreview = { previews += it }
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val startX = layout.colorFieldRect.x + 4
+        val startY = layout.colorFieldRect.y + layout.colorFieldRect.height - 4
+        val midX = layout.colorFieldRect.x + layout.colorFieldRect.width / 2
+        val midY = layout.colorFieldRect.y + layout.colorFieldRect.height / 2
+        val endX = layout.colorFieldRect.x + layout.colorFieldRect.width - 4
+        val endY = layout.colorFieldRect.y + 4
+
+        assertTrue(engine.handleMouseDown(startX, startY, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(midX, midY))
+        val midColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+
+        engine.sync(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(color = RgbaColor(0f, 1f, 0f, 1f), closeOnSelect = false)
+            )
+        )
+        assertTrue(engine.handleMouseMove(endX, endY))
+        assertTrue(engine.handleMouseUp(endX, endY, MouseButton.LEFT))
+
+        val finalColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        assertNotEquals(midColor.toArgbInt(), finalColor.toArgbInt())
+        assertTrue(previews.size >= 2)
+    }
+
+    @Test
+    fun `sync during eyedropper keeps eyedropper active`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.onFrame(900, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
+        assertTrue(engine.debugController(owner)?.isEyedropperActive() == true)
+
+        engine.sync(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(color = RgbaColor(0.2f, 0.3f, 0.4f, 1f), closeOnSelect = false)
+            )
+        )
+
+        assertTrue(engine.debugController(owner)?.isEyedropperActive() == true)
     }
 
     @Test

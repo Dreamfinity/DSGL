@@ -8,9 +8,11 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayCommandDslRenderer
+import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelShell
 
 internal class SystemColorPickerOverlayNode(
     private val popupEngine: ColorPickerPopupEngine = ColorPickerRuntime.engine,
+    private val panelShell: SystemOverlayPanelShell? = null,
     key: Any? = "dsgl-system-color-picker"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker"
@@ -34,7 +36,26 @@ internal class SystemColorPickerOverlayNode(
         popupEngine.onFrame(width, height)
         popupEngine.onCursorPosition(cursorX, cursorY)
         commandBuffer.clear()
-        popupEngine.appendOverlayCommands(commandBuffer)
+        val shell = panelShell
+        if (shell == null || shell.panelRect() == null) {
+            popupEngine.appendOverlayCommands(commandBuffer)
+        } else {
+            shell.appendCommands(
+                viewportWidth = width,
+                viewportHeight = height,
+                out = commandBuffer,
+                appendBody = { _, out ->
+                    popupEngine.appendOverlayBodyCommands(out)
+                },
+                appendOverlay = { out ->
+                    popupEngine.appendEyedropperOverlayCommands(
+                        viewportWidth = width.coerceAtLeast(1),
+                        viewportHeight = height.coerceAtLeast(1),
+                        out = out
+                    )
+                }
+            )
+        }
         if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-color-picker")) {
             renderCommandsRevision += 1L
             markRenderCommandsDirty()
