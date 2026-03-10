@@ -150,6 +150,27 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
+    fun `mouse up inside popup body is consumed to prevent lower-layer fallthrough`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.onFrame(1000, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(180, 120, 32, 20),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        val x = layout.colorFieldRect.x + 12
+        val y = layout.colorFieldRect.y + 12
+
+        assertTrue(engine.handleMouseDown(x, y, MouseButton.LEFT))
+        assertTrue(engine.handleMouseUp(x, y, MouseButton.LEFT))
+        assertTrue(engine.isOpenFor(owner))
+    }
+
+    @Test
     fun `color field drag updates continuously across multiple move events`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"

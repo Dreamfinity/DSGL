@@ -416,11 +416,13 @@ abstract class DsglScreenHost(
     }
 
     override fun handleKeyboardInput() {
+        updateSize(force = false)
         KeyModifiers.sync(
             shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT),
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
             meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA)
         )
+        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
         val inspectorMouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX
@@ -455,37 +457,13 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
-            if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
-                mc.dispatchKeypresses()
-                return
-            }
-            if (ColorPickerRuntime.engine.handleKeyDown(keyCode, keyChar)) {
-                mc.dispatchKeypresses()
-                return
-            }
-            if (inspector.active && inspector.handleKeyDown(keyCode, keyChar)) {
-                logInspectorInput("keyboard down consumed by inspector editor keyCode=$keyCode")
-                mc.dispatchKeypresses()
-                return
-            }
-            val keyboardBlocked = inspector.active && (
-                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
-                            inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
-                    )
-            if (keyboardBlocked) {
-                logInspectorInput("keyboard down consumed keyCode=$keyCode")
-                mc.dispatchKeypresses()
-                return
-            }
-            if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
-                mc.dispatchKeypresses()
-                return
-            }
-            if (SelectRuntime.engine.handleKeyDown(keyCode, keyChar)) {
-                mc.dispatchKeypresses()
-                return
-            }
-            if (ContextMenuRuntime.engine.handleKeyDown(keyCode)) {
+            if (consumeOverlayKeyDown(
+                    keyCode = keyCode,
+                    keyChar = keyChar,
+                    inspectorMouseX = inspectorMouseX,
+                    inspectorMouseY = inspectorMouseY
+                )
+            ) {
                 mc.dispatchKeypresses()
                 return
             }
@@ -554,262 +532,16 @@ abstract class DsglScreenHost(
             viewportScale = 1f
         )
         systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        systemOverlayHost.syncFrame(
+            inspectedRoot = tree.root,
+            inspectedLayoutRevision = layoutRevision,
+            cursorX = mouseX,
+            cursorY = mouseY,
+            inspectorPointerCaptured = inspectorPointerCaptured
+        )
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
-
-        if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-
-        if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-
-        if (mouseButton != -1) {
-            val mappedButton = mapButton(mouseButton)
-            if (mappedButton != null) {
-                val consumedBySystemOverlay = if (Mouse.getEventButtonState()) {
-                    systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                if (consumedBySystemOverlay) {
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    return
-                }
-                val consumedByColorPicker = if (Mouse.getEventButtonState()) {
-                    ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                if (consumedByColorPicker) {
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    return
-                }
-            }
-        } else if (systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        } else if (ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-
-        if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            inspector.markPointerHandled("wheel in inspector")
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            logInspectorInput("wheel consumed by inspector delta=$dWheel")
-            return
-        }
-
-        if (inspectorPointerCaptured) {
-            if (!Mouse.getEventButtonState() && mouseButton != -1) {
-                mapButton(mouseButton)?.let { mappedButton ->
-                    inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                inspector.markPointerHandled("captured release")
-                inspectorPointerCaptured = false
-                inspectorOwnedMouseButton = -1
-            }
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            logInspectorInput("pointer captured event consumed button=$mouseButton")
-            return
-        }
-
-        if (Mouse.getEventButtonState() && mouseButton != -1) {
-            mapButton(mouseButton)?.let { mappedButton ->
-                if (inspector.handleMouseDown(mouseX, mouseY, mappedButton)) {
-                    inspectorPointerCaptured = inspector.isDraggingPanel
-                    inspectorOwnedMouseButton = mouseButton
-                    inspector.markPointerHandled("down in inspector")
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    logInspectorInput("mouse down consumed by inspector button=$mouseButton")
-                    return
-                }
-            }
-        }
-
-        if (!Mouse.getEventButtonState() && mouseButton != -1 && inspectorOwnedMouseButton == mouseButton) {
-            mapButton(mouseButton)?.let { mappedButton ->
-                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            inspector.markPointerHandled("owned press release")
-            inspectorPointerCaptured = false
-            inspectorOwnedMouseButton = -1
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            logInspectorInput("mouse up consumed by inspector ownership button=$mouseButton")
-            return
-        }
-
-        if (mouseButton != -1 && !Mouse.getEventButtonState()) {
-            mapButton(mouseButton)?.let { mappedButton ->
-                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-        }
-
-        val inspectorConsumesPointer = inspector.shouldConsumePointer(mouseX, mouseY)
-        if (inspectorConsumesPointer) {
-            if (mouseButton != -1 && Mouse.getEventButtonState()) {
-                // If inspector consumed the press via bounds gating, keep ownership until release.
-                inspectorOwnedMouseButton = mouseButton
-            }
-            if (mouseButton != -1 && !Mouse.getEventButtonState()) {
-                inspectorPointerCaptured = false
-                inspectorOwnedMouseButton = -1
-            }
-            inspector.markPointerHandled(
-                when {
-                    dWheel != 0 -> "wheel in inspector"
-                    mouseButton != -1 && Mouse.getEventButtonState() -> "down in inspector bounds"
-                    mouseButton != -1 && !Mouse.getEventButtonState() -> "up in inspector bounds"
-                    else -> "move in inspector bounds"
-                }
-            )
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            logInspectorInput("pointer event consumed by inspector bounds button=$mouseButton wheel=$dWheel")
-            return
-        }
-
-        if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-        if (mouseButton != -1) {
-            val mappedButton = mapButton(mouseButton)
-            if (mappedButton != null) {
-                val consumedByAppOverlay = if (Mouse.getEventButtonState()) {
-                    applicationOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    applicationOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                if (consumedByAppOverlay) {
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    return
-                }
-            }
-        } else if (applicationOverlayHost.handleMouseMove(mouseX, mouseY)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-
-        if (dWheel != 0 && ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-        if (dWheel != 0 && SelectRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        }
-        if (mouseButton != -1) {
-            val mappedButton = mapButton(mouseButton)
-            if (mappedButton != null) {
-                val consumed = if (Mouse.getEventButtonState()) {
-                    ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                if (consumed) {
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    return
-                }
-            }
-            if (mappedButton != null) {
-                val consumedBySelect = if (Mouse.getEventButtonState()) {
-                    SelectRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    SelectRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                if (consumedBySelect) {
-                    eventButton = -1
-                    clearActiveTarget()
-                    releaseDragCapture()
-                    lastMouseX = mouseX
-                    lastMouseY = mouseY
-                    return
-                }
-            }
-        } else if (ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
-            return
-        } else if (SelectRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            eventButton = -1
-            clearActiveTarget()
-            releaseDragCapture()
-            lastMouseX = mouseX
-            lastMouseY = mouseY
+        if (consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
+            consumeOverlayPointerState(mouseX, mouseY)
             return
         }
 
@@ -835,7 +567,7 @@ abstract class DsglScreenHost(
                     }
                 }
             }
-        } else if (mouseButton != -1) {
+        } else if (mouseButton != -1 && eventButton == mouseButton) {
             val releaseTarget = dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
             val hadDragCapture = dragCaptureTarget != null
             eventButton = -1
@@ -879,6 +611,273 @@ abstract class DsglScreenHost(
             EventBus.post(wheelEvent)
         }
 
+        lastMouseX = mouseX
+        lastMouseY = mouseY
+    }
+
+    private fun consumeOverlayKeyDown(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int
+    ): Boolean {
+        val consumedBy = OverlayLayerContracts.firstInputConsumer { layer ->
+            when (layer) {
+                UiLayerId.SystemOverlay -> consumeSystemOverlayKeyDown(
+                    keyCode = keyCode,
+                    keyChar = keyChar,
+                    inspectorMouseX = inspectorMouseX,
+                    inspectorMouseY = inspectorMouseY
+                )
+
+                UiLayerId.ApplicationOverlay -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
+                UiLayerId.ApplicationRoot -> false
+            }
+        }
+        return consumedBy != null
+    }
+
+    private fun consumeSystemOverlayKeyDown(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int
+    ): Boolean {
+        if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        if (inspector.active && inspector.handleKeyDown(keyCode, keyChar)) {
+            logInspectorInput("keyboard down consumed by inspector editor keyCode=$keyCode")
+            return true
+        }
+        val keyboardBlocked = inspector.active && (
+                inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                        inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
+                )
+        if (keyboardBlocked) {
+            logInspectorInput("keyboard down consumed keyCode=$keyCode")
+            return true
+        }
+        return false
+    }
+
+    private fun consumeApplicationOverlayKeyDown(keyCode: Int, keyChar: Char): Boolean {
+        if (ColorPickerRuntime.engine.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        if (SelectRuntime.engine.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        if (ContextMenuRuntime.engine.handleKeyDown(keyCode)) {
+            return true
+        }
+        return false
+    }
+
+    private fun consumeOverlayPointerEvent(
+        mouseX: Int,
+        mouseY: Int,
+        dWheel: Int,
+        mouseButton: Int
+    ): Boolean {
+        val mappedButton = mapButton(mouseButton)
+        val buttonPressed = Mouse.getEventButtonState()
+        val consumedBy = OverlayLayerContracts.firstInputConsumer { layer ->
+            when (layer) {
+                UiLayerId.SystemOverlay -> consumeSystemOverlayPointerEvent(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    dWheel = dWheel,
+                    mouseButton = mouseButton,
+                    mappedButton = mappedButton,
+                    buttonPressed = buttonPressed
+                )
+
+                UiLayerId.ApplicationOverlay -> consumeApplicationOverlayPointerEvent(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    dWheel = dWheel,
+                    mouseButton = mouseButton,
+                    mappedButton = mappedButton,
+                    buttonPressed = buttonPressed
+                )
+
+                UiLayerId.ApplicationRoot -> false
+            }
+        }
+        return consumedBy != null
+    }
+
+    private fun consumeSystemOverlayPointerEvent(
+        mouseX: Int,
+        mouseY: Int,
+        dWheel: Int,
+        mouseButton: Int,
+        mappedButton: MouseButton?,
+        buttonPressed: Boolean
+    ): Boolean {
+        if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            val consumedBySystemOverlay = if (buttonPressed) {
+                systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedBySystemOverlay) {
+                return true
+            }
+        } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+
+        if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            inspector.markPointerHandled("wheel in inspector")
+            logInspectorInput("wheel consumed by inspector delta=$dWheel")
+            return true
+        }
+
+        if (inspectorPointerCaptured) {
+            if (!buttonPressed && mouseButton != -1) {
+                if (mappedButton != null) {
+                    inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                inspector.markPointerHandled("captured release")
+                inspectorPointerCaptured = false
+                inspectorOwnedMouseButton = -1
+            }
+            logInspectorInput("pointer captured event consumed button=$mouseButton")
+            return true
+        }
+
+        if (buttonPressed && mouseButton != -1 && mappedButton != null) {
+            if (inspector.handleMouseDown(mouseX, mouseY, mappedButton)) {
+                inspectorPointerCaptured = inspector.isDraggingPanel
+                inspectorOwnedMouseButton = mouseButton
+                inspector.markPointerHandled("down in inspector")
+                logInspectorInput("mouse down consumed by inspector button=$mouseButton")
+                return true
+            }
+        }
+
+        if (!buttonPressed && mouseButton != -1 && inspectorOwnedMouseButton == mouseButton) {
+            if (mappedButton != null) {
+                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            inspector.markPointerHandled("owned press release")
+            inspectorPointerCaptured = false
+            inspectorOwnedMouseButton = -1
+            logInspectorInput("mouse up consumed by inspector ownership button=$mouseButton")
+            return true
+        }
+
+        if (!buttonPressed && mouseButton != -1 && mappedButton != null) {
+            inspector.handleMouseUp(mouseX, mouseY, mappedButton)
+        }
+
+        val inspectorConsumesPointer = inspector.shouldConsumePointer(mouseX, mouseY)
+        if (!inspectorConsumesPointer) return false
+        if (mouseButton != -1 && buttonPressed) {
+            inspectorOwnedMouseButton = mouseButton
+        }
+        if (mouseButton != -1 && !buttonPressed) {
+            inspectorPointerCaptured = false
+            inspectorOwnedMouseButton = -1
+        }
+        inspector.markPointerHandled(
+            when {
+                dWheel != 0 -> "wheel in inspector"
+                mouseButton != -1 && buttonPressed -> "down in inspector bounds"
+                mouseButton != -1 && !buttonPressed -> "up in inspector bounds"
+                else -> "move in inspector bounds"
+            }
+        )
+        logInspectorInput("pointer event consumed by inspector bounds button=$mouseButton wheel=$dWheel")
+        return true
+    }
+
+    private fun consumeApplicationOverlayPointerEvent(
+        mouseX: Int,
+        mouseY: Int,
+        dWheel: Int,
+        mouseButton: Int,
+        mappedButton: MouseButton?,
+        buttonPressed: Boolean
+    ): Boolean {
+        if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            val consumedByColorPicker = if (buttonPressed) {
+                ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedByColorPicker) {
+                return true
+            }
+        } else if (mouseButton == -1 && ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+
+        if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            val consumedByAppOverlay = if (buttonPressed) {
+                applicationOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                applicationOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedByAppOverlay) {
+                return true
+            }
+        } else if (mouseButton == -1 && applicationOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+
+        if (dWheel != 0 && ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (dWheel != 0 && SelectRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            val consumedByContextMenu = if (buttonPressed) {
+                ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedByContextMenu) {
+                return true
+            }
+            val consumedBySelect = if (buttonPressed) {
+                SelectRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                SelectRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedBySelect) {
+                return true
+            }
+            return false
+        }
+        if (mouseButton == -1 && ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+        if (mouseButton == -1 && SelectRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+        return false
+    }
+
+    private fun consumeOverlayPointerState(mouseX: Int, mouseY: Int) {
+        eventButton = -1
+        clearActiveTarget()
+        releaseDragCapture()
         lastMouseX = mouseX
         lastMouseY = mouseY
     }

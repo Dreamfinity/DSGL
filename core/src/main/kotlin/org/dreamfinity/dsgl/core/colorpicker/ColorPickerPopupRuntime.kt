@@ -365,7 +365,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         if (handled) {
             refreshLayout(current)
         }
-        return handled
+        return handled || current.panelRect.contains(mouseX, mouseY)
     }
 
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {

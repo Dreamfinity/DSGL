@@ -30,7 +30,22 @@ class ApplicationOverlayRootNode(
         }
     }
 
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
+    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        if (!OverlayDebugVisualization.enabled()) return
+        if (bounds.width <= 0 || bounds.height <= 0) return
+        out += RenderCommand.DrawRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            OverlayDebugVisualization.applicationOverlayFillColor
+        )
+        val borderColor = OverlayDebugVisualization.applicationOverlayBorderColor
+        out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, 1, borderColor)
+        out += RenderCommand.DrawRect(bounds.x, bounds.y + bounds.height - 1, bounds.width, 1, borderColor)
+        out += RenderCommand.DrawRect(bounds.x, bounds.y, 1, bounds.height, borderColor)
+        out += RenderCommand.DrawRect(bounds.x + bounds.width - 1, bounds.y, 1, bounds.height, borderColor)
+    }
 
     override fun defaultForegroundColor(): Int = DsglColors.TEXT
 
