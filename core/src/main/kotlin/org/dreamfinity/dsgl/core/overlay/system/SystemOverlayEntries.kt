@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.event.MouseButton
 import java.util.IdentityHashMap
 
 enum class SystemOverlayEntryId {
@@ -138,6 +139,18 @@ internal interface SystemOverlayEntry {
     val node: DOMNode
 
     fun sync(frame: SystemOverlayFrameContext)
+
+    fun onInputFrame(viewportWidth: Int, viewportHeight: Int) = Unit
+
+    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = false
+
+    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
+
+    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
+
+    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean = false
+
+    fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
 }
 
 class SystemOverlayTransientSession(

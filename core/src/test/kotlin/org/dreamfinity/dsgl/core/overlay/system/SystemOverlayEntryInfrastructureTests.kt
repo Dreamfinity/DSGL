@@ -1,6 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,8 +8,6 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -19,11 +16,6 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 
 class SystemOverlayEntryInfrastructureTests {
-    @AfterTest
-    fun cleanup() {
-        ColorPickerRuntime.engine.closeAll()
-    }
-
     @Test
     fun `system overlay host exposes explicit persistent entries`() {
         val host = SystemOverlayHost(InspectorController())
@@ -63,9 +55,9 @@ class SystemOverlayEntryInfrastructureTests {
     @Test
     fun `color picker entry keeps panel state and identity stable across routine updates`() {
         val host = SystemOverlayHost(InspectorController())
-        val owner = Any()
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()
-        ColorPickerRuntime.engine.open(popupRequest(owner))
+        pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
             host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 40, cursorY = 42, inspectorPointerCaptured = false)
             val firstState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("state missing")
@@ -85,7 +77,7 @@ class SystemOverlayEntryInfrastructureTests {
             assertEquals(firstRect.y, secondRect.y)
             assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
         } finally {
-            ColorPickerRuntime.engine.close(owner)
+            pickerHost.close()
         }
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 60, cursorY = 65, inspectorPointerCaptured = false)
@@ -96,10 +88,10 @@ class SystemOverlayEntryInfrastructureTests {
     fun `entry ordering stays explicit when both system entries are active`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        val owner = Any()
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()
         inspector.toggle()
-        ColorPickerRuntime.engine.open(popupRequest(owner))
+        pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
             host.syncFrame(root, inspectedLayoutRevision = 10L, cursorX = 20, cursorY = 18, inspectorPointerCaptured = false)
             assertEquals(
@@ -108,7 +100,7 @@ class SystemOverlayEntryInfrastructureTests {
             )
         } finally {
             inspector.deactivate()
-            ColorPickerRuntime.engine.close(owner)
+            pickerHost.close()
         }
     }
 
@@ -172,18 +164,13 @@ class SystemOverlayEntryInfrastructureTests {
         assertEquals(0, host.debugTransientSessionCount())
     }
 
-    private fun popupRequest(owner: Any): ColorPickerPopupRequest {
-        return ColorPickerPopupRequest(
-            owner = owner,
-            anchorRect = Rect(36, 44, 20, 18),
-            title = "Popup",
-            state = ColorPickerState(
-                color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
-                previous = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true,
-                closeOnSelect = false
-            )
+    private fun popupState(): ColorPickerState {
+        return ColorPickerState(
+            color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
+            previous = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
+            mode = ColorFormatMode.RGB,
+            alphaEnabled = true,
+            closeOnSelect = false
         )
     }
 

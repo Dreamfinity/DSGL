@@ -8,7 +8,7 @@ enum class UiLayerId {
     SystemOverlay
 }
 
-enum class OverlayOwnerWorld {
+enum class OverlayOwnerScope {
     Application,
     System
 }
@@ -26,15 +26,15 @@ object OverlayLayerContracts {
         UiLayerId.ApplicationRoot
     )
 
-    fun resolveTransientLayer(ownerWorld: OverlayOwnerWorld): UiLayerId {
-        return when (ownerWorld) {
-            OverlayOwnerWorld.Application -> UiLayerId.ApplicationOverlay
-            OverlayOwnerWorld.System -> UiLayerId.SystemOverlay
+    fun resolveTransientLayer(ownerScope: OverlayOwnerScope): UiLayerId {
+        return when (ownerScope) {
+            OverlayOwnerScope.Application -> UiLayerId.ApplicationOverlay
+            OverlayOwnerScope.System -> UiLayerId.SystemOverlay
         }
     }
 
-    fun resolveTransientLayer(ownerWorld: OverlayOwnerWorld, cursorX: Int, cursorY: Int): UiLayerId {
-        return resolveTransientLayer(ownerWorld)
+    fun resolveTransientLayer(ownerScope: OverlayOwnerScope, cursorX: Int, cursorY: Int): UiLayerId {
+        return resolveTransientLayer(ownerScope)
     }
 
     fun firstInputConsumer(canConsume: (UiLayerId) -> Boolean): UiLayerId? {

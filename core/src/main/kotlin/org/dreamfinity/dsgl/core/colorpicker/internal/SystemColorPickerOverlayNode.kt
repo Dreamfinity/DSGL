@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.colorpicker.internal
 
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -9,6 +10,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayCommandDslRenderer
 
 internal class SystemColorPickerOverlayNode(
+    private val popupEngine: ColorPickerPopupEngine = ColorPickerRuntime.engine,
     key: Any? = "dsgl-system-color-picker"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker"
@@ -29,10 +31,10 @@ internal class SystemColorPickerOverlayNode(
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        ColorPickerRuntime.engine.onFrame(width, height)
-        ColorPickerRuntime.engine.onCursorPosition(cursorX, cursorY)
+        popupEngine.onFrame(width, height)
+        popupEngine.onCursorPosition(cursorX, cursorY)
         commandBuffer.clear()
-        ColorPickerRuntime.engine.appendOverlayCommands(commandBuffer)
+        popupEngine.appendOverlayCommands(commandBuffer)
         if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-color-picker")) {
             renderCommandsRevision += 1L
             markRenderCommandsDirty()

@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.colorpicker
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
@@ -16,6 +17,7 @@ interface ColorPickerPopupHost {
 
 data class ColorPickerPopupRequest(
     val owner: Any,
+    val ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
     val anchorRect: Rect,
     val title: String = "Color Picker",
     val state: ColorPickerState,
@@ -150,10 +152,22 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return current.headerRect
     }
 
+    internal fun debugCloseRect(owner: Any): Rect? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.closeRect
+    }
+
     internal fun debugBodyLayout(owner: Any): ColorPickerLayout? {
         val current = popup ?: return null
         if (current.owner != owner) return null
         return current.layout
+    }
+
+    internal fun debugOwnerScope(owner: Any): OverlayOwnerScope? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.request.ownerScope
     }
 
     internal fun debugController(owner: Any): ColorPickerController? {
@@ -168,6 +182,19 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
 
     internal fun debugIsDraggingPopup(): Boolean {
         return popup?.dragModel?.dragging == true
+    }
+
+    internal fun forcePanelRect(owner: Any, panelRect: Rect) {
+        val current = popup ?: return
+        if (current.owner != owner) return
+        val clamped = ColorPickerPopupGeometry.clampPanel(
+            rect = panelRect,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight
+        )
+        if (clamped == current.panelRect) return
+        current.panelRect = clamped
+        rebuildRects(current)
     }
 
     fun onFrame(viewportWidth: Int, viewportHeight: Int) {
@@ -386,6 +413,7 @@ class ColorPickerPopupManager(
     private val ownerToken: Any = Any()
 ) {
     fun open(
+        ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
         anchorRect: Rect,
         title: String,
         state: ColorPickerState,
@@ -401,6 +429,7 @@ class ColorPickerPopupManager(
         host.open(
             ColorPickerPopupRequest(
                 owner = ownerToken,
+                ownerScope = ownerScope,
                 anchorRect = anchorRect,
                 title = title,
                 state = state,

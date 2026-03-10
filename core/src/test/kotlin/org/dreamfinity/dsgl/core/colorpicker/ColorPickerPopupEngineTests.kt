@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.colorpicker
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -446,6 +447,27 @@ class ColorPickerPopupEngineTests {
         manager.close()
         assertNotNull(fakeHost.lastClosedOwner)
         assertTrue(fakeHost.lastClosedOwner === first.owner)
+    }
+
+    @Test
+    fun `manager popup owner scope defaults to application and supports explicit system owner scope`() {
+        val fakeHost = FakeColorPickerHost()
+        val manager = ColorPickerPopupManager(host = fakeHost)
+        manager.open(
+            anchorRect = Rect(10, 10, 10, 10),
+            title = "App",
+            state = ColorPickerState(RgbaColor.WHITE)
+        )
+        manager.open(
+            ownerScope = OverlayOwnerScope.System,
+            anchorRect = Rect(20, 20, 10, 10),
+            title = "System",
+            state = ColorPickerState(RgbaColor.WHITE)
+        )
+
+        assertEquals(2, fakeHost.opened.size)
+        assertEquals(OverlayOwnerScope.Application, fakeHost.opened[0].ownerScope)
+        assertEquals(OverlayOwnerScope.System, fakeHost.opened[1].ownerScope)
     }
 
     private class FakeColorPickerHost : ColorPickerPopupHost {

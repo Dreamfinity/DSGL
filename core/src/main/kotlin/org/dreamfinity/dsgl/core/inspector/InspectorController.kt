@@ -23,8 +23,10 @@ enum class InspectorPanelState {
 }
 
 class InspectorController(
-    private val colorPickerManager: InspectorColorPickerHost = SystemColorPickerPanelManager()
+    colorPickerManager: InspectorColorPickerHost = SystemColorPickerPanelManager()
 ) {
+    private var colorPickerManager: InspectorColorPickerHost = colorPickerManager
+
     private enum class EditOperation {
         CyclePrev,
         CycleNext,
@@ -241,6 +243,12 @@ class InspectorController(
         if (!active) return
         active = false
         deactivateInternal()
+    }
+
+    fun installColorPickerHost(host: InspectorColorPickerHost) {
+        if (colorPickerManager === host) return
+        colorPickerManager.close()
+        colorPickerManager = host
     }
 
     fun toggleMode() {

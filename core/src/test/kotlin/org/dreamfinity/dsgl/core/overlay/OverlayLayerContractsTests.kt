@@ -1,5 +1,9 @@
 package org.dreamfinity.dsgl.core.overlay
 
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,24 +41,24 @@ class OverlayLayerContractsTests {
     }
 
     @Test
-    fun `transient ownership uses owner world and not cursor position`() {
+    fun `transient ownership uses owner scope and not cursor position`() {
         val appAtA = OverlayLayerContracts.resolveTransientLayer(
-            ownerWorld = OverlayOwnerWorld.Application,
+            ownerScope = OverlayOwnerScope.Application,
             cursorX = 10,
             cursorY = 20
         )
         val appAtB = OverlayLayerContracts.resolveTransientLayer(
-            ownerWorld = OverlayOwnerWorld.Application,
+            ownerScope = OverlayOwnerScope.Application,
             cursorX = 800,
             cursorY = 640
         )
         val systemAtA = OverlayLayerContracts.resolveTransientLayer(
-            ownerWorld = OverlayOwnerWorld.System,
+            ownerScope = OverlayOwnerScope.System,
             cursorX = 10,
             cursorY = 20
         )
         val systemAtB = OverlayLayerContracts.resolveTransientLayer(
-            ownerWorld = OverlayOwnerWorld.System,
+            ownerScope = OverlayOwnerScope.System,
             cursorX = 800,
             cursorY = 640
         )
@@ -77,5 +81,27 @@ class OverlayLayerContractsTests {
         assertEquals(0xFF000001.toInt(), (out[0] as RenderCommand.DrawRect).color)
         assertEquals(0xFF000002.toInt(), (out[1] as RenderCommand.DrawRect).color)
         assertEquals(0xFF000003.toInt(), (out[2] as RenderCommand.DrawRect).color)
+    }
+
+    @Test
+    fun `color picker popup defaults to application overlay ownership`() {
+        val request = ColorPickerPopupRequest(
+            owner = "owner",
+            anchorRect = Rect(10, 12, 20, 18),
+            state = ColorPickerState(color = RgbaColor.WHITE)
+        )
+        assertEquals(OverlayOwnerScope.Application, request.ownerScope)
+        assertEquals(UiLayerId.ApplicationOverlay, ColorPickerPopupOverlayOwnership.resolveLayer(request))
+    }
+
+    @Test
+    fun `system-owned color picker popup resolves to system overlay`() {
+        val request = ColorPickerPopupRequest(
+            owner = "owner",
+            ownerScope = OverlayOwnerScope.System,
+            anchorRect = Rect(10, 12, 20, 18),
+            state = ColorPickerState(color = RgbaColor.WHITE)
+        )
+        assertEquals(UiLayerId.SystemOverlay, ColorPickerPopupOverlayOwnership.resolveLayer(request))
     }
 }

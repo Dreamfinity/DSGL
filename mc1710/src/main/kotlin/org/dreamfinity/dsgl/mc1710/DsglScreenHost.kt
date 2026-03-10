@@ -28,7 +28,7 @@ import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerWorld
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectRuntime
@@ -245,7 +245,9 @@ abstract class DsglScreenHost(
         }
         val contextMenuBlocks = !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         val selectBlocks = !inspectorBlocks && SelectRuntime.engine.isOpen()
-        val colorPickerBlocks = !inspectorBlocks && ColorPickerRuntime.engine.isOpen()
+        val colorPickerBlocks = !inspectorBlocks && (
+                systemOverlayHost.isSystemColorPickerOpen() || ColorPickerRuntime.engine.isOpen()
+                )
         if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
         }
@@ -443,6 +445,10 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
+            if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
+                mc.dispatchKeypresses()
+                return
+            }
             if (ColorPickerRuntime.engine.handleKeyDown(keyCode, keyChar)) {
                 mc.dispatchKeypresses()
                 return
@@ -537,7 +543,17 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f
         )
+        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+
+        if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            return
+        }
 
         if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
             eventButton = -1
@@ -551,6 +567,19 @@ abstract class DsglScreenHost(
         if (mouseButton != -1) {
             val mappedButton = mapButton(mouseButton)
             if (mappedButton != null) {
+                val consumedBySystemOverlay = if (Mouse.getEventButtonState()) {
+                    systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                if (consumedBySystemOverlay) {
+                    eventButton = -1
+                    clearActiveTarget()
+                    releaseDragCapture()
+                    lastMouseX = mouseX
+                    lastMouseY = mouseY
+                    return
+                }
                 val consumedByColorPicker = if (Mouse.getEventButtonState()) {
                     ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
                 } else {
@@ -565,6 +594,13 @@ abstract class DsglScreenHost(
                     return
                 }
             }
+        } else if (systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            eventButton = -1
+            clearActiveTarget()
+            releaseDragCapture()
+            lastMouseX = mouseX
+            lastMouseY = mouseY
+            return
         } else if (ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
             eventButton = -1
             clearActiveTarget()
@@ -846,6 +882,10 @@ abstract class DsglScreenHost(
         }
     }
 
+    init {
+        inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPopupHost())
+    }
+
     private fun resolveForcedPointerTarget(): DOMNode? {
         val focused = FocusManager.focusedNode()
         if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
@@ -855,7 +895,7 @@ abstract class DsglScreenHost(
     }
 
     private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
-        val layer = OverlayLayerContracts.resolveTransientLayer(OverlayOwnerWorld.Application)
+        val layer = OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application)
         if (layer != UiLayerId.ApplicationOverlay) return
         val focused = FocusManager.focusedNode()
         if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
@@ -868,10 +908,10 @@ abstract class DsglScreenHost(
     }
 
     private fun captureColorPickerEyedropperSamples() {
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerWorld.System) == UiLayerId.SystemOverlay) {
-            ColorPickerRuntime.engine.captureEyedropperSample()
+        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.System) == UiLayerId.SystemOverlay) {
+            systemOverlayHost.captureSystemColorPickerEyedropperSample()
         }
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerWorld.Application) != UiLayerId.ApplicationOverlay) {
+        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application) != UiLayerId.ApplicationOverlay) {
             return
         }
         val focused = FocusManager.focusedNode()
