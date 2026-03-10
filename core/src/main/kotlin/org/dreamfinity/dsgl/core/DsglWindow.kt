@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.ref.Ref
 import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
@@ -22,7 +23,7 @@ abstract class DsglWindow {
     /**
      * Called by platform hosts to connect this window to a host implementation.
      */
-    fun attachHost(host: org.dreamfinity.dsgl.core.host.DsglWindowHost) {
+    fun attachHost(host: DsglWindowHost) {
         invalidator = { host.requestRebuild("state") }
     }
 

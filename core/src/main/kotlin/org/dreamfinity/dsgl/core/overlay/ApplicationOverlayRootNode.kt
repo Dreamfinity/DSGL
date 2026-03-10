@@ -31,7 +31,7 @@ class ApplicationOverlayRootNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (!OverlayDebugVisualization.enabled()) return
+        if (!OverlayDebugVisualization.enabled) return
         if (bounds.width <= 0 || bounds.height <= 0) return
         out += RenderCommand.DrawRect(
             bounds.x,
