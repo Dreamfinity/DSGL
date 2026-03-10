@@ -5,38 +5,43 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.Size
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class OverlayPanelTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
+
     @Test
-    fun `panel renders header close and body content slot`() {
+    fun `panel uses native node path and does not expose legacy append commands api`() {
+        assertTrue(OverlayPanel::class.java.methods.none { it.name == "appendCommands" })
+
         val panelState = OverlayPanelState().apply {
             updateFromRect(Rect(30, 40, 240, 180))
         }
-        val dragSession = OverlayPanelDragSession()
         val panel = OverlayPanel(
             ownerId = "demo-owner",
             panelState = panelState,
-            dragSession = dragSession
+            dragSession = OverlayPanelDragSession()
         )
         panel.configure(title = "Demo", draggable = true)
+        panel.setBodyContent(FillNode("body"))
 
+        val node = panel.node()
+        node.render(ctx, 0, 0, 800, 600)
         val commands = ArrayList<RenderCommand>()
-        panel.appendCommands(
-            viewportWidth = 800,
-            viewportHeight = 600,
-            out = commands,
-            appendBody = { bodyRect, out ->
-                out += RenderCommand.DrawText("Body text", bodyRect.x + 4, bodyRect.y + 4, 0xFFFFFFFF.toInt())
-                out += RenderCommand.DrawImage("minecraft:textures/gui/options_background.png", bodyRect.x + 4, bodyRect.y + 20, 24, 24)
-            }
-        )
+        node.appendRenderCommands(ctx, commands)
 
-        assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Demo" })
-        assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Body text" })
-        assertTrue(commands.any { it is RenderCommand.DrawImage })
+        assertTrue(commands.isNotEmpty())
+        assertTrue(node.children.any { it.styleType == "div" || it.styleType == "button" || it.styleType == "text" })
+        assertTrue(node.children.none { it.styleType == "dsgl-system-raw-render-command" })
     }
 
     @Test
@@ -107,5 +112,17 @@ class OverlayPanelTests {
 
         assertTrue(panel.handleMouseDown(closeRect.x + 1, closeRect.y + 1, MouseButton.LEFT))
         assertEquals(1, closed)
+    }
+
+    private class FillNode(
+        key: Any?
+    ) : DOMNode(key) {
+        override fun measure(ctx: UiMeasureContext): Size {
+            return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+        }
+
+        override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+            bounds = Rect(x, y, width, height)
+        }
     }
 }

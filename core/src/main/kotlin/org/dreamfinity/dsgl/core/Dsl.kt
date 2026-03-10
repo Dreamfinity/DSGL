@@ -30,7 +30,10 @@ annotation class DsglDsl
  * Call this from [DsglWindow.render] to define the UI hierarchy.
  */
 fun ui(block: UiScope.() -> Unit): DomTree {
-    val root = ContainerNode(stackLayout = true)
+    return ui(ContainerNode(stackLayout = true), block)
+}
+
+fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
     val scope = UiScope(root)
     scope.block()
     return DomTree(root)
