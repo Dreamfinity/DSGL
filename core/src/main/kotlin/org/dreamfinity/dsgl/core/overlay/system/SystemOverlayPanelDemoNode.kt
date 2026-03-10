@@ -4,10 +4,11 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class SystemOverlayPanelDemoNode(
-    private val overlayPanel: SystemOverlayPanel,
+    private val overlayPanel: OverlayPanel,
     key: Any? = "dsgl-system-panel-panel-demo"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-panel-panel-demo"

@@ -12,9 +12,9 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import javax.imageio.ImageIO
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
+import javax.imageio.ImageIO
 
 enum class FontPathMode {
     Resource,
@@ -57,11 +57,12 @@ class AtlasPayload internal constructor(
 ) {
     @Volatile
     private var decodedBitmap: AtlasBitmap? = null
-    var isLoadedToGPUTexture: Boolean = false
+    var isLoadedToGPU: Boolean = false
 
     fun markLoadedToGPUTexture() {
-        isLoadedToGPUTexture = true
+        isLoadedToGPU = true
         decodedBitmap = null
+        encodedPngBytes = null
     }
 
     fun ensureDecoded(): AtlasBitmap {
@@ -117,8 +118,7 @@ class AtlasPayload internal constructor(
         image.getRGB(0, 0, width, height, argb, 0, width)
         val rgba = ByteArray(width * height * 4)
         var out = 0
-        // Renderer UVs sample atlas bounds in bottom-origin convention.
-        // Preserve previous PNG compatibility by writing rows bottom -> top.
+
         for (srcY in (height - 1) downTo 0) {
             val rowStart = srcY * width
             for (x in 0 until width) {

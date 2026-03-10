@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.overlay.system
+package org.dreamfinity.dsgl.core.overlay.panel
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,15 +9,15 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-class SystemOverlayPanelTests {
+class OverlayPanelTests {
     @Test
     fun `panel renders header close and body content slot`() {
-        val panelState = SystemOverlayPanelState().apply {
+        val panelState = OverlayPanelState().apply {
             updateFromRect(Rect(30, 40, 240, 180))
         }
-        val dragSession = SystemOverlayDragSession()
-        val panel = SystemOverlayPanel(
-            entryId = SystemOverlayEntryId.TransientSession,
+        val dragSession = OverlayPanelDragSession()
+        val panel = OverlayPanel(
+            ownerId = "demo-owner",
             panelState = panelState,
             dragSession = dragSession
         )
@@ -41,12 +41,12 @@ class SystemOverlayPanelTests {
 
     @Test
     fun `panel drag keeps persistent drag session and updates panel state`() {
-        val panelState = SystemOverlayPanelState().apply {
+        val panelState = OverlayPanelState().apply {
             updateFromRect(Rect(60, 70, 260, 180))
         }
-        val dragSession = SystemOverlayDragSession()
-        val panel = SystemOverlayPanel(
-            entryId = SystemOverlayEntryId.ColorPickerPopup,
+        val dragSession = OverlayPanelDragSession()
+        val panel = OverlayPanel(
+            ownerId = "drag-owner",
             panelState = panelState,
             dragSession = dragSession
         )
@@ -57,6 +57,7 @@ class SystemOverlayPanelTests {
         val startY = header.y + 8
         assertTrue(panel.handleMouseDown(startX, startY, MouseButton.LEFT))
         assertTrue(dragSession.active)
+        assertEquals("drag-owner", dragSession.ownerId)
 
         var lastRect: Rect? = null
         assertTrue(
@@ -86,18 +87,19 @@ class SystemOverlayPanelTests {
             }
         )
         assertFalse(dragSession.active)
+        assertEquals(null, dragSession.ownerId)
         assertEquals(movedRect, panelState.currentRectOrNull())
     }
 
     @Test
     fun `panel close button invokes close callback`() {
-        val panelState = SystemOverlayPanelState().apply {
+        val panelState = OverlayPanelState().apply {
             updateFromRect(Rect(12, 20, 220, 140))
         }
-        val panel = SystemOverlayPanel(
-            entryId = SystemOverlayEntryId.TransientSession,
+        val panel = OverlayPanel(
+            ownerId = Any(),
             panelState = panelState,
-            dragSession = SystemOverlayDragSession()
+            dragSession = OverlayPanelDragSession()
         )
         var closed = 0
         panel.configure(title = "Closable", draggable = true, onClose = { closed += 1 })

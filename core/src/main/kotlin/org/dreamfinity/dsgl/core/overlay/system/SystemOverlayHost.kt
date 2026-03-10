@@ -13,6 +13,9 @@ import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragType
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
@@ -229,13 +232,13 @@ class SystemOverlayHost(
             } else {
                 state.panelState.show()
             }
-            syncDragSession(
-                entryState = state,
-                dragging = inspectorController.isDraggingPanel,
-                dragType = SystemOverlayDragType.PanelMove,
-                pointerX = frame.cursorX,
-                pointerY = frame.cursorY
-            )
+                syncDragSession(
+                    entryState = state,
+                    dragging = inspectorController.isDraggingPanel,
+                    dragType = OverlayPanelDragType.PanelMove,
+                    pointerX = frame.cursorX,
+                    pointerY = frame.cursorY
+                )
         }
     }
 
@@ -246,8 +249,8 @@ class SystemOverlayHost(
         )
         private val ownerToken: Any = Any()
         private val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-        private val overlayPanel: SystemOverlayPanel = SystemOverlayPanel(
-            entryId = state.id,
+        private val overlayPanel: OverlayPanel = OverlayPanel(
+            ownerId = state.id,
             panelState = state.panelState,
             dragSession = state.dragSession
         )
@@ -271,8 +274,8 @@ class SystemOverlayHost(
                 title = popupEngine.debugTitle(ownerToken) ?: "Color Picker",
                 draggable = draggable,
                 style = popupEngine.debugStyle(ownerToken)
-                    ?.let(SystemOverlayPanelStyle::fromColorPickerStyle)
-                    ?: SystemOverlayPanelStyle(),
+                    ?.let { toOverlayPanelStyle(it) }
+                    ?: OverlayPanelStyle(),
                 onClose = ::close
             )
             val panelRect = popupEngine.debugPanelRect(ownerToken)
@@ -420,8 +423,8 @@ class SystemOverlayHost(
             id = SystemOverlayEntryId.PanelDemo,
             order = 300
         )
-        private val overlayPanel: SystemOverlayPanel = SystemOverlayPanel(
-            entryId = state.id,
+        private val overlayPanel: OverlayPanel = OverlayPanel(
+            ownerId = state.id,
             panelState = state.panelState,
             dragSession = state.dragSession
         )
@@ -469,7 +472,7 @@ class SystemOverlayHost(
             overlayPanel.configure(
                 title = "Overlay PanelF",
                 draggable = true,
-                style = SystemOverlayPanelStyle(fontSize = 16),
+                style = OverlayPanelStyle(fontSize = 16),
                 onClose = ::close
             )
             overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
@@ -547,14 +550,14 @@ class SystemOverlayHost(
         private fun syncDragSession(
             entryState: SystemOverlayEntryState,
             dragging: Boolean,
-            dragType: SystemOverlayDragType,
+            dragType: OverlayPanelDragType,
             pointerX: Int,
             pointerY: Int
         ) {
             if (dragging) {
                 if (!entryState.dragSession.active) {
                     entryState.dragSession.begin(
-                        entryId = entryState.id,
+                        ownerId = entryState.id,
                         type = dragType,
                         pointerX = pointerX,
                         pointerY = pointerY,
@@ -566,6 +569,20 @@ class SystemOverlayHost(
                 return
             }
             entryState.dragSession.end()
+        }
+
+        private fun toOverlayPanelStyle(style: ColorPickerStyle): OverlayPanelStyle {
+            return OverlayPanelStyle(
+                panelBackgroundColor = style.panelBackgroundColor,
+                panelBorderColor = style.panelBorderColor,
+                panelShadowColor = style.panelShadowColor,
+                headerBackgroundColor = style.buttonBackgroundColor,
+                headerBorderColor = style.inputBorderColor,
+                closeButtonBackgroundColor = style.buttonBackgroundColor,
+                closeButtonBorderColor = style.inputBorderColor,
+                textColor = style.textColor,
+                fontSize = style.fontSize
+            )
         }
     }
 }

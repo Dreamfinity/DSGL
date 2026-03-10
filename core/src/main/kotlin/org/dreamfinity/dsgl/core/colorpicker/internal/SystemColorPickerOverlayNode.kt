@@ -7,12 +7,12 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayCommandDslRenderer
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanel
 
 internal class SystemColorPickerOverlayNode(
     private val popupEngine: ColorPickerPopupEngine = ColorPickerRuntime.engine,
-    private val overlayPanel: SystemOverlayPanel? = null,
+    private val overlayPanel: OverlayPanel? = null,
     key: Any? = "dsgl-system-color-picker"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker"

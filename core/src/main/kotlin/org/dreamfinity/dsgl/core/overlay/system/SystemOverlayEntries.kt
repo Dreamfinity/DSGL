@@ -1,8 +1,9 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
 import java.util.IdentityHashMap
 
 enum class SystemOverlayEntryId {
@@ -12,116 +13,11 @@ enum class SystemOverlayEntryId {
     TransientSession
 }
 
-enum class SystemOverlayDragType {
-    PanelMove,
-    PanelResize,
-    Transient
-}
-
-class SystemOverlayPanelState {
-    var visible: Boolean = false
-        private set
-    var x: Int = 0
-        private set
-    var y: Int = 0
-        private set
-    var width: Int = 0
-        private set
-    var height: Int = 0
-        private set
-
-    fun show() {
-        visible = true
-    }
-
-    fun hide() {
-        visible = false
-    }
-
-    fun setPosition(x: Int, y: Int) {
-        this.x = x
-        this.y = y
-    }
-
-    fun setSize(width: Int, height: Int) {
-        this.width = width.coerceAtLeast(0)
-        this.height = height.coerceAtLeast(0)
-    }
-
-    fun updateFromRect(rect: Rect) {
-        show()
-        setPosition(rect.x, rect.y)
-        setSize(rect.width, rect.height)
-    }
-
-    fun currentRectOrNull(): Rect? {
-        if (!visible) return null
-        return Rect(x, y, width, height)
-    }
-}
-
-class SystemOverlayDragSession {
-    var active: Boolean = false
-        private set
-    var entryId: SystemOverlayEntryId? = null
-        private set
-    var type: SystemOverlayDragType? = null
-        private set
-    var startPointerX: Int = 0
-        private set
-    var startPointerY: Int = 0
-        private set
-    var currentPointerX: Int = 0
-        private set
-    var currentPointerY: Int = 0
-        private set
-    var startPanelX: Int = 0
-        private set
-    var startPanelY: Int = 0
-        private set
-    var startPanelWidth: Int = 0
-        private set
-    var startPanelHeight: Int = 0
-        private set
-
-    fun begin(
-        entryId: SystemOverlayEntryId,
-        type: SystemOverlayDragType,
-        pointerX: Int,
-        pointerY: Int,
-        panelState: SystemOverlayPanelState
-    ) {
-        active = true
-        this.entryId = entryId
-        this.type = type
-        startPointerX = pointerX
-        startPointerY = pointerY
-        currentPointerX = pointerX
-        currentPointerY = pointerY
-        startPanelX = panelState.x
-        startPanelY = panelState.y
-        startPanelWidth = panelState.width
-        startPanelHeight = panelState.height
-    }
-
-    fun update(pointerX: Int, pointerY: Int) {
-        if (!active) return
-        currentPointerX = pointerX
-        currentPointerY = pointerY
-    }
-
-    fun end() {
-        active = false
-        entryId = null
-        type = null
-    }
-}
-
 class SystemOverlayEntryState(
     val id: SystemOverlayEntryId,
     val order: Int,
-    val panelState: SystemOverlayPanelState = SystemOverlayPanelState(),
-    val dragSession: SystemOverlayDragSession = SystemOverlayDragSession()
+    val panelState: OverlayPanelState = OverlayPanelState(),
+    val dragSession: OverlayPanelDragSession = OverlayPanelDragSession()
 ) {
     var active: Boolean = false
         internal set

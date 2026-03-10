@@ -1,11 +1,10 @@
-package org.dreamfinity.dsgl.core.overlay.system
+package org.dreamfinity.dsgl.core.overlay.panel
 
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-data class SystemOverlayPanelStyle(
+data class OverlayPanelStyle(
     val headerHeight: Int = 26,
     val panelPadding: Int = 6,
     val closeButtonWidth: Int = 16,
@@ -22,48 +21,32 @@ data class SystemOverlayPanelStyle(
     val textColor: Int = 0xFFFFFFFF.toInt(),
     val fontSize: Int = 20,
     val closeGlyph: String = "x"
-) {
-    companion object {
-        fun fromColorPickerStyle(style: ColorPickerStyle): SystemOverlayPanelStyle {
-            return SystemOverlayPanelStyle(
-                panelBackgroundColor = style.panelBackgroundColor,
-                panelBorderColor = style.panelBorderColor,
-                panelShadowColor = style.panelShadowColor,
-                headerBackgroundColor = style.buttonBackgroundColor,
-                headerBorderColor = style.inputBorderColor,
-                closeButtonBackgroundColor = style.buttonBackgroundColor,
-                closeButtonBorderColor = style.inputBorderColor,
-                textColor = style.textColor,
-                fontSize = style.fontSize
-            )
-        }
-    }
-}
+)
 
-data class SystemOverlayPanelFrame(
+data class OverlayPanelFrame(
     val panelRect: Rect,
     val headerRect: Rect,
     val bodyRect: Rect,
     val closeRect: Rect
 )
 
-class SystemOverlayPanel(
-    private val entryId: SystemOverlayEntryId,
-    private val panelState: SystemOverlayPanelState,
-    private val dragSession: SystemOverlayDragSession,
-    private var style: SystemOverlayPanelStyle = SystemOverlayPanelStyle()
+class OverlayPanel(
+    private val ownerId: Any,
+    private val panelState: OverlayPanelState,
+    private val dragSession: OverlayPanelDragSession,
+    private var style: OverlayPanelStyle = OverlayPanelStyle()
 ) {
     var title: String = ""
         private set
     var draggable: Boolean = true
         private set
     private var onClose: (() -> Unit)? = null
-    private var frame: SystemOverlayPanelFrame? = null
+    private var frame: OverlayPanelFrame? = null
 
     fun configure(
         title: String,
         draggable: Boolean,
-        style: SystemOverlayPanelStyle = this.style,
+        style: OverlayPanelStyle = this.style,
         onClose: (() -> Unit)? = this.onClose
     ) {
         this.title = title
@@ -167,8 +150,8 @@ class SystemOverlayPanel(
         if (!draggable) return false
         if (!localFrame.headerRect.contains(mouseX, mouseY)) return false
         dragSession.begin(
-            entryId = entryId,
-            type = SystemOverlayDragType.PanelMove,
+            ownerId = ownerId,
+            type = OverlayPanelDragType.PanelMove,
             pointerX = mouseX,
             pointerY = mouseY,
             panelState = panelState
@@ -231,7 +214,7 @@ class SystemOverlayPanel(
         }
     }
 
-    private fun buildFrame(panelRect: Rect): SystemOverlayPanelFrame {
+    private fun buildFrame(panelRect: Rect): OverlayPanelFrame {
         val headerRect = Rect(panelRect.x, panelRect.y, panelRect.width, style.headerHeight)
         val bodyRect = Rect(
             x = panelRect.x + style.panelPadding,
@@ -245,7 +228,7 @@ class SystemOverlayPanel(
             width = style.closeButtonWidth,
             height = style.closeButtonHeight
         )
-        return SystemOverlayPanelFrame(
+        return OverlayPanelFrame(
             panelRect = panelRect,
             headerRect = headerRect,
             bodyRect = bodyRect,

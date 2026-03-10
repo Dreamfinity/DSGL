@@ -14,6 +14,9 @@ import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragType
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
 
 class SystemOverlayEntryInfrastructureTests {
     @Test
@@ -106,20 +109,20 @@ class SystemOverlayEntryInfrastructureTests {
 
     @Test
     fun `drag session captures start anchor updates and ends deterministically`() {
-        val panelState = SystemOverlayPanelState()
+        val panelState = OverlayPanelState()
         panelState.updateFromRect(Rect(20, 24, 300, 200))
-        val session = SystemOverlayDragSession()
+        val session = OverlayPanelDragSession()
 
         session.begin(
-            entryId = SystemOverlayEntryId.ColorPickerPopup,
-            type = SystemOverlayDragType.PanelMove,
+            ownerId = SystemOverlayEntryId.ColorPickerPopup,
+            type = OverlayPanelDragType.PanelMove,
             pointerX = 100,
             pointerY = 120,
             panelState = panelState
         )
         assertTrue(session.active)
-        assertEquals(SystemOverlayEntryId.ColorPickerPopup, session.entryId)
-        assertEquals(SystemOverlayDragType.PanelMove, session.type)
+        assertEquals(SystemOverlayEntryId.ColorPickerPopup, session.ownerId)
+        assertEquals(OverlayPanelDragType.PanelMove, session.type)
         assertEquals(100, session.startPointerX)
         assertEquals(120, session.startPointerY)
         assertEquals(20, session.startPanelX)
@@ -133,7 +136,7 @@ class SystemOverlayEntryInfrastructureTests {
 
         session.end()
         assertFalse(session.active)
-        assertEquals(null, session.entryId)
+        assertEquals(null, session.ownerId)
         assertEquals(null, session.type)
     }
 
