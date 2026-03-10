@@ -162,6 +162,14 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return current.controller
     }
 
+    internal fun debugActivePanelRect(): Rect? {
+        return popup?.panelRect
+    }
+
+    internal fun debugIsDraggingPopup(): Boolean {
+        return popup?.dragModel?.dragging == true
+    }
+
     fun onFrame(viewportWidth: Int, viewportHeight: Int) {
         if (this.viewportWidth != viewportWidth || this.viewportHeight != viewportHeight) {
             this.viewportWidth = viewportWidth

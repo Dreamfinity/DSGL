@@ -1070,6 +1070,11 @@ class InspectorController(
         return true
     }
 
+    internal fun debugPanelRect(): Rect? {
+        if (!active) return null
+        return currentInspectorRect()
+    }
+
     private fun performPanelAction(action: PanelAction) {
         when (action.kind) {
             ActionKind.Minimize -> {
