@@ -6,11 +6,11 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-internal class SystemOverlayPanelShellDemoNode(
-    private val panelShell: SystemOverlayPanelShell,
-    key: Any? = "dsgl-system-panel-shell-demo"
+internal class SystemOverlayPanelDemoNode(
+    private val overlayPanel: SystemOverlayPanel,
+    key: Any? = "dsgl-system-panel-panel-demo"
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-panel-shell-demo"
+    override val styleType: String = "dsgl-system-panel-panel-demo"
 
     private val commandBuffer: MutableList<RenderCommand> = ArrayList(128)
     private var renderCommandsRevision: Long = 0L
@@ -33,13 +33,13 @@ internal class SystemOverlayPanelShellDemoNode(
         bounds = Rect(x, y, width, height)
         commandBuffer.clear()
         actionButtonRect = null
-        panelShell.appendCommands(
+        overlayPanel.appendCommands(
             viewportWidth = width,
             viewportHeight = height,
             out = commandBuffer,
             appendBody = { bodyRect, out ->
                 out += RenderCommand.DrawText(
-                    text = "Reusable shell demo",
+                    text = "Reusable panel demo",
                     x = bodyRect.x + 6,
                     y = bodyRect.y + 4,
                     color = 0xFFFFFFFF.toInt(),
@@ -79,7 +79,7 @@ internal class SystemOverlayPanelShellDemoNode(
                 )
             }
         )
-        if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-panel-shell-demo")) {
+        if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-panel-panel-demo")) {
             renderCommandsRevision += 1L
             markRenderCommandsDirty()
         }

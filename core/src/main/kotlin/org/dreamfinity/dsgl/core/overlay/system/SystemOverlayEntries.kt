@@ -8,7 +8,7 @@ import java.util.IdentityHashMap
 enum class SystemOverlayEntryId {
     Inspector,
     ColorPickerPopup,
-    PanelShellDemo,
+    PanelDemo,
     TransientSession
 }
 

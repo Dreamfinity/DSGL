@@ -137,7 +137,7 @@ class SystemOverlayColorPickerEntryTests {
     }
 
     @Test
-    fun `system picker popup close button closes entry through panel shell`() {
+    fun `system picker popup close button closes entry through panel panel`() {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()

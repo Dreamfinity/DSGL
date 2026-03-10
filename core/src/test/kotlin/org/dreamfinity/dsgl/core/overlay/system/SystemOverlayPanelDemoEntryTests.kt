@@ -14,7 +14,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-class SystemOverlayPanelShellDemoEntryTests {
+class SystemOverlayPanelDemoEntryTests {
     private val ctx = object : UiMeasureContext {
         override val fontHeight: Int = 9
         override fun measureText(text: String): Int = text.length * 6
@@ -22,41 +22,41 @@ class SystemOverlayPanelShellDemoEntryTests {
     }
 
     @Test
-    fun `panel shell demo entry toggles mounts and keeps stable identity while open`() {
+    fun `panel panel demo entry toggles mounts and keeps stable identity while open`() {
         val host = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
 
         host.onInputFrame(1280, 720)
-        host.togglePanelShellDemo(anchorX = 160, anchorY = 120)
+        host.togglePanelDemo(anchorX = 160, anchorY = 120)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 162, cursorY = 122, inspectorPointerCaptured = false)
-        val firstNode = host.debugEntryNode(SystemOverlayEntryId.PanelShellDemo) ?: error("node missing")
-        val firstState = host.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("state missing")
+        val firstNode = host.debugEntryNode(SystemOverlayEntryId.PanelDemo) ?: error("node missing")
+        val firstState = host.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("state missing")
         assertTrue(firstState.active)
-        assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.PanelShellDemo))
+        assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.PanelDemo))
 
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 170, cursorY = 134, inspectorPointerCaptured = false)
-        val secondNode = host.debugEntryNode(SystemOverlayEntryId.PanelShellDemo) ?: error("node missing")
-        val secondState = host.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("state missing")
+        val secondNode = host.debugEntryNode(SystemOverlayEntryId.PanelDemo) ?: error("node missing")
+        val secondState = host.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("state missing")
         assertSame(firstNode, secondNode)
         assertSame(firstState, secondState)
 
-        host.togglePanelShellDemo(anchorX = 160, anchorY = 120)
+        host.togglePanelDemo(anchorX = 160, anchorY = 120)
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 170, cursorY = 134, inspectorPointerCaptured = false)
-        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.PanelShellDemo))
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.PanelDemo))
     }
 
     @Test
-    fun `panel shell demo supports drag and body button click`() {
+    fun `panel panel demo supports drag and body button click`() {
         val host = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
 
         host.onInputFrame(1280, 720)
-        host.togglePanelShellDemo(anchorX = 220, anchorY = 160)
+        host.togglePanelDemo(anchorX = 220, anchorY = 160)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 224, cursorY = 166, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
-        val state = host.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("state missing")
+        val state = host.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("state missing")
         val before = state.panelState.currentRectOrNull() ?: error("panel missing")
-        val node = host.debugEntryNode(SystemOverlayEntryId.PanelShellDemo) as? SystemOverlayPanelShellDemoNode
+        val node = host.debugEntryNode(SystemOverlayEntryId.PanelDemo) as? SystemOverlayPanelDemoNode
             ?: error("demo node missing")
         val buttonRect = node.buttonRect() ?: error("button rect missing")
 
@@ -71,7 +71,7 @@ class SystemOverlayPanelShellDemoEntryTests {
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = moved.x + 8, cursorY = moved.y + 8, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
-        val updatedNode = host.debugEntryNode(SystemOverlayEntryId.PanelShellDemo) as? SystemOverlayPanelShellDemoNode
+        val updatedNode = host.debugEntryNode(SystemOverlayEntryId.PanelDemo) as? SystemOverlayPanelDemoNode
             ?: error("demo node missing")
         val movedButtonRect = updatedNode.buttonRect() ?: error("button rect missing")
         assertTrue(host.handleMouseDown(movedButtonRect.x + 1, movedButtonRect.y + 1, MouseButton.LEFT))
@@ -88,15 +88,15 @@ class SystemOverlayPanelShellDemoEntryTests {
     }
 
     @Test
-    fun `panel shell demo uses render viewport before first mouse input`() {
+    fun `panel panel demo uses render viewport before first mouse input`() {
         val host = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
 
         host.render(ctx, 1280, 720)
-        host.togglePanelShellDemo(anchorX = 460, anchorY = 320)
+        host.togglePanelDemo(anchorX = 460, anchorY = 320)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 460, cursorY = 320, inspectorPointerCaptured = false)
 
-        val state = host.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("state missing")
+        val state = host.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("state missing")
         val rect = state.panelState.currentRectOrNull() ?: error("panel missing")
         assertEquals(460, rect.x)
         assertEquals(320, rect.y)

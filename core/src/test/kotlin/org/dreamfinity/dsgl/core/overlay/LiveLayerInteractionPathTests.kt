@@ -4,8 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
-import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -14,7 +12,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayEntryId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelShellDemoNode
+import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelDemoNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class LiveLayerInteractionPathTests {
@@ -85,10 +83,10 @@ class LiveLayerInteractionPathTests {
         val systemHost = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
         systemHost.onInputFrame(1280, 720)
-        systemHost.togglePanelShellDemo(anchorX = 240, anchorY = 180)
+        systemHost.togglePanelDemo(anchorX = 240, anchorY = 180)
         systemHost.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 244, cursorY = 186, inspectorPointerCaptured = false)
 
-        val entryState = systemHost.debugEntryState(SystemOverlayEntryId.PanelShellDemo) ?: error("panel demo state missing")
+        val entryState = systemHost.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("panel demo state missing")
         val panelRect = entryState.panelState.currentRectOrNull() ?: error("panel demo rect missing")
         val harness = LiveLayerInputHarness(
             debugHandler = { _, _, _ -> false },
@@ -127,11 +125,11 @@ class LiveLayerInteractionPathTests {
         val systemHost = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
         systemHost.onInputFrame(1280, 720)
-        systemHost.togglePanelShellDemo(anchorX = 260, anchorY = 200)
+        systemHost.togglePanelDemo(anchorX = 260, anchorY = 200)
         systemHost.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 260, cursorY = 200, inspectorPointerCaptured = false)
         systemHost.render(ctx, 1280, 720)
 
-        val demoNode = systemHost.debugEntryNode(SystemOverlayEntryId.PanelShellDemo) as? SystemOverlayPanelShellDemoNode
+        val demoNode = systemHost.debugEntryNode(SystemOverlayEntryId.PanelDemo) as? SystemOverlayPanelDemoNode
             ?: error("panel demo node missing")
         val buttonRect = demoNode.buttonRect()
         assertNotNull(buttonRect)

@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-data class SystemOverlayPanelShellStyle(
+data class SystemOverlayPanelStyle(
     val headerHeight: Int = 26,
     val panelPadding: Int = 6,
     val closeButtonWidth: Int = 16,
@@ -24,8 +24,8 @@ data class SystemOverlayPanelShellStyle(
     val closeGlyph: String = "x"
 ) {
     companion object {
-        fun fromColorPickerStyle(style: ColorPickerStyle): SystemOverlayPanelShellStyle {
-            return SystemOverlayPanelShellStyle(
+        fun fromColorPickerStyle(style: ColorPickerStyle): SystemOverlayPanelStyle {
+            return SystemOverlayPanelStyle(
                 panelBackgroundColor = style.panelBackgroundColor,
                 panelBorderColor = style.panelBorderColor,
                 panelShadowColor = style.panelShadowColor,
@@ -40,30 +40,30 @@ data class SystemOverlayPanelShellStyle(
     }
 }
 
-data class SystemOverlayPanelShellFrame(
+data class SystemOverlayPanelFrame(
     val panelRect: Rect,
     val headerRect: Rect,
     val bodyRect: Rect,
     val closeRect: Rect
 )
 
-class SystemOverlayPanelShell(
+class SystemOverlayPanel(
     private val entryId: SystemOverlayEntryId,
     private val panelState: SystemOverlayPanelState,
     private val dragSession: SystemOverlayDragSession,
-    private var style: SystemOverlayPanelShellStyle = SystemOverlayPanelShellStyle()
+    private var style: SystemOverlayPanelStyle = SystemOverlayPanelStyle()
 ) {
     var title: String = ""
         private set
     var draggable: Boolean = true
         private set
     private var onClose: (() -> Unit)? = null
-    private var frame: SystemOverlayPanelShellFrame? = null
+    private var frame: SystemOverlayPanelFrame? = null
 
     fun configure(
         title: String,
         draggable: Boolean,
-        style: SystemOverlayPanelShellStyle = this.style,
+        style: SystemOverlayPanelStyle = this.style,
         onClose: (() -> Unit)? = this.onClose
     ) {
         this.title = title
@@ -231,7 +231,7 @@ class SystemOverlayPanelShell(
         }
     }
 
-    private fun buildFrame(panelRect: Rect): SystemOverlayPanelShellFrame {
+    private fun buildFrame(panelRect: Rect): SystemOverlayPanelFrame {
         val headerRect = Rect(panelRect.x, panelRect.y, panelRect.width, style.headerHeight)
         val bodyRect = Rect(
             x = panelRect.x + style.panelPadding,
@@ -245,7 +245,7 @@ class SystemOverlayPanelShell(
             width = style.closeButtonWidth,
             height = style.closeButtonHeight
         )
-        return SystemOverlayPanelShellFrame(
+        return SystemOverlayPanelFrame(
             panelRect = panelRect,
             headerRect = headerRect,
             bodyRect = bodyRect,

@@ -1,13 +1,9 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.DomTree
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
-import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
-import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
+import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -28,11 +24,12 @@ class SystemOverlayHost(
     private val rootNode: SystemOverlayRootNode = SystemOverlayRootNode()
     private val inspectorEntry: SystemOverlayEntry = InspectorOverlayEntry(inspectorController)
     private val colorPickerEntry: ColorPickerOverlayEntry = ColorPickerOverlayEntry()
-    private val panelShellDemoEntry: PanelShellDemoOverlayEntry = PanelShellDemoOverlayEntry()
+    private val overlayPanelDemoEntry: OverlayPanelDemoOverlayEntry = OverlayPanelDemoOverlayEntry()
     private val entryRegistry: SystemOverlayEntryRegistry = SystemOverlayEntryRegistry(
-        listOf(inspectorEntry, colorPickerEntry, panelShellDemoEntry)
+        listOf(inspectorEntry, colorPickerEntry, overlayPanelDemoEntry)
     )
-    private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry = SystemOverlayTransientOwnershipRegistry()
+    private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =
+        SystemOverlayTransientOwnershipRegistry()
     private val tree: DomTree = DomTree(
         root = rootNode,
         styleScope = StyleApplicationScope.SystemOverlay
@@ -59,12 +56,12 @@ class SystemOverlayHost(
         colorPickerEntry.captureEyedropperSample()
     }
 
-    fun togglePanelShellDemo(anchorX: Int, anchorY: Int) {
-        panelShellDemoEntry.toggle(anchorX, anchorY, knownViewportWidth, knownViewportHeight)
+    fun togglePanelDemo(anchorX: Int, anchorY: Int) {
+        overlayPanelDemoEntry.toggle(anchorX, anchorY, knownViewportWidth, knownViewportHeight)
     }
 
-    fun isPanelShellDemoOpen(): Boolean {
-        return panelShellDemoEntry.isOpen()
+    fun isOverlayPanelDemoOpen(): Boolean {
+        return overlayPanelDemoEntry.isOpen()
     }
 
     fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
@@ -130,7 +127,7 @@ class SystemOverlayHost(
         tree.clearRefs()
         transientOwnershipRegistry.clear()
         colorPickerEntry.close()
-        panelShellDemoEntry.close()
+        overlayPanelDemoEntry.close()
     }
 
     internal fun debugEntryState(id: SystemOverlayEntryId): SystemOverlayEntryState? {
@@ -249,14 +246,14 @@ class SystemOverlayHost(
         )
         private val ownerToken: Any = Any()
         private val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-        private val panelShell: SystemOverlayPanelShell = SystemOverlayPanelShell(
+        private val overlayPanel: SystemOverlayPanel = SystemOverlayPanel(
             entryId = state.id,
             panelState = state.panelState,
             dragSession = state.dragSession
         )
         override val node: SystemColorPickerOverlayNode = SystemColorPickerOverlayNode(
             popupEngine = popupEngine,
-            panelShell = panelShell
+            overlayPanel = overlayPanel
         )
         private var draggable: Boolean = true
         private var viewportWidth: Int = 1
@@ -270,22 +267,22 @@ class SystemOverlayHost(
                 state.dragSession.end()
                 return
             }
-            panelShell.configure(
+            overlayPanel.configure(
                 title = popupEngine.debugTitle(ownerToken) ?: "Color Picker",
                 draggable = draggable,
                 style = popupEngine.debugStyle(ownerToken)
-                    ?.let(SystemOverlayPanelShellStyle::fromColorPickerStyle)
-                    ?: SystemOverlayPanelShellStyle(),
+                    ?.let(SystemOverlayPanelStyle::fromColorPickerStyle)
+                    ?: SystemOverlayPanelStyle(),
                 onClose = ::close
             )
             val panelRect = popupEngine.debugPanelRect(ownerToken)
             if (panelRect != null) {
-                panelShell.syncPanelRect(panelRect)
+                overlayPanel.syncPanelRect(panelRect)
             } else {
                 state.panelState.show()
-                panelShell.syncPanelRect(state.panelState.currentRectOrNull())
+                overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
             }
-            if (panelShell.handleMouseMove(
+            if (overlayPanel.handleMouseMove(
                     mouseX = frame.cursorX,
                     mouseY = frame.cursorY,
                     viewportWidth = viewportWidth,
@@ -307,7 +304,7 @@ class SystemOverlayHost(
         override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
             if (!state.active) return false
             popupEngine.onCursorPosition(mouseX, mouseY)
-            if (panelShell.handleMouseMove(
+            if (overlayPanel.handleMouseMove(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     viewportWidth = viewportWidth,
@@ -324,7 +321,7 @@ class SystemOverlayHost(
 
         override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (panelShell.handleMouseDown(mouseX, mouseY, button)) {
+            if (overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
                 return true
             }
             return popupEngine.handleMouseDown(mouseX, mouseY, button)
@@ -332,7 +329,7 @@ class SystemOverlayHost(
 
         override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (panelShell.handleMouseUp(
+            if (overlayPanel.handleMouseUp(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     button = button,
@@ -402,11 +399,11 @@ class SystemOverlayHost(
         }
 
         fun debugHeaderRect(): Rect? {
-            return panelShell.headerRect()
+            return overlayPanel.headerRect()
         }
 
         fun debugCloseRect(): Rect? {
-            return panelShell.closeRect()
+            return overlayPanel.closeRect()
         }
 
         fun captureEyedropperSample() {
@@ -418,17 +415,17 @@ class SystemOverlayHost(
         }
     }
 
-    private class PanelShellDemoOverlayEntry : SystemOverlayEntry {
+    private class OverlayPanelDemoOverlayEntry : SystemOverlayEntry {
         override val state: SystemOverlayEntryState = SystemOverlayEntryState(
-            id = SystemOverlayEntryId.PanelShellDemo,
+            id = SystemOverlayEntryId.PanelDemo,
             order = 300
         )
-        private val panelShell: SystemOverlayPanelShell = SystemOverlayPanelShell(
+        private val overlayPanel: SystemOverlayPanel = SystemOverlayPanel(
             entryId = state.id,
             panelState = state.panelState,
             dragSession = state.dragSession
         )
-        private val demoNode: SystemOverlayPanelShellDemoNode = SystemOverlayPanelShellDemoNode(panelShell)
+        private val demoNode: SystemOverlayPanelDemoNode = SystemOverlayPanelDemoNode(overlayPanel)
         override val node: DOMNode = demoNode
         private var opened: Boolean = false
         private var viewportWidth: Int = 1
@@ -469,15 +466,15 @@ class SystemOverlayHost(
                 state.dragSession.end()
                 return
             }
-            panelShell.configure(
-                title = "Overlay Panel Shell",
+            overlayPanel.configure(
+                title = "Overlay PanelF",
                 draggable = true,
-                style = SystemOverlayPanelShellStyle(fontSize = 16),
+                style = SystemOverlayPanelStyle(fontSize = 16),
                 onClose = ::close
             )
-            panelShell.syncPanelRect(state.panelState.currentRectOrNull())
+            overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
             demoNode.setButtonClicks(buttonClicks)
-            panelShell.handleMouseMove(
+            overlayPanel.handleMouseMove(
                 mouseX = frame.cursorX,
                 mouseY = frame.cursorY,
                 viewportWidth = viewportWidth,
@@ -494,7 +491,7 @@ class SystemOverlayHost(
 
         override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
             if (!state.active) return false
-            if (panelShell.handleMouseMove(
+            if (overlayPanel.handleMouseMove(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     viewportWidth = viewportWidth,
@@ -511,7 +508,7 @@ class SystemOverlayHost(
 
         override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (panelShell.handleMouseDown(mouseX, mouseY, button)) {
+            if (overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
                 return true
             }
             val panelRect = state.panelState.currentRectOrNull() ?: return false
@@ -529,7 +526,7 @@ class SystemOverlayHost(
 
         override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (panelShell.handleMouseUp(
+            if (overlayPanel.handleMouseUp(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     button = button,

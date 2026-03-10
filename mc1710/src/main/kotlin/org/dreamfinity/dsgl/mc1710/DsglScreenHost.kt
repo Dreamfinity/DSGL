@@ -478,7 +478,7 @@ abstract class DsglScreenHost(
             if (keyCode == Keyboard.KEY_F10) {
                 val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
                 val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
-                systemOverlayHost.togglePanelShellDemo(demoAnchorX, demoAnchorY)
+                systemOverlayHost.togglePanelDemo(demoAnchorX, demoAnchorY)
                 mc.dispatchKeypresses()
                 return
             }

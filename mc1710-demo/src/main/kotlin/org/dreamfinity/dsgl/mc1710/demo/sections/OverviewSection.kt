@@ -33,7 +33,7 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
         text("Press F6 to force stylesheet reload and rebuild after file edits.", {
             style = { color = DEMO_MUTED }
         })
-        text("Press F10 to toggle the draggable overlay panel shell demo (text + button + image).", {
+        text("Press F10 to toggle the draggable overlay panel panel demo (text + button + image).", {
             style = { color = DEMO_MUTED }
         })
 

@@ -9,22 +9,22 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-class SystemOverlayPanelShellTests {
+class SystemOverlayPanelTests {
     @Test
-    fun `shell renders header close and body content slot`() {
+    fun `panel renders header close and body content slot`() {
         val panelState = SystemOverlayPanelState().apply {
             updateFromRect(Rect(30, 40, 240, 180))
         }
         val dragSession = SystemOverlayDragSession()
-        val shell = SystemOverlayPanelShell(
+        val panel = SystemOverlayPanel(
             entryId = SystemOverlayEntryId.TransientSession,
             panelState = panelState,
             dragSession = dragSession
         )
-        shell.configure(title = "Demo", draggable = true)
+        panel.configure(title = "Demo", draggable = true)
 
         val commands = ArrayList<RenderCommand>()
-        shell.appendCommands(
+        panel.appendCommands(
             viewportWidth = 800,
             viewportHeight = 600,
             out = commands,
@@ -40,27 +40,27 @@ class SystemOverlayPanelShellTests {
     }
 
     @Test
-    fun `shell drag keeps persistent drag session and updates panel state`() {
+    fun `panel drag keeps persistent drag session and updates panel state`() {
         val panelState = SystemOverlayPanelState().apply {
             updateFromRect(Rect(60, 70, 260, 180))
         }
         val dragSession = SystemOverlayDragSession()
-        val shell = SystemOverlayPanelShell(
+        val panel = SystemOverlayPanel(
             entryId = SystemOverlayEntryId.ColorPickerPopup,
             panelState = panelState,
             dragSession = dragSession
         )
-        shell.configure(title = "Drag", draggable = true)
+        panel.configure(title = "Drag", draggable = true)
 
-        val header = shell.headerRect() ?: error("header rect missing")
+        val header = panel.headerRect() ?: error("header rect missing")
         val startX = header.x + 8
         val startY = header.y + 8
-        assertTrue(shell.handleMouseDown(startX, startY, MouseButton.LEFT))
+        assertTrue(panel.handleMouseDown(startX, startY, MouseButton.LEFT))
         assertTrue(dragSession.active)
 
         var lastRect: Rect? = null
         assertTrue(
-            shell.handleMouseMove(
+            panel.handleMouseMove(
                 mouseX = startX + 42,
                 mouseY = startY + 26,
                 viewportWidth = 1200,
@@ -75,7 +75,7 @@ class SystemOverlayPanelShellTests {
         assertTrue(movedRect.x > 60)
 
         assertTrue(
-            shell.handleMouseUp(
+            panel.handleMouseUp(
                 mouseX = startX + 42,
                 mouseY = startY + 26,
                 button = MouseButton.LEFT,
@@ -90,20 +90,20 @@ class SystemOverlayPanelShellTests {
     }
 
     @Test
-    fun `shell close button invokes close callback`() {
+    fun `panel close button invokes close callback`() {
         val panelState = SystemOverlayPanelState().apply {
             updateFromRect(Rect(12, 20, 220, 140))
         }
-        val shell = SystemOverlayPanelShell(
+        val panel = SystemOverlayPanel(
             entryId = SystemOverlayEntryId.TransientSession,
             panelState = panelState,
             dragSession = SystemOverlayDragSession()
         )
         var closed = 0
-        shell.configure(title = "Closable", draggable = true, onClose = { closed += 1 })
-        val closeRect = shell.closeRect() ?: error("close rect missing")
+        panel.configure(title = "Closable", draggable = true, onClose = { closed += 1 })
+        val closeRect = panel.closeRect() ?: error("close rect missing")
 
-        assertTrue(shell.handleMouseDown(closeRect.x + 1, closeRect.y + 1, MouseButton.LEFT))
+        assertTrue(panel.handleMouseDown(closeRect.x + 1, closeRect.y + 1, MouseButton.LEFT))
         assertEquals(1, closed)
     }
 }
