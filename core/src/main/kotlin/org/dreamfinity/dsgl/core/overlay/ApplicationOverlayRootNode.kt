@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.system
+package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -9,10 +9,10 @@ import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
-internal class SystemOverlayRootNode(
-    key: Any? = "dsgl-system-overlay-root"
+class ApplicationOverlayRootNode(
+    key: Any? = "dsgl-application-overlay-root"
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-overlay-root"
+    override val styleType: String = "dsgl-application-overlay-root"
 
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(
@@ -38,4 +38,3 @@ internal class SystemOverlayRootNode(
 
     override fun defaultFontSize(): Int = 16
 }
-

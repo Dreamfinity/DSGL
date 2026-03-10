@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.system
+package org.dreamfinity.dsgl.core.overlay.system
 
 internal object SystemOverlayDebugCounters {
     @Volatile

@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.system
+package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayRootNode
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.io.File
@@ -39,8 +40,12 @@ class SystemOverlayStyleIsolationTests {
             addClass("app")
         }
         val appProbe = ProbeNode(key = "app-probe").applyParent(appRoot)
+        val appOverlayRoot = ApplicationOverlayRootNode()
+        val appOverlayProbe = ProbeNode(key = "app-overlay-probe").applyParent(appOverlayRoot)
         StyleEngine.applyStylesRecursively(appRoot, StyleApplicationScope.Application)
+        StyleEngine.applyStylesRecursively(appOverlayRoot, StyleApplicationScope.Application)
         assertEquals(0xFF1133DD.toInt(), appProbe.appliedColor)
+        assertEquals(0xFF00CCAA.toInt(), appOverlayProbe.appliedColor)
 
         val systemRoot = SystemOverlayRootNode()
         val systemProbe = ProbeNode(key = "system-probe").applyParent(systemRoot)
@@ -55,8 +60,10 @@ class SystemOverlayStyleIsolationTests {
         )
         StyleEngine.forceReloadStylesheets()
         StyleEngine.applyStylesRecursively(appRoot, StyleApplicationScope.Application)
+        StyleEngine.applyStylesRecursively(appOverlayRoot, StyleApplicationScope.Application)
         StyleEngine.applyStylesRecursively(systemRoot, StyleApplicationScope.SystemOverlay)
         assertEquals(0xFFAA22EE.toInt(), appProbe.appliedColor)
+        assertEquals(0xFFAA22EE.toInt(), appOverlayProbe.appliedColor)
         assertEquals(DsglColors.TEXT, systemProbe.appliedColor)
     }
 

@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.system.SystemOverlayCommandDslRenderer
+import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayCommandDslRenderer
 
 internal class SystemColorPickerOverlayNode(
     key: Any? = "dsgl-system-color-picker"

@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.system
+package org.dreamfinity.dsgl.core.overlay.system
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
