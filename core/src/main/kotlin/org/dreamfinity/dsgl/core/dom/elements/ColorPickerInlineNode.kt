@@ -59,8 +59,11 @@ class ColorPickerInlineNode(
         EventBus.run {
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (this@ColorPickerInlineNode.styleDisabled) return@addEventListener
-                if (!this@ColorPickerInlineNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
-                FocusManager.requestFocus(this@ColorPickerInlineNode)
+                val inside = this@ColorPickerInlineNode.containsGlobalPoint(event.mouseX, event.mouseY)
+                if (!inside && !controller.isEyedropperActive()) return@addEventListener
+                if (inside) {
+                    FocusManager.requestFocus(this@ColorPickerInlineNode)
+                }
                 val currentLayout = layout ?: return@addEventListener
                 val consumed = controller.handleMouseDown(event.mouseX, event.mouseY, event.mouseButton, currentLayout)
                 if (consumed) {
@@ -78,6 +81,17 @@ class ColorPickerInlineNode(
                 if (consumed) {
                     refreshLayout()
                     event.cancelled = true
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSEMOVE) { event: MouseMoveEvent ->
+                val currentLayout = layout ?: return@addEventListener
+                val moved = controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)
+                if (controller.isEyedropperActive()) {
+                    controller.sampleEyedropperAtHover()
+                }
+                if (moved) {
+                    refreshLayout()
                     markRenderCommandsDirty()
                 }
             }
@@ -111,6 +125,20 @@ class ColorPickerInlineNode(
 
     override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean {
         return dragCaptured || containsGlobalPoint(mouseX, mouseY)
+    }
+
+    fun wantsGlobalPointerInput(): Boolean = controller.isEyedropperActive()
+
+    fun appendEyedropperOverlayCommands(
+        viewportWidth: Int,
+        viewportHeight: Int,
+        out: MutableList<RenderCommand>
+    ) {
+        controller.appendEyedropperOverlay(
+            viewportWidth = viewportWidth.coerceAtLeast(1),
+            viewportHeight = viewportHeight.coerceAtLeast(1),
+            out = out
+        )
     }
 
     internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
@@ -153,12 +181,6 @@ class ColorPickerInlineNode(
         refreshLayout()
         val currentLayout = layout ?: return
         controller.appendCommands(currentLayout, out)
-        val rootBounds = rootBounds()
-        controller.appendEyedropperOverlay(
-            viewportWidth = rootBounds.width.coerceAtLeast(1),
-            viewportHeight = rootBounds.height.coerceAtLeast(1),
-            out = out
-        )
         addBorderCommands(out)
     }
 
@@ -271,13 +293,5 @@ class ColorPickerInlineNode(
                 contentHeight().coerceAtLeast(1)
             )
         )
-    }
-
-    private fun rootBounds(): Rect {
-        var current: DOMNode = this
-        while (current.parent != null) {
-            current = current.parent!!
-        }
-        return current.bounds
     }
 }

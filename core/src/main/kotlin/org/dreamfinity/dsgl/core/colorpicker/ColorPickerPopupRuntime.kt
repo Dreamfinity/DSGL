@@ -1,9 +1,6 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
-import org.dreamfinity.dsgl.core.contextmenu.PopupPlacement
-import org.dreamfinity.dsgl.core.contextmenu.PopupPlacementRequest
 import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
@@ -51,7 +48,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     private var viewportHeight: Int = 0
     private val headerHeight: Int = 26
     private val panelPadding: Int = 6
-    private val rememberedPanelPositions: MutableMap<Any, Rect> = HashMap()
+    private val positionStore: ColorPickerPopupPositionStore = ColorPickerPopupPositionStore()
 
     override fun open(request: ColorPickerPopupRequest) {
         val current = popup
@@ -60,7 +57,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             return
         }
         current?.let {
-            rememberedPanelPositions[it.owner] = it.panelRect
+            positionStore.remember(it.owner, it.panelRect)
             it.request.onClose?.invoke()
         }
 
@@ -68,7 +65,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             initial = request.state,
             style = request.style
         )
-        val rememberedPanel = rememberedPanelPositions[request.owner]
+        val rememberedPanel = positionStore.remembered(request.owner)
         val initialX = rememberedPanel?.x ?: request.anchorRect.x
         val initialY = rememberedPanel?.y ?: request.anchorRect.y
         val initialRect = Rect(initialX, initialY, request.width.coerceAtLeast(220), 1)
@@ -120,7 +117,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     override fun close(owner: Any) {
         val current = popup ?: return
         if (current.owner != owner) return
-        rememberedPanelPositions[current.owner] = current.panelRect
+        positionStore.remember(current.owner, current.panelRect)
         current.dragModel.end()
         current.request.onClose?.invoke()
         popup = null
@@ -128,7 +125,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
 
     override fun closeAll() {
         val current = popup ?: return
-        rememberedPanelPositions[current.owner] = current.panelRect
+        positionStore.remember(current.owner, current.panelRect)
         current.dragModel.end()
         current.request.onClose?.invoke()
         popup = null
@@ -181,7 +178,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
                 mouseY = mouseY,
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
-                clamp = ::clampPanel
+                clamp = ColorPickerPopupGeometry::clampPanel
             )
             if (clamped != current.panelRect) {
                 current.panelRect = clamped
@@ -336,61 +333,35 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         val width = state.request.width.coerceAtLeast(state.request.style.minWidth)
         val bodyHeight = state.controller.preferredHeight(state.request.state.alphaEnabled)
         val height = headerHeight + panelPadding + bodyHeight + panelPadding
-        state.panelRect = if (keepPosition) {
-            clampPanel(
-                Rect(state.panelRect.x, state.panelRect.y, width, height),
-                viewportWidth,
-                viewportHeight
-            )
-        } else {
-            val placement = PopupPlacement.resolve(
-                PopupPlacementRequest(
-                    preferredRect = Rect(
-                        state.request.anchorRect.x,
-                        state.request.anchorRect.y + state.request.anchorRect.height,
-                        width,
-                        height
-                    ),
-                    popupSize = Size(width, height),
-                    viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
-                    padding = 8,
-                    horizontalFlipX = state.request.anchorRect.x + state.request.anchorRect.width - width
-                )
-            )
-            placement.rect
-        }
+        state.panelRect = ColorPickerPopupGeometry.resolvePanelRect(
+            owner = state.owner,
+            anchorRect = state.request.anchorRect,
+            width = width,
+            height = height,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            keepPosition = keepPosition,
+            currentRect = state.panelRect,
+            store = positionStore
+        )
         rebuildRects(state)
     }
 
     private fun rebuildRects(state: PopupState) {
-        val panel = state.panelRect
-        state.headerRect = Rect(panel.x, panel.y, panel.width, headerHeight)
-        val bodyRect = Rect(
-            panel.x + panelPadding,
-            panel.y + headerHeight + panelPadding,
-            (panel.width - panelPadding * 2).coerceAtLeast(1),
-            (panel.height - headerHeight - panelPadding * 2).coerceAtLeast(1)
+        val frame = ColorPickerPopupGeometry.buildFrame(
+            panelRect = state.panelRect,
+            headerHeight = headerHeight,
+            panelPadding = panelPadding
         )
-        state.bodyRect = bodyRect
-        state.closeRect = Rect(panel.x + panel.width - 20, panel.y + 4, 16, 16)
-        state.layout = state.controller.buildLayout(bodyRect)
+        state.panelRect = frame.panelRect
+        state.headerRect = frame.headerRect
+        state.bodyRect = frame.bodyRect
+        state.closeRect = frame.closeRect
+        state.layout = state.controller.buildLayout(frame.bodyRect)
     }
 
     private fun refreshLayout(state: PopupState) {
         state.layout = state.controller.buildLayout(state.bodyRect)
-    }
-
-    private fun clampPanel(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
-        val minX = 2
-        val minY = 2
-        val maxX = (viewportWidth - rect.width - 2).coerceAtLeast(2)
-        val maxY = (viewportHeight - rect.height - 2).coerceAtLeast(2)
-        return Rect(
-            x = rect.x.coerceIn(minX, maxX),
-            y = rect.y.coerceIn(minY, maxY),
-            width = rect.width,
-            height = rect.height
-        )
     }
 
     private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {

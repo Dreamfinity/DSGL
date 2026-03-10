@@ -175,14 +175,47 @@ class InspectorController(
     private var tooltipNodeRef: DOMNode? = null
     private var tooltipNodeBounds: Rect = Rect(0, 0, 0, 0)
     private var tooltipLabelCache: String = ""
-    private var activeEditProperty: StyleProperty? = null
-    private var activeEditBuffer: String = ""
-    private var activeEditUnit: CssUnit? = null
-    private var activeEditIsNumeric: Boolean = false
-    private var openValueSelectProperty: StyleProperty? = null
-    private var openValueSelectScrollIndex: Int = 0
-    private var openUnitSelectProperty: StyleProperty? = null
-    private var openUnitSelectScrollIndex: Int = 0
+    private val editSession: InspectorEditSession = InspectorEditSession()
+    private var activeEditProperty: StyleProperty?
+        get() = editSession.activeProperty
+        set(value) {
+            editSession.activeProperty = value
+        }
+    private var activeEditBuffer: String
+        get() = editSession.activeBuffer
+        set(value) {
+            editSession.activeBuffer = value
+        }
+    private var activeEditUnit: CssUnit?
+        get() = editSession.activeUnit
+        set(value) {
+            editSession.activeUnit = value
+        }
+    private var activeEditIsNumeric: Boolean
+        get() = editSession.activeIsNumeric
+        set(value) {
+            editSession.activeIsNumeric = value
+        }
+    private var openValueSelectProperty: StyleProperty?
+        get() = editSession.openValueProperty
+        set(value) {
+            editSession.openValueProperty = value
+        }
+    private var openValueSelectScrollIndex: Int
+        get() = editSession.openValueScrollIndex
+        set(value) {
+            editSession.openValueScrollIndex = value
+        }
+    private var openUnitSelectProperty: StyleProperty?
+        get() = editSession.openUnitProperty
+        set(value) {
+            editSession.openUnitProperty = value
+        }
+    private var openUnitSelectScrollIndex: Int
+        get() = editSession.openUnitScrollIndex
+        set(value) {
+            editSession.openUnitScrollIndex = value
+        }
     private var variableTooltipText: String? = null
     private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
 
@@ -362,10 +395,7 @@ class InspectorController(
         if (!active) return false
         if (activeEditProperty == null) {
             if (keyCode == KeyCodes.ESCAPE) {
-                openValueSelectProperty = null
-                openValueSelectScrollIndex = 0
-                openUnitSelectProperty = null
-                openUnitSelectScrollIndex = 0
+                editSession.closeAllDropdowns()
                 variableTooltipText = null
                 return true
             }
@@ -373,8 +403,7 @@ class InspectorController(
         }
         when (keyCode) {
             KeyCodes.ESCAPE -> {
-                activeEditProperty = null
-                activeEditBuffer = ""
+                editSession.clearActiveEdit()
                 styleEditorError = null
                 return true
             }
@@ -392,7 +421,7 @@ class InspectorController(
             }
 
             KeyCodes.DELETE -> {
-                activeEditBuffer = ""
+                editSession.activeBuffer = ""
                 return true
             }
         }
@@ -434,10 +463,7 @@ class InspectorController(
             performPanelAction(action)
             return true
         }
-        openValueSelectProperty = null
-        openValueSelectScrollIndex = 0
-        openUnitSelectProperty = null
-        openUnitSelectScrollIndex = 0
+        editSession.closeAllDropdowns()
         val resizeMode = resolveResizeDragMode(mouseX, mouseY)
         if (resizeMode != DragMode.None) {
             startExpandedDrag(resizeMode, mouseX, mouseY)
@@ -584,14 +610,7 @@ class InspectorController(
         scrollbarTrackRect = Rect(0, 0, 0, 0)
         scrollbarThumbRect = Rect(0, 0, 0, 0)
         scrollbarDragOffsetY = 0
-        activeEditProperty = null
-        activeEditBuffer = ""
-        activeEditUnit = null
-        activeEditIsNumeric = false
-        openValueSelectProperty = null
-        openValueSelectScrollIndex = 0
-        openUnitSelectProperty = null
-        openUnitSelectScrollIndex = 0
+        editSession.resetAll()
         variableTooltipText = null
         variableTooltipRect = Rect(0, 0, 0, 0)
         colorPickerManager.close()
@@ -1638,10 +1657,7 @@ class InspectorController(
                     openValueSelectScrollIndex = 0
                     openUnitSelectProperty = null
                     openUnitSelectScrollIndex = 0
-                    activeEditProperty = null
-                    activeEditBuffer = ""
-                    activeEditUnit = null
-                    activeEditIsNumeric = false
+                    editSession.clearActiveEdit()
                 }
 
                 EditOperation.SelectValueOption -> {
@@ -1649,10 +1665,7 @@ class InspectorController(
                     StyleEngine.setInspectorOverrideLiteral(selected, property, option).getOrThrow()
                     openValueSelectProperty = null
                     openValueSelectScrollIndex = 0
-                    activeEditProperty = null
-                    activeEditBuffer = ""
-                    activeEditUnit = null
-                    activeEditIsNumeric = false
+                    editSession.clearActiveEdit()
                 }
 
                 EditOperation.ToggleUnitSelect -> {
@@ -1688,21 +1701,23 @@ class InspectorController(
             literal = current,
             expression = StyleEngine.inspectorOverrideFor(selected, property)
         )
-        activeEditProperty = property
         if (descriptor.kind == InspectorEditorKind.NumericInput) {
             val parsed = InspectorEditorRegistry.parseNumberUnit(current)
-            activeEditBuffer = parsed?.numberText ?: "0"
-            activeEditUnit = parsed?.unit ?: CssUnit.Px
-            activeEditIsNumeric = true
+            editSession.begin(
+                property = property,
+                initialBuffer = parsed?.numberText ?: "0",
+                initialUnit = parsed?.unit ?: CssUnit.Px,
+                isNumeric = true
+            )
         } else {
-            activeEditBuffer = current
-            activeEditUnit = null
-            activeEditIsNumeric = false
+            editSession.begin(
+                property = property,
+                initialBuffer = current,
+                initialUnit = null,
+                isNumeric = false
+            )
         }
-        openUnitSelectProperty = null
-        openUnitSelectScrollIndex = 0
-        openValueSelectProperty = null
-        openValueSelectScrollIndex = 0
+        editSession.closeAllDropdowns()
     }
 
     private fun openColorPicker(selected: DOMNode, property: StyleProperty, anchorRect: Rect) {
@@ -1773,10 +1788,7 @@ class InspectorController(
         }.onFailure { error ->
             styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
         }
-        activeEditProperty = null
-        activeEditBuffer = ""
-        activeEditUnit = null
-        activeEditIsNumeric = false
+        editSession.clearActiveEdit()
     }
 
     private fun parseCssUnitToken(raw: String): CssUnit {

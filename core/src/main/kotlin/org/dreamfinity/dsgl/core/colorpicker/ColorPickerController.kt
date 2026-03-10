@@ -48,21 +48,39 @@ class ColorPickerController(
         sampled.toArgbInt()
     }
 ) {
-    private enum class DragTarget {
-        None,
-        Field,
-        Hue,
-        Alpha
-    }
-
     private var state: ColorPickerState = initial.withColor(initial.color)
     private var hueDeg: Float = ColorConversions.rgbToHsv(state.color).hueDeg
-    private var dragTarget: DragTarget = DragTarget.None
-    private var hoverX: Int = Int.MIN_VALUE
-    private var hoverY: Int = Int.MIN_VALUE
-    private var activeInputKey: String? = null
-    private var activeInputBuffer: String = ""
-    private var modeDropdownOpen: Boolean = false
+    private val interaction: ColorPickerInteractionSession = ColorPickerInteractionSession()
+    private var dragTarget: ColorPickerDragTarget
+        get() = interaction.dragTarget
+        set(value) {
+            interaction.dragTarget = value
+        }
+    private var hoverX: Int
+        get() = interaction.hoverX
+        set(value) {
+            interaction.hoverX = value
+        }
+    private var hoverY: Int
+        get() = interaction.hoverY
+        set(value) {
+            interaction.hoverY = value
+        }
+    private var activeInputKey: String?
+        get() = interaction.textInput.activeKey
+        set(value) {
+            interaction.textInput.activeKey = value
+        }
+    private var activeInputBuffer: String
+        get() = interaction.textInput.buffer
+        set(value) {
+            interaction.textInput.buffer = value
+        }
+    private var modeDropdownOpen: Boolean
+        get() = interaction.modeDropdownOpen
+        set(value) {
+            interaction.modeDropdownOpen = value
+        }
     private var eyedropperActive: Boolean = false
     private var eyedropperBaseColor: RgbaColor = state.color
     private var eyedropperLastSampleX: Int = Int.MIN_VALUE
@@ -87,7 +105,7 @@ class ColorPickerController(
         state = next.withColor(next.color)
         hueDeg = ColorConversions.rgbToHsv(state.color, hueDeg).hueDeg
         eyedropperActive = false
-        dragTarget = DragTarget.None
+        interaction.clearDragTarget()
         modeDropdownOpen = false
         eyedropperGridValid = false
         eyedropperOverlayDrag.end()
@@ -99,7 +117,7 @@ class ColorPickerController(
 
     fun isEyedropperActive(): Boolean = eyedropperActive
 
-    fun hasActiveDragTarget(): Boolean = dragTarget != DragTarget.None
+    fun hasActiveDragTarget(): Boolean = dragTarget != ColorPickerDragTarget.None
 
     fun beginEyedropper() {
         if (!state.alphaEnabled) {
@@ -501,23 +519,22 @@ class ColorPickerController(
     }
 
     fun handleMouseMove(globalX: Int, globalY: Int, layout: ColorPickerLayout): Boolean {
-        hoverX = globalX
-        hoverY = globalY
+        interaction.setHover(globalX, globalY)
         if (eyedropperActive) {
             return true
         }
         when (dragTarget) {
-            DragTarget.Field -> {
+            ColorPickerDragTarget.Field -> {
                 updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
                 return true
             }
 
-            DragTarget.Hue -> {
+            ColorPickerDragTarget.Hue -> {
                 updateFromHue(globalX, layout.hueRect, commit = false)
                 return true
             }
 
-            DragTarget.Alpha -> {
+            ColorPickerDragTarget.Alpha -> {
                 val alphaRect = layout.alphaRect
                 if (alphaRect != null) {
                     updateFromAlpha(globalX, alphaRect, commit = false)
@@ -525,7 +542,7 @@ class ColorPickerController(
                 return true
             }
 
-            DragTarget.None -> {
+            ColorPickerDragTarget.None -> {
                 if (layout.modeOptionsRect?.contains(globalX, globalY) == true) return true
                 return layout.bounds.contains(globalX, globalY)
             }
@@ -533,8 +550,7 @@ class ColorPickerController(
     }
 
     fun handleMouseDown(globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout): Boolean {
-        hoverX = globalX
-        hoverY = globalY
+        interaction.setHover(globalX, globalY)
         if (eyedropperActive) {
             return when (button) {
                 MouseButton.LEFT -> {
@@ -595,19 +611,19 @@ class ColorPickerController(
         modeDropdownOpen = false
 
         if (layout.colorFieldRect.contains(globalX, globalY)) {
-            dragTarget = DragTarget.Field
+            dragTarget = ColorPickerDragTarget.Field
             clearInputEdit()
             updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
             return true
         }
         if (layout.hueRect.contains(globalX, globalY)) {
-            dragTarget = DragTarget.Hue
+            dragTarget = ColorPickerDragTarget.Hue
             clearInputEdit()
             updateFromHue(globalX, layout.hueRect, commit = false)
             return true
         }
         if (layout.alphaRect?.contains(globalX, globalY) == true) {
-            dragTarget = DragTarget.Alpha
+            dragTarget = ColorPickerDragTarget.Alpha
             clearInputEdit()
             updateFromAlpha(globalX, layout.alphaRect, commit = false)
             return true
@@ -644,8 +660,7 @@ class ColorPickerController(
 
         val inputHit = layout.inputSlots.firstOrNull { it.inputRect.contains(globalX, globalY) }
         if (inputHit != null) {
-            activeInputKey = inputHit.key
-            activeInputBuffer = inputValues()[inputHit.key].orEmpty()
+            interaction.textInput.begin(inputHit.key, inputValues()[inputHit.key].orEmpty())
             return true
         }
         clearInputEdit()
@@ -663,11 +678,10 @@ class ColorPickerController(
     }
 
     fun handleMouseUp(globalX: Int, globalY: Int, button: MouseButton): Boolean {
-        hoverX = globalX
-        hoverY = globalY
+        interaction.setHover(globalX, globalY)
         if (button != MouseButton.LEFT) return eyedropperActive
-        val dragged = dragTarget != DragTarget.None
-        dragTarget = DragTarget.None
+        val dragged = interaction.hasActiveDragTarget()
+        interaction.clearDragTarget()
         if (dragged) {
             commitCurrentColor()
             return true
@@ -715,19 +729,19 @@ class ColorPickerController(
 
             KeyCodes.BACKSPACE -> {
                 if (activeInputBuffer.isNotEmpty()) {
-                    activeInputBuffer = activeInputBuffer.dropLast(1)
+                    interaction.textInput.backspace()
                     applyInputDraft(key)
                 }
                 return true
             }
 
             KeyCodes.DELETE -> {
-                activeInputBuffer = ""
+                interaction.textInput.clearBuffer()
                 return true
             }
         }
         if (keyChar >= ' ' && !Character.isISOControl(keyChar)) {
-            activeInputBuffer += keyChar
+            interaction.textInput.append(keyChar)
             applyInputDraft(key)
             return true
         }
@@ -749,8 +763,7 @@ class ColorPickerController(
     }
 
     private fun clearInputEdit() {
-        activeInputKey = null
-        activeInputBuffer = ""
+        interaction.textInput.clear()
     }
 
     private fun applyInputDraft(key: String): Boolean {

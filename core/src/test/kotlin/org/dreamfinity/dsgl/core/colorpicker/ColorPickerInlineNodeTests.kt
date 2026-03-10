@@ -7,9 +7,11 @@ import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.MouseMoveEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ColorPickerInlineNodeTests {
@@ -131,10 +133,53 @@ class ColorPickerInlineNodeTests {
             ).also { it.target = picker }
         )
 
-        val commands = buildCommands(picker)
+        val commands = buildGlobalEyedropperCommands(picker)
         val texts = commands.filterIsInstance<RenderCommand.DrawText>().map { it.text }
 
         assertTrue(texts.any { it.startsWith("Mode: RGB") })
+    }
+
+    @Test
+    fun `inline eyedropper samples color on mouse move even outside picker bounds`() {
+        val sampledArgb = 0xFF25AEEF.toInt()
+        ScreenColorSamplerBridge.install(ScreenColorSampler { _, _ -> sampledArgb })
+        try {
+            var current = RgbaColor.WHITE
+            val picker = ColorPickerInlineNode(
+                controlled = true,
+                value = current,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true,
+                key = "picker"
+            ).apply {
+                closeOnSelect = false
+                onPreviewColor = { current = it }
+                onChangeColor = { current = it }
+            }
+
+            picker.render(ctx, 0, 0, 350, 392)
+            val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
+            EventBus.post(
+                MouseDownEvent(
+                    probeLayout.pipetteRect.x + 4,
+                    probeLayout.pipetteRect.y + 4,
+                    MouseButton.LEFT
+                ).also { it.target = picker }
+            )
+
+            EventBus.post(
+                MouseMoveEvent(
+                    mouseX = 1200,
+                    mouseY = 900,
+                    prevX = 300,
+                    prevY = 250
+                ).also { it.target = picker }
+            )
+
+            assertEquals(sampledArgb, current.toArgbInt())
+        } finally {
+            ScreenColorSamplerBridge.install(null)
+        }
     }
 
     @Test
@@ -189,6 +234,16 @@ class ColorPickerInlineNodeTests {
     private fun buildCommands(picker: ColorPickerInlineNode): List<RenderCommand> {
         val out = ArrayList<RenderCommand>()
         picker.buildRenderCommands(ctx, out)
+        return out
+    }
+
+    private fun buildGlobalEyedropperCommands(picker: ColorPickerInlineNode): List<RenderCommand> {
+        val out = ArrayList<RenderCommand>()
+        picker.appendEyedropperOverlayCommands(
+            viewportWidth = 1920,
+            viewportHeight = 1080,
+            out = out
+        )
         return out
     }
 

@@ -13,6 +13,7 @@ import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
@@ -248,7 +249,7 @@ abstract class DsglScreenHost(
             }
             if (dx != 0 || dy != 0) {
                 val moveEvent = MouseMoveEvent(dsglMouseX, dsglMouseY, prevX, prevY)
-                moveEvent.target = dragCaptureTarget ?: hoverTarget
+                moveEvent.target = resolveForcedPointerTarget() ?: dragCaptureTarget ?: hoverTarget
                 EventBus.post(moveEvent)
             }
         }
@@ -261,6 +262,7 @@ abstract class DsglScreenHost(
         SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, stagingCommandsBuffer)
         stagingCommandsBuffer.addAll(systemOverlayCommands)
+        appendInlineColorPickerOverlayCommands(stagingCommandsBuffer)
         val keepPrevious = shouldKeepPreviousFrameCommands(
             tree = tree,
             rebuiltThisFrame = rebuiltThisFrame,
@@ -714,7 +716,7 @@ abstract class DsglScreenHost(
             lastMouseEvent = net.minecraft.client.Minecraft.getSystemTime()
             mapButton(mouseButton)?.let { mappedButton ->
                 val event = MouseDownEvent(mouseX, mouseY, mappedButton)
-                event.target = hoverTarget
+                event.target = resolveForcedPointerTarget() ?: hoverTarget
                 EventBus.post(event)
                 DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
                 if (mappedButton == MouseButton.LEFT) {
@@ -728,7 +730,7 @@ abstract class DsglScreenHost(
                 }
             }
         } else if (mouseButton != -1) {
-            val releaseTarget = dragCaptureTarget ?: hoverTarget
+            val releaseTarget = dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
             val hadDragCapture = dragCaptureTarget != null
             eventButton = -1
             mapButton(mouseButton)?.let { mappedButton ->
@@ -781,6 +783,25 @@ abstract class DsglScreenHost(
             1 -> MouseButton.RIGHT
             2 -> MouseButton.MIDDLE
             else -> null
+        }
+    }
+
+    private fun resolveForcedPointerTarget(): DOMNode? {
+        val focused = FocusManager.focusedNode()
+        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
+            return focused
+        }
+        return null
+    }
+
+    private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
+        val focused = FocusManager.focusedNode()
+        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
+            focused.appendEyedropperOverlayCommands(
+                viewportWidth = lastWidth.coerceAtLeast(1),
+                viewportHeight = lastHeight.coerceAtLeast(1),
+                out = out
+            )
         }
     }
 
