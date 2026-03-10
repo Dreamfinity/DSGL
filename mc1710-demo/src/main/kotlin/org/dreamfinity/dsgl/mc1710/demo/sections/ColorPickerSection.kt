@@ -71,10 +71,7 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
                 mode = window.colorInlineMode
                 alphaEnabled = window.colorPickerAlphaEnabled
                 closeOnSelect = false
-                style = {
-                    width = 350.px
-                    height = 392.px
-                }
+                style = {}
                 onPreviewColor = { window.colorInlineValue = it }
                 onChangeColor = { window.colorInlineValue = it }
                 onCommitColor = {
@@ -98,6 +95,7 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
                     mode = ColorFormatMode.HEX
                     alphaEnabled = window.colorPickerAlphaEnabled
                     popupCloseOnOutsideClick = false
+                    closeOnSelect = false
                     onPreviewColor = { window.colorPopupValue = it }
                     onChangeColor = { window.colorPopupValue = it }
                     onCommitColor = {
@@ -112,6 +110,7 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
                     mode = ColorFormatMode.RGB
                     alphaEnabled = window.colorPickerAlphaEnabled
                     popupCloseOnOutsideClick = false
+                    closeOnSelect = false
                     onPreviewColor = { window.colorPopupSecondValue = it }
                     onChangeColor = { window.colorPopupSecondValue = it }
                     onCommitColor = {

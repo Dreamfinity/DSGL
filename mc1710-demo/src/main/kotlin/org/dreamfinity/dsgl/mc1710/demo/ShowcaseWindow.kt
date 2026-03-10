@@ -16,6 +16,7 @@ import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
@@ -1379,9 +1380,6 @@ class ShowcaseWindow : DsglWindow() {
     }
 
     internal fun resolveLanePreviewOrder(sourceKey: Any?): List<DndDemoItem> {
-        if (sourceKey != null) {
-            // Lane preview keeps a single insertion gap and avoids rendering a duplicate card while dragging from boxes.
-        }
         return dndItems
     }
 
@@ -2158,7 +2156,7 @@ class ShowcaseWindow : DsglWindow() {
         colorSharedTarget = target
         val current = if (target == "A") colorSharedA else colorSharedB
         sharedColorPickerManager.open(
-            anchorRect = org.dreamfinity.dsgl.core.dom.layout.Rect(mouseX, mouseY, 1, 1),
+            anchorRect = Rect(mouseX, mouseY, 1, 1),
             title = "Shared Picker [$target]",
             state = ColorPickerState(
                 color = current,
