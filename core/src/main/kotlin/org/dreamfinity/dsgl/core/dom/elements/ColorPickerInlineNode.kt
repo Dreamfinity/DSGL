@@ -87,9 +87,6 @@ class ColorPickerInlineNode(
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEMOVE) { event: MouseMoveEvent ->
                 val currentLayout = layout ?: return@addEventListener
                 val moved = controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)
-                if (controller.isEyedropperActive()) {
-                    controller.sampleEyedropperAtHover()
-                }
                 if (moved) {
                     refreshLayout()
                     markRenderCommandsDirty()
@@ -139,6 +136,10 @@ class ColorPickerInlineNode(
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out
         )
+    }
+
+    fun captureEyedropperSample() {
+        controller.sampleEyedropperAtHover()
     }
 
     internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
@@ -202,11 +203,11 @@ class ColorPickerInlineNode(
             uncontrolledPrevious = template.uncontrolledPrevious
         }
         bindController()
-        syncControllerStateIfNeeded(force = !dragCaptured)
+        syncControllerStateIfNeeded(force = !dragCaptured && !controller.isEyedropperActive())
     }
 
     private fun syncControllerStateIfNeeded(force: Boolean = false) {
-        if (!force && dragCaptured) {
+        if (!force && (dragCaptured || controller.isEyedropperActive())) {
             return
         }
         val current = effectiveColor()

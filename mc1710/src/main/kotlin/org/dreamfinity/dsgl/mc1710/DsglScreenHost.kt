@@ -178,7 +178,7 @@ abstract class DsglScreenHost(
                 adapter.paint(composedCommandsBuffer)
                 flushPendingCleanup()
                 super.drawScreen(mouseX, mouseY, partialTicks)
-                ColorPickerRuntime.engine.captureEyedropperSample()
+                captureColorPickerEyedropperSamples()
                 return
             }
         }
@@ -202,7 +202,7 @@ abstract class DsglScreenHost(
             adapter.paint(composedCommandsBuffer)
             flushPendingCleanup()
             super.drawScreen(mouseX, mouseY, partialTicks)
-            ColorPickerRuntime.engine.captureEyedropperSample()
+            captureColorPickerEyedropperSamples()
             return
         }
         if (!stylesAlreadyApplied) {
@@ -282,7 +282,7 @@ abstract class DsglScreenHost(
         maybeLogPerf(tree)
         flushPendingCleanup()
         super.drawScreen(mouseX, mouseY, partialTicks)
-        ColorPickerRuntime.engine.captureEyedropperSample()
+        captureColorPickerEyedropperSamples()
     }
 
     override fun keyTyped(typedChar: Char, keyCode: Int) {
@@ -802,6 +802,14 @@ abstract class DsglScreenHost(
                 viewportHeight = lastHeight.coerceAtLeast(1),
                 out = out
             )
+        }
+    }
+
+    private fun captureColorPickerEyedropperSamples() {
+        ColorPickerRuntime.engine.captureEyedropperSample()
+        val focused = FocusManager.focusedNode()
+        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
+            focused.captureEyedropperSample()
         }
     }
 

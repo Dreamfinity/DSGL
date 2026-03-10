@@ -175,8 +175,61 @@ class ColorPickerInlineNodeTests {
                     prevY = 250
                 ).also { it.target = picker }
             )
+            picker.captureEyedropperSample()
 
             assertEquals(sampledArgb, current.toArgbInt())
+        } finally {
+            ScreenColorSamplerBridge.install(null)
+        }
+    }
+
+    @Test
+    fun `inline eyedropper session survives reconcile syncFrom`() {
+        val sampledArgb = 0xFF3BC47A.toInt()
+        ScreenColorSamplerBridge.install(ScreenColorSampler { _, _ -> sampledArgb })
+        try {
+            var current = RgbaColor.WHITE
+            fun createPicker(value: RgbaColor): ColorPickerInlineNode {
+                return ColorPickerInlineNode(
+                    controlled = true,
+                    value = value,
+                    mode = ColorFormatMode.RGB,
+                    alphaEnabled = true,
+                    key = "picker"
+                ).apply {
+                    closeOnSelect = false
+                    onPreviewColor = { current = it }
+                    onChangeColor = { current = it }
+                }
+            }
+
+            val retained = createPicker(current)
+            retained.render(ctx, 0, 0, 350, 392)
+            val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
+            EventBus.post(
+                MouseDownEvent(
+                    probeLayout.pipetteRect.x + 4,
+                    probeLayout.pipetteRect.y + 4,
+                    MouseButton.LEFT
+                ).also { it.target = retained }
+            )
+
+            val template = createPicker(current)
+            retained.syncFrom(template)
+            retained.render(ctx, 0, 0, 350, 392)
+
+            EventBus.post(
+                MouseMoveEvent(
+                    mouseX = 1440,
+                    mouseY = 820,
+                    prevX = 300,
+                    prevY = 250
+                ).also { it.target = retained }
+            )
+            retained.captureEyedropperSample()
+
+            assertEquals(sampledArgb, current.toArgbInt())
+            assertTrue(retained.wantsGlobalPointerInput())
         } finally {
             ScreenColorSamplerBridge.install(null)
         }
