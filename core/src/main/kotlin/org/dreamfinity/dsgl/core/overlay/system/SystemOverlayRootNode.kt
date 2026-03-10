@@ -14,17 +14,25 @@ internal class SystemOverlayRootNode(
     key: Any? = "dsgl-system-overlay-root"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-overlay-root"
+    private var viewportWidth: Int = 0
+    private var viewportHeight: Int = 0
+
+    internal fun setViewportBounds(width: Int, height: Int) {
+        viewportWidth = width.coerceAtLeast(0)
+        viewportHeight = height.coerceAtLeast(0)
+    }
 
     override fun measure(ctx: UiMeasureContext): Size {
+        val resolvedWidth = if (viewportWidth > 0) viewportWidth else StyleEngine.viewportWidthPx().coerceAtLeast(0)
+        val resolvedHeight = if (viewportHeight > 0) viewportHeight else StyleEngine.viewportHeightPx().coerceAtLeast(0)
         return Size(
-            width = StyleEngine.viewportWidthPx().coerceAtLeast(0),
-            height = StyleEngine.viewportHeightPx().coerceAtLeast(0)
+            width = resolvedWidth,
+            height = resolvedHeight
         )
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        val viewportWidth = StyleEngine.viewportWidthPx().coerceAtLeast(0)
-        val viewportHeight = StyleEngine.viewportHeightPx().coerceAtLeast(0)
+        setViewportBounds(width, height)
         bounds = Rect(0, 0, viewportWidth, viewportHeight)
         children.forEach { child ->
             child.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)

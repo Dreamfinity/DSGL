@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -16,6 +17,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
     )
 
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
+        rootNode.setViewportBounds(width, height)
         tree.render(ctx, width, height)
     }
 
@@ -35,5 +37,9 @@ class ApplicationOverlayHost : OverlayLayerHost {
 
     override fun clearRefs() {
         tree.clearRefs()
+    }
+
+    internal fun debugRootBounds(): Rect {
+        return rootNode.bounds
     }
 }

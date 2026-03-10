@@ -110,15 +110,15 @@ class ColorPickerPopupPaneNode(
             y = rect.y + 3,
             color = textColor
         )
-        if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
-            out += drawTextCommand(
+        out += if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
+            drawTextCommand(
                 text = "^",
                 x = rect.x + rect.width - 14,
                 y = rect.y + 3,
                 color = textColor
             )
         } else {
-            out += drawTextCommand(
+            drawTextCommand(
                 text = "v",
                 x = rect.x + rect.width - 14,
                 y = rect.y + 3,

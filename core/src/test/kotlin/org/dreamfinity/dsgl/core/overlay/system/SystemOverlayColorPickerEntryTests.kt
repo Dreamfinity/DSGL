@@ -152,6 +152,25 @@ class SystemOverlayColorPickerEntryTests {
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
     }
 
+    @Test
+    fun `system picker keyboard-open path uses valid viewport after input frame sync`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val anchor = Rect(360, 220, 1, 1)
+
+        pickerHost.open(anchorRect = anchor, title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 364, cursorY = 226, inspectorPointerCaptured = false)
+        val state = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
+        val panel = state.panelState.currentRectOrNull() ?: error("panel missing")
+
+        assertNotEquals(2, panel.x)
+        assertNotEquals(2, panel.y)
+        assertTrue(panel.x >= 8)
+        assertTrue(panel.y >= 8)
+    }
+
     private fun popupState(): ColorPickerState {
         return ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),

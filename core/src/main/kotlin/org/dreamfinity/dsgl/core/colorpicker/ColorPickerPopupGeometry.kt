@@ -23,6 +23,12 @@ internal class ColorPickerPopupPositionStore {
 }
 
 internal object ColorPickerPopupGeometry {
+    private const val MIN_VALID_VIEWPORT_SIZE = 2
+
+    fun hasValidViewport(viewportWidth: Int, viewportHeight: Int): Boolean {
+        return viewportWidth >= MIN_VALID_VIEWPORT_SIZE && viewportHeight >= MIN_VALID_VIEWPORT_SIZE
+    }
+
     fun resolvePanelRect(
         owner: Any,
         anchorRect: Rect,
@@ -34,13 +40,25 @@ internal object ColorPickerPopupGeometry {
         currentRect: Rect?,
         store: ColorPickerPopupPositionStore
     ): Rect {
+        val viewportReady = hasValidViewport(viewportWidth, viewportHeight)
         if (keepPosition && currentRect != null) {
-            return clampPanel(currentRect.copy(width = width, height = height), viewportWidth, viewportHeight)
+            val next = currentRect.copy(width = width, height = height)
+            return if (viewportReady) clampPanel(next, viewportWidth, viewportHeight) else next
         }
 
         val remembered = store.remembered(owner)
         if (remembered != null) {
-            return clampPanel(remembered.copy(width = width, height = height), viewportWidth, viewportHeight)
+            val next = remembered.copy(width = width, height = height)
+            return if (viewportReady) clampPanel(next, viewportWidth, viewportHeight) else next
+        }
+
+        if (!viewportReady) {
+            return Rect(
+                x = anchorRect.x,
+                y = anchorRect.y + anchorRect.height,
+                width = width,
+                height = height
+            )
         }
 
         val placement = PopupPlacement.resolve(
@@ -78,6 +96,9 @@ internal object ColorPickerPopupGeometry {
     }
 
     fun clampPanel(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
+        if (!hasValidViewport(viewportWidth, viewportHeight)) {
+            return rect
+        }
         val minX = 2
         val minY = 2
         val maxX = (viewportWidth - rect.width - 2).coerceAtLeast(2)

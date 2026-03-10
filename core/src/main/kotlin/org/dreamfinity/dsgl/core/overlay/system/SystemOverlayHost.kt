@@ -98,6 +98,7 @@ class SystemOverlayHost(
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         knownViewportWidth = width.coerceAtLeast(1)
         knownViewportHeight = height.coerceAtLeast(1)
+        rootNode.setViewportBounds(width, height)
         tree.render(ctx, width, height)
     }
 
@@ -177,6 +178,10 @@ class SystemOverlayHost(
 
     internal fun debugSystemColorPickerPopupOwnerScope(): OverlayOwnerScope? {
         return colorPickerEntry.debugOwnerScope()
+    }
+
+    internal fun debugRootBounds(): Rect {
+        return rootNode.bounds
     }
 
     private fun reconcileMountedEntries() {

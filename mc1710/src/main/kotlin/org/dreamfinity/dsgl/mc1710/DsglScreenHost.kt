@@ -452,6 +452,7 @@ abstract class DsglScreenHost(
             meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA)
         )
         systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
         val inspectorMouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX
