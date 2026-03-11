@@ -9,13 +9,22 @@ import java.util.IdentityHashMap
 enum class SystemOverlayEntryId {
     Inspector,
     ColorPickerPopup,
+    ColorPickerTransient,
     PanelDemo,
     TransientSession
+}
+
+enum class SystemOverlayLane(
+    val zOrder: Int
+) {
+    PanelContent(0),
+    Transient(1)
 }
 
 class SystemOverlayEntryState(
     val id: SystemOverlayEntryId,
     val order: Int,
+    val lane: SystemOverlayLane = SystemOverlayLane.PanelContent,
     val panelState: OverlayPanelState = OverlayPanelState(),
     val dragSession: OverlayPanelDragSession = OverlayPanelDragSession()
 ) {

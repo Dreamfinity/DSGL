@@ -3,7 +3,9 @@ package org.dreamfinity.dsgl.core.colorpicker
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -416,6 +418,56 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
+    fun `app-owned pipette emits transient overlay commands in application layer contract`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner-app"
+        engine.onFrame(900, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                ownerScope = OverlayOwnerScope.Application,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
+
+        val overlay = mutableListOf<RenderCommand>()
+        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+
+        assertTrue(overlay.isNotEmpty())
+        assertEquals(OverlayOwnerScope.Application, engine.debugActiveOwnerScope())
+        assertEquals(UiLayerId.ApplicationOverlay, OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!))
+    }
+
+    @Test
+    fun `system-owned pipette emits transient overlay commands in system layer contract`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner-system"
+        engine.onFrame(900, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                ownerScope = OverlayOwnerScope.System,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
+        assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
+
+        val overlay = mutableListOf<RenderCommand>()
+        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+
+        assertTrue(overlay.isNotEmpty())
+        assertEquals(OverlayOwnerScope.System, engine.debugActiveOwnerScope())
+        assertEquals(UiLayerId.SystemOverlay, OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!))
+    }
+
+    @Test
     fun `mode selector opens dropdown in popup engine`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"
@@ -642,3 +694,4 @@ class ColorPickerPopupEngineTests {
         override fun isOpen(): Boolean = false
     }
 }
+

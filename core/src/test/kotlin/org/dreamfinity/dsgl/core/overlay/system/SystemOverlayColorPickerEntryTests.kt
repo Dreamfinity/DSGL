@@ -9,15 +9,23 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 
 class SystemOverlayColorPickerEntryTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
     @Test
     fun `system picker popup lifecycle is entry owned and stable`() {
         val host = SystemOverlayHost(InspectorController())
@@ -298,6 +306,99 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(updated.color.toArgbInt() != modeChanged.color.toArgbInt())
     }
 
+
+    @Test
+    fun `system picker mode dropdown is mounted in transient lane and stays interactive`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val modeSelect = initialLayout.modeSelectRect
+        assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = modeSelect.x + 2, cursorY = modeSelect.y + 2, inspectorPointerCaptured = false)
+
+        assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+        val transientNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerTransient) ?: error("transient node missing")
+        val transientStyleTypes = collectStyleTypes(transientNode)
+        assertTrue(transientStyleTypes.contains("dsgl-system-color-picker-native-mode-dropdown-overlay"))
+
+        val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("expanded layout missing")
+        val hslOption = expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        assertTrue(host.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = hslOption.rect.x + 2, cursorY = hslOption.rect.y + 2, inspectorPointerCaptured = false)
+
+        assertEquals(ColorFormatMode.HSL, host.debugSystemColorPickerState()?.mode)
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+    }
+
+    @Test
+    fun `system picker pipette keeps system overlay visible and uses transient lane`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(140, 140, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 146, cursorY = 146, inspectorPointerCaptured = false)
+
+        val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val pipette = layout.pipetteRect
+        assertTrue(host.handleMouseDown(pipette.x + 2, pipette.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = pipette.x + 2, cursorY = pipette.y + 2, inspectorPointerCaptured = false)
+
+        val mounted = host.debugMountedEntryIds()
+        assertTrue(mounted.contains(SystemOverlayEntryId.ColorPickerPopup))
+        assertTrue(mounted.contains(SystemOverlayEntryId.ColorPickerTransient))
+        assertTrue(host.isSystemColorPickerOpen())
+        assertTrue(host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup)?.active == true)
+        assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
+
+        val moveConsumed = host.handleMouseMove(pipette.x + 40, pipette.y + 40)
+        assertTrue(moveConsumed)
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = pipette.x + 40, cursorY = pipette.y + 40, inspectorPointerCaptured = false)
+
+        assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
+    }
+
+
+    @Test
+    fun `system picker pipette transient entry emits visible tooltip commands`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(
+            anchorRect = Rect(140, 140, 20, 18),
+            title = "Popup",
+            state = popupState(),
+            style = ColorPickerStyle(eyedropperGridSize = 5, eyedropperCellSize = 3)
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 146, cursorY = 146, inspectorPointerCaptured = false)
+
+        val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val pipette = layout.pipetteRect
+        assertTrue(host.handleMouseDown(pipette.x + 2, pipette.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.handleMouseMove(pipette.x + 32, pipette.y + 28)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = pipette.x + 32, cursorY = pipette.y + 28, inspectorPointerCaptured = false)
+
+        host.render(ctx, 1200, 800)
+        val commands = host.paint(ctx)
+        val magnifierCellCount = commands.count { command ->
+            command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
+        }
+        assertTrue(magnifierCellCount >= 25)
+        assertTrue(commands.any { command ->
+            command is RenderCommand.DrawText && command.text.startsWith("Mode:")
+        })
+    }
     private fun collectStyleTypes(root: org.dreamfinity.dsgl.core.dom.DOMNode): Set<String> {
         val out = LinkedHashSet<String>()
         fun walk(node: org.dreamfinity.dsgl.core.dom.DOMNode) {
@@ -326,3 +427,5 @@ class SystemOverlayColorPickerEntryTests {
         return root
     }
 }
+
+

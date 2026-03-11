@@ -23,8 +23,6 @@ internal class SystemColorPickerOverlayNode(
     private val panelNode: DOMNode = overlayPanel.node().applyParent(this)
     private val bodyNode: SystemColorPickerPopupBodyNode =
         SystemColorPickerPopupBodyNode(popupEngine = popupEngine).also(overlayPanel::setBodyContent)
-    private val eyedropperOverlayNode: SystemColorPickerEyedropperOverlayNode =
-        SystemColorPickerEyedropperOverlayNode(popupEngine = popupEngine).also(overlayPanel::setOverlayContent)
 
     fun updateCursor(mouseX: Int, mouseY: Int) {
         cursorX = mouseX
@@ -41,13 +39,7 @@ internal class SystemColorPickerOverlayNode(
         popupEngine.onCursorPosition(cursorX, cursorY)
 
         val panelRect = overlayPanel.panelRect()
-        if (panelRect == null) {
-            bodyNode.display = Display.None
-            eyedropperOverlayNode.display = Display.None
-        } else {
-            bodyNode.display = Display.Block
-            eyedropperOverlayNode.display = Display.Block
-        }
+        bodyNode.display = if (panelRect == null) Display.None else Display.Block
         panelNode.render(ctx, x, y, width, height)
     }
 }

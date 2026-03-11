@@ -23,7 +23,7 @@ class SystemOverlayEntryInfrastructureTests {
     fun `system overlay host exposes explicit persistent entries`() {
         val host = SystemOverlayHost(InspectorController())
         assertEquals(
-            listOf(SystemOverlayEntryId.Inspector, SystemOverlayEntryId.ColorPickerPopup, SystemOverlayEntryId.PanelDemo),
+            listOf(SystemOverlayEntryId.Inspector, SystemOverlayEntryId.ColorPickerPopup, SystemOverlayEntryId.ColorPickerTransient, SystemOverlayEntryId.PanelDemo),
             host.debugRegisteredEntryIds()
         )
     }

@@ -206,6 +206,10 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return popup?.panelRect
     }
 
+    internal fun debugActiveOwnerScope(): OverlayOwnerScope? {
+        return popup?.request?.ownerScope
+    }
+
     internal fun debugIsDraggingPopup(): Boolean {
         return popup?.dragModel?.dragging == true
     }

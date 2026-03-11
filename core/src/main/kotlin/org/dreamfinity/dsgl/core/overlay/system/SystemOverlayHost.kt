@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerTransientOverlayNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -27,9 +28,10 @@ class SystemOverlayHost(
     private val rootNode: SystemOverlayRootNode = SystemOverlayRootNode()
     private val inspectorEntry: SystemOverlayEntry = InspectorOverlayEntry(inspectorController)
     private val colorPickerEntry: ColorPickerOverlayEntry = ColorPickerOverlayEntry()
+    private val colorPickerTransientEntry: SystemOverlayEntry = ColorPickerTransientOverlayEntry(colorPickerEntry)
     private val overlayPanelDemoEntry: OverlayPanelDemoOverlayEntry = OverlayPanelDemoOverlayEntry()
     private val entryRegistry: SystemOverlayEntryRegistry = SystemOverlayEntryRegistry(
-        listOf(inspectorEntry, colorPickerEntry, overlayPanelDemoEntry)
+        listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry)
     )
     private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =
         SystemOverlayTransientOwnershipRegistry()
@@ -147,8 +149,12 @@ class SystemOverlayHost(
 
     internal fun debugMountedEntryIds(): List<SystemOverlayEntryId> {
         val entriesByNode = entryRegistry.allEntries().associateBy { it.node }
-        return rootNode.children.mapNotNull { child ->
-            entriesByNode[child]?.state?.id
+        val mountedNodes = buildList {
+            addAll(rootNode.mountedLaneNodes(SystemOverlayLane.PanelContent))
+            addAll(rootNode.mountedLaneNodes(SystemOverlayLane.Transient))
+        }
+        return mountedNodes.mapNotNull { node ->
+            entriesByNode[node]?.state?.id
         }
     }
 
@@ -193,27 +199,27 @@ class SystemOverlayHost(
     }
 
     private fun reconcileMountedEntries() {
-        val desiredNodes = entryRegistry.allEntries()
-            .filter { it.state.active }
+        val activeEntries = entryRegistry.allEntries().filter { it.state.active }
+        val panelNodes = activeEntries
+            .filter { it.state.lane == SystemOverlayLane.PanelContent }
             .map { it.node }
-        val currentNodes = rootNode.children
-        val unchanged = currentNodes.size == desiredNodes.size &&
-                currentNodes.indices.all { currentNodes[it] === desiredNodes[it] }
-        if (unchanged) return
-        currentNodes.forEach { node ->
-            node.parent = null
-        }
-        currentNodes.clear()
-        desiredNodes.forEach { node ->
-            node.parent = rootNode
-            currentNodes += node
-        }
+        val transientNodes = activeEntries
+            .filter { it.state.lane == SystemOverlayLane.Transient }
+            .map { it.node }
+        rootNode.setLaneChildren(
+            panelNodes = panelNodes,
+            transientNodes = transientNodes
+        )
     }
 
     private fun activeEntriesTopFirst(): List<SystemOverlayEntry> {
         return entryRegistry.allEntries()
-            .asReversed()
             .filter { it.state.active }
+            .sortedWith(
+                compareBy<SystemOverlayEntry> { it.state.lane.zOrder }
+                    .thenBy { it.state.order }
+            )
+            .asReversed()
     }
 
     private class InspectorOverlayEntry(
@@ -221,7 +227,8 @@ class SystemOverlayHost(
     ) : SystemOverlayEntry {
         override val state: SystemOverlayEntryState = SystemOverlayEntryState(
             id = SystemOverlayEntryId.Inspector,
-            order = 100
+            order = 100,
+            lane = SystemOverlayLane.PanelContent
         )
         override val node: SystemInspectorOverlayNode = SystemInspectorOverlayNode(inspectorController)
 
@@ -253,7 +260,8 @@ class SystemOverlayHost(
     private class ColorPickerOverlayEntry : SystemOverlayEntry, InspectorColorPickerHost {
         override val state: SystemOverlayEntryState = SystemOverlayEntryState(
             id = SystemOverlayEntryId.ColorPickerPopup,
-            order = 200
+            order = 200,
+            lane = SystemOverlayLane.PanelContent
         )
         private val ownerToken: Any = Any()
         private val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
@@ -266,6 +274,8 @@ class SystemOverlayHost(
             popupEngine = popupEngine,
             overlayPanel = overlayPanel
         )
+        private val transientNode: SystemColorPickerTransientOverlayNode =
+            SystemColorPickerTransientOverlayNode(popupEngine = popupEngine)
         private var draggable: Boolean = true
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
@@ -409,6 +419,15 @@ class SystemOverlayHost(
             return popupEngine.isOpenFor(ownerToken)
         }
 
+        fun transientOverlayNode(): DOMNode {
+            return transientNode
+        }
+
+        fun isTransientActive(): Boolean {
+            val controller = popupEngine.debugController(ownerToken) ?: return false
+            return controller.viewModeDropdownOpen() || controller.isEyedropperActive()
+        }
+
         fun debugHeaderRect(): Rect? {
             return overlayPanel.headerRect()
         }
@@ -434,10 +453,27 @@ class SystemOverlayHost(
         }
     }
 
+
+    private class ColorPickerTransientOverlayEntry(
+        private val panelEntry: ColorPickerOverlayEntry
+    ) : SystemOverlayEntry {
+        override val state: SystemOverlayEntryState = SystemOverlayEntryState(
+            id = SystemOverlayEntryId.ColorPickerTransient,
+            order = 210,
+            lane = SystemOverlayLane.Transient
+        )
+        override val node: DOMNode = panelEntry.transientOverlayNode()
+
+        override fun sync(frame: SystemOverlayFrameContext) {
+            state.active = panelEntry.state.active && panelEntry.isTransientActive()
+        }
+    }
+
     private class OverlayPanelDemoOverlayEntry : SystemOverlayEntry {
         override val state: SystemOverlayEntryState = SystemOverlayEntryState(
             id = SystemOverlayEntryId.PanelDemo,
-            order = 300
+            order = 300,
+            lane = SystemOverlayLane.PanelContent
         )
         private val overlayPanel: OverlayPanel = OverlayPanel(
             ownerId = state.id,
