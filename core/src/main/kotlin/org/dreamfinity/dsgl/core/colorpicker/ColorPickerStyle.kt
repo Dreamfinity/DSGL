@@ -20,7 +20,7 @@ data class ColorPickerStyle(
     val thumbOutlineColor: Int = 0xFFFFFFFF.toInt(),
     val thumbShadowColor: Int = 0xAA000000.toInt(),
     val recentGridBorderColor: Int = 0xFF4A5C70.toInt(),
-    val fontSize: Int = 20,
+    val fontSize: Int = 24,
     val modeButtonHeight: Int = 22,
     val modeSelectHeight: Int = 22,
     val modeSelectWidth: Int = 108,

@@ -7,7 +7,9 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 internal data class OverlayDebugControlLayout(
     val panelRect: Rect,
     val appOverlayRenderRect: Rect,
+    val appOverlayTintRect: Rect,
     val appOverlayInputRect: Rect,
+    val systemOverlayTintRect: Rect,
     val systemOverlayRenderRect: Rect,
     val systemOverlayInputRect: Rect,
     val resetRect: Rect
@@ -46,6 +48,14 @@ class OverlayDebugControlHost(
             out = paintBuffer
         )
         drawToggleRow(
+            label = "App Overlay Tint",
+            value = snapshot.applicationOverlayTintEnabled,
+            valueRect = currentLayout.appOverlayTintRect,
+            labelX = currentLayout.panelRect.x + 10,
+            labelY = currentLayout.appOverlayTintRect.y + 2,
+            out = paintBuffer
+        )
+        drawToggleRow(
             label = "App Overlay Input",
             value = snapshot.applicationOverlayInputEnabled,
             valueRect = currentLayout.appOverlayInputRect,
@@ -62,6 +72,14 @@ class OverlayDebugControlHost(
             out = paintBuffer
         )
         drawToggleRow(
+            label = "System Overlay Tint",
+            value = snapshot.systemOverlayTintEnabled,
+            valueRect = currentLayout.systemOverlayTintRect,
+            labelX = currentLayout.panelRect.x + 10,
+            labelY = currentLayout.systemOverlayTintRect.y + 2,
+            out = paintBuffer
+        )
+        drawToggleRow(
             label = "System Overlay Input",
             value = snapshot.systemOverlayInputEnabled,
             valueRect = currentLayout.systemOverlayInputRect,
@@ -71,7 +89,8 @@ class OverlayDebugControlHost(
         )
 
         drawResetButton(currentLayout.resetRect, paintBuffer)
-        val status = "R:${if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"}  I:${if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayInputEnabled) "S1" else "S0"}"
+        val status =
+            "R:${if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"}  I:${if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayInputEnabled) "S1" else "S0"}"
         paintBuffer += RenderCommand.DrawText(
             text = status,
             x = currentLayout.panelRect.x + 10,
@@ -100,12 +119,20 @@ class OverlayDebugControlHost(
                 state.applicationOverlayRenderEnabled = !state.applicationOverlayRenderEnabled
             }
 
+            currentLayout.appOverlayTintRect.contains(mouseX, mouseY) -> {
+                state.applicationOverlayTintEnabled = !state.applicationOverlayTintEnabled
+            }
+
             currentLayout.appOverlayInputRect.contains(mouseX, mouseY) -> {
                 state.applicationOverlayInputEnabled = !state.applicationOverlayInputEnabled
             }
 
             currentLayout.systemOverlayRenderRect.contains(mouseX, mouseY) -> {
                 state.systemOverlayRenderEnabled = !state.systemOverlayRenderEnabled
+            }
+
+            currentLayout.systemOverlayTintRect.contains(mouseX, mouseY) -> {
+                state.systemOverlayTintEnabled = !state.systemOverlayTintEnabled
             }
 
             currentLayout.systemOverlayInputRect.contains(mouseX, mouseY) -> {
@@ -142,7 +169,7 @@ class OverlayDebugControlHost(
 
     private fun buildLayout(viewportWidth: Int, viewportHeight: Int): OverlayDebugControlLayout {
         val panelWidth = 300
-        val panelHeight = 176
+        val panelHeight = 176 + 56
         val panelX = 8
         val panelY = (viewportHeight - panelHeight - 8).coerceAtLeast(8)
         val panelRect = Rect(
@@ -156,12 +183,15 @@ class OverlayDebugControlHost(
         val toggleX = panelRect.x + panelRect.width - toggleWidth - 10
         val firstY = panelRect.y + 34
         val rowStep = 24
+        var row = 0
         return OverlayDebugControlLayout(
             panelRect = panelRect,
-            appOverlayRenderRect = Rect(toggleX, firstY, toggleWidth, toggleHeight),
-            appOverlayInputRect = Rect(toggleX, firstY + rowStep, toggleWidth, toggleHeight),
-            systemOverlayRenderRect = Rect(toggleX, firstY + rowStep * 2, toggleWidth, toggleHeight),
-            systemOverlayInputRect = Rect(toggleX, firstY + rowStep * 3, toggleWidth, toggleHeight),
+            appOverlayRenderRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
+            appOverlayTintRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
+            appOverlayInputRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
+            systemOverlayRenderRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
+            systemOverlayTintRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
+            systemOverlayInputRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
             resetRect = Rect(
                 x = panelRect.x + 10,
                 y = panelRect.y + panelRect.height - 40,

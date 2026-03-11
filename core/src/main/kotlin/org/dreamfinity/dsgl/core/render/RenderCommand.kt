@@ -103,6 +103,26 @@ sealed class RenderCommand {
         val height: Int
     ) : RenderCommand()
 
+    /**
+     * Captures a small screen region into a reusable backend texture for magnifier rendering.
+     * Source coordinates are in GUI space (top-left origin).
+     */
+    data class CaptureScreenRegion(
+        val sourceX: Int,
+        val sourceY: Int,
+        val sourceWidth: Int,
+        val sourceHeight: Int,
+        val fallbackColor: Int
+    ) : RenderCommand()
+
+    /** Draws previously captured screen region as a magnified textured quad. */
+    data class DrawCapturedScreenRegion(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int
+    ) : RenderCommand()
+
     /** Item stack draw command. */
     data class DrawItemStack(
         val stack: ItemStackRef,

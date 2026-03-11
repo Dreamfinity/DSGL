@@ -35,8 +35,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private val opacityStack: MutableList<Float> = ArrayList(8)
     private var opacityMultiplier: Float = 1f
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
+
     private val samplePixelBuffer = BufferUtils.createByteBuffer(4)
     private var sampleAreaBuffer = BufferUtils.createByteBuffer(4 * 256)
+
+    private var capturedRegionTextureId: Int = 0
+    private var capturedRegionWidth: Int = 0
+    private var capturedRegionHeight: Int = 0
+    private var capturedRegionValid: Boolean = false
+    private var capturedRegionFallbackColor: Int = 0xFF000000.toInt()
+    private var capturedRegionReadBuffer = BufferUtils.createByteBuffer(4 * 256)
+    private var capturedRegionUploadBuffer = BufferUtils.createByteBuffer(4 * 256)
+
     private var cachedViewport: Viewport = Viewport(width = 1, height = 1, scale = 1f, x = 0, y = 0)
     private var cachedDisplayWidth: Int = -1
     private var cachedDisplayHeight: Int = -1
@@ -142,6 +152,174 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         }
     }
 
+    private fun captureScreenRegion(command: RenderCommand.CaptureScreenRegion, viewport: Viewport) {
+        val sourceWidth = command.sourceWidth.coerceAtLeast(1)
+        val sourceHeight = command.sourceHeight.coerceAtLeast(1)
+        capturedRegionFallbackColor = command.fallbackColor
+        ensureCapturedRegionTexture(sourceWidth, sourceHeight)
+        if (capturedRegionTextureId == 0) {
+            capturedRegionValid = false
+            return
+        }
+        val pixelCount = sourceWidth * sourceHeight
+        val requiredBytes = pixelCount * 4
+        ensureCapturedRegionBuffers(requiredBytes)
+        val fallbackRgba = argbToRgbaBytes(command.fallbackColor, forceOpaqueAlpha = true)
+
+        capturedRegionUploadBuffer.clear()
+        capturedRegionUploadBuffer.limit(requiredBytes)
+        repeat(pixelCount) {
+            capturedRegionUploadBuffer.put(fallbackRgba[0])
+            capturedRegionUploadBuffer.put(fallbackRgba[1])
+            capturedRegionUploadBuffer.put(fallbackRgba[2])
+            capturedRegionUploadBuffer.put(fallbackRgba[3])
+        }
+
+        val srcX = command.sourceX
+        val srcY = command.sourceY
+        val clampedX = srcX.coerceIn(0, viewport.width)
+        val clampedY = srcY.coerceIn(0, viewport.height)
+        val maxW = viewport.width - clampedX
+        val maxH = viewport.height - clampedY
+        val copyW = minOf(sourceWidth, maxW).coerceAtLeast(0)
+        val copyH = minOf(sourceHeight, maxH).coerceAtLeast(0)
+        if (copyW > 0 && copyH > 0) {
+            val readByteCount = copyW * copyH * 4
+            capturedRegionReadBuffer.clear()
+            capturedRegionReadBuffer.limit(readByteCount)
+            val readY = viewport.height - (clampedY + copyH)
+            try {
+                GL11.glReadBuffer(GL11.GL_BACK)
+                GL11.glReadPixels(
+                    clampedX,
+                    readY,
+                    copyW,
+                    copyH,
+                    GL11.GL_RGBA,
+                    GL11.GL_UNSIGNED_BYTE,
+                    capturedRegionReadBuffer
+                )
+                val dstOffsetX = (clampedX - srcX).coerceAtLeast(0)
+                val dstOffsetTopY = (clampedY - srcY).coerceAtLeast(0)
+                var readRow = 0
+                while (readRow < copyH) {
+                    val topRowWithinCopy = copyH - 1 - readRow
+                    val dstTopRow = dstOffsetTopY + topRowWithinCopy
+                    val dstBottomRow = sourceHeight - 1 - dstTopRow
+                    var col = 0
+                    while (col < copyW) {
+                        val srcIndex = (readRow * copyW + col) * 4
+                        val dstIndex = (dstBottomRow * sourceWidth + dstOffsetX + col) * 4
+                        capturedRegionUploadBuffer.put(dstIndex, capturedRegionReadBuffer.get(srcIndex))
+                        capturedRegionUploadBuffer.put(dstIndex + 1, capturedRegionReadBuffer.get(srcIndex + 1))
+                        capturedRegionUploadBuffer.put(dstIndex + 2, capturedRegionReadBuffer.get(srcIndex + 2))
+                        capturedRegionUploadBuffer.put(dstIndex + 3, 0xFF.toByte())
+                        col++
+                    }
+                    readRow++
+                }
+                capturedRegionValid = true
+            } catch (_: Throwable) {
+                capturedRegionValid = true
+            }
+        } else {
+            capturedRegionValid = true
+        }
+
+        capturedRegionUploadBuffer.position(0)
+        capturedRegionUploadBuffer.limit(requiredBytes)
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, capturedRegionTextureId)
+        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
+        GL11.glTexSubImage2D(
+            GL11.GL_TEXTURE_2D,
+            0,
+            0,
+            0,
+            sourceWidth,
+            sourceHeight,
+            GL11.GL_RGBA,
+            GL11.GL_UNSIGNED_BYTE,
+            capturedRegionUploadBuffer
+        )
+    }
+
+    private fun drawCapturedScreenRegion(command: RenderCommand.DrawCapturedScreenRegion) {
+        if (command.width <= 0 || command.height <= 0) return
+        if (!capturedRegionValid || capturedRegionTextureId == 0) {
+            Gui.drawRect(
+                command.x,
+                command.y,
+                command.x + command.width,
+                command.y + command.height,
+                applyOpacity(capturedRegionFallbackColor)
+            )
+            return
+        }
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glDisable(GL11.GL_CULL_FACE)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, capturedRegionTextureId)
+        GL11.glColor4f(1f, 1f, 1f, opacityMultiplier.coerceIn(0f, 1f))
+        GL11.glBegin(GL11.GL_QUADS)
+        GL11.glTexCoord2f(0f, 1f)
+        GL11.glVertex2f(command.x.toFloat(), command.y.toFloat())
+        GL11.glTexCoord2f(1f, 1f)
+        GL11.glVertex2f((command.x + command.width).toFloat(), command.y.toFloat())
+        GL11.glTexCoord2f(1f, 0f)
+        GL11.glVertex2f((command.x + command.width).toFloat(), (command.y + command.height).toFloat())
+        GL11.glTexCoord2f(0f, 0f)
+        GL11.glVertex2f(command.x.toFloat(), (command.y + command.height).toFloat())
+        GL11.glEnd()
+    }
+
+    private fun ensureCapturedRegionTexture(width: Int, height: Int) {
+        if (capturedRegionTextureId == 0) {
+            capturedRegionTextureId = GL11.glGenTextures()
+            if (capturedRegionTextureId == 0) return
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, capturedRegionTextureId)
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST)
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST)
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP)
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP)
+            capturedRegionWidth = 0
+            capturedRegionHeight = 0
+        }
+        if (capturedRegionWidth == width && capturedRegionHeight == height) return
+        capturedRegionWidth = width
+        capturedRegionHeight = height
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, capturedRegionTextureId)
+        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
+        GL11.glTexImage2D(
+            GL11.GL_TEXTURE_2D,
+            0,
+            GL11.GL_RGBA,
+            capturedRegionWidth,
+            capturedRegionHeight,
+            0,
+            GL11.GL_RGBA,
+            GL11.GL_UNSIGNED_BYTE,
+            null as java.nio.ByteBuffer?
+        )
+    }
+
+    private fun ensureCapturedRegionBuffers(requiredBytes: Int) {
+        if (capturedRegionReadBuffer.capacity() < requiredBytes) {
+            capturedRegionReadBuffer = BufferUtils.createByteBuffer(requiredBytes)
+        }
+        if (capturedRegionUploadBuffer.capacity() < requiredBytes) {
+            capturedRegionUploadBuffer = BufferUtils.createByteBuffer(requiredBytes)
+        }
+    }
+
+    private fun argbToRgbaBytes(argb: Int, forceOpaqueAlpha: Boolean = false): ByteArray {
+        val r = ((argb ushr 16) and 0xFF).toByte()
+        val g = ((argb ushr 8) and 0xFF).toByte()
+        val b = (argb and 0xFF).toByte()
+        val a = if (forceOpaqueAlpha) 0xFF.toByte() else ((argb ushr 24) and 0xFF).toByte()
+        return byteArrayOf(r, g, b, a)
+    }
+
     /** Executes DSGL render commands using Minecraft rendering APIs. */
     override fun paint(commands: List<RenderCommand>) {
         paintsCount++
@@ -236,6 +414,14 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 command.width.toFloat(),
                                 command.height.toFloat()
                             )
+                        }
+
+                        is RenderCommand.CaptureScreenRegion -> {
+                            captureScreenRegion(command, viewport)
+                        }
+
+                        is RenderCommand.DrawCapturedScreenRegion -> {
+                            drawCapturedScreenRegion(command)
                         }
 
                         is RenderCommand.DrawItemStack -> {

@@ -628,6 +628,16 @@ object DefaultDndEngine : DndEngine {
                 y = command.y + dy
             )
 
+            is RenderCommand.CaptureScreenRegion -> command.copy(
+                sourceX = command.sourceX + dx,
+                sourceY = command.sourceY + dy
+            )
+
+            is RenderCommand.DrawCapturedScreenRegion -> command.copy(
+                x = command.x + dx,
+                y = command.y + dy
+            )
+
             is RenderCommand.DrawItemStack -> command.copy(
                 x = command.x + dx,
                 y = command.y + dy
@@ -742,3 +752,4 @@ object DefaultDndEngine : DndEngine {
         )
     }
 }
+

@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DsglColors
+import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState.isTintEnabled
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
@@ -39,7 +40,7 @@ class ApplicationOverlayRootNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (!OverlayDebugVisualization.enabled) return
+        if (!OverlayDebugVisualization.enabled || !isTintEnabled(UiLayerId.ApplicationOverlay)) return
         if (bounds.width <= 0 || bounds.height <= 0) return
         out += RenderCommand.DrawRect(
             bounds.x,

@@ -391,10 +391,11 @@ class SystemOverlayColorPickerEntryTests {
 
         host.render(ctx, 1200, 800)
         val commands = host.paint(ctx)
-        val magnifierCellCount = commands.count { command ->
+        assertTrue(commands.any { it is RenderCommand.CaptureScreenRegion })
+        assertTrue(commands.any { it is RenderCommand.DrawCapturedScreenRegion })
+        assertTrue(commands.none { command ->
             command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
-        }
-        assertTrue(magnifierCellCount >= 25)
+        })
         assertTrue(commands.any { command ->
             command is RenderCommand.DrawText && command.text.startsWith("Mode:")
         })
@@ -427,5 +428,4 @@ class SystemOverlayColorPickerEntryTests {
         return root
     }
 }
-
 

@@ -482,32 +482,24 @@ class ColorPickerController(
         val panelX = nextRect.x
         val panelY = nextRect.y
 
+        val magnifierX = panelX + 4
+        val magnifierY = panelY + 4
+        out += RenderCommand.CaptureScreenRegion(
+            sourceX = hoverX - gridSize / 2,
+            sourceY = hoverY - gridSize / 2,
+            sourceWidth = gridSize,
+            sourceHeight = gridSize,
+            fallbackColor = state.color.toArgbInt()
+        )
         out += RenderCommand.DrawRect(panelX + 2, panelY + 2, panelWidth, panelHeight, style.panelShadowColor)
         out += RenderCommand.DrawRect(panelX, panelY, panelWidth, panelHeight, style.eyedropperOverlayBackgroundColor)
         drawBorder(out, Rect(panelX, panelY, panelWidth, panelHeight), style.eyedropperOverlayBorderColor)
-
-        val magnifierX = panelX + 4
-        val magnifierY = panelY + 4
-        var row = 0
-        while (row < gridSize) {
-            var col = 0
-            while (col < gridSize) {
-                val color = if (eyedropperGridValid) {
-                    eyedropperGridColors[row * gridSize + col]
-                } else {
-                    state.color.toArgbInt()
-                }
-                out += RenderCommand.DrawRect(
-                    magnifierX + col * cell,
-                    magnifierY + row * cell,
-                    cell,
-                    cell,
-                    color
-                )
-                col++
-            }
-            row++
-        }
+        out += RenderCommand.DrawCapturedScreenRegion(
+            x = magnifierX,
+            y = magnifierY,
+            width = magnifierContentSize,
+            height = magnifierContentSize
+        )
         drawBorder(out, Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize), style.inputBorderColor)
 
         val center = gridSize / 2
@@ -1272,3 +1264,5 @@ class ColorPickerController(
         val label: String
     )
 }
+
+

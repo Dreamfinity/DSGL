@@ -88,9 +88,11 @@ class OverlayDebugControlHostTests {
 
     @Test
     fun `debug layer remains enabled in state even when app and system layers are disabled`() {
+        OverlayLayerDebugState.applicationOverlayTintEnabled = false
         OverlayLayerDebugState.applicationOverlayRenderEnabled = false
         OverlayLayerDebugState.applicationOverlayInputEnabled = false
         OverlayLayerDebugState.systemOverlayRenderEnabled = false
+        OverlayLayerDebugState.systemOverlayTintEnabled = false
         OverlayLayerDebugState.systemOverlayInputEnabled = false
 
         assertTrue(OverlayLayerDebugState.isRenderEnabled(org.dreamfinity.dsgl.core.overlay.UiLayerId.Debug))
@@ -98,8 +100,10 @@ class OverlayDebugControlHostTests {
         assertEquals(
             OverlayLayerDebugSnapshot(
                 applicationOverlayRenderEnabled = false,
+                applicationOverlayTintEnabled = false,
                 applicationOverlayInputEnabled = false,
                 systemOverlayRenderEnabled = false,
+                systemOverlayTintEnabled = false,
                 systemOverlayInputEnabled = false
             ),
             OverlayLayerDebugState.snapshot()

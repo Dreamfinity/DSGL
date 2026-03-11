@@ -174,6 +174,28 @@ class ColorPickerControllerTests {
     }
 
     @Test
+    fun `eyedropper overlay emits capture and textured magnifier commands instead of per-cell rectangles`() {
+        val controller = ColorPickerController(
+            initial = ColorPickerState(
+                color = RgbaColor.WHITE,
+                mode = ColorFormatMode.HEX,
+                alphaEnabled = true
+            )
+        )
+        controller.beginEyedropper()
+        val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
+        controller.handleMouseMove(80, 90, layout)
+        val out = ArrayList<RenderCommand>()
+        controller.appendEyedropperOverlay(640, 480, out)
+
+        assertTrue(out.any { it is RenderCommand.CaptureScreenRegion })
+        assertTrue(out.any { it is RenderCommand.DrawCapturedScreenRegion })
+        assertTrue(out.none { command ->
+            command is RenderCommand.DrawRect && command.width == 8 && command.height == 8
+        })
+    }
+
+    @Test
     fun `eyedropper keeps existing alpha while sampling rgb`() {
         val sampled = 0x00336699
         val controller = ColorPickerController(
@@ -236,3 +258,4 @@ class ColorPickerControllerTests {
         return kotlin.math.abs(a - b) <= 0.01f
     }
 }
+
