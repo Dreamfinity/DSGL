@@ -1,15 +1,18 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.DsglColors
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState.isTintEnabled
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.overlay.OverlayDebugVisualization
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
-import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
 internal class SystemOverlayRootNode(
@@ -18,6 +21,12 @@ internal class SystemOverlayRootNode(
     override val styleType: String = "dsgl-system-overlay-root"
     private var viewportWidth: Int = 0
     private var viewportHeight: Int = 0
+    private val debugTintNode: ContainerNode = UiScope(this).div({
+        this.key = "dsgl-system-overlay-debug-tint"
+        style = {
+            display = Display.None
+        }
+    })
     private val panelLaneNode: SystemOverlayLaneNode = SystemOverlayLaneNode(
         key = "dsgl-system-overlay-panel-lane",
         laneStyleType = "dsgl-system-overlay-panel-lane"
@@ -66,25 +75,18 @@ internal class SystemOverlayRootNode(
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         setViewportBounds(width, height)
         bounds = Rect(0, 0, viewportWidth, viewportHeight)
+        val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(UiLayerId.SystemOverlay)
+        if (tintEnabled) {
+            debugTintNode.display = Display.Block
+            debugTintNode.backgroundColor = OverlayDebugVisualization.systemOverlayFillColor
+            debugTintNode.border = Border.all(1, OverlayDebugVisualization.systemOverlayBorderColor)
+            debugTintNode.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
+        } else {
+            debugTintNode.display = Display.None
+            debugTintNode.render(ctx, 0, 0, 0, 0)
+        }
         panelLaneNode.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
         transientLaneNode.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (!OverlayDebugVisualization.enabled || !isTintEnabled(UiLayerId.SystemOverlay)) return
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawRect(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            OverlayDebugVisualization.systemOverlayFillColor
-        )
-        val borderColor = OverlayDebugVisualization.systemOverlayBorderColor
-        out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, 1, borderColor)
-        out += RenderCommand.DrawRect(bounds.x, bounds.y + bounds.height - 1, bounds.width, 1, borderColor)
-        out += RenderCommand.DrawRect(bounds.x, bounds.y, 1, bounds.height, borderColor)
-        out += RenderCommand.DrawRect(bounds.x + bounds.width - 1, bounds.y, 1, bounds.height, borderColor)
     }
 
     override fun defaultForegroundColor(): Int = DsglColors.TEXT
@@ -126,4 +128,3 @@ private class SystemOverlayLaneNode(
         }
     }
 }
-

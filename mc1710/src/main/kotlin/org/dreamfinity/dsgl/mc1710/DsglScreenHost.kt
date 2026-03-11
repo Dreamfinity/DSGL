@@ -264,7 +264,7 @@ abstract class DsglScreenHost(
         }
         val debugOverlayCommands = runCatching {
             debugOverlayHost.render(lastWidth, lastHeight)
-            debugOverlayHost.paint()
+            debugOverlayHost.paint(adapter)
         }.getOrElse {
             emptyList()
         }

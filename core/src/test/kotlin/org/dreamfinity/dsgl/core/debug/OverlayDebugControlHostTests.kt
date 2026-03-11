@@ -7,9 +7,15 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class OverlayDebugControlHostTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
     @AfterTest
     fun cleanup() {
         OverlayLayerDebugState.resetAll()
@@ -27,7 +33,7 @@ class OverlayDebugControlHostTests {
 
         host.render(960, 540)
         val layout = host.debugLayout()
-        val commands = host.paint()
+        val commands = host.paint(ctx)
 
         assertNotNull(layout)
         assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Overlay Debug" })
@@ -79,11 +85,11 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.setControlsEnabledTestOverride(false)
         val host = OverlayDebugControlHost()
         host.render(960, 540)
-        assertTrue(host.paint().isEmpty())
+        assertTrue(host.paint(ctx).isEmpty())
 
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
         host.render(960, 540)
-        assertTrue(host.paint().isNotEmpty())
+        assertTrue(host.paint(ctx).isNotEmpty())
     }
 
     @Test

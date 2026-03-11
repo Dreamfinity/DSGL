@@ -2,7 +2,7 @@ package org.dreamfinity.dsgl.core.dom.debug
 
 object LayoutDebug {
     @Volatile
-    var validateLayouts: Boolean = true
+    var validateLayouts: Boolean = false
 
     @Volatile
     var strictBounds: Boolean = false

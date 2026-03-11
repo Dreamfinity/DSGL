@@ -39,6 +39,16 @@ data class ColorPickerLayout(
     val recentRects: List<Rect>
 )
 
+data class ColorPickerEyedropperOverlayModel(
+    val panelRect: Rect,
+    val magnifierRect: Rect,
+    val captureSourceRect: Rect,
+    val centerRect: Rect,
+    val swatchRect: Rect,
+    val modeText: String,
+    val valueText: String
+)
+
 class ColorPickerController(
     initial: ColorPickerState,
     private val style: ColorPickerStyle = ColorPickerStyle(),
@@ -535,6 +545,82 @@ class ColorPickerController(
             y = tooltipY + 6 + style.fontSize,
             color = style.textColor,
             fontSize = style.fontSize
+        )
+    }
+
+    internal fun resolveEyedropperOverlayModel(
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): ColorPickerEyedropperOverlayModel? {
+        if (!eyedropperActive) return null
+        if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return null
+
+        val gridSize = normalizedEyedropperGridSize()
+        val cell = style.eyedropperCellSize.coerceAtLeast(2)
+        val magnifierContentSize = gridSize * cell
+        val magnifierWidth = magnifierContentSize + 8
+        val magnifierHeight = magnifierContentSize + 8
+        val tooltipWidth = style.eyedropperTooltipWidth.coerceAtLeast(156)
+        val tooltipHeight = style.eyedropperTooltipHeight.coerceAtLeast(40)
+        val panelWidth = maxOf(magnifierWidth, tooltipWidth)
+        val panelHeight = magnifierHeight + 6 + tooltipHeight
+
+        val preferredX = hoverX + style.eyedropperGapToCursor
+        val preferredY = hoverY + style.eyedropperGapToCursor
+        val desiredRect = clampOverlayRect(
+            rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight
+        )
+        val currentRect = eyedropperOverlayRect
+        if (currentRect == null || currentRect.width != panelWidth || currentRect.height != panelHeight) {
+            eyedropperOverlayRect = desiredRect
+            eyedropperOverlayDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
+        }
+        val nextRect = eyedropperOverlayDrag.update(
+            mouseX = hoverX,
+            mouseY = hoverY,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            clamp = ::clampOverlayRect
+        )
+        eyedropperOverlayRect = nextRect
+
+        val magnifierRect = Rect(
+            x = nextRect.x + 4,
+            y = nextRect.y + 4,
+            width = magnifierContentSize,
+            height = magnifierContentSize
+        )
+        val center = gridSize / 2
+        val centerRect = Rect(
+            x = magnifierRect.x + center * cell,
+            y = magnifierRect.y + center * cell,
+            width = cell,
+            height = cell
+        )
+        val tooltipY = magnifierRect.y + magnifierRect.height + 6
+        val swatchSize = tooltipHeight - 10
+        val swatchRect = Rect(nextRect.x + 6, tooltipY + 5, swatchSize, swatchSize)
+        val modeText = if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
+            "Mode: ${state.mode.name} (${state.rgbOrder.name})"
+        } else {
+            "Mode: ${state.mode.name}"
+        }
+        val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+        return ColorPickerEyedropperOverlayModel(
+            panelRect = nextRect,
+            magnifierRect = magnifierRect,
+            captureSourceRect = Rect(
+                x = hoverX - gridSize / 2,
+                y = hoverY - gridSize / 2,
+                width = gridSize,
+                height = gridSize
+            ),
+            centerRect = centerRect,
+            swatchRect = swatchRect,
+            modeText = modeText,
+            valueText = valueText
         )
     }
 

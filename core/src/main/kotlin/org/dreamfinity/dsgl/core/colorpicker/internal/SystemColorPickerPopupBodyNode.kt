@@ -294,6 +294,7 @@ internal class SystemColorPickerPopupBodyNode(
         button.fontSize = style.fontSize
     }
 
+
     private fun renderNode(ctx: UiMeasureContext, node: DOMNode, rect: Rect?) {
         if (rect == null || rect.width <= 0 || rect.height <= 0) {
             node.display = Display.None
@@ -447,26 +448,196 @@ internal class SystemColorPickerEyedropperOverlayNode(
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-native-eyedropper-overlay"
 
+    private val scope = UiScope(this)
+    private val captureNode: EyedropperCaptureNode = EyedropperCaptureNode(
+        key = "dsgl-system-color-picker-eyedropper-capture"
+    ).applyParent(this)
+    private val shadowNode: ContainerNode = scope.div({
+        this.key = "dsgl-system-color-picker-eyedropper-shadow"
+    })
+    private val panelNode: ContainerNode = scope.div({
+        this.key = "dsgl-system-color-picker-eyedropper-panel"
+    })
+    private val magnifierDrawNode: EyedropperMagnifierDrawNode = EyedropperMagnifierDrawNode(
+        key = "dsgl-system-color-picker-eyedropper-magnifier"
+    ).applyParent(this)
+    private val centerNode: ContainerNode = scope.div({
+        this.key = "dsgl-system-color-picker-eyedropper-center"
+    })
+    private val swatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
+        allowEmpty = false,
+        key = "dsgl-system-color-picker-eyedropper-swatch"
+    ).applyParent(this)
+    private val modeTextNode: TextNode = createOverlayTextNode(
+        key = "dsgl-system-color-picker-eyedropper-mode",
+        text = ""
+    )
+    private val valueTextNode: TextNode = createOverlayTextNode(
+        key = "dsgl-system-color-picker-eyedropper-value",
+        text = ""
+    )
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        val controller = popupEngine.debugActiveController()
-        display = if (controller != null && controller.isEyedropperActive()) {
-            Display.Block
-        } else {
-            Display.None
+        val controller = popupEngine.debugActiveController() ?: run {
+            hideAll(ctx)
+            return
         }
+        val model = controller.resolveEyedropperOverlayModel(
+            viewportWidth = bounds.width.coerceAtLeast(1),
+            viewportHeight = bounds.height.coerceAtLeast(1)
+        ) ?: run {
+            hideAll(ctx)
+            return
+        }
+        val style = popupEngine.debugActiveStyle() ?: controller.style()
+        val color = controller.snapshot().color
+
+        syncOverlayText(model.modeText, model.valueText)
+        shadowNode.backgroundColor = style.panelShadowColor
+        shadowNode.border = Border.NONE
+
+        panelNode.backgroundColor = style.eyedropperOverlayBackgroundColor
+        panelNode.border = Border.all(1, style.eyedropperOverlayBorderColor)
+
+        centerNode.backgroundColor = null
+        centerNode.border = Border.all(1, style.eyedropperCenterBorderColor)
+
+        modeTextNode.color = style.mutedTextColor
+        modeTextNode.fontSize = style.fontSize
+        valueTextNode.color = style.textColor
+        valueTextNode.fontSize = style.fontSize
+
+        captureNode.bind(
+            sourceRect = model.captureSourceRect,
+            fallbackColor = color.toArgbInt()
+        )
+        swatchNode.bind(style = style, color = color, highlighted = false)
+
+        val shadowRect = Rect(
+            x = model.panelRect.x + 2,
+            y = model.panelRect.y + 2,
+            width = model.panelRect.width,
+            height = model.panelRect.height
+        )
+        val textX = model.swatchRect.x + model.swatchRect.width + 8
+        val textWidth = (model.panelRect.x + model.panelRect.width - 6 - textX).coerceAtLeast(1)
+        val modeRect = Rect(
+            x = textX,
+            y = model.swatchRect.y + 1,
+            width = textWidth,
+            height = (style.fontSize + 2).coerceAtLeast(1)
+        )
+        val valueRect = Rect(
+            x = textX,
+            y = modeRect.y + style.fontSize,
+            width = textWidth,
+            height = (style.fontSize + 2).coerceAtLeast(1)
+        )
+
+        renderNode(ctx, captureNode, model.panelRect)
+        renderNode(ctx, shadowNode, shadowRect)
+        renderNode(ctx, panelNode, model.panelRect)
+        renderNode(ctx, magnifierDrawNode, model.magnifierRect)
+        renderNode(ctx, centerNode, model.centerRect)
+        renderNode(ctx, swatchNode, model.swatchRect)
+        renderNode(ctx, modeTextNode, modeRect)
+        renderNode(ctx, valueTextNode, valueRect)
+    }
+
+    private fun syncOverlayText(modeText: String, valueText: String) {
+        if (modeTextNode.text != modeText) {
+            modeTextNode.syncSourceFrom(TextNode(TextSource.Static(modeText)))
+        }
+        if (valueTextNode.text != valueText) {
+            valueTextNode.syncSourceFrom(TextNode(TextSource.Static(valueText)))
+        }
+    }
+
+    private fun createOverlayTextNode(key: Any, text: String): TextNode {
+        return TextNode(TextSource.Static(text), key = key).apply {
+            textWrap = TextWrap.NoWrap
+        }.applyParent(this)
+    }
+
+    private fun renderNode(ctx: UiMeasureContext, node: DOMNode, rect: Rect?) {
+        if (rect == null || rect.width <= 0 || rect.height <= 0) {
+            node.display = Display.None
+            node.render(ctx, 0, 0, 0, 0)
+            return
+        }
+        node.display = Display.Block
+        node.render(ctx, rect.x, rect.y, rect.width, rect.height)
+    }
+
+    private fun hideAll(ctx: UiMeasureContext) {
+        children.forEach { child ->
+            child.display = Display.None
+            child.render(ctx, 0, 0, 0, 0)
+        }
+    }
+}
+
+private class EyedropperCaptureNode(
+    key: Any?
+) : DOMNode(key) {
+    override val styleType: String = "dsgl-system-color-picker-eyedropper-capture"
+
+    private var sourceRect: Rect? = null
+    private var fallbackColor: Int = 0
+
+    fun bind(sourceRect: Rect, fallbackColor: Int) {
+        this.sourceRect = sourceRect
+        this.fallbackColor = fallbackColor
+    }
+
+    override fun measure(ctx: UiMeasureContext): Size {
+        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+    }
+
+    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        bounds = Rect(x, y, width, height)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (display == Display.None) return
-        popupEngine.appendEyedropperOverlayCommands(
-            viewportWidth = bounds.width.coerceAtLeast(1),
-            viewportHeight = bounds.height.coerceAtLeast(1),
-            out = out
+        val source = sourceRect ?: return
+        if (source.width <= 0 || source.height <= 0) return
+        out += RenderCommand.CaptureScreenRegion(
+            sourceX = source.x,
+            sourceY = source.y,
+            sourceWidth = source.width,
+            sourceHeight = source.height,
+            fallbackColor = fallbackColor
+        )
+    }
+}
+
+private class EyedropperMagnifierDrawNode(
+    key: Any?
+) : DOMNode(key) {
+    override val styleType: String = "dsgl-system-color-picker-eyedropper-magnifier"
+
+    override fun measure(ctx: UiMeasureContext): Size {
+        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+    }
+
+    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        bounds = Rect(x, y, width, height)
+    }
+
+    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        if (display == Display.None) return
+        if (bounds.width <= 0 || bounds.height <= 0) return
+        out += RenderCommand.DrawCapturedScreenRegion(
+            x = bounds.x,
+            y = bounds.y,
+            width = bounds.width,
+            height = bounds.height
         )
     }
 }
@@ -651,3 +822,4 @@ private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) 
     out += RenderCommand.DrawRect(rect.x, rect.y, 1, rect.height, color)
     out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
 }
+

@@ -1,13 +1,16 @@
 package org.dreamfinity.dsgl.core.inspector
 
+import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.ColorTextCodec
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.colorpicker.*
-import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
-import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
@@ -443,6 +446,10 @@ class InspectorController(
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         if (!active) return false
         if (button != MouseButton.LEFT) {
+            if (button == MouseButton.RIGHT) {
+                mode = InspectorMode.Locked
+                return true
+            }
             return shouldConsumePointer(mouseX, mouseY)
         }
         this.mouseX = mouseX
@@ -1067,8 +1074,8 @@ class InspectorController(
     internal fun debugColorPickerActionBounds(property: StyleProperty): Rect? {
         return panelActions.lastOrNull {
             it.kind == ActionKind.EditProperty &&
-                it.property == property &&
-                it.editOperation == EditOperation.OpenColorPicker
+                    it.property == property &&
+                    it.editOperation == EditOperation.OpenColorPicker
         }?.bounds
     }
 
