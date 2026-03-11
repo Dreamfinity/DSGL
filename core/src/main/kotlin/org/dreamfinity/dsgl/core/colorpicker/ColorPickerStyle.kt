@@ -46,5 +46,8 @@ data class ColorPickerStyle(
     val rowGap: Int = 6,
     val recentCellSize: Int = 14,
     val recentCellGap: Int = 2,
-    val minWidth: Int = 280
+    val minWidth: Int = 280,
+    val eyedropperGridOverlayEnabled: Boolean = true,
+    val eyedropperGridOverlayColor: Int = 0x22FFFFff.toInt()
 )
+

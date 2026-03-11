@@ -373,12 +373,18 @@ class SystemOverlayColorPickerEntryTests {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()
+        val gridColor = 0x7F4C93FF
 
         pickerHost.open(
             anchorRect = Rect(140, 140, 20, 18),
             title = "Popup",
             state = popupState(),
-            style = ColorPickerStyle(eyedropperGridSize = 5, eyedropperCellSize = 3)
+            style = ColorPickerStyle(
+                eyedropperGridSize = 5,
+                eyedropperCellSize = 3,
+                eyedropperGridOverlayEnabled = true,
+                eyedropperGridOverlayColor = gridColor
+            )
         )
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 146, cursorY = 146, inspectorPointerCaptured = false)
@@ -396,6 +402,10 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(commands.none { command ->
             command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
         })
+        val gridLines = commands.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }
+        assertEquals(8, gridLines.size)
+        assertTrue(gridLines.any { it.width == 1 && it.height == 15 })
+        assertTrue(gridLines.any { it.width == 15 && it.height == 1 })
         assertTrue(commands.any { command ->
             command is RenderCommand.DrawText && command.text.startsWith("Mode:")
         })

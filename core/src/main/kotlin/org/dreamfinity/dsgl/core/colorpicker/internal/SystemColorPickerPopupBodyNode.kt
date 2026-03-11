@@ -517,6 +517,13 @@ internal class SystemColorPickerEyedropperOverlayNode(
             fallbackColor = color.toArgbInt()
         )
         swatchNode.bind(style = style, color = color, highlighted = false)
+        magnifierDrawNode.bind(
+            columns = model.captureSourceRect.width,
+            rows = model.captureSourceRect.height,
+            cellSize = (model.magnifierRect.width / model.captureSourceRect.width.coerceAtLeast(1)).coerceAtLeast(1),
+            gridEnabled = style.eyedropperGridOverlayEnabled,
+            gridColor = style.eyedropperGridOverlayColor
+        )
 
         val shadowRect = Rect(
             x = model.panelRect.x + 2,
@@ -622,6 +629,20 @@ private class EyedropperMagnifierDrawNode(
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-eyedropper-magnifier"
 
+    private var columns: Int = 1
+    private var rows: Int = 1
+    private var cellSize: Int = 1
+    private var gridEnabled: Boolean = true
+    private var gridColor: Int = 0x66FFFFFF
+
+    fun bind(columns: Int, rows: Int, cellSize: Int, gridEnabled: Boolean, gridColor: Int) {
+        this.columns = columns.coerceAtLeast(1)
+        this.rows = rows.coerceAtLeast(1)
+        this.cellSize = cellSize.coerceAtLeast(1)
+        this.gridEnabled = gridEnabled
+        this.gridColor = gridColor
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
@@ -639,6 +660,17 @@ private class EyedropperMagnifierDrawNode(
             width = bounds.width,
             height = bounds.height
         )
+        if (!gridEnabled) return
+        for (column in 1 until columns) {
+            val lineX = bounds.x + column * cellSize
+            if (lineX <= bounds.x || lineX >= bounds.x + bounds.width) continue
+            out += RenderCommand.DrawRect(lineX, bounds.y, 1, bounds.height, gridColor)
+        }
+        for (row in 1 until rows) {
+            val lineY = bounds.y + row * cellSize
+            if (lineY <= bounds.y || lineY >= bounds.y + bounds.height) continue
+            out += RenderCommand.DrawRect(bounds.x, lineY, bounds.width, 1, gridColor)
+        }
     }
 }
 

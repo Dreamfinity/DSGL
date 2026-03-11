@@ -194,6 +194,34 @@ class ColorPickerControllerTests {
             command is RenderCommand.DrawRect && command.width == 8 && command.height == 8
         })
     }
+    @Test
+    fun `eyedropper overlay draws aligned light grid over captured magnifier`() {
+        val gridColor = 0x7F57C2FF
+        val controller = ColorPickerController(
+            initial = ColorPickerState(
+                color = RgbaColor.WHITE,
+                mode = ColorFormatMode.HEX,
+                alphaEnabled = true
+            ),
+            style = ColorPickerStyle(
+                eyedropperGridSize = 5,
+                eyedropperCellSize = 4,
+                eyedropperGridOverlayEnabled = true,
+                eyedropperGridOverlayColor = gridColor
+            )
+        )
+        controller.beginEyedropper()
+        val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
+        controller.handleMouseMove(80, 90, layout)
+        val out = ArrayList<RenderCommand>()
+        controller.appendEyedropperOverlay(640, 480, out)
+
+        val magnifier = out.filterIsInstance<RenderCommand.DrawCapturedScreenRegion>().single()
+        val gridLines = out.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }
+        assertEquals(8, gridLines.size)
+        assertTrue(gridLines.any { it.width == 1 && it.height == magnifier.height })
+        assertTrue(gridLines.any { it.width == magnifier.width && it.height == 1 })
+    }
 
     @Test
     fun `eyedropper keeps existing alpha while sampling rgb`() {

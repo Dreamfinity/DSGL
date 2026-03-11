@@ -510,6 +510,16 @@ class ColorPickerController(
             width = magnifierContentSize,
             height = magnifierContentSize
         )
+        if (style.eyedropperGridOverlayEnabled) {
+            drawEyedropperGridOverlay(
+                out = out,
+                rect = Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize),
+                columns = gridSize,
+                rows = gridSize,
+                cellSize = cell,
+                color = style.eyedropperGridOverlayColor
+            )
+        }
         drawBorder(out, Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize), style.inputBorderColor)
 
         val center = gridSize / 2
@@ -1293,6 +1303,29 @@ class ColorPickerController(
         out += RenderCommand.DrawRect(x - 1, rect.y - 1, 3, rect.height + 2, style.thumbOutlineColor)
     }
 
+    private fun drawEyedropperGridOverlay(
+        out: MutableList<RenderCommand>,
+        rect: Rect,
+        columns: Int,
+        rows: Int,
+        cellSize: Int,
+        color: Int
+    ) {
+        if (rect.width <= 1 || rect.height <= 1) return
+        if (cellSize <= 0) return
+        val safeColumns = columns.coerceAtLeast(1)
+        val safeRows = rows.coerceAtLeast(1)
+        for (column in 1 until safeColumns) {
+            val lineX = rect.x + column * cellSize
+            if (lineX <= rect.x || lineX >= rect.x + rect.width) continue
+            out += RenderCommand.DrawRect(lineX, rect.y, 1, rect.height, color)
+        }
+        for (row in 1 until safeRows) {
+            val lineY = rect.y + row * cellSize
+            if (lineY <= rect.y || lineY >= rect.y + rect.height) continue
+            out += RenderCommand.DrawRect(rect.x, lineY, rect.width, 1, color)
+        }
+    }
     private fun drawChecker(rect: Rect, out: MutableList<RenderCommand>) {
         val size = 4
         var y = rect.y
@@ -1350,5 +1383,4 @@ class ColorPickerController(
         val label: String
     )
 }
-
 
