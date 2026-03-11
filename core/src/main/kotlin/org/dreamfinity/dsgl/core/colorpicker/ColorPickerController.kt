@@ -123,6 +123,30 @@ class ColorPickerController(
 
     fun hasActiveInteraction(): Boolean = hasActiveDragTarget() || isEyedropperActive() || hasActiveTextInput()
 
+    internal fun viewHueDeg(): Float = hueDeg
+
+    internal fun viewHoverPosition(): Pair<Int, Int> = hoverX to hoverY
+
+    internal fun viewModeDropdownOpen(): Boolean = modeDropdownOpen
+
+    internal fun viewActiveInputKey(): String? = activeInputKey
+
+    internal fun viewActiveInputBuffer(): String = activeInputBuffer
+
+    internal fun viewInputValues(): Map<String, String> = inputValues()
+
+    internal fun viewInputDefinitions(): List<Pair<String, String>> {
+        return inputDefinitions().map { it.key to it.label }
+    }
+
+    internal fun viewRecentColors(): List<RgbaColor> = recentHistory.snapshot()
+
+    internal fun viewCaretVisible(nowMs: Long): Boolean = caretVisible(nowMs)
+
+    internal fun viewFormattedColor(): String {
+        return ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+    }
+
     fun beginEyedropper() {
         if (!state.alphaEnabled) {
             eyedropperBaseColor = state.color.copy(a = 1f)

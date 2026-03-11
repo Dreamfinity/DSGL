@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
@@ -10,13 +11,18 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.Display
 
 class SystemOverlayDomBridgeTests {
     private val ctx = object : UiMeasureContext {
@@ -81,8 +87,17 @@ class SystemOverlayDomBridgeTests {
     }
 
     @Test
-    fun `system color picker overlay creates dom children from runtime frame`() {
-        val overlay = SystemColorPickerOverlayNode()
+    fun `system color picker overlay renders native popup body subtree`() {
+        val panel = OverlayPanel(
+            ownerId = "test-system-picker",
+            panelState = OverlayPanelState(),
+            dragSession = OverlayPanelDragSession()
+        )
+        val overlay = SystemColorPickerOverlayNode(
+            popupEngine = ColorPickerRuntime.engine,
+            overlayPanel = panel
+        )
+
         try {
             ColorPickerRuntime.engine.open(
                 ColorPickerPopupRequest(
@@ -99,18 +114,31 @@ class SystemOverlayDomBridgeTests {
                 )
             )
 
+            panel.syncPanelRect(ColorPickerRuntime.engine.debugActivePanelRect())
             overlay.updateCursor(28, 32)
             overlay.render(ctx, 0, 0, 500, 360)
-            assertTrue(overlay.children.isNotEmpty())
-            assertTrue(overlay.children.all { it.styleType == "dsgl-system-raw-render-command" })
+            val styleTypes = collectNodes(overlay).map { it.styleType }
+
+            assertTrue(styleTypes.contains("dsgl-system-color-picker-native-body"))
+            assertTrue(styleTypes.contains("dsgl-system-color-picker-color-field"))
+            assertFalse(styleTypes.contains("dsgl-system-color-picker-command-bridge"))
+            assertFalse(styleTypes.contains("dsgl-system-raw-render-command"))
         } finally {
             ColorPickerRuntime.engine.closeAll()
         }
     }
 
     @Test
-    fun `system color picker overlay mounts closes and remounts with popup lifecycle`() {
-        val overlay = SystemColorPickerOverlayNode()
+    fun `system color picker native body toggles visibility with popup lifecycle`() {
+        val panel = OverlayPanel(
+            ownerId = "test-system-picker",
+            panelState = OverlayPanelState(),
+            dragSession = OverlayPanelDragSession()
+        )
+        val overlay = SystemColorPickerOverlayNode(
+            popupEngine = ColorPickerRuntime.engine,
+            overlayPanel = panel
+        )
         val request = ColorPickerPopupRequest(
             owner = "test-owner",
             anchorRect = Rect(20, 24, 24, 18),
@@ -123,23 +151,28 @@ class SystemOverlayDomBridgeTests {
                 closeOnSelect = false
             )
         )
+
         try {
             ColorPickerRuntime.engine.open(request)
-            overlay.updateCursor(28, 32)
+            panel.syncPanelRect(ColorPickerRuntime.engine.debugActivePanelRect())
             overlay.render(ctx, 0, 0, 500, 360)
-            assertTrue(overlay.children.isNotEmpty())
+            val bodyNode = collectNodes(overlay).first { it.styleType == "dsgl-system-color-picker-native-body" }
+            assertEquals(Display.Block, bodyNode.display)
 
             ColorPickerRuntime.engine.close("test-owner")
+            panel.syncPanelRect(ColorPickerRuntime.engine.debugActivePanelRect())
             overlay.render(ctx, 0, 0, 500, 360)
-            assertTrue(overlay.children.isEmpty())
+            assertEquals(Display.None, bodyNode.display)
 
             ColorPickerRuntime.engine.open(request)
+            panel.syncPanelRect(ColorPickerRuntime.engine.debugActivePanelRect())
             overlay.render(ctx, 0, 0, 500, 360)
-            assertTrue(overlay.children.isNotEmpty())
+            assertEquals(Display.Block, bodyNode.display)
         } finally {
             ColorPickerRuntime.engine.closeAll()
         }
     }
+
 
     @Test
     fun `system inspector overlay mounts only while inspector is active`() {
@@ -161,41 +194,13 @@ class SystemOverlayDomBridgeTests {
         overlay.render(ctx, 0, 0, 420, 280)
         assertTrue(overlay.children.isEmpty())
     }
-
-    @Test
-    fun `system overlay raw command nodes do not accumulate across popup open close`() {
-        val overlay = SystemColorPickerOverlayNode()
-        SystemOverlayDebugCounters.setEnabled(true)
-        SystemOverlayDebugCounters.reset()
-        try {
-            repeat(6) { iteration ->
-                ColorPickerRuntime.engine.open(
-                    ColorPickerPopupRequest(
-                        owner = "owner-$iteration",
-                        anchorRect = Rect(32, 28, 20, 18),
-                        title = "Picker $iteration",
-                        state = ColorPickerState(
-                            color = RgbaColor(0.2f, 0.3f, 0.6f, 0.9f),
-                            previous = RgbaColor(0.2f, 0.3f, 0.6f, 0.9f),
-                            mode = ColorFormatMode.RGB,
-                            alphaEnabled = true,
-                            closeOnSelect = false
-                        )
-                    )
-                )
-                overlay.updateCursor(40 + iteration, 42 + iteration)
-                overlay.render(ctx, 0, 0, 640, 360)
-                ColorPickerRuntime.engine.close("owner-$iteration")
-                overlay.render(ctx, 0, 0, 640, 360)
-            }
-            val stats = SystemOverlayDebugCounters.snapshot()
-            assertEquals(0L, stats.rawNodeActive)
-            assertTrue(stats.rawNodeCreated > 0L)
-            assertEquals(stats.rawNodeCreated, stats.rawNodeRemoved)
-        } finally {
-            ColorPickerRuntime.engine.closeAll()
-            SystemOverlayDebugCounters.setEnabled(false)
-            SystemOverlayDebugCounters.reset()
+    private fun collectNodes(root: DOMNode): List<DOMNode> {
+        val out = ArrayList<DOMNode>(64)
+        fun walk(node: DOMNode) {
+            out += node
+            node.children.forEach(::walk)
         }
+        walk(root)
+        return out
     }
 }

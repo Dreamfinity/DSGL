@@ -190,6 +190,18 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return current.controller
     }
 
+    internal fun debugActiveController(): ColorPickerController? {
+        return popup?.controller
+    }
+
+    internal fun debugActiveLayout(): ColorPickerLayout? {
+        return popup?.layout
+    }
+
+    internal fun debugActiveStyle(): ColorPickerStyle? {
+        return popup?.request?.style
+    }
+
     internal fun debugActivePanelRect(): Rect? {
         return popup?.panelRect
     }

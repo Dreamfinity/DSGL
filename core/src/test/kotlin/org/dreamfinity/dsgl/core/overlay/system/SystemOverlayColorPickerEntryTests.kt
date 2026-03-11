@@ -171,6 +171,142 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(panel.y >= 8)
     }
 
+
+    @Test
+    fun `system picker entry mounts native body subtree without command bridge`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(60, 70, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 64, cursorY = 74, inspectorPointerCaptured = false)
+
+        val node = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
+        val styleTypes = collectStyleTypes(node)
+        assertTrue(styleTypes.contains("dsgl-system-color-picker-native-body"))
+        assertFalse(styleTypes.contains("dsgl-system-color-picker-command-bridge"))
+        assertFalse(styleTypes.contains("dsgl-system-raw-render-command"))
+    }
+
+    @Test
+    fun `system picker color field drag updates color continuously`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val previews = ArrayList<RgbaColor>()
+
+        pickerHost.open(
+            anchorRect = Rect(80, 90, 20, 18),
+            title = "Popup",
+            state = popupState(),
+            onPreview = { previews += it }
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val field = layout.colorFieldRect
+        val startX = field.x + 2
+        val startY = field.y + 2
+        val midX = field.x + field.width / 2
+        val midY = field.y + field.height / 2
+        val endX = field.x + field.width - 2
+        val endY = field.y + field.height - 2
+
+        assertTrue(host.handleMouseDown(startX, startY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.handleMouseMove(midX, midY)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = midX, cursorY = midY, inspectorPointerCaptured = false)
+        host.handleMouseMove(endX, endY)
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = endX, cursorY = endY, inspectorPointerCaptured = false)
+        assertTrue(host.handleMouseUp(endX, endY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+
+        val state = host.debugSystemColorPickerState() ?: error("state missing")
+        assertTrue(previews.size >= 2)
+        assertNotEquals(0.3f, state.color.r)
+    }
+
+    @Test
+    fun `system picker hue and alpha drag update state`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val hue = layout.hueRect
+        val alpha = layout.alphaRect ?: error("alpha rect missing")
+        val initial = host.debugSystemColorPickerState() ?: error("state missing")
+
+        val hueStartX = hue.x + 2
+        val hueEndX = hue.x + hue.width - 2
+        val hueY = hue.y + hue.height / 2
+        assertTrue(host.handleMouseDown(hueStartX, hueY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.handleMouseMove(hueEndX, hueY)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = hueEndX, cursorY = hueY, inspectorPointerCaptured = false)
+        assertTrue(host.handleMouseUp(hueEndX, hueY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+
+        val alphaStartX = alpha.x + alpha.width / 2
+        val alphaEndX = alpha.x + 2
+        val alphaY = alpha.y + alpha.height / 2
+        assertTrue(host.handleMouseDown(alphaStartX, alphaY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.handleMouseMove(alphaEndX, alphaY)
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = alphaEndX, cursorY = alphaY, inspectorPointerCaptured = false)
+        assertTrue(host.handleMouseUp(alphaEndX, alphaY, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+
+        val changed = host.debugSystemColorPickerState() ?: error("state missing")
+        assertNotEquals(initial.color.toArgbInt(), changed.color.toArgbInt())
+        assertTrue(changed.color.a < initial.color.a)
+    }
+
+    @Test
+    fun `system picker text input and mode controls stay synchronized`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val modeSelect = initialLayout.modeSelectRect
+        assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = modeSelect.x + 2, cursorY = modeSelect.y + 2, inspectorPointerCaptured = false)
+        val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val hslOption = expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        assertTrue(host.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = hslOption.rect.x + 2, cursorY = hslOption.rect.y + 2, inspectorPointerCaptured = false)
+
+        val modeChanged = host.debugSystemColorPickerState() ?: error("state missing")
+        assertEquals(ColorFormatMode.HSL, modeChanged.mode)
+
+        val hslLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val hueInput = hslLayout.inputSlots.firstOrNull { it.key == "h" } ?: error("h input missing")
+        assertTrue(host.handleMouseDown(hueInput.inputRect.x + 2, hueInput.inputRect.y + 2, org.dreamfinity.dsgl.core.event.MouseButton.LEFT))
+        assertTrue(host.handleKeyDown(org.dreamfinity.dsgl.core.event.KeyCodes.DELETE, 0.toChar()))
+        assertTrue(host.handleKeyDown(0, '1'))
+        assertTrue(host.handleKeyDown(0, '8'))
+        assertTrue(host.handleKeyDown(0, '0'))
+        assertTrue(host.handleKeyDown(org.dreamfinity.dsgl.core.event.KeyCodes.ENTER, '\n'))
+
+        val updated = host.debugSystemColorPickerState() ?: error("state missing")
+        assertEquals(ColorFormatMode.HSL, updated.mode)
+        assertTrue(updated.color.toArgbInt() != modeChanged.color.toArgbInt())
+    }
+
+    private fun collectStyleTypes(root: org.dreamfinity.dsgl.core.dom.DOMNode): Set<String> {
+        val out = LinkedHashSet<String>()
+        fun walk(node: org.dreamfinity.dsgl.core.dom.DOMNode) {
+            out += node.styleType
+            node.children.forEach(::walk)
+        }
+        walk(root)
+        return out
+    }
     private fun popupState(): ColorPickerState {
         return ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),

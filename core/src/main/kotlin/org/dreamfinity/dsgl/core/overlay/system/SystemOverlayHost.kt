@@ -176,6 +176,14 @@ class SystemOverlayHost(
         return colorPickerEntry.debugCloseRect()
     }
 
+    internal fun debugSystemColorPickerBodyLayout(): ColorPickerLayout? {
+        return colorPickerEntry.debugBodyLayout()
+    }
+
+    internal fun debugSystemColorPickerState(): ColorPickerState? {
+        return colorPickerEntry.debugState()
+    }
+
     internal fun debugSystemColorPickerPopupOwnerScope(): OverlayOwnerScope? {
         return colorPickerEntry.debugOwnerScope()
     }
@@ -409,6 +417,14 @@ class SystemOverlayHost(
             return overlayPanel.closeRect()
         }
 
+        fun debugBodyLayout(): ColorPickerLayout? {
+            return popupEngine.debugBodyLayout(ownerToken)
+        }
+
+        fun debugState(): ColorPickerState? {
+            return popupEngine.debugController(ownerToken)?.snapshot()
+        }
+
         fun captureEyedropperSample() {
             popupEngine.captureEyedropperSample()
         }
@@ -586,4 +602,3 @@ class SystemOverlayHost(
         }
     }
 }
-
