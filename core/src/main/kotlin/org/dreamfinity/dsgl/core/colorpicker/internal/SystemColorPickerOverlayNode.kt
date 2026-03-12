@@ -1,7 +1,6 @@
 package org.dreamfinity.dsgl.core.colorpicker.internal
 
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -11,7 +10,7 @@ import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.style.Display
 
 internal class SystemColorPickerOverlayNode(
-    private val popupEngine: ColorPickerPopupEngine = ColorPickerRuntime.engine,
+    private val popupEngine: ColorPickerPopupEngine,
     private val overlayPanel: OverlayPanel,
     key: Any? = "dsgl-system-color-picker"
 ) : DOMNode(key) {
@@ -43,3 +42,4 @@ internal class SystemColorPickerOverlayNode(
         panelNode.render(ctx, x, y, width, height)
     }
 }
+

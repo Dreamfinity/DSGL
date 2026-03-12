@@ -8,6 +8,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
@@ -43,6 +44,7 @@ class SystemOverlayColorPickerEntryTests {
         assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
         assertTrue(firstState.active)
         assertNotNull(firstState.panelState.currentRectOrNull())
+        assertFalse(ColorPickerRuntime.engine.isOpen())
 
         host.onInputFrame(960, 720)
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 50, cursorY = 56, inspectorPointerCaptured = false)
@@ -64,6 +66,48 @@ class SystemOverlayColorPickerEntryTests {
         assertSame(firstNode, reopenedNode)
         assertSame(firstState, reopenedState)
         assertTrue(reopenedState.active)
+    }
+
+    @Test
+    fun `system picker entry path stays independent from application runtime popup path`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val appOwner = Any()
+
+        try {
+            ColorPickerRuntime.engine.open(
+                ColorPickerPopupRequest(
+                    owner = appOwner,
+                    ownerScope = OverlayOwnerScope.Application,
+                    anchorRect = Rect(240, 210, 20, 18),
+                    title = "App Popup",
+                    state = popupState()
+                )
+            )
+            assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
+
+            pickerHost.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
+            host.onInputFrame(960, 720)
+            host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 44, cursorY = 48, inspectorPointerCaptured = false)
+
+            val node = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
+            val styleTypes = collectStyleTypes(node)
+            assertTrue(styleTypes.contains("dsgl-overlay-panel"))
+            assertTrue(styleTypes.contains("dsgl-system-color-picker-native-body"))
+            assertFalse(styleTypes.contains("dsgl-system-raw-render-command"))
+            assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
+            assertTrue(host.isSystemColorPickerOpen())
+            assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
+
+            pickerHost.close()
+            host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 44, cursorY = 48, inspectorPointerCaptured = false)
+            assertFalse(host.isSystemColorPickerOpen())
+            assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
+        } finally {
+            pickerHost.close()
+            ColorPickerRuntime.engine.close(appOwner)
+        }
     }
 
     @Test
@@ -192,6 +236,7 @@ class SystemOverlayColorPickerEntryTests {
 
         val node = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
         val styleTypes = collectStyleTypes(node)
+        assertTrue(styleTypes.contains("dsgl-overlay-panel"))
         assertTrue(styleTypes.contains("dsgl-system-color-picker-native-body"))
         assertFalse(styleTypes.contains("dsgl-system-color-picker-command-bridge"))
         assertFalse(styleTypes.contains("dsgl-system-raw-render-command"))
