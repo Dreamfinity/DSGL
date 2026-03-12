@@ -264,6 +264,30 @@ class ColorPickerControllerTests {
         assertTrue(out.any { it is RenderCommand.DrawAlphaBar })
     }
 
+    @Test
+    fun `picker checker backgrounds use dedicated checkerboard command`() {
+        val checkerLight = 0x7FA0D010
+        val checkerDark = 0x7F104090
+        val controller = ColorPickerController(
+            initial = ColorPickerState(
+                color = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true
+            ),
+            style = ColorPickerStyle(
+                checkerLightColor = checkerLight,
+                checkerDarkColor = checkerDark
+            )
+        )
+        val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
+        val out = ArrayList<RenderCommand>()
+        controller.appendCommands(layout, out)
+
+        assertTrue(out.any { it is RenderCommand.DrawCheckerboard })
+        assertTrue(out.none { command ->
+            command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
+        })
+    }
     private class RecordingSampler : ScreenColorSampler {
         var areaCalls: Int = 0
         var lastAreaSize: Pair<Int, Int>? = null
@@ -286,4 +310,5 @@ class ColorPickerControllerTests {
         return kotlin.math.abs(a - b) <= 0.01f
     }
 }
+
 

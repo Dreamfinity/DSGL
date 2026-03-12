@@ -42,6 +42,19 @@ sealed class RenderCommand {
         val rgbColor: Int
     ) : RenderCommand()
 
+    /** Procedural checkerboard background rendered efficiently by backend. */
+    data class DrawCheckerboard(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int,
+        val cellSize: Int,
+        val lightColor: Int,
+        val darkColor: Int,
+        val offsetX: Int = 0,
+        val offsetY: Int = 0
+    ) : RenderCommand()
+
     /** Text draw command. */
     data class DrawText(
         val text: String,

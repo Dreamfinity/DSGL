@@ -47,6 +47,10 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private var capturedRegionReadBuffer = BufferUtils.createByteBuffer(4 * 256)
     private var capturedRegionUploadBuffer = BufferUtils.createByteBuffer(4 * 256)
 
+    private val checkerTextureCache: LinkedHashMap<Long, Int> = LinkedHashMap(16, 0.75f, true)
+    private val checkerTextureUploadBuffer = BufferUtils.createByteBuffer(16)
+    private val maxCheckerTextures: Int = 32
+
     private var cachedViewport: Viewport = Viewport(width = 1, height = 1, scale = 1f, x = 0, y = 0)
     private var cachedDisplayWidth: Int = -1
     private var cachedDisplayHeight: Int = -1
@@ -273,6 +277,91 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         GL11.glEnd()
     }
 
+    private fun drawCheckerboard(command: RenderCommand.DrawCheckerboard) {
+        if (command.width <= 0 || command.height <= 0) return
+        val cellSize = command.cellSize.coerceAtLeast(1)
+        val textureId = resolveCheckerTextureId(command.lightColor, command.darkColor)
+        if (textureId == 0) {
+            Gui.drawRect(
+                command.x,
+                command.y,
+                command.x + command.width,
+                command.y + command.height,
+                applyOpacity(command.lightColor)
+            )
+            return
+        }
+        val patternSize = (cellSize * 2f).coerceAtLeast(1f)
+        val u0 = (command.x + command.offsetX) / patternSize
+        val v0 = (command.y + command.offsetY) / patternSize
+        val u1 = u0 + (command.width / patternSize)
+        val v1 = v0 + (command.height / patternSize)
+
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glDisable(GL11.GL_CULL_FACE)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId)
+        GL11.glColor4f(1f, 1f, 1f, opacityMultiplier.coerceIn(0f, 1f))
+        GL11.glBegin(GL11.GL_QUADS)
+        GL11.glTexCoord2f(u0, v0)
+        GL11.glVertex2f(command.x.toFloat(), command.y.toFloat())
+        GL11.glTexCoord2f(u1, v0)
+        GL11.glVertex2f((command.x + command.width).toFloat(), command.y.toFloat())
+        GL11.glTexCoord2f(u1, v1)
+        GL11.glVertex2f((command.x + command.width).toFloat(), (command.y + command.height).toFloat())
+        GL11.glTexCoord2f(u0, v1)
+        GL11.glVertex2f(command.x.toFloat(), (command.y + command.height).toFloat())
+        GL11.glEnd()
+    }
+
+    private fun resolveCheckerTextureId(lightColor: Int, darkColor: Int): Int {
+        val key = checkerTextureKey(lightColor, darkColor)
+        checkerTextureCache[key]?.let { return it }
+
+        val textureId = GL11.glGenTextures()
+        if (textureId == 0) return 0
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId)
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST)
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST)
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT)
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT)
+
+        val light = argbToRgbaBytes(lightColor)
+        val dark = argbToRgbaBytes(darkColor)
+        checkerTextureUploadBuffer.clear()
+        checkerTextureUploadBuffer.put(light[0]).put(light[1]).put(light[2]).put(light[3])
+        checkerTextureUploadBuffer.put(dark[0]).put(dark[1]).put(dark[2]).put(dark[3])
+        checkerTextureUploadBuffer.put(dark[0]).put(dark[1]).put(dark[2]).put(dark[3])
+        checkerTextureUploadBuffer.put(light[0]).put(light[1]).put(light[2]).put(light[3])
+        checkerTextureUploadBuffer.flip()
+
+        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
+        GL11.glTexImage2D(
+            GL11.GL_TEXTURE_2D,
+            0,
+            GL11.GL_RGBA,
+            2,
+            2,
+            0,
+            GL11.GL_RGBA,
+            GL11.GL_UNSIGNED_BYTE,
+            checkerTextureUploadBuffer
+        )
+
+        checkerTextureCache[key] = textureId
+        while (checkerTextureCache.size > maxCheckerTextures) {
+            val eldest = checkerTextureCache.entries.iterator().next()
+            GL11.glDeleteTextures(eldest.value)
+            checkerTextureCache.remove(eldest.key)
+        }
+        return textureId
+    }
+
+    private fun checkerTextureKey(lightColor: Int, darkColor: Int): Long {
+        return (lightColor.toLong() shl 32) xor (darkColor.toLong() and 0xFFFF_FFFFL)
+    }
+
     private fun ensureCapturedRegionTexture(width: Int, height: Int) {
         if (capturedRegionTextureId == 0) {
             capturedRegionTextureId = GL11.glGenTextures()
@@ -378,6 +467,10 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 height = command.height,
                                 rgbColor = command.rgbColor
                             )
+                        }
+
+                        is RenderCommand.DrawCheckerboard -> {
+                            drawCheckerboard(command)
                         }
 
                         is RenderCommand.DrawText -> {

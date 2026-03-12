@@ -374,6 +374,8 @@ class SystemOverlayColorPickerEntryTests {
         val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()
         val gridColor = 0x7F4C93FF
+        val checkerLight = 0x7F0AA0A0
+        val checkerDark = 0x7F104040
 
         pickerHost.open(
             anchorRect = Rect(140, 140, 20, 18),
@@ -383,7 +385,9 @@ class SystemOverlayColorPickerEntryTests {
                 eyedropperGridSize = 5,
                 eyedropperCellSize = 3,
                 eyedropperGridOverlayEnabled = true,
-                eyedropperGridOverlayColor = gridColor
+                eyedropperGridOverlayColor = gridColor,
+                checkerLightColor = checkerLight,
+                checkerDarkColor = checkerDark
             )
         )
         host.onInputFrame(1200, 800)
@@ -401,6 +405,10 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(commands.any { it is RenderCommand.DrawCapturedScreenRegion })
         assertTrue(commands.none { command ->
             command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
+        })
+        assertTrue(commands.any { it is RenderCommand.DrawCheckerboard })
+        assertTrue(commands.none { command ->
+            command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
         })
         val gridLines = commands.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }
         assertEquals(8, gridLines.size)

@@ -1327,23 +1327,16 @@ class ColorPickerController(
         }
     }
     private fun drawChecker(rect: Rect, out: MutableList<RenderCommand>) {
-        val size = 4
-        var y = rect.y
-        var row = 0
-        while (y < rect.y + rect.height) {
-            var x = rect.x
-            var col = row % 2
-            while (x < rect.x + rect.width) {
-                val color = if (col % 2 == 0) style.checkerLightColor else style.checkerDarkColor
-                val w = size.coerceAtMost(rect.x + rect.width - x)
-                val h = size.coerceAtMost(rect.y + rect.height - y)
-                out += RenderCommand.DrawRect(x, y, w, h, color)
-                x += size
-                col += 1
-            }
-            y += size
-            row += 1
-        }
+        if (rect.width <= 0 || rect.height <= 0) return
+        out += RenderCommand.DrawCheckerboard(
+            x = rect.x,
+            y = rect.y,
+            width = rect.width,
+            height = rect.height,
+            cellSize = 4,
+            lightColor = style.checkerLightColor,
+            darkColor = style.checkerDarkColor
+        )
     }
 
     private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {
