@@ -462,7 +462,86 @@ class SystemOverlayInspectorNativeEntryTests {
                 command.height == bodyRect.height
         })
     }
+    @Test
+    fun `inspector clipped body blocks hidden row input and accepts visible portion`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
 
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+        assertEquals("target", inspector.selectedKey)
+
+        host.onInputFrame(320, 213)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 320, 213)
+
+        val bodyRect = inspector.debugContentRect()
+        val wheelX = bodyRect.x + 4
+        val wheelY = bodyRect.y + 12
+
+        var revision = 3L
+        var edgeNode: DOMNode? = null
+        var hiddenNode: DOMNode? = null
+        var visibleNode: DOMNode? = null
+        var latestInteractiveNodes: List<DOMNode> = emptyList()
+        repeat(24) {
+            val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
+            val interactiveNodes = collectNodes(inspectorNode).filter { node ->
+                if (node.display == Display.None) return@filter false
+                val key = node.key?.toString() ?: return@filter false
+                isInteractiveInspectorControlKey(key)
+            }
+            latestInteractiveNodes = interactiveNodes
+            edgeNode = interactiveNodes.firstOrNull { node -> intersects(node.bounds, bodyRect) && !containsFully(bodyRect, node.bounds) }
+            hiddenNode = interactiveNodes.firstOrNull { node -> !intersects(node.bounds, bodyRect) }
+            visibleNode = interactiveNodes.firstOrNull { node -> containsFully(bodyRect, node.bounds) }
+            if (edgeNode != null && visibleNode != null) return@repeat
+            assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
+            host.syncFrame(root, inspectedLayoutRevision = revision, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+            host.render(ctx, 320, 213)
+            revision += 1L
+        }
+
+        val hiddenTarget = edgeNode ?: hiddenNode ?: latestInteractiveNodes.firstOrNull { node -> !intersects(node.bounds, bodyRect) } ?: error("failed to find hidden interactive inspector control")
+        val visibleTarget = visibleNode ?: latestInteractiveNodes.firstOrNull { node -> intersects(node.bounds, bodyRect) } ?: edgeNode
+
+        val hiddenX = if (edgeNode != null) {
+            maxOf(hiddenTarget.bounds.x, bodyRect.x) + 2
+        } else {
+            hiddenTarget.bounds.x + (hiddenTarget.bounds.width / 2).coerceAtLeast(1)
+        }
+        val hiddenY = if (edgeNode != null) {
+            if (hiddenTarget.bounds.y < bodyRect.y) {
+                hiddenTarget.bounds.y + 1
+            } else {
+                hiddenTarget.bounds.y + hiddenTarget.bounds.height - 1
+            }
+        } else {
+            hiddenTarget.bounds.y + (hiddenTarget.bounds.height / 2).coerceAtLeast(1)
+        }
+
+        assertFalse(bodyRect.contains(hiddenX, hiddenY))
+        assertTrue(hiddenTarget.bounds.contains(hiddenX, hiddenY))
+
+        assertFalse(host.handleMouseDown(hiddenX, hiddenY, MouseButton.LEFT))
+        host.handleMouseUp(hiddenX, hiddenY, MouseButton.LEFT)
+        assertEquals("target", inspector.selectedKey)
+
+        if (visibleTarget == null) return
+
+        val visibleX = maxOf(visibleTarget.bounds.x, bodyRect.x) + 2
+        val visibleY = maxOf(visibleTarget.bounds.y, bodyRect.y) + 1
+        assertTrue(bodyRect.contains(visibleX, visibleY))
+        assertTrue(visibleTarget.bounds.contains(visibleX, visibleY))
+
+        assertTrue(host.handleMouseDown(visibleX, visibleY, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(visibleX, visibleY, MouseButton.LEFT))
+    }
     @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
         val stylesDir = createTempStylesDir(
@@ -542,6 +621,18 @@ class SystemOverlayInspectorNativeEntryTests {
             inner.y + inner.height <= outer.y + outer.height
     }
 
+    private fun isInteractiveInspectorControlKey(key: String): Boolean {
+        return key == "dsgl-system-inspector-parent-row" ||
+            key.startsWith("dsgl-system-inspector-child-row-") ||
+            key.startsWith("dsgl-system-inspector-editor-reset-") ||
+            key.startsWith("dsgl-system-inspector-editor-select-") ||
+            key.startsWith("dsgl-system-inspector-editor-dec-") ||
+            key.startsWith("dsgl-system-inspector-editor-inc-") ||
+            key.startsWith("dsgl-system-inspector-editor-unit-") ||
+            key.startsWith("dsgl-system-inspector-editor-color-preview-") ||
+            key == "dsgl-system-inspector-reset-node" ||
+            key == "dsgl-system-inspector-clear-all"
+    }
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
         fun walk(node: DOMNode) {

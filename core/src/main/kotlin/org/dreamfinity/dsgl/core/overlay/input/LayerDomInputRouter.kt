@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseButton
@@ -280,18 +281,32 @@ class LayerDomInputRouter(
         mouseX: Int,
         mouseY: Int,
         parentTransform: AffineTransform2D,
+        parentInputClipRect: Rect?,
         out: MutableList<DOMNode>
     ): Boolean {
         if (root.styleDisabled) return false
         if (!root.isHitTestVisible()) return false
+        if (!root.isPointInsideInputClip(mouseX, mouseY, parentInputClipRect)) return false
         val worldTransform = parentTransform.times(root.localTransformMatrix())
         val inverse = worldTransform.inverseOrNull() ?: return false
         val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
         if (!root.bounds.contains(local.first, local.second)) return false
+        val childInputClipRect = root.inputClipRectForChildren(parentInputClipRect)
         out.add(root)
         for (i in root.children.size - 1 downTo 0) {
             val child = root.children[i]
-            if (collectHoverChainLocal(child, mouseX, mouseY, worldTransform, out)) return true
+            if (
+                collectHoverChainLocal(
+                    root = child,
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    parentTransform = worldTransform,
+                    parentInputClipRect = childInputClipRect,
+                    out = out
+                )
+            ) {
+                return true
+            }
         }
         if (isTargetCandidate(root, mouseX, mouseY)) return true
         out.removeAt(out.lastIndex)
@@ -325,7 +340,14 @@ class LayerDomInputRouter(
         mouseDY: Int
     ) {
         val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
-        collectHoverChainLocal(root, mouseX, mouseY, AffineTransform2D.IDENTITY, currHoverChain)
+        collectHoverChainLocal(
+            root = root,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            parentTransform = AffineTransform2D.IDENTITY,
+            parentInputClipRect = null,
+            out = currHoverChain
+        )
         val minSize = minOf(prevHoverChain.size, currHoverChain.size)
         var commonPrefixLen = 0
         while (

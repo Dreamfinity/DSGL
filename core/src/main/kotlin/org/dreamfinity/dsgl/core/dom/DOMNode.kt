@@ -557,7 +557,12 @@ abstract class DOMNode(
 
     /** Dispatches a click through this node and its subtree. */
     fun dispatchClick(event: MouseClickEvent): Boolean {
-        return dispatchClickInternal(this, event, AffineTransform2D.IDENTITY)
+        return dispatchClickInternal(
+            element = this,
+            event = event,
+            parentTransform = AffineTransform2D.IDENTITY,
+            parentInputClipRect = null
+        )
     }
 
     /** Returns true if the mouse event is within current bounds. */
@@ -974,6 +979,9 @@ abstract class DOMNode(
     }
 
     fun containsGlobalPoint(x: Int, y: Int): Boolean {
+        if (!isPointInsideEffectiveAncestorClip(x, y)) {
+            return false
+        }
         val inverse = worldTransformMatrix().inverseOrNull() ?: return false
         val local = inverse.transform(x.toFloat(), y.toFloat())
         return bounds.contains(local.first, local.second)
@@ -1078,6 +1086,34 @@ abstract class DOMNode(
         )
     } else {
         null
+    }
+
+    fun inputClipRectForChildren(parentClipRect: Rect?): Rect? {
+        val localClipRect = overflowViewportRect()
+        return when {
+            parentClipRect != null && localClipRect != null -> parentClipRect.intersection(localClipRect)
+            localClipRect != null -> localClipRect
+            else -> parentClipRect
+        }
+    }
+
+    fun isPointInsideInputClip(pointX: Int, pointY: Int, clipRect: Rect?): Boolean {
+        if (clipRect == null) {
+            return true
+        }
+        return clipRect.contains(pointX, pointY)
+    }
+
+    private fun isPointInsideEffectiveAncestorClip(pointX: Int, pointY: Int): Boolean {
+        var current: DOMNode? = parent
+        while (current != null) {
+            val clipRect = current.overflowViewportRect()
+            if (clipRect != null && !clipRect.contains(pointX, pointY)) {
+                return false
+            }
+            current = current.parent
+        }
+        return true
     }
 
     /**

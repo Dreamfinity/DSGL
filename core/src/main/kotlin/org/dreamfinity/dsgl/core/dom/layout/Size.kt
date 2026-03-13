@@ -15,4 +15,15 @@ data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
                 px < (x + width).toFloat() &&
                 py < (y + height).toFloat()
     }
+
+    fun intersection(other: Rect): Rect? {
+        val left = maxOf(x, other.x)
+        val top = maxOf(y, other.y)
+        val right = minOf(x + width, other.x + other.width)
+        val bottom = minOf(y + height, other.y + other.height)
+        if (right <= left || bottom <= top) {
+            return null
+        }
+        return Rect(left, top, right - left, bottom - top)
+    }
 }
