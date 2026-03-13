@@ -651,6 +651,12 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.DISPLAY, value.toCssLiteral())
         }
 
+
+    var overflow: Overflow
+        get() = Overflow.Visible
+        set(value) {
+            setLiteral(StyleProperty.OVERFLOW, value.toCssLiteral())
+        }
     var flexDirection: FlexDirection
         get() = FlexDirection.Row
         set(value) {
@@ -1048,6 +1054,11 @@ class StyleScope internal constructor(private val node: DOMNode) {
         Display.Grid -> "grid"
     }
 
+
+    private fun Overflow.toCssLiteral(): String = when (this) {
+        Overflow.Visible -> "visible"
+        Overflow.Hidden -> "hidden"
+    }
     private fun FlexDirection.toCssLiteral(): String = when (this) {
         FlexDirection.Row -> "row"
         FlexDirection.Column -> "column"

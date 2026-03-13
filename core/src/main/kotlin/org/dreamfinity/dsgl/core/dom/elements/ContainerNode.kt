@@ -852,19 +852,12 @@ class ContainerNode(
         desiredWidth: Int,
         desiredHeight: Int
     ) {
-        val minX = parentContentX + child.margin.left
-        val minY = parentContentY + child.margin.top
-        val maxRight = parentContentX + parentContentWidth - child.margin.right
-        val maxBottom = parentContentY + parentContentHeight - child.margin.bottom
-
-        val x = desiredX.coerceAtLeast(minX)
-        val y = desiredY.coerceAtLeast(minY)
-
-        val maxWidth = (maxRight - x).coerceAtLeast(0)
-        val maxHeight = (maxBottom - y).coerceAtLeast(0)
-        val width = desiredWidth.coerceAtLeast(0).coerceAtMost(maxWidth)
-        val height = desiredHeight.coerceAtLeast(0).coerceAtMost(maxHeight)
-
-        child.render(ctx, x, y, width, height)
+        child.render(
+            ctx = ctx,
+            x = desiredX,
+            y = desiredY,
+            width = desiredWidth.coerceAtLeast(0),
+            height = desiredHeight.coerceAtLeast(0)
+        )
     }
 }

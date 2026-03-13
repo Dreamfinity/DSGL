@@ -313,7 +313,9 @@ class DomTree(
     ) {
         chunk.prefixCommands.clear()
         chunk.selfCommands.clear()
+        chunk.childrenPrefixCommands.clear()
         chunk.suffixCommands.clear()
+        chunk.childrenSuffixCommands.clear()
         if (nodeHidden) return
 
         val activeTransform = node.effectiveTransform()
@@ -342,6 +344,17 @@ class DomTree(
             node.buildRenderCommands(ctx, chunk.selfCommands)
         }
 
+        val clipRect = node.overflowViewportRect()
+        if (clipRect != null) {
+            chunk.childrenPrefixCommands += RenderCommand.PushClip(
+                x = clipRect.x,
+                y = clipRect.y,
+                width = clipRect.width.coerceAtLeast(0),
+                height = clipRect.height.coerceAtLeast(0)
+            )
+            chunk.childrenSuffixCommands += RenderCommand.PopClip
+        }
+
         if (opacityPushed) {
             chunk.suffixCommands += RenderCommand.PopOpacity
         }
@@ -353,9 +366,11 @@ class DomTree(
     private fun appendChunkCommands(chunk: RenderCommandChunk, out: MutableList<RenderCommand>) {
         out.addAll(chunk.prefixCommands)
         out.addAll(chunk.selfCommands)
+        out.addAll(chunk.childrenPrefixCommands)
         chunk.children.forEach { child ->
             appendChunkCommands(child, out)
         }
+        out.addAll(chunk.childrenSuffixCommands)
         out.addAll(chunk.suffixCommands)
     }
 

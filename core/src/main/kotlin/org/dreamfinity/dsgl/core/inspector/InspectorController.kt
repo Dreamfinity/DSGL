@@ -2931,6 +2931,7 @@ class InspectorController(
             StyleProperty.HEIGHT -> style.height?.toCssLiteral() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
+            StyleProperty.OVERFLOW -> style.overflow.name.lowercase()
             StyleProperty.FLEX_DIRECTION -> style.flexDirection.name.lowercase()
             StyleProperty.JUSTIFY_CONTENT -> style.justifyContent.name
                 .replace(Regex("([a-z])([A-Z])"), "$1-$2")
@@ -3572,12 +3573,3 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
-
-
-
-
-
-
-
-
-

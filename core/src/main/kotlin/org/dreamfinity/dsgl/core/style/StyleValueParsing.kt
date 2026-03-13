@@ -110,6 +110,14 @@ fun parseDisplay(raw: String): Display {
     }
 }
 
+fun parseOverflow(raw: String): Overflow {
+    return when (raw.trim().lowercase()) {
+        "visible" -> Overflow.Visible
+        "hidden" -> Overflow.Hidden
+        else -> error("Unsupported overflow value '$raw'.")
+    }
+}
+
 fun parseFlexDirection(raw: String): FlexDirection {
     return when (raw.trim().lowercase()) {
         "row" -> FlexDirection.Row
@@ -357,6 +365,7 @@ fun validateLiteralForProperty(
 
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
+        StyleProperty.OVERFLOW -> parseOverflow(literal)
         StyleProperty.FLEX_DIRECTION -> parseFlexDirection(literal)
         StyleProperty.JUSTIFY_CONTENT -> parseJustifyContent(literal)
         StyleProperty.ALIGN_ITEMS -> parseAlignItems(literal)

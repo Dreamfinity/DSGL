@@ -25,6 +25,11 @@ enum class Display {
     Grid
 }
 
+enum class Overflow {
+    Visible,
+    Hidden
+}
+
 enum class FlexDirection {
     Row,
     Column
@@ -155,6 +160,7 @@ enum class StyleProperty(val key: String) {
     GRID_AUTO_FLOW("grid-auto-flow"),
     GRID_COLUMN_SPAN("grid-column-span"),
     GRID_ROW_SPAN("grid-row-span"),
+    OVERFLOW("overflow"),
     TEXT_WRAP("text-wrap"),
     TEXT_FORMATTING("text-formatting"),
     TRANSFORM("transform"),
@@ -210,6 +216,7 @@ enum class StyleProperty(val key: String) {
             "grid-column-span" to GRID_COLUMN_SPAN,
             "gridrowspan" to GRID_ROW_SPAN,
             "grid-row-span" to GRID_ROW_SPAN,
+            "overflow" to OVERFLOW,
             "textwrap" to TEXT_WRAP,
             "text-wrap" to TEXT_WRAP,
             "textformatting" to TEXT_FORMATTING,
@@ -310,6 +317,7 @@ data class ComputedStyle(
     val gridAutoFlow: GridAutoFlow,
     val gridColumnSpan: Int,
     val gridRowSpan: Int,
+    val overflow: Overflow,
     val textWrap: TextWrap,
     val textFormatting: TextFormatting,
     val transform: UiTransform,
@@ -350,6 +358,7 @@ data class ComputedStyleDefaults(
     val gridAutoFlow: GridAutoFlow = GridAutoFlow.Row,
     val gridColumnSpan: Int = 1,
     val gridRowSpan: Int = 1,
+    val overflow: Overflow = Overflow.Visible,
     val textWrap: TextWrap = TextWrap.Wrap,
     val textFormatting: TextFormatting = TextFormatting.None,
     val transform: UiTransform = UiTransform.IDENTITY,
@@ -390,6 +399,7 @@ data class ComputedStyleDefaults(
             gridAutoFlow = gridAutoFlow,
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
+            overflow = overflow,
             textWrap = textWrap,
             textFormatting = textFormatting,
             transform = transform,

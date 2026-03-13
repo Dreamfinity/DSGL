@@ -417,29 +417,52 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val bodyRect = inspector.debugContentRect()
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val clippedNodes = collectNodes(inspectorNode).filter { node ->
+        val bodyNode = collectNodes(inspectorNode)
+            .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
+            ?: error("inspector body node missing")
+        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Hidden, bodyNode.overflow)
+
+        val initialCommands = host.paint(ctx)
+        assertTrue(initialCommands.any { command ->
+            command is RenderCommand.PushClip &&
+                command.x == bodyRect.x &&
+                command.y == bodyRect.y &&
+                command.width == bodyRect.width &&
+                command.height == bodyRect.height
+        })
+
+        assertTrue(host.handleMouseWheel(bodyRect.x + 4, bodyRect.y + 12, -120))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = bodyRect.x + 4, cursorY = bodyRect.y + 12, inspectorPointerCaptured = false)
+        host.render(ctx, 320, 220)
+
+        val bodyLines = collectNodes(inspectorNode).filter { node ->
             if (node.display == Display.None) return@filter false
             val key = node.key?.toString() ?: return@filter false
             key.startsWith("dsgl-system-inspector-info-line-") ||
-                    key.startsWith("dsgl-system-inspector-style-line-") ||
-                    key == "dsgl-system-inspector-parent-row" ||
-                    key.startsWith("dsgl-system-inspector-child-row-") ||
-                    key == "dsgl-system-inspector-edit-color" ||
-                    key == "dsgl-system-inspector-reset-node" ||
-                    key == "dsgl-system-inspector-clear-all" ||
-                    key == "dsgl-system-inspector-scrollbar-track" ||
-                    key == "dsgl-system-inspector-scrollbar-thumb"
+                key.startsWith("dsgl-system-inspector-style-line-")
         }
 
-        assertTrue(clippedNodes.isNotEmpty())
-        clippedNodes.forEach { node ->
-            val bounds = node.bounds
-            assertTrue(bounds.x >= bodyRect.x)
-            assertTrue(bounds.y >= bodyRect.y)
-            assertTrue(bounds.x + bounds.width <= bodyRect.x + bodyRect.width)
-            assertTrue(bounds.y + bounds.height <= bodyRect.y + bodyRect.height)
+        assertTrue(bodyLines.isNotEmpty())
+        assertTrue(bodyLines.any { node ->
+            node.bounds.y < bodyRect.y || node.bounds.y + node.bounds.height > bodyRect.y + bodyRect.height
+        })
+
+        val edgeIntersecting = bodyLines.filter { node ->
+            intersects(node.bounds, bodyRect) && !containsFully(bodyRect, node.bounds)
         }
+        assertTrue(edgeIntersecting.isNotEmpty())
+        assertTrue(edgeIntersecting.all { it.bounds.height >= 24 })
+
+        val scrolledCommands = host.paint(ctx)
+        assertTrue(scrolledCommands.any { command ->
+            command is RenderCommand.PushClip &&
+                command.x == bodyRect.x &&
+                command.y == bodyRect.y &&
+                command.width == bodyRect.width &&
+                command.height == bodyRect.height
+        })
     }
+
     @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
         val stylesDir = createTempStylesDir(
@@ -505,6 +528,20 @@ class SystemOverlayInspectorNativeEntryTests {
         )
     }
 
+    private fun intersects(a: Rect, b: Rect): Boolean {
+        return a.x < b.x + b.width &&
+            a.x + a.width > b.x &&
+            a.y < b.y + b.height &&
+            a.y + a.height > b.y
+    }
+
+    private fun containsFully(outer: Rect, inner: Rect): Boolean {
+        return inner.x >= outer.x &&
+            inner.y >= outer.y &&
+            inner.x + inner.width <= outer.x + outer.width &&
+            inner.y + inner.height <= outer.y + outer.height
+    }
+
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
         fun walk(node: DOMNode) {
@@ -530,6 +567,3 @@ class SystemOverlayInspectorNativeEntryTests {
         return root
     }
 }
-
-
-

@@ -74,6 +74,12 @@ abstract class DOMNode(
                 }
             }
         }
+    var overflow: Overflow = Overflow.Visible
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
     var flexDirection: FlexDirection = FlexDirection.Row
     var justifyContent: JustifyContent = JustifyContent.Start
     var alignItems: AlignItems = AlignItems.Stretch
@@ -495,11 +501,24 @@ abstract class DOMNode(
     /** Appends render commands for this node and its children. */
     open fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (!isChildrenRenderPassEnabled()) return
+        val clipRect = overflowViewportRect()
+        if (clipRect != null) {
+            out += RenderCommand.PushClip(
+                x = clipRect.x,
+                y = clipRect.y,
+                width = clipRect.width.coerceAtLeast(0),
+                height = clipRect.height.coerceAtLeast(0)
+            )
+            children.forEach { child ->
+                child.appendRenderCommands(ctx, out)
+            }
+            out += RenderCommand.PopClip
+            return
+        }
         children.forEach { child ->
             child.appendRenderCommands(ctx, out)
         }
     }
-
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (!isChildrenRenderPassEnabled()) return
@@ -665,6 +684,7 @@ abstract class DOMNode(
         borderRadius = template.borderRadius
         align = template.align
         display = template.display
+        overflow = template.overflow
         flexDirection = template.flexDirection
         justifyContent = template.justifyContent
         alignItems = template.alignItems
@@ -776,6 +796,7 @@ abstract class DOMNode(
             gridAutoFlow = gridAutoFlow,
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
+            overflow = overflow,
             textWrap = textWrap,
             textFormatting = textFormatting,
             transform = transform,
@@ -806,6 +827,7 @@ abstract class DOMNode(
         borderColorStyleValue = style.borderColor
         align = style.align
         display = style.display
+        overflow = style.overflow
         flexDirection = style.flexDirection
         justifyContent = style.justifyContent
         alignItems = style.alignItems
@@ -903,6 +925,7 @@ abstract class DOMNode(
         result = 31L * result + bounds.hashCode().toLong()
         result = 31L * result + if (dragRenderHidden) 1L else 0L
         result = 31L * result + display.ordinal.toLong()
+        result = 31L * result + overflow.ordinal.toLong()
         result = 31L * result + effectiveTransform().hashCode().toLong()
         result = 31L * result + java.lang.Float.floatToIntBits(effectiveOpacity()).toLong()
         result = 31L * result + volatileRenderCommandsSignature(nowMs)
@@ -1045,6 +1068,17 @@ abstract class DOMNode(
 
     protected fun contentHeight(): Int =
         (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
+
+    open fun overflowViewportRect(): Rect? = if (overflow == Overflow.Hidden) {
+        Rect(
+            x = contentX(),
+            y = contentY(),
+            width = contentWidth(),
+            height = contentHeight()
+        )
+    } else {
+        null
+    }
 
     /**
      * Optional scroll offsets exposed for tooling overlays (e.g., inspector).

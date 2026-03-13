@@ -13,6 +13,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorDomSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.TextWrap
 
 internal class SystemInspectorOverlayNode(
@@ -245,6 +246,8 @@ internal class SystemInspectorOverlayNode(
             }
         })
         body.backgroundColor = 0x18212C39
+        body.overflow = Overflow.Hidden
+        val bodyScope = UiScope(body)
         renderNode(ctx, body, bodyRect)
 
         val lineHeightPx = 32
@@ -254,7 +257,7 @@ internal class SystemInspectorOverlayNode(
         var y = bodyRect.y + 2 - controller.panelScrollOffsetY.coerceAtLeast(0)
 
         snapshot.infoLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
+            val lineNode = bodyScope.text(props = {
                 key = "dsgl-system-inspector-info-line-$index"
                 value = line
                 style = {
@@ -267,14 +270,12 @@ internal class SystemInspectorOverlayNode(
                 ctx,
                 lineNode,
                 Rect(contentX, y, contentW, lineHeightPx),
-                clipRect = bodyRect,
-                requireFullyVisible = false
             )
             y += lineHeightPx
         }
 
         snapshot.parentLabel?.let { label ->
-            val parentButton = scope.button(label, {
+            val parentButton = bodyScope.button(label, {
                 key = "dsgl-system-inspector-parent-row"
             })
             parentButton.backgroundColor = 0x1E263241
@@ -288,14 +289,12 @@ internal class SystemInspectorOverlayNode(
                 ctx,
                 parentButton,
                 Rect(contentX, y, contentW, rowHeightPx),
-                clipRect = bodyRect,
-                requireFullyVisible = false
             )
             y += rowHeightPx + 2
         }
 
         snapshot.childLabels.forEachIndexed { index, label ->
-            val childButton = scope.button(label, {
+            val childButton = bodyScope.button(label, {
                 key = "dsgl-system-inspector-child-row-$index"
             })
             childButton.backgroundColor = 0x1E263241
@@ -309,12 +308,10 @@ internal class SystemInspectorOverlayNode(
                 ctx,
                 childButton,
                 Rect(contentX, y, contentW, rowHeightPx),
-                clipRect = bodyRect,
-                requireFullyVisible = false
             )
             y += rowHeightPx + 2
         }
-        val styleEditorHeader = scope.text(props = {
+        val styleEditorHeader = bodyScope.text(props = {
             key = "dsgl-system-inspector-editor-header"
             value = "Style editor (live overrides):"
             style = {
@@ -327,15 +324,13 @@ internal class SystemInspectorOverlayNode(
             ctx,
             styleEditorHeader,
             Rect(contentX, y, contentW, lineHeightPx),
-            clipRect = bodyRect,
-            requireFullyVisible = false
         )
 
-        renderStyleEditorRows(scope, ctx, bodyRect)
+        renderStyleEditorRows(bodyScope, body, ctx)
         y += snapshot.styleEditorHeight
 
         snapshot.styleLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
+            val lineNode = bodyScope.text(props = {
                 key = "dsgl-system-inspector-style-line-$index"
                 value = line
                 style = {
@@ -348,15 +343,13 @@ internal class SystemInspectorOverlayNode(
                 ctx,
                 lineNode,
                 Rect(contentX, y, contentW, lineHeightPx),
-                clipRect = bodyRect,
-                requireFullyVisible = false
             )
             y += lineHeightPx
         }
 
         val scrollbarTrack = controller.debugScrollbarTrackRect()
         if (scrollbarTrack.width > 0 && scrollbarTrack.height > 0) {
-            val trackNode = scope.div({
+            val trackNode = bodyScope.div({
                 key = "dsgl-system-inspector-scrollbar-track"
                 style = {
                     display = Display.Block
@@ -364,12 +357,12 @@ internal class SystemInspectorOverlayNode(
             })
             trackNode.backgroundColor = 0x22384A5D
             trackNode.border = Border.NONE
-            renderNode(ctx, trackNode, scrollbarTrack, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, trackNode, scrollbarTrack)
         }
 
         val scrollbarThumb = controller.debugScrollbarThumbRect()
         if (scrollbarThumb.width > 0 && scrollbarThumb.height > 0) {
-            val thumbNode = scope.div({
+            val thumbNode = bodyScope.div({
                 key = "dsgl-system-inspector-scrollbar-thumb"
                 style = {
                     display = Display.Block
@@ -377,7 +370,7 @@ internal class SystemInspectorOverlayNode(
             })
             thumbNode.backgroundColor = 0x887E97B1.toInt()
             thumbNode.border = Border.all(1, 0xCC9BB2C9.toInt())
-            renderNode(ctx, thumbNode, scrollbarThumb, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, thumbNode, scrollbarThumb)
         }
 
         renderDropdowns(scope, ctx)
@@ -425,7 +418,7 @@ internal class SystemInspectorOverlayNode(
         renderNode(ctx, layer, rect)
     }
 
-    private fun renderStyleEditorRows(scope: UiScope, ctx: UiMeasureContext, bodyRect: Rect) {
+    private fun renderStyleEditorRows(scope: UiScope, parentNode: DOMNode, ctx: UiMeasureContext) {
         val rows = controller.debugStyleEditorRows()
         rows.forEachIndexed { index, row ->
             val rowNode = scope.div({
@@ -436,7 +429,7 @@ internal class SystemInspectorOverlayNode(
             })
             rowNode.backgroundColor = 0x1B293746
             rowNode.border = Border.all(1, 0x553F4A57)
-            renderNode(ctx, rowNode, row.rowRect, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, rowNode, row.rowRect)
 
             val labelNode = scope.text(props = {
                 key = "dsgl-system-inspector-editor-label-$index"
@@ -451,8 +444,6 @@ internal class SystemInspectorOverlayNode(
                 ctx,
                 labelNode,
                 Rect(row.rowRect.x + 8, row.rowRect.y + 5, (row.controlRect.x - row.rowRect.x - 14).coerceAtLeast(40), row.rowRect.height - 10),
-                bodyRect,
-                requireFullyVisible = false
             )
 
             val resetButton = scope.button("x", {
@@ -465,7 +456,7 @@ internal class SystemInspectorOverlayNode(
             resetButton.onClick {
                 controller.onResetPropertyPressed(row.property)
             }
-            renderNode(ctx, resetButton, row.resetRect, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, resetButton, row.resetRect)
 
             when (row.editorKind) {
                 org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.EnumSelect,
@@ -480,7 +471,7 @@ internal class SystemInspectorOverlayNode(
                     selector.onClick {
                         controller.onToggleValueSelectPressed(row.property)
                     }
-                    renderNode(ctx, selector, row.controlRect, bodyRect, requireFullyVisible = false)
+                    renderNode(ctx, selector, row.controlRect)
                 }
 
                 org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.StringInput -> {
@@ -500,8 +491,8 @@ internal class SystemInspectorOverlayNode(
                     input.onValueChange = {
                         controller.debugApplyLiteralOverride(row.property, it.value)
                     }
-                    input.applyParent(this)
-                    renderNode(ctx, input, row.controlRect, bodyRect, requireFullyVisible = false)
+                        input.applyParent(parentNode)
+                    renderNode(ctx, input, row.controlRect)
 
                     row.colorPreviewRect?.let { previewRect ->
                         val preview = scope.button("", {
@@ -512,7 +503,7 @@ internal class SystemInspectorOverlayNode(
                         preview.onClick {
                             controller.onOpenColorPickerPressed(row.property, previewRect)
                         }
-                        renderNode(ctx, preview, previewRect, bodyRect, requireFullyVisible = false)
+                        renderNode(ctx, preview, previewRect)
                     }
                 }
 
@@ -528,7 +519,7 @@ internal class SystemInspectorOverlayNode(
                         dec.onClick {
                             controller.onNumericDecrementPressed(row.property)
                         }
-                        renderNode(ctx, dec, rect, bodyRect, requireFullyVisible = false)
+                        renderNode(ctx, dec, rect)
                     }
                     row.inputRect?.let { rect ->
                         val input = TextInputNode(
@@ -548,8 +539,8 @@ internal class SystemInspectorOverlayNode(
                         input.onValueChange = {
                             controller.debugApplyNumericOverride(row.property, it.value, row.unitValue)
                         }
-                        input.applyParent(this)
-                        renderNode(ctx, input, rect, bodyRect, requireFullyVisible = false)
+                        input.applyParent(parentNode)
+                        renderNode(ctx, input, rect)
                     }
 
                     row.incrementRect?.let { rect ->
@@ -563,7 +554,7 @@ internal class SystemInspectorOverlayNode(
                         inc.onClick {
                             controller.onNumericIncrementPressed(row.property)
                         }
-                        renderNode(ctx, inc, rect, bodyRect, requireFullyVisible = false)
+                        renderNode(ctx, inc, rect)
                     }
                     row.unitRect?.let { rect ->
                         val unit = scope.button(row.unitValue ?: "px", {
@@ -576,7 +567,7 @@ internal class SystemInspectorOverlayNode(
                         unit.onClick {
                             controller.onToggleUnitSelectPressed(row.property)
                         }
-                        renderNode(ctx, unit, rect, bodyRect, requireFullyVisible = false)
+                        renderNode(ctx, unit, rect)
                     }
                 }
             }
@@ -594,7 +585,7 @@ internal class SystemInspectorOverlayNode(
             resetButton.onClick {
                 controller.onResetSelectedOverridesPressed()
             }
-            renderNode(ctx, resetButton, resetRect, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, resetButton, resetRect)
         }
 
         val clearRect = controller.debugStyleEditorClearRect()
@@ -609,7 +600,7 @@ internal class SystemInspectorOverlayNode(
             clearButton.onClick {
                 controller.onClearAllOverridesPressed()
             }
-            renderNode(ctx, clearButton, clearRect, bodyRect, requireFullyVisible = false)
+            renderNode(ctx, clearButton, clearRect)
         }
     }
 
@@ -721,63 +712,14 @@ internal class SystemInspectorOverlayNode(
     private fun renderNode(
         ctx: UiMeasureContext,
         node: DOMNode,
-        rect: Rect,
-        clipRect: Rect? = null,
-        requireFullyVisible: Boolean = false
+        rect: Rect
     ) {
         if (rect.width <= 0 || rect.height <= 0) {
             node.display = Display.None
             node.render(ctx, 0, 0, 0, 0)
             return
         }
-        var targetRect = rect
-        if (clipRect != null) {
-            val visible = if (requireFullyVisible) {
-                rect.x >= clipRect.x &&
-                    rect.y >= clipRect.y &&
-                    rect.x + rect.width <= clipRect.x + clipRect.width &&
-                    rect.y + rect.height <= clipRect.y + clipRect.height
-            } else {
-                rect.x + rect.width > clipRect.x &&
-                    rect.y + rect.height > clipRect.y &&
-                    rect.x < clipRect.x + clipRect.width &&
-                    rect.y < clipRect.y + clipRect.height
-            }
-            if (!visible) {
-                node.display = Display.None
-                node.render(ctx, 0, 0, 0, 0)
-                return
-            }
-            if (!requireFullyVisible) {
-                val left = maxOf(rect.x, clipRect.x)
-                val top = maxOf(rect.y, clipRect.y)
-                val right = minOf(rect.x + rect.width, clipRect.x + clipRect.width)
-                val bottom = minOf(rect.y + rect.height, clipRect.y + clipRect.height)
-                if (right <= left || bottom <= top) {
-                    node.display = Display.None
-                    node.render(ctx, 0, 0, 0, 0)
-                    return
-                }
-                targetRect = Rect(left, top, right - left, bottom - top)
-            }
-        }
         node.display = Display.Block
-        node.render(ctx, targetRect.x, targetRect.y, targetRect.width, targetRect.height)
+        node.render(ctx, rect.x, rect.y, rect.width, rect.height)
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

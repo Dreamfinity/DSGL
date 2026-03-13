@@ -992,6 +992,7 @@ object StyleEngine {
             )
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
+            StyleProperty.OVERFLOW -> current.copy(overflow = parseOverflow(literal))
             StyleProperty.FLEX_DIRECTION -> current.copy(flexDirection = parseFlexDirection(literal))
             StyleProperty.JUSTIFY_CONTENT -> current.copy(justifyContent = parseJustifyContent(literal))
             StyleProperty.ALIGN_ITEMS -> current.copy(alignItems = parseAlignItems(literal))

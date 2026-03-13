@@ -27,6 +27,7 @@ object StylePropertyRegistry {
     val all: List<StylePropertyDescriptor> = listOf(
         StylePropertyDescriptor(StyleProperty.DISPLAY, StyleEditorValueType.EnumChoice, enumOptions = listOf("block", "inline", "none", "flex", "grid")),
         StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.LengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.OVERFLOW, StyleEditorValueType.EnumChoice, enumOptions = listOf("visible", "hidden")),
         StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.LengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.MARGIN, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.PADDING, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
