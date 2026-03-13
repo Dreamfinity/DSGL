@@ -1993,7 +1993,17 @@ class InspectorController(
         return rows
     }
     private fun findPanelAction(mouseX: Int, mouseY: Int): PanelAction? {
-        return panelActions.lastOrNull { it.bounds.contains(mouseX, mouseY) }
+        return panelActions.lastOrNull { action ->
+            isPanelActionVisibleHit(action, mouseX, mouseY)
+        }
+    }
+
+    private fun isPanelActionVisibleHit(action: PanelAction, mouseX: Int, mouseY: Int): Boolean {
+        if (!action.bounds.contains(mouseX, mouseY)) return false
+        if (action.kind == ActionKind.Minimize || action.kind == ActionKind.TogglePick) {
+            return true
+        }
+        return contentBounds.contains(mouseX, mouseY)
     }
 
     private fun findDropdownOptionAction(mouseX: Int, mouseY: Int): PanelAction? {
@@ -3414,7 +3424,7 @@ class InspectorController(
         if (dropdownLayouts.any { it.rect.contains(mouseX, mouseY) }) {
             return true
         }
-        if (panelActions.any { it.bounds.contains(mouseX, mouseY) }) {
+        if (panelActions.any { action -> isPanelActionVisibleHit(action, mouseX, mouseY) }) {
             return true
         }
         val bounds = when (panelState) {
@@ -3583,4 +3593,3 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
-

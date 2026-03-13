@@ -26,6 +26,23 @@ data class NodeStyleApplyResult(
     val layoutDirty: Boolean
 )
 
+data class ScrollAxisState(
+    val overflow: Overflow,
+    val scrollContainer: Boolean,
+    val clipsToViewport: Boolean
+)
+
+data class ScrollContainerState(
+    val viewportRect: Rect,
+    val contentExtent: Size,
+    val scrollX: Int,
+    val scrollY: Int,
+    val maxScrollX: Int,
+    val maxScrollY: Int,
+    val axisX: ScrollAxisState,
+    val axisY: ScrollAxisState
+)
+
 /**
  * Base class for all DOM nodes in the retained UI tree.
  *
@@ -87,7 +104,17 @@ abstract class DOMNode(
             markRenderCommandsDirty()
         }
     var overflowX: Overflow = Overflow.Visible
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
     var overflowY: Overflow = Overflow.Visible
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
     var flexDirection: FlexDirection = FlexDirection.Row
     var justifyContent: JustifyContent = JustifyContent.Start
     var alignItems: AlignItems = AlignItems.Stretch
@@ -181,6 +208,10 @@ abstract class DOMNode(
     private var animatedTransform: UiTransform? = null
     private var animatedOpacity: Float? = null
     private var animatedColor: Int? = null
+    private var scrollOffsetRequestX: Int = 0
+    private var scrollOffsetRequestY: Int = 0
+    private var scrollOffsetX: Int = 0
+    private var scrollOffsetY: Int = 0
 
     private var onMouseDownHandler: ((MouseDownEvent) -> Unit)? = null
     private var onMouseUpHandler: ((MouseUpEvent) -> Unit)? = null
@@ -570,6 +601,9 @@ abstract class DOMNode(
         }
         val contentX = x + border.left + padding.left
         val contentY = y + border.top + padding.top
+        val scrollState = scrollContainerState()
+        val layoutContentX = contentX - scrollState.scrollX
+        val layoutContentY = contentY - scrollState.scrollY
         val availableOuterWidth = (width - border.horizontal - padding.horizontal).coerceAtLeast(0)
         val availableOuterHeight = (height - border.vertical - padding.vertical).coerceAtLeast(0)
         children.forEach { child ->
@@ -580,10 +614,11 @@ abstract class DOMNode(
                 parentContentHeight = availableOuterHeight
             )
             val childSize = child.clampMeasuredOuterSize(child.measureForLayout(ctx, availableOuterWidth))
-            val childX = contentX + child.margin.left
-            val childY = contentY + child.margin.top
+            val childX = layoutContentX + child.margin.left
+            val childY = layoutContentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
         }
+        scrollContainerState()
     }
 
     /** Appends render commands for this node and its children. */
@@ -1047,6 +1082,12 @@ abstract class DOMNode(
         result = 31L * result + if (dragRenderHidden) 1L else 0L
         result = 31L * result + display.ordinal.toLong()
         result = 31L * result + overflow.ordinal.toLong()
+        result = 31L * result + overflowX.ordinal.toLong()
+        result = 31L * result + overflowY.ordinal.toLong()
+        result = 31L * result + scrollOffsetRequestX.toLong()
+        result = 31L * result + scrollOffsetRequestY.toLong()
+        result = 31L * result + scrollOffsetX.toLong()
+        result = 31L * result + scrollOffsetY.toLong()
         result = 31L * result + effectiveTransform().hashCode().toLong()
         result = 31L * result + java.lang.Float.floatToIntBits(effectiveOpacity()).toLong()
         result = 31L * result + volatileRenderCommandsSignature(nowMs)
@@ -1193,15 +1234,120 @@ abstract class DOMNode(
     protected fun contentHeight(): Int =
         (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
 
-    open fun overflowViewportRect(): Rect? = if (overflow == Overflow.Hidden) {
-        Rect(
+    protected fun childContentOriginX(): Int {
+        val state = scrollContainerState()
+        return contentX() - state.scrollX
+    }
+
+    protected fun childContentOriginY(): Int {
+        val state = scrollContainerState()
+        return contentY() - state.scrollY
+    }
+
+    fun setScrollOffsets(scrollX: Int, scrollY: Int) {
+        val normalizedX = scrollX.coerceAtLeast(0)
+        val normalizedY = scrollY.coerceAtLeast(0)
+        if (scrollOffsetRequestX == normalizedX && scrollOffsetRequestY == normalizedY) return
+        scrollOffsetRequestX = normalizedX
+        scrollOffsetRequestY = normalizedY
+        markRenderCommandsDirty()
+    }
+
+    fun scrollContainerState(): ScrollContainerState {
+        val viewportRect = Rect(
             x = contentX(),
             y = contentY(),
             width = contentWidth(),
             height = contentHeight()
         )
-    } else {
-        null
+        val axisX = axisStateForOverflow(overflowX)
+        val axisY = axisStateForOverflow(overflowY)
+        val normalizedRequestX = if (axisX.scrollContainer) scrollOffsetRequestX.coerceAtLeast(0) else 0
+        val normalizedRequestY = if (axisY.scrollContainer) scrollOffsetRequestY.coerceAtLeast(0) else 0
+        val contentOriginX = viewportRect.x - normalizedRequestX
+        val contentOriginY = viewportRect.y - normalizedRequestY
+        val contentExtent = computeContentExtent(contentOriginX, contentOriginY)
+        val maxScrollX = if (axisX.scrollContainer) {
+            (contentExtent.width - viewportRect.width).coerceAtLeast(0)
+        } else {
+            0
+        }
+        val maxScrollY = if (axisY.scrollContainer) {
+            (contentExtent.height - viewportRect.height).coerceAtLeast(0)
+        } else {
+            0
+        }
+        val normalizedScrollX = if (axisX.scrollContainer) {
+            normalizedRequestX.coerceIn(0, maxScrollX)
+        } else {
+            0
+        }
+        val normalizedScrollY = if (axisY.scrollContainer) {
+            normalizedRequestY.coerceIn(0, maxScrollY)
+        } else {
+            0
+        }
+        if (!axisX.scrollContainer && scrollOffsetRequestX != 0) {
+            scrollOffsetRequestX = 0
+            markRenderCommandsDirty()
+        }
+        if (!axisY.scrollContainer && scrollOffsetRequestY != 0) {
+            scrollOffsetRequestY = 0
+            markRenderCommandsDirty()
+        }
+        if (normalizedScrollX != scrollOffsetX || normalizedScrollY != scrollOffsetY) {
+            scrollOffsetX = normalizedScrollX
+            scrollOffsetY = normalizedScrollY
+            markRenderCommandsDirty()
+        }
+        return ScrollContainerState(
+            viewportRect = viewportRect,
+            contentExtent = contentExtent,
+            scrollX = normalizedScrollX,
+            scrollY = normalizedScrollY,
+            maxScrollX = maxScrollX,
+            maxScrollY = maxScrollY,
+            axisX = axisX,
+            axisY = axisY
+        )
+    }
+
+    private fun axisStateForOverflow(overflowMode: Overflow): ScrollAxisState {
+        val scrollContainer = overflowMode != Overflow.Visible
+        return ScrollAxisState(
+            overflow = overflowMode,
+            scrollContainer = scrollContainer,
+            clipsToViewport = scrollContainer
+        )
+    }
+
+    private fun computeContentExtent(contentOriginX: Int, contentOriginY: Int): Size {
+        var maxWidth = 0
+        var maxHeight = 0
+        children.forEach { child ->
+            if (child.display == Display.None) return@forEach
+            val outerStartX = child.bounds.x - child.margin.left
+            val outerStartY = child.bounds.y - child.margin.top
+            val outerEndX = outerStartX + child.bounds.width + child.margin.horizontal
+            val outerEndY = outerStartY + child.bounds.height + child.margin.vertical
+            maxWidth = maxOf(maxWidth, (outerEndX - contentOriginX).coerceAtLeast(0))
+            maxHeight = maxOf(maxHeight, (outerEndY - contentOriginY).coerceAtLeast(0))
+        }
+        return Size(maxWidth, maxHeight)
+    }
+
+    open fun overflowViewportRect(): Rect? {
+        val state = scrollContainerState()
+        val clipX = state.axisX.clipsToViewport
+        val clipY = state.axisY.clipsToViewport
+        if (!clipX && !clipY) return null
+        val root = rootNode()
+        return Rect(
+            x = if (clipX) state.viewportRect.x else root.bounds.x,
+            y = if (clipY) state.viewportRect.y else root.bounds.y,
+            width = if (clipX) state.viewportRect.width.coerceAtLeast(0) else root.bounds.width.coerceAtLeast(0),
+            height = if (clipY) state.viewportRect.height.coerceAtLeast(0) else root.bounds.height.coerceAtLeast(0)
+        )
     }
 
     fun inputClipRectForChildren(parentClipRect: Rect?): Rect? {
@@ -1232,10 +1378,14 @@ abstract class DOMNode(
         return true
     }
 
-    /**
-     * Optional scroll offsets exposed for tooling overlays (e.g., inspector).
-     */
-    open fun inspectorScrollOffset(): Pair<Int, Int>? = null
+    open fun inspectorScrollOffset(): Pair<Int, Int>? {
+        val state = scrollContainerState()
+        return if (state.axisX.scrollContainer || state.axisY.scrollContainer) {
+            state.scrollX to state.scrollY
+        } else {
+            null
+        }
+    }
 
     /** Adds border render commands when a border is present. */
     protected fun addBorderCommands(out: MutableList<RenderCommand>) {

@@ -145,7 +145,7 @@ class LayerDomInputRouter(
         val wheel = MouseWheelEvent(mouseX, mouseY, delta)
         wheel.target = target
         EventBus.post(wheel)
-        return true
+        return wheel.cancelled
     }
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
@@ -263,14 +263,10 @@ class LayerDomInputRouter(
     }
 
     private fun resolveWheelTarget(): DOMNode? {
+        val hovered = hoverTarget
+        if (hovered != null) return hovered
         val focused = FocusManager.focusedNode()
-        if (focused is TextAreaNode) {
-            val hovered = hoverTarget
-            if (!isSameOrAncestor(focused, hovered)) {
-                return focused
-            }
-        }
-        return hoverTarget
+        return if (focused is TextAreaNode) focused else null
     }
 
     private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {

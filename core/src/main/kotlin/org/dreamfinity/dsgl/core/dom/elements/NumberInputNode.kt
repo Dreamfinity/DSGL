@@ -27,6 +27,7 @@ class NumberInputNode(
                 val previous = text
                 setValue(this@NumberInputNode.value + delta)
                 notifyUserValueChanged(previous)
+                event.cancelled = true
             }
         }
     }

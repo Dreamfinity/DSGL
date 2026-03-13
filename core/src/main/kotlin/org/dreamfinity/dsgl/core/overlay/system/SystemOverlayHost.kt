@@ -273,7 +273,7 @@ class SystemOverlayHost(
         }
 
         override fun sync(frame: SystemOverlayFrameContext) {
-            node.bounds = Rect(0, 0, viewportWidth, viewportHeight)
+            node.syncInputBounds(viewportWidth, viewportHeight)
             node.bindInspectedTree(frame.inspectedRoot, frame.inspectedLayoutRevision)
             node.updateCursor(frame.cursorX, frame.cursorY, frame.inspectorPointerCaptured)
             frame.inspectedRoot?.let { root ->

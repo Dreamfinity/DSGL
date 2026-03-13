@@ -11,6 +11,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextInputNode
+import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
@@ -243,6 +244,72 @@ class LayerDomInputRouterTests {
         router.handleMouseMove(480, 320)
         assertTrue(router.handleMouseUp(480, 320, MouseButton.LEFT))
         assertEquals(0, buttonClicks)
+    }
+
+    @Test
+    fun `wheel over non-handling interactive child bubbles to ancestor wheel handler`() {
+        val (root, router) = createLayerRouter("wheel-bubble")
+        var wheelEvents = 0
+
+        val scrollHost = ContainerNode(key = "wheel-host").apply {
+            bounds = Rect(10, 10, 220, 140)
+            onMouseWheel = { event ->
+                wheelEvents += 1
+                event.cancelled = true
+            }
+        }
+        scrollHost.applyParent(root)
+
+        val input = TextInputNode(text = "value", key = "wheel-input").apply {
+            bounds = Rect(24, 24, 150, 24)
+        }
+        input.applyParent(scrollHost)
+
+        assertTrue(router.handleMouseDown(28, 28, MouseButton.LEFT))
+        assertTrue(router.handleMouseWheel(28, 28, -120))
+        assertEquals(1, wheelEvents)
+    }
+    @Test
+    fun `focused textarea does not steal wheel from hovered control`() {
+        val (root, router) = createLayerRouter("wheel-focused-textarea")
+        var hostWheelEvents = 0
+
+        val scrollHost = ContainerNode(key = "wheel-focused-host").apply {
+            bounds = Rect(10, 10, 260, 180)
+            onMouseWheel = { event ->
+                hostWheelEvents += 1
+                event.cancelled = true
+            }
+        }
+        scrollHost.applyParent(root)
+
+        val textArea = TextAreaNode(text = "first\nsecond\nthird", key = "wheel-focused-textarea").apply {
+            bounds = Rect(24, 24, 160, 48)
+        }
+        textArea.applyParent(scrollHost)
+
+        val input = TextInputNode(text = "value", key = "wheel-focused-input").apply {
+            bounds = Rect(24, 92, 150, 24)
+        }
+        input.applyParent(scrollHost)
+
+        assertTrue(router.handleMouseDown(28, 28, MouseButton.LEFT))
+        assertTrue(FocusManager.isFocused(textArea))
+
+        assertTrue(router.handleMouseWheel(30, 100, -120))
+        assertEquals(1, hostWheelEvents)
+    }
+
+    @Test
+    fun `wheel without cancellation is not consumed`() {
+        val (root, router) = createLayerRouter("wheel-unhandled")
+        val input = TextInputNode(text = "value", key = "wheel-unhandled-input").apply {
+            bounds = Rect(24, 24, 150, 24)
+        }
+        input.applyParent(root)
+
+        assertTrue(router.handleMouseDown(28, 28, MouseButton.LEFT))
+        assertFalse(router.handleMouseWheel(28, 28, -120))
     }
 
     private fun createLayerRouter(key: String): Pair<ContainerNode, LayerDomInputRouter> {

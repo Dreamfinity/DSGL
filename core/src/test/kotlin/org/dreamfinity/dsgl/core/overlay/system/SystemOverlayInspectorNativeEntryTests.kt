@@ -543,6 +543,81 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseUp(visibleX, visibleY, MouseButton.LEFT))
     }
     @Test
+    fun `inspector body consumes generic scroll viewport and content state`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+
+        val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
+        val bodyNode = collectNodes(inspectorNode).firstOrNull { it.key == "dsgl-system-inspector-body" }
+            ?: error("inspector body node missing")
+        val scrollState = bodyNode.scrollContainerState()
+
+        assertTrue(scrollState.axisY.scrollContainer)
+        assertTrue(scrollState.axisY.clipsToViewport)
+        assertTrue(scrollState.viewportRect.width > 0 && scrollState.viewportRect.height > 0)
+        assertTrue(scrollState.contentExtent.height >= scrollState.viewportRect.height)
+        assertEquals(scrollState.viewportRect, bodyNode.overflowViewportRect())
+    }
+
+    @Test
+    fun `inspector wheel scrolling works when hovering interactive input`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+        assertEquals("target", inspector.selectedKey)
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+
+        val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
+        val bodyRect = inspector.debugContentRect()
+        val allNodes = collectNodes(inspectorNode)
+        val interactiveNode = allNodes.firstOrNull { node ->
+            val key = node.key?.toString() ?: return@firstOrNull false
+            val interactiveControl = key.startsWith("dsgl-system-inspector-editor-input-") ||
+                key.startsWith("dsgl-system-inspector-editor-numeric-input-") ||
+                key.startsWith("dsgl-system-inspector-editor-select-") ||
+                key.startsWith("dsgl-system-inspector-editor-color-preview-")
+            if (!interactiveControl) return@firstOrNull false
+            val probeX = node.bounds.x + 2
+            val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
+            bodyRect.contains(probeX, probeY)
+        }
+        val wheelNode = interactiveNode ?: allNodes.firstOrNull { node ->
+            val probeX = node.bounds.x + 2
+            val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
+            bodyRect.contains(probeX, probeY)
+        } ?: error("visible inspector body content node missing")
+
+        val wheelX = wheelNode.bounds.x + 2
+        val wheelY = wheelNode.bounds.y + (wheelNode.bounds.height / 2).coerceAtLeast(1)
+
+        val before = inspector.panelScrollOffsetY
+        assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
+        assertTrue(inspector.panelScrollOffsetY > before)
+    }
+
+    @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
         val stylesDir = createTempStylesDir(
             """

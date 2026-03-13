@@ -53,7 +53,6 @@ internal class SystemInspectorOverlayNode(
                 event.cancelled = true
             }
             this@SystemInspectorOverlayNode.addEventListener(Events.WHEEL) { event: MouseWheelEvent ->
-                if (isDomOwnedControlTarget(event.target)) return@addEventListener
                 if (controller.handleMouseWheel(event.mouseX, event.mouseY, event.dWheel)) {
                     event.cancelled = true
                 }
@@ -78,6 +77,11 @@ internal class SystemInspectorOverlayNode(
         this.pointerCaptured = pointerCaptured
     }
 
+    fun syncInputBounds(viewportWidth: Int, viewportHeight: Int) {
+        val viewportRect = Rect(0, 0, viewportWidth.coerceAtLeast(0), viewportHeight.coerceAtLeast(0))
+        bounds = resolveInputBounds(viewportRect, controller.debugPanelRect())
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
@@ -88,7 +92,8 @@ internal class SystemInspectorOverlayNode(
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
+        val viewportRect = Rect(x, y, width, height)
+        bounds = resolveInputBounds(viewportRect, controller.debugPanelRect())
         inspectedRoot?.let { root ->
             controller.onLayoutCommitted(root, inspectedLayoutRevision)
         }
@@ -97,11 +102,12 @@ internal class SystemInspectorOverlayNode(
             controller.onCapturedPointerMove(cursorX, cursorY, width, height)
         }
 
-        val snapshot = controller.buildDomSnapshot(bounds.width, bounds.height)
+        val snapshot = controller.buildDomSnapshot(viewportRect.width, viewportRect.height)
         if (snapshot == null) {
             clearTree()
             return
         }
+        bounds = resolveInputBounds(viewportRect, snapshot.panelRect)
 
         clearTree()
         when (snapshot.panelState) {
@@ -109,6 +115,13 @@ internal class SystemInspectorOverlayNode(
             InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot)
         }
         FocusManager.retainFocus(this, updateRootReference = false)
+    }
+
+    private fun resolveInputBounds(viewportRect: Rect, panelRect: Rect?): Rect {
+        if (controller.blocksUnderlyingInput() || controller.isPointerCaptured) {
+            return viewportRect
+        }
+        return panelRect ?: viewportRect
     }
 
     private fun clearTree() {

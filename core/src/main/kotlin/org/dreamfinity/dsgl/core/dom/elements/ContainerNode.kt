@@ -130,8 +130,8 @@ class ContainerNode(
     }
 
     private fun renderStack(ctx: UiMeasureContext, children: List<DOMNode>) {
-        val cx = contentX()
-        val cy = contentY()
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
         val cw = contentWidth()
         val ch = contentHeight()
         children.forEach { child ->
@@ -208,8 +208,8 @@ class ContainerNode(
     }
 
     private fun renderBlock(ctx: UiMeasureContext, children: List<DOMNode>) {
-        val cx = contentX()
-        val cy = contentY()
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
         val cw = contentWidth()
         val ch = contentHeight()
         var cursorY = cy
@@ -336,8 +336,8 @@ class ContainerNode(
     }
 
     private fun renderInline(ctx: UiMeasureContext, children: List<DOMNode>) {
-        val cx = contentX()
-        val cy = contentY()
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
         val cw = contentWidth()
         val ch = contentHeight()
         var cursorX = cx
@@ -406,8 +406,8 @@ class ContainerNode(
 
     private fun renderFlex(ctx: UiMeasureContext, children: List<DOMNode>) {
         val isRow = flexDirection == FlexDirection.Row
-        val cx = contentX()
-        val cy = contentY()
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
         val availableMain = if (isRow) contentWidth() else contentHeight()
         val availableCross = if (isRow) contentHeight() else contentWidth()
         val availableOuterWidth = contentWidth()
@@ -595,8 +595,8 @@ class ContainerNode(
     private fun renderGrid(ctx: UiMeasureContext, children: List<DOMNode>) {
         val columns = gridColumns.coerceAtLeast(1)
         val availableWidth = contentWidth()
-        val cx = contentX()
-        val cy = contentY()
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
         if (children.isEmpty()) return
 
         val colWidth = ((availableWidth - gap * (columns - 1)).coerceAtLeast(0)) / columns

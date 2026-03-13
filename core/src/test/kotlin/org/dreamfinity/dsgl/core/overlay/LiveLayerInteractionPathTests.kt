@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -103,6 +104,36 @@ class LiveLayerInteractionPathTests {
         assertFalse(appRootReceived)
     }
 
+    @Test
+    fun `locked inspector consumes only inside panel and falls through outside panel`() {
+        val inspector = InspectorController()
+        val systemHost = SystemOverlayHost(inspector)
+        val root = inspectedRoot()
+        systemHost.onInputFrame(1280, 720)
+        inspector.toggle()
+        inspector.setPickMode(false)
+        systemHost.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        systemHost.render(ctx, 1280, 720)
+
+        val panelRect = inspector.debugPanelRect() ?: error("inspector panel rect missing")
+        val outsideX = if (panelRect.x > 40) panelRect.x - 20 else panelRect.x + panelRect.width + 20
+        val outsideY = (panelRect.y + panelRect.height / 2).coerceIn(1, 719)
+        assertFalse(panelRect.contains(outsideX, outsideY))
+
+        val harness = LiveLayerInputHarness(
+            debugHandler = { _, _, _ -> false },
+            systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
+            applicationOverlayHandler = { _, _, _ -> false }
+        )
+
+        var appRootReceivedOutside = false
+        val consumedOutside = harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+            appRootReceivedOutside = true
+            true
+        }
+        assertEquals(UiLayerId.ApplicationRoot, consumedOutside)
+        assertTrue(appRootReceivedOutside)
+    }
     @Test
     fun `application overlay consumption prevents app-root fallthrough`() {
         val harness = LiveLayerInputHarness(
