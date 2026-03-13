@@ -211,10 +211,10 @@ private class OverlayDebugControlRootNode(
     private var layout: OverlayDebugControlLayout? = null
     private var snapshot: OverlayLayerDebugSnapshot = OverlayLayerDebugSnapshot(
         applicationOverlayRenderEnabled = true,
-        applicationOverlayTintEnabled = true,
+        applicationOverlayTintEnabled = false,
         applicationOverlayInputEnabled = true,
         systemOverlayRenderEnabled = true,
-        systemOverlayTintEnabled = true,
+        systemOverlayTintEnabled = false,
         systemOverlayInputEnabled = true
     )
 

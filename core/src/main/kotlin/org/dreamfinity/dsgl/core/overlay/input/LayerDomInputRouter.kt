@@ -209,7 +209,20 @@ class LayerDomInputRouter(
         if (dragCaptureTarget == null) return
         val key = dragCaptureKey
         val cls = dragCaptureClass
-        if (key == null || cls == null) {
+        if (cls == null) {
+            releaseDragCapture()
+            return
+        }
+        if (key == null) {
+            val captured = dragCaptureTarget
+            if (captured != null && captured.javaClass == cls) {
+                if (pressedButton != null) {
+                    return
+                }
+                if (isSameOrAncestor(root, captured)) {
+                    return
+                }
+            }
             releaseDragCapture()
             return
         }
@@ -413,6 +426,7 @@ class LayerDomInputRouter(
         target.onmouseover?.invoke(event)
     }
 }
+
 
 
 

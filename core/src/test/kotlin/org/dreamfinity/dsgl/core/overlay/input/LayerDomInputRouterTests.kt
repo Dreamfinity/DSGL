@@ -6,10 +6,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.onInput
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyModifiers
@@ -19,6 +22,12 @@ import org.dreamfinity.dsgl.core.input.ClipboardBridge
 
 class LayerDomInputRouterTests {
     private val clipboard = RecordingClipboardAccess()
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<org.dreamfinity.dsgl.core.render.RenderCommand>) {}
+    }
+
 
     @AfterTest
     fun cleanup() {
@@ -141,7 +150,6 @@ class LayerDomInputRouterTests {
         }
     }
 
-
     @Test
     fun `release after drag does not synthesize click on hovered target`() {
         val (root, router) = createLayerRouter("drag-release")
@@ -164,6 +172,62 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseUp(130, 24, MouseButton.LEFT))
         assertEquals(0, buttonClicks)
     }
+
+    @Test
+    fun `unkeyed drag capture remains active across pointer move`() {
+        val (root, router) = createLayerRouter("unkeyed-drag")
+        var dragEvents = 0
+        val dragNode = ContainerNode().apply {
+            bounds = Rect(60, 20, 90, 20)
+            onMouseDrag = { dragEvents += 1 }
+        }
+        dragNode.applyParent(root)
+
+        assertTrue(router.handleMouseDown(64, 28, MouseButton.LEFT))
+        assertTrue(router.handleMouseMove(260, 28))
+        assertTrue(router.handleMouseUp(260, 28, MouseButton.LEFT))
+        assertTrue(dragEvents > 0)
+    }
+
+    @Test
+    fun `range input drag updates value when pointer leaves bounds`() {
+        val (root, router) = createLayerRouter("range-drag")
+        val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = null)
+        range.applyParent(root)
+        range.render(ctx, 20, 20, 120, 12)
+
+        assertTrue(router.handleMouseDown(20, 26, MouseButton.LEFT))
+        assertTrue(router.handleMouseMove(220, 26))
+        assertTrue(router.handleMouseUp(220, 26, MouseButton.LEFT))
+        assertTrue(range.value > 0L)
+    }
+
+
+    @Test
+    fun `range input drag survives unkeyed rerender replacement`() {
+        val (root, router) = createLayerRouter("range-rerender")
+        var model = 0L
+
+        lateinit var mount: (Long) -> RangeInputNode
+        mount = { value ->
+            RangeInputNode(value = value, min = 0L, max = 100L, key = null).apply {
+                render(ctx, 20, 20, 120, 12)
+                onInput { event ->
+                    model = (event.parsedValue as? Long) ?: model
+                    root.children.clear()
+                    mount(model).applyParent(root)
+                }
+            }
+        }
+
+        mount(model).applyParent(root)
+
+        assertTrue(router.handleMouseDown(20, 26, MouseButton.LEFT))
+        assertTrue(router.handleMouseMove(80, 26))
+        assertTrue(router.handleMouseMove(220, 26))
+        assertTrue(router.handleMouseUp(220, 26, MouseButton.LEFT))
+        assertEquals(100L, model)
+    }
     @Test
     fun `mouse up stays consumed after press when pointer is released outside targets`() {
         val (root, router) = createLayerRouter("outside-release")
@@ -180,6 +244,7 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseUp(480, 320, MouseButton.LEFT))
         assertEquals(0, buttonClicks)
     }
+
     private fun createLayerRouter(key: String): Pair<ContainerNode, LayerDomInputRouter> {
         val root = ContainerNode(key = "$key-root").apply {
             bounds = Rect(0, 0, 320, 200)
@@ -197,8 +262,4 @@ class LayerDomInputRouterTests {
         }
     }
 }
-
-
-
-
 

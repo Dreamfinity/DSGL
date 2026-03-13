@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mc1710
+package org.dreamfinity.dsgl.mc1710
 
 import org.dreamfinity.dsgl.core.HotReloadBridge
 import cpw.mods.fml.relauncher.Side
@@ -569,10 +569,12 @@ abstract class DsglScreenHost(
             inspectorPointerCaptured = inspectorPointerCaptured
         )
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
-        if (consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
+        val appPressMove = mouseButton == -1 && eventButton != -1
+        if (!appPressMove && consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
             consumeOverlayPointerState(mouseX, mouseY)
             return
         }
+
 
         refreshHoverTarget(mouseX, mouseY)
 
@@ -999,7 +1001,20 @@ abstract class DsglScreenHost(
         if (dragCaptureTarget == null) return
         val key = dragCaptureKey
         val cls = dragCaptureClass
-        if (key == null || cls == null) {
+        if (cls == null) {
+            releaseDragCapture()
+            return
+        }
+        if (key == null) {
+            val captured = dragCaptureTarget
+            if (captured != null && captured.javaClass == cls) {
+                if (eventButton != -1) {
+                    return
+                }
+                if (isSameOrAncestor(root, captured)) {
+                    return
+                }
+            }
             releaseDragCapture()
             return
         }

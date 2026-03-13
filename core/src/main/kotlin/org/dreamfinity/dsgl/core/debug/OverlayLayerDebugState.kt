@@ -15,7 +15,7 @@ object OverlayLayerDebugState {
     @Volatile
     var applicationOverlayRenderEnabled: Boolean = true
     @Volatile
-    var applicationOverlayTintEnabled: Boolean = true
+    var applicationOverlayTintEnabled: Boolean = false
 
     @Volatile
     var applicationOverlayInputEnabled: Boolean = true
@@ -24,7 +24,7 @@ object OverlayLayerDebugState {
     var systemOverlayRenderEnabled: Boolean = true
 
     @Volatile
-    var systemOverlayTintEnabled: Boolean = true
+    var systemOverlayTintEnabled: Boolean = false
 
     @Volatile
     var systemOverlayInputEnabled: Boolean = true
@@ -63,10 +63,10 @@ object OverlayLayerDebugState {
 
     fun resetAll() {
         applicationOverlayRenderEnabled = true
-        applicationOverlayTintEnabled = true
+        applicationOverlayTintEnabled = false
         applicationOverlayInputEnabled = true
         systemOverlayRenderEnabled = true
-        systemOverlayTintEnabled = true
+        systemOverlayTintEnabled = false
         systemOverlayInputEnabled = true
     }
 
