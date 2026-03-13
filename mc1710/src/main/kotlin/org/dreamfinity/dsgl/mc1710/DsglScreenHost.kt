@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.mc1710
+﻿package org.dreamfinity.dsgl.mc1710
 
 import org.dreamfinity.dsgl.core.HotReloadBridge
 import cpw.mods.fml.relauncher.Side
@@ -82,7 +82,6 @@ abstract class DsglScreenHost(
     private var dragCaptureClass: Class<out DOMNode>? = null
     private var dragCaptureFocusKey: Any? = null
     private var inspectorPointerCaptured: Boolean = false
-    private var inspectorOwnedMouseButton: Int = -1
     private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
@@ -133,7 +132,6 @@ abstract class DsglScreenHost(
         )
         inspector.deactivate()
         inspectorPointerCaptured = false
-        inspectorOwnedMouseButton = -1
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
@@ -193,6 +191,7 @@ abstract class DsglScreenHost(
         }
         inspector.onLayoutCommitted(tree.root, layoutRevision)
         inspector.onCursorMoved(dsglMouseX, dsglMouseY)
+        inspectorPointerCaptured = inspector.isPointerCaptured
         if (inspectorPointerCaptured) {
             inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
@@ -356,7 +355,6 @@ abstract class DsglScreenHost(
         clearHoverChainStates()
         inspector.deactivate()
         inspectorPointerCaptured = false
-        inspectorOwnedMouseButton = -1
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
@@ -562,6 +560,7 @@ abstract class DsglScreenHost(
             viewportScale = 1f
         )
         systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        inspectorPointerCaptured = inspector.isPointerCaptured
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
@@ -678,10 +677,6 @@ abstract class DsglScreenHost(
         inspectorMouseY: Int
     ): Boolean {
         if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
-            return true
-        }
-        if (inspector.active && inspector.handleKeyDown(keyCode, keyChar)) {
-            logInspectorInput("keyboard down consumed by inspector editor keyCode=$keyCode")
             return true
         }
         val keyboardBlocked = inspector.active && (
@@ -805,67 +800,11 @@ abstract class DsglScreenHost(
             return true
         }
 
-        if (dWheel != 0 && inspector.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            inspector.markPointerHandled("wheel in inspector")
-            logInspectorInput("wheel consumed by inspector delta=$dWheel")
-            return true
-        }
-
-        if (inspectorPointerCaptured) {
-            if (!buttonPressed && mouseButton != -1) {
-                if (mappedButton != null) {
-                    inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-                }
-                inspector.markPointerHandled("captured release")
-                inspectorPointerCaptured = false
-                inspectorOwnedMouseButton = -1
-            }
-            logInspectorInput("pointer captured event consumed button=$mouseButton")
-            return true
-        }
-
-        if (buttonPressed && mouseButton != -1 && mappedButton != null) {
-            if (inspector.handleMouseDown(mouseX, mouseY, mappedButton)) {
-                inspectorPointerCaptured = inspector.isDraggingPanel
-                inspectorOwnedMouseButton = mouseButton
-                inspector.markPointerHandled("down in inspector")
-                logInspectorInput("mouse down consumed by inspector button=$mouseButton")
-                return true
-            }
-        }
-
-        if (!buttonPressed && mouseButton != -1 && inspectorOwnedMouseButton == mouseButton) {
-            if (mappedButton != null) {
-                inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            inspector.markPointerHandled("owned press release")
-            inspectorPointerCaptured = false
-            inspectorOwnedMouseButton = -1
-            logInspectorInput("mouse up consumed by inspector ownership button=$mouseButton")
-            return true
-        }
-
-        if (!buttonPressed && mouseButton != -1 && mappedButton != null) {
-            inspector.handleMouseUp(mouseX, mouseY, mappedButton)
-        }
-
         val inspectorConsumesPointer = inspector.shouldConsumePointer(mouseX, mouseY)
         if (!inspectorConsumesPointer) return false
-        if (mouseButton != -1 && buttonPressed) {
-            inspectorOwnedMouseButton = mouseButton
-        }
-        if (mouseButton != -1 && !buttonPressed) {
+        if (!buttonPressed && mouseButton != -1) {
             inspectorPointerCaptured = false
-            inspectorOwnedMouseButton = -1
         }
-        inspector.markPointerHandled(
-            when {
-                dWheel != 0 -> "wheel in inspector"
-                mouseButton != -1 && buttonPressed -> "down in inspector bounds"
-                mouseButton != -1 && !buttonPressed -> "up in inspector bounds"
-                else -> "move in inspector bounds"
-            }
-        )
         logInspectorInput("pointer event consumed by inspector bounds button=$mouseButton wheel=$dWheel")
         return true
     }

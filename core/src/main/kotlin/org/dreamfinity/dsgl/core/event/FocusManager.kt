@@ -71,7 +71,13 @@ object FocusManager {
      * Retains focus across rebuilds using node key or path.
      */
     fun retainFocus(root: DOMNode) {
-        lastRoot = root
+        retainFocus(root, updateRootReference = true)
+    }
+
+    fun retainFocus(root: DOMNode, updateRootReference: Boolean) {
+        if (updateRootReference) {
+            lastRoot = root
+        }
         val currentKey = focusedKey
         val currentPath = focusedPath
         if (currentKey == null && currentPath == null) {

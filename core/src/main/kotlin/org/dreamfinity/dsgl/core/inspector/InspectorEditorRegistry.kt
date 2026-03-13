@@ -59,7 +59,7 @@ object InspectorEditorRegistry {
             )
         }
         val descriptor = StylePropertyRegistry.descriptor(property)
-        if (descriptor.valueType == StyleEditorValueType.EnumChoice) {
+        if (descriptor.valueType == StyleEditorValueType.EnumChoice || descriptor.valueType == StyleEditorValueType.StringPreset) {
             return InspectorEditorDescriptor(
                 kind = InspectorEditorKind.EnumSelect,
                 options = descriptor.enumOptions
@@ -138,3 +138,4 @@ object InspectorEditorRegistry {
         }
     }
 }
+

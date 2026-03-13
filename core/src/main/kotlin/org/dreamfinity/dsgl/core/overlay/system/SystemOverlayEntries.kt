@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.overlay.system
+﻿package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.event.MouseButton
@@ -43,6 +43,8 @@ internal data class SystemOverlayFrameContext(
 internal interface SystemOverlayEntry {
     val state: SystemOverlayEntryState
     val node: DOMNode
+
+    fun participatesInDomInput(): Boolean = false
 
     fun sync(frame: SystemOverlayFrameContext)
 

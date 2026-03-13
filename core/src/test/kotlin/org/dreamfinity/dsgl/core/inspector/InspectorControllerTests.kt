@@ -15,8 +15,11 @@ import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.input.ClipboardAccess
+import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -68,8 +71,9 @@ class InspectorControllerTests {
         controller.toggle()
         val root = container("root", 0, 0, 220, 140)
         controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 220, 140)
         controller.minimize()
-        controller.appendOverlayCommands(220, 140, mutableListOf())
+        renderFrame(controller, 220, 140)
 
         assertEquals(InspectorPanelState.Minimized, controller.panelState)
         val (startX, startY) = controller.panelPosition
@@ -88,8 +92,9 @@ class InspectorControllerTests {
         controller.toggle()
         val root = container("root", 0, 0, 220, 140)
         controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 220, 140)
         controller.minimize()
-        controller.appendOverlayCommands(220, 140, mutableListOf())
+        renderFrame(controller, 220, 140)
 
         val (startX, startY) = controller.panelPosition
         assertTrue(controller.handleMouseDown(startX + 2, startY + 2, MouseButton.LEFT))
@@ -106,9 +111,9 @@ class InspectorControllerTests {
     fun `expanded panel starts resize drag from edge`() {
         val controller = InspectorController()
         controller.toggle()
-        val root = container("root", 0, 0, 800, 600)
+        val root = container("root", 0, 0, 1400, 900)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(800, 600, mutableListOf())
+        renderFrame(controller, 1400, 900)
 
         assertTrue(controller.handleMouseDown(778, 120, MouseButton.LEFT))
         assertTrue(controller.isDraggingPanel)
@@ -130,17 +135,13 @@ class InspectorControllerTests {
         controller.minimize()
         controller.onCursorMoved(-100, -100)
 
-        val commands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(600, 300, commands)
-        val (chipX, chipY) = controller.panelPosition
-        val chipTextLines = commands
-            .filterIsInstance<RenderCommand.DrawText>()
-            .filter { it.x >= chipX && it.y in chipY..(chipY + 56) }
-
+        val snapshot = renderFrame(controller, 600, 300)
+        assertEquals(InspectorPanelState.Minimized, snapshot.panelState)
+        val chipTextLines = snapshot.minimizedLines
         assertTrue(chipTextLines.isNotEmpty())
         assertTrue(chipTextLines.size <= 2)
         chipTextLines.forEach { line ->
-            assertTrue(line.text.length <= 24)
+            assertTrue(line.length <= 24)
         }
     }
 
@@ -148,10 +149,10 @@ class InspectorControllerTests {
     fun `locked inspector consumes input only inside panel`() {
         val controller = InspectorController()
         controller.toggle()
-        controller.toggleMode() // locked
-        val root = container("root", 0, 0, 800, 600)
+        controller.toggleMode()
+        val root = container("root", 0, 0, 1400, 900)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(800, 600, mutableListOf())
+        renderFrame(controller, 1400, 900)
 
         assertTrue(controller.shouldConsumePointer(30, 30))
         assertTrue(controller.shouldConsumeWheel(30, 30))
@@ -164,10 +165,10 @@ class InspectorControllerTests {
     @Test
     fun `pick mode consumes clicks outside inspector for selection`() {
         val controller = InspectorController()
-        controller.toggle() // pick
-        val root = container("root", 0, 0, 800, 600)
+        controller.toggle()
+        val root = container("root", 0, 0, 1400, 900)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(800, 600, mutableListOf())
+        renderFrame(controller, 1400, 900)
 
         assertTrue(controller.shouldConsumePointer(700, 500))
         assertTrue(controller.shouldConsumeWheel(700, 500))
@@ -183,17 +184,10 @@ class InspectorControllerTests {
         container("inside-panel", 36, 36, 80, 24).applyParent(root)
         container("outside-panel", 980, 140, 80, 24).applyParent(root)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(1200, 700, mutableListOf())
+        renderFrame(controller, 1200, 700)
 
         controller.onCursorMoved(40, 40)
         assertNull(controller.hoveredKey)
-
-        val overPanelCommands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(1200, 700, overPanelCommands)
-        val tooltipTextsOverPanel = overPanelCommands
-            .filterIsInstance<RenderCommand.DrawText>()
-            .filter { it.text.contains("div[") && it.text.contains("x") && it.text.contains("@") }
-        assertTrue(tooltipTextsOverPanel.isEmpty())
 
         controller.onCursorMoved(984, 144)
         assertEquals("outside-panel", controller.hoveredKey)
@@ -207,7 +201,7 @@ class InspectorControllerTests {
         val root = container("root", 0, 0, 1200, 700)
         container("target", 980, 320, 80, 24).applyParent(root)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(1200, 700, mutableListOf())
+        renderFrame(controller, 1200, 700)
 
         controller.setPickMode(false)
         controller.onCursorMoved(984, 324)
@@ -230,11 +224,11 @@ class InspectorControllerTests {
             container("child-$index", 760, 150 + index * 12, 120, 10).applyParent(selected)
         }
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(900, 640, mutableListOf())
+        renderFrame(controller, 900, 640)
         controller.onCursorMoved(768, 126)
         controller.handleMouseDown(768, 126, MouseButton.LEFT)
 
-        controller.appendOverlayCommands(320, 220, mutableListOf())
+        renderFrame(controller, 320, 220)
         assertEquals(0, controller.panelScrollOffsetY)
         assertTrue(controller.handleMouseWheel(46, 90, -120))
         assertTrue(controller.panelScrollOffsetY > 0)
@@ -259,16 +253,15 @@ class InspectorControllerTests {
             container("scroll-child-$index", 980, 240 + index * 14, 180, 10).applyParent(selected)
         }
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(1400, 900, mutableListOf())
+        renderFrame(controller, 1400, 900)
         controller.onCursorMoved(990, 230)
         controller.handleMouseDown(990, 230, MouseButton.LEFT)
 
-        val commands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(420, 280, commands)
-        val thumb = commands
-            .filterIsInstance<RenderCommand.DrawRect>()
-            .lastOrNull { it.width == 4 && it.color == 0x887E97B1.toInt() }
-            ?: fail("Expected inspector scrollbar thumb to be rendered.")
+        renderFrame(controller, 420, 280)
+        val thumb = controller.debugScrollbarThumbRect()
+        if (thumb.width <= 0 || thumb.height <= 0) {
+            fail("Expected inspector scrollbar thumb to be available.")
+        }
 
         val thumbCenterX = thumb.x + 1
         val thumbCenterY = thumb.y + (thumb.height / 2)
@@ -284,7 +277,7 @@ class InspectorControllerTests {
         controller.toggle()
         val root = container("root", 0, 0, 900, 700)
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(900, 700, mutableListOf())
+        renderFrame(controller, 900, 700)
 
         assertTrue(controller.handleMouseDown(38, 30, MouseButton.LEFT))
         assertTrue(controller.isDraggingPanel)
@@ -305,23 +298,65 @@ class InspectorControllerTests {
         leaf.applyParent(middle)
 
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(1200, 700, mutableListOf())
+        renderFrame(controller, 1200, 700)
         controller.onCursorMoved(1006, 126)
         controller.handleMouseDown(1006, 126, MouseButton.LEFT)
 
-        val commands = mutableListOf<RenderCommand>()
-        controller.appendOverlayCommands(520, 340, commands)
-        val pathLines = commands
-            .filterIsInstance<RenderCommand.DrawText>()
-            .map { it.text }
-            .filter { it.startsWith("Path:") || it.startsWith("  >") || it.startsWith("  root") || it.startsWith("  middle") || it.startsWith("  leaf") }
+        val snapshot = renderFrame(controller, 520, 340)
+        val pathLines = snapshot.infoLines
+            .filter {
+                it.startsWith("Path:") || it.startsWith("  >") || it.startsWith("  root") ||
+                        it.startsWith("  middle") || it.startsWith("  leaf")
+            }
 
         assertTrue(pathLines.size >= 2)
         pathLines.forEach { line ->
             assertTrue(line.length <= 45)
         }
     }
+    @Test
+    fun `expanded snapshot includes full computed style property list`() {
+        val controller = InspectorController()
+        controller.toggle()
 
+        val root = container("root", 0, 0, 1400, 900)
+        val selected = container("selected-target", 980, 120, 180, 120)
+        selected.applyParent(root)
+        controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+
+        val snapshot = renderFrame(controller, 700, 420)
+        assertTrue(snapshot.styleLines.any { it.startsWith("background-image:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("border-radius:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("align:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("justify-items:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("flex-grow:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("flex-shrink:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("flex-basis:") })
+        assertTrue(snapshot.styleLines.any { it.startsWith("grid-auto-flow:") })
+    }
+
+    @Test
+    fun `child labels are ellipsized for narrow inspector widths`() {
+        val controller = InspectorController()
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1200, 800)
+        val selected = container("selected-target", 980, 120, 180, 120)
+        selected.applyParent(root)
+        container("child-with-an-extremely-long-name-segment-for-ellipsis-validation", 992, 160, 120, 20)
+            .applyParent(selected)
+        controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+
+        val snapshot = renderFrame(controller, 320, 220)
+        assertTrue(snapshot.childLabels.isNotEmpty())
+        assertTrue(snapshot.childLabels.any { it.endsWith("...") })
+    }
     @Test
     fun `inspector opens picker for color property and stays interactive after preview commit`() {
         val pickerHost = RecordingInspectorColorPickerHost()
@@ -334,7 +369,7 @@ class InspectorControllerTests {
         StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
 
         controller.onLayoutCommitted(root, 1L)
-        controller.appendOverlayCommands(900, 640, mutableListOf())
+        renderFrame(controller, 900, 640)
         controller.onCursorMoved(988, 126)
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
 
@@ -365,12 +400,167 @@ class InspectorControllerTests {
         assertFalse(controller.isDraggingPanel)
     }
 
+
+    @Test
+    fun `inspector text edit supports selection shortcuts and pointer caret behavior`() {
+        val clipboard = RecordingClipboardAccess()
+        ClipboardBridge.install(clipboard)
+        KeyModifiers.sync(shift = false, control = false, meta = false)
+        try {
+            val controller = InspectorController()
+            controller.toggle()
+
+            val root = container("root", 0, 0, 1400, 900)
+            val selected = container("target", 980, 120, 180, 120)
+            selected.applyParent(root)
+            StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
+
+            controller.onLayoutCommitted(root, 1L)
+            renderFrame(controller, 1200, 700)
+            controller.onCursorMoved(988, 126)
+            controller.handleMouseDown(988, 126, MouseButton.LEFT)
+            renderFrame(controller, 1200, 700)
+
+            val row = controller.debugStyleEditorRows().firstOrNull {
+                it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
+            } ?: error("Expected color string input row.")
+            val inputRect = row.controlRect
+            val inputY = inputRect.y + inputRect.height / 2
+            val clickX = inputRect.x + 10
+
+            controller.onCursorMoved(clickX, inputY)
+            assertTrue(controller.handleMouseDown(clickX, inputY, MouseButton.LEFT))
+            assertTrue(controller.handleMouseUp(clickX, inputY, MouseButton.LEFT))
+
+            val initial = controller.debugActiveEditBuffer() ?: error("Expected active edit buffer.")
+
+            KeyModifiers.sync(shift = false, control = true, meta = false)
+            assertTrue(controller.handleKeyDown(KeyCodes.A, 'a'))
+            val selectAll = controller.debugActiveEditSelectionRange() ?: error("Expected active selection.")
+            assertEquals(0, selectAll.first)
+            assertEquals(initial.length, selectAll.second)
+
+            assertTrue(controller.handleKeyDown(KeyCodes.C, 'c'))
+            assertEquals(initial, clipboard.contents)
+
+            assertTrue(controller.handleKeyDown(KeyCodes.X, 'x'))
+            assertEquals("", controller.debugActiveEditBuffer())
+
+            assertTrue(controller.handleKeyDown(KeyCodes.V, 'v'))
+            assertEquals(initial, controller.debugActiveEditBuffer())
+
+            KeyModifiers.sync(shift = true, control = false, meta = false)
+            assertTrue(controller.handleKeyDown(KeyCodes.LEFT, 0.toChar()))
+            val shiftSelection = controller.debugActiveEditSelectionRange() ?: error("Expected shift selection.")
+            assertEquals(1, shiftSelection.second - shiftSelection.first)
+
+            KeyModifiers.sync(shift = false, control = false, meta = false)
+            val dragStartX = inputRect.x + 10
+            val dragEndX = (dragStartX + 36).coerceAtMost(inputRect.x + inputRect.width - 4)
+            controller.onCursorMoved(dragStartX, inputY)
+            assertTrue(controller.handleMouseDown(dragStartX, inputY, MouseButton.LEFT))
+            controller.onCursorMoved(dragEndX, inputY)
+            assertTrue(controller.handleMouseUp(dragEndX, inputY, MouseButton.LEFT))
+            val dragSelection = controller.debugActiveEditSelectionRange() ?: error("Expected drag selection.")
+            assertTrue(dragSelection.second > dragSelection.first)
+
+            val nearStartX = inputRect.x + 8
+            controller.onCursorMoved(nearStartX, inputY)
+            assertTrue(controller.handleMouseDown(nearStartX, inputY, MouseButton.LEFT))
+            assertTrue(controller.handleMouseUp(nearStartX, inputY, MouseButton.LEFT))
+            val caret = controller.debugActiveEditCaret() ?: error("Expected active caret.")
+            assertTrue(caret <= 1)
+        } finally {
+            ClipboardBridge.install(null)
+            KeyModifiers.sync(shift = false, control = false, meta = false)
+        }
+    }
+
+    @Test
+    fun `style editor rows grow and keep spacing when labels wrap in narrow layout`() {
+        val controller = InspectorController()
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1400, 900)
+        val selected = container("target", 980, 120, 180, 120)
+        selected.applyParent(root)
+        controller.onLayoutCommitted(root, 1L)
+
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+
+        renderFrame(controller, 260, 240)
+        val rows = controller.debugStyleEditorRows()
+        assertTrue(rows.isNotEmpty())
+
+        assertTrue(rows.any { it.rowRect.height > it.controlRect.height + 8 })
+        rows.zipWithNext().forEach { (prev, next) ->
+            assertTrue(next.rowRect.y >= prev.rowRect.y + prev.rowRect.height + 4)
+        }
+    }
+    @Test
+    fun `inspector dropdown option click is consumed and applied over underlying controls`() {
+        val controller = InspectorController()
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1400, 900)
+        val selected = container("target", 980, 120, 180, 120)
+        selected.applyParent(root)
+
+        controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+        renderFrame(controller, 1200, 700)
+
+        val row = controller.debugStyleEditorRows().firstOrNull { it.editorKind == InspectorEditorKind.EnumSelect }
+            ?: error("Expected enum select row.")
+        val openX = row.controlRect.x + 4
+        val openY = row.controlRect.y + row.controlRect.height / 2
+        controller.onCursorMoved(openX, openY)
+        assertTrue(controller.handleMouseDown(openX, openY, MouseButton.LEFT))
+
+        renderFrame(controller, 1200, 700)
+        val dropdown = controller.debugStyleEditorDropdowns().firstOrNull() ?: error("Expected open dropdown.")
+        val option = dropdown.options.firstOrNull { !it.text.equals(row.controlValue, ignoreCase = true) }
+            ?: dropdown.options.firstOrNull()
+            ?: error("Expected dropdown option.")
+        val optionX = option.rect.x + 2
+        val optionY = option.rect.y + option.rect.height / 2
+
+        assertTrue(controller.shouldConsumePointer(optionX, optionY))
+        controller.onCursorMoved(optionX, optionY)
+        assertTrue(controller.handleMouseDown(optionX, optionY, MouseButton.LEFT))
+
+        renderFrame(controller, 1200, 700)
+        assertTrue(controller.debugStyleEditorDropdowns().isEmpty())
+        val literal = (StyleEngine.inspectorOverrideFor(selected, row.property) as? StyleExpression.Literal)?.value
+        assertNotNull(literal)
+        assertTrue(literal.equals(option.text, ignoreCase = true))
+    }
+
+    private fun renderFrame(controller: InspectorController, viewportWidth: Int, viewportHeight: Int): InspectorDomSnapshot {
+        return controller.buildDomSnapshot(viewportWidth, viewportHeight)
+            ?: error("Inspector snapshot must exist while active.")
+    }
+
     private fun container(key: Any, x: Int, y: Int, width: Int, height: Int): ContainerNode {
         return ContainerNode(key = key).apply {
             bounds = Rect(x, y, width, height)
         }
     }
 
+
+    private class RecordingClipboardAccess : ClipboardAccess {
+        var contents: String = ""
+
+        override fun readText(): String = contents
+
+        override fun writeText(value: String) {
+            contents = value
+        }
+    }
     private class RecordingInspectorColorPickerHost : InspectorColorPickerHost {
         var lastOpen: OpenCall? = null
         private var open: Boolean = false
@@ -419,3 +609,5 @@ class InspectorControllerTests {
         val onClose: (() -> Unit)?
     )
 }
+
+

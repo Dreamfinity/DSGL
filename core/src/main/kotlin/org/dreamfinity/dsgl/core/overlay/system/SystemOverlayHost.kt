@@ -17,6 +17,7 @@ import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragType
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
@@ -48,6 +49,11 @@ class SystemOverlayHost(
     )
     private var knownViewportWidth: Int = 1
     private var knownViewportHeight: Int = 1
+    private val domInputRouter: LayerDomInputRouter = LayerDomInputRouter(
+        rootProvider = {
+            if (activeEntriesTopFirst().any { it.participatesInDomInput() }) rootNode else null
+        }
+    )
 
     fun systemInspectorColorPickerPopupHost(): InspectorColorPickerHost {
         return colorPickerEntry
@@ -72,6 +78,7 @@ class SystemOverlayHost(
     fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         knownViewportWidth = viewportWidth.coerceAtLeast(1)
         knownViewportHeight = viewportHeight.coerceAtLeast(1)
+        rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)
         entryRegistry.allEntries().forEach { entry ->
             entry.onInputFrame(viewportWidth, viewportHeight)
         }
@@ -91,6 +98,7 @@ class SystemOverlayHost(
             cursorY = cursorY,
             inspectorPointerCaptured = inspectorPointerCaptured
         )
+        rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)
         entryRegistry.allEntries().forEach { entry ->
             entry.sync(frameContext)
         }
@@ -109,23 +117,38 @@ class SystemOverlayHost(
     }
 
     override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
-        return activeEntriesTopFirst().any { entry -> entry.handleMouseMove(mouseX, mouseY) }
+        if (dispatchManualInput { entry -> entry.handleMouseMove(mouseX, mouseY) }) {
+            return true
+        }
+        return domInputRouter.handleMouseMove(mouseX, mouseY)
     }
 
     override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        return activeEntriesTopFirst().any { entry -> entry.handleMouseDown(mouseX, mouseY, button) }
+        if (dispatchManualInput { entry -> entry.handleMouseDown(mouseX, mouseY, button) }) {
+            return true
+        }
+        return domInputRouter.handleMouseDown(mouseX, mouseY, button)
     }
 
     override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        return activeEntriesTopFirst().any { entry -> entry.handleMouseUp(mouseX, mouseY, button) }
+        if (dispatchManualInput { entry -> entry.handleMouseUp(mouseX, mouseY, button) }) {
+            return true
+        }
+        return domInputRouter.handleMouseUp(mouseX, mouseY, button)
     }
 
     override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
-        return activeEntriesTopFirst().any { entry -> entry.handleMouseWheel(mouseX, mouseY, delta) }
+        if (dispatchManualInput { entry -> entry.handleMouseWheel(mouseX, mouseY, delta) }) {
+            return true
+        }
+        return domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
     }
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        return activeEntriesTopFirst().any { entry -> entry.handleKeyDown(keyCode, keyChar) }
+        if (dispatchManualInput { entry -> entry.handleKeyDown(keyCode, keyChar) }) {
+            return true
+        }
+        return domInputRouter.handleKeyDown(keyCode, keyChar)
     }
 
     override fun clearRefs() {
@@ -133,6 +156,7 @@ class SystemOverlayHost(
         transientOwnershipRegistry.clear()
         colorPickerEntry.close()
         overlayPanelDemoEntry.close()
+        domInputRouter.clear()
     }
 
     internal fun debugEntryState(id: SystemOverlayEntryId): SystemOverlayEntryState? {
@@ -222,6 +246,13 @@ class SystemOverlayHost(
             .asReversed()
     }
 
+    private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean {
+        return activeEntriesTopFirst()
+            .asSequence()
+            .filter { !it.participatesInDomInput() }
+            .any(handler)
+    }
+
     private class InspectorOverlayEntry(
         private val inspectorController: InspectorController
     ) : SystemOverlayEntry {
@@ -231,10 +262,23 @@ class SystemOverlayHost(
             lane = SystemOverlayLane.PanelContent
         )
         override val node: SystemInspectorOverlayNode = SystemInspectorOverlayNode(inspectorController)
+        private var viewportWidth: Int = 1
+        private var viewportHeight: Int = 1
+
+        override fun participatesInDomInput(): Boolean = true
+
+        override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
+            this.viewportWidth = viewportWidth.coerceAtLeast(1)
+            this.viewportHeight = viewportHeight.coerceAtLeast(1)
+        }
 
         override fun sync(frame: SystemOverlayFrameContext) {
+            node.bounds = Rect(0, 0, viewportWidth, viewportHeight)
             node.bindInspectedTree(frame.inspectedRoot, frame.inspectedLayoutRevision)
             node.updateCursor(frame.cursorX, frame.cursorY, frame.inspectorPointerCaptured)
+            frame.inspectedRoot?.let { root ->
+                inspectorController.onLayoutCommitted(root, frame.inspectedLayoutRevision)
+            }
             state.active = inspectorController.active
             if (!state.active) {
                 state.panelState.hide()
@@ -247,13 +291,13 @@ class SystemOverlayHost(
             } else {
                 state.panelState.show()
             }
-                syncDragSession(
-                    entryState = state,
-                    dragging = inspectorController.isDraggingPanel,
-                    dragType = OverlayPanelDragType.PanelMove,
-                    pointerX = frame.cursorX,
-                    pointerY = frame.cursorY
-                )
+            syncDragSession(
+                entryState = state,
+                dragging = inspectorController.isDraggingPanel,
+                dragType = OverlayPanelDragType.PanelMove,
+                pointerX = frame.cursorX,
+                pointerY = frame.cursorY
+            )
         }
     }
 
@@ -638,3 +682,4 @@ class SystemOverlayHost(
         }
     }
 }
+

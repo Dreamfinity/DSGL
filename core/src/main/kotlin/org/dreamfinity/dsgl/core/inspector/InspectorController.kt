@@ -7,10 +7,15 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.TextEditState
+import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyInput
+import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
@@ -201,6 +206,8 @@ class InspectorController(
         set(value) {
             editSession.activeIsNumeric = value
         }
+    private val activeEditState: TextEditState
+        get() = editSession.textState
     private var openValueSelectProperty: StyleProperty?
         get() = editSession.openValueProperty
         set(value) {
@@ -223,6 +230,15 @@ class InspectorController(
         }
     private var variableTooltipText: String? = null
     private var variableTooltipRect: Rect = Rect(0, 0, 0, 0)
+
+    private var nativeSelectedHighlight: InspectorHighlightSnapshot? = null
+    private var nativeHoveredHighlight: InspectorHighlightSnapshot? = null
+    private var nativeCursorTooltip: InspectorTooltipSnapshot? = null
+    private var nativeVariableTooltip: InspectorTooltipSnapshot? = null
+    private val nativeStyleEditorRows: MutableList<InspectorStyleEditorRowSnapshot> = ArrayList()
+    private val nativeDropdowns: MutableList<InspectorDropdownSnapshot> = ArrayList()
+    private var nativeStyleEditorResetRect: Rect = Rect(0, 0, 0, 0)
+    private var nativeStyleEditorClearRect: Rect = Rect(0, 0, 0, 0)
 
     private val minPanelWidth: Int = 240
     private val minPanelHeight: Int = 160
@@ -298,10 +314,10 @@ class InspectorController(
     fun shouldConsumePointer(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
         if (dragMode != DragMode.None) return true
+        if (editSession.textSelectionDragActive) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
-
     fun shouldConsumeWheel(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
         if (dragMode != DragMode.None) return true
@@ -347,6 +363,10 @@ class InspectorController(
         }
         this.mouseX = mouseX
         this.mouseY = mouseY
+        if (updateActiveTextSelectionFromPointer()) {
+            updateHoverGate()
+            return
+        }
         updateHoverGate()
         if (!hoverPickEnabled) {
             clearHoveredState()
@@ -354,7 +374,6 @@ class InspectorController(
         }
         refreshHoverIfNeeded()
     }
-
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
         if (!active || delta == 0) return false
         this.mouseX = mouseX
@@ -412,37 +431,164 @@ class InspectorController(
             }
             return false
         }
+        if (handleActiveEditShortcut(keyCode)) {
+            return true
+        }
         when (keyCode) {
             KeyCodes.ESCAPE -> {
                 editSession.clearActiveEdit()
                 styleEditorError = null
+                stopActiveTextSelectionDrag()
                 return true
             }
-
             KeyCodes.ENTER -> {
                 commitActiveTextEdit()
                 return true
             }
-
+            KeyCodes.LEFT -> {
+                moveActiveCaretLeft(KeyModifiers.shiftDown)
+                return true
+            }
+            KeyCodes.RIGHT -> {
+                moveActiveCaretRight(KeyModifiers.shiftDown)
+                return true
+            }
+            KeyCodes.HOME -> {
+                moveActiveCaretBoundary(start = true, extend = KeyModifiers.shiftDown)
+                return true
+            }
+            KeyCodes.END -> {
+                moveActiveCaretBoundary(start = false, extend = KeyModifiers.shiftDown)
+                return true
+            }
             KeyCodes.BACKSPACE -> {
-                if (activeEditBuffer.isNotEmpty()) {
-                    activeEditBuffer = activeEditBuffer.dropLast(1)
+                deleteActiveBeforeCaret()
+                return true
+            }
+            KeyCodes.DELETE -> {
+                deleteActiveAfterCaret()
+                return true
+            }
+        }
+        var ch = keyChar
+        if (!TextEditOps.isPrintable(ch)) return false
+        ch = KeyInput.applyShift(ch, KeyModifiers.shiftDown)
+        replaceActiveSelection(ch.toString())
+        return true
+    }
+
+    private fun handleActiveEditShortcut(keyCode: Int): Boolean {
+        if (!KeyModifiers.shortcutDown) return false
+        when (keyCode) {
+            KeyCodes.A -> {
+                TextEditOps.selectAll(activeEditState, activeEditBuffer.length)
+                activeEditState.resetBlinkClock()
+                return true
+            }
+            KeyCodes.C -> {
+                if (activeEditState.hasSelection()) {
+                    ClipboardBridge.writeText(activeSelectedText())
+                }
+                activeEditState.resetBlinkClock()
+                return true
+            }
+            KeyCodes.X -> {
+                if (activeEditState.hasSelection()) {
+                    ClipboardBridge.writeText(activeSelectedText())
+                    replaceActiveSelection("")
+                }
+                activeEditState.resetBlinkClock()
+                return true
+            }
+            KeyCodes.V -> {
+                val paste = ClipboardBridge.readText().replace("\r", "").replace("\n", "")
+                if (paste.isNotEmpty()) {
+                    replaceActiveSelection(paste)
+                } else {
+                    activeEditState.resetBlinkClock()
                 }
                 return true
             }
-
-            KeyCodes.DELETE -> {
-                editSession.activeBuffer = ""
-                return true
-            }
+            else -> return false
         }
-        if (keyChar >= ' ' && !Character.isISOControl(keyChar)) {
-            activeEditBuffer += keyChar
-            return true
-        }
-        return false
     }
 
+    private fun activeSelectedText(): String {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        return TextEditOps.selectedText(activeEditBuffer, activeEditState)
+    }
+
+    private fun replaceActiveSelection(insert: String) {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        val (start, end) = TextEditOps.selectionOrCaretBounds(activeEditState)
+        val next = TextEditOps.replaceRange(activeEditBuffer, start, end, insert)
+        activeEditBuffer = next
+        activeEditState.caretIndex = (start + insert.length).coerceIn(0, next.length)
+        activeEditState.clearSelection()
+        activeEditState.clampToLength(next.length)
+        activeEditState.resetBlinkClock()
+    }
+
+    private fun deleteActiveBeforeCaret() {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        if (activeEditState.hasSelection()) {
+            replaceActiveSelection("")
+            return
+        }
+        val caret = activeEditState.caretIndex
+        if (caret <= 0 || activeEditBuffer.isEmpty()) return
+        val next = TextEditOps.replaceRange(activeEditBuffer, caret - 1, caret, "")
+        activeEditBuffer = next
+        activeEditState.caretIndex = (caret - 1).coerceIn(0, next.length)
+        activeEditState.clearSelection()
+        activeEditState.resetBlinkClock()
+    }
+
+    private fun deleteActiveAfterCaret() {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        if (activeEditState.hasSelection()) {
+            replaceActiveSelection("")
+            return
+        }
+        val caret = activeEditState.caretIndex
+        if (caret >= activeEditBuffer.length || activeEditBuffer.isEmpty()) return
+        val next = TextEditOps.replaceRange(activeEditBuffer, caret, caret + 1, "")
+        activeEditBuffer = next
+        activeEditState.caretIndex = caret.coerceIn(0, next.length)
+        activeEditState.clearSelection()
+        activeEditState.resetBlinkClock()
+    }
+
+    private fun moveActiveCaretLeft(extend: Boolean) {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        if (!extend && activeEditState.hasSelection()) {
+            activeEditState.caretIndex = activeEditState.selectionStart().coerceIn(0, activeEditBuffer.length)
+            activeEditState.clearSelection()
+        } else {
+            val next = (activeEditState.caretIndex - 1).coerceAtLeast(0)
+            TextEditOps.moveCaretWithSelection(activeEditState, next, activeEditBuffer.length, extend)
+        }
+        activeEditState.resetBlinkClock()
+    }
+
+    private fun moveActiveCaretRight(extend: Boolean) {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        if (!extend && activeEditState.hasSelection()) {
+            activeEditState.caretIndex = activeEditState.selectionEnd().coerceIn(0, activeEditBuffer.length)
+            activeEditState.clearSelection()
+        } else {
+            val next = (activeEditState.caretIndex + 1).coerceAtMost(activeEditBuffer.length)
+            TextEditOps.moveCaretWithSelection(activeEditState, next, activeEditBuffer.length, extend)
+        }
+        activeEditState.resetBlinkClock()
+    }
+
+    private fun moveActiveCaretBoundary(start: Boolean, extend: Boolean) {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        val next = if (start) 0 else activeEditBuffer.length
+        TextEditOps.moveCaretWithSelection(activeEditState, next, activeEditBuffer.length, extend)
+        activeEditState.resetBlinkClock()
+    }
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         if (!active) return false
         if (button != MouseButton.LEFT) {
@@ -454,6 +600,14 @@ class InspectorController(
         }
         this.mouseX = mouseX
         this.mouseY = mouseY
+        stopActiveTextSelectionDrag()
+        updateHoverGate()
+        if (hoverPickEnabled) {
+            hoverDirty = true
+            refreshHoverIfNeeded()
+        } else {
+            clearHoveredState()
+        }
         variableTooltipText = null
         if (panelState == InspectorPanelState.Minimized) {
             if (minimizedBounds.contains(mouseX, mouseY)) {
@@ -467,7 +621,10 @@ class InspectorController(
             return false
         }
 
-        val action = findPanelAction(mouseX, mouseY)
+        var action = findDropdownOptionAction(mouseX, mouseY)
+        if (action == null) {
+            action = findPanelAction(mouseX, mouseY)
+        }
         if (shouldCommitActiveEdit(action)) {
             commitActiveTextEdit()
         }
@@ -476,6 +633,10 @@ class InspectorController(
         }
         if (action != null) {
             performPanelAction(action)
+            return true
+        }
+        if (dropdownLayouts.any { it.rect.contains(mouseX, mouseY) }) {
+            editSession.closeAllDropdowns()
             return true
         }
         editSession.closeAllDropdowns()
@@ -504,6 +665,10 @@ class InspectorController(
         if (button != MouseButton.LEFT) return shouldConsumePointer(mouseX, mouseY)
         this.mouseX = mouseX
         this.mouseY = mouseY
+        if (editSession.textSelectionDragActive) {
+            stopActiveTextSelectionDrag()
+            return true
+        }
         val wasDragging = dragMode != DragMode.None
         val endedMode = dragMode
         val clickLike = !dragMoved
@@ -523,7 +688,6 @@ class InspectorController(
         }
         return true
     }
-
     fun onCapturedPointerMove(mouseX: Int, mouseY: Int, viewportWidth: Int, viewportHeight: Int) {
         if (!active || dragMode == DragMode.None) return
         this.mouseX = mouseX
@@ -549,20 +713,20 @@ class InspectorController(
         }
     }
 
-    fun appendOverlayCommands(
-        viewportWidth: Int,
-        viewportHeight: Int,
-        out: MutableList<RenderCommand>
-    ) {
+    internal fun buildDomSnapshot(viewportWidth: Int, viewportHeight: Int): InspectorDomSnapshot? {
         if (!active || viewportWidth <= 0 || viewportHeight <= 0) {
+            resetNativePresentation()
             panelActions.clear()
             dropdownOverlays.clear()
             dropdownLayouts.clear()
-            return
+            return null
         }
         viewportW = viewportWidth
         viewportH = viewportHeight
-        val currentRoot = root ?: return
+        val currentRoot = root ?: run {
+            resetNativePresentation()
+            return null
+        }
         rebindSelection()
         expandedRect = clampExpandedRect(expandedRect, viewportWidth, viewportHeight)
         clampMinimizedPosition(viewportWidth, viewportHeight)
@@ -573,21 +737,811 @@ class InspectorController(
             clearHoveredState()
         }
 
-        if (hoverPickEnabled) {
-            hoveredNode?.let { appendHighlightCommands(it, hovered = true, selected = false, out = out) }
-        }
-        selectedNode?.let { appendHighlightCommands(it, hovered = false, selected = true, out = out) }
-        if (panelState == InspectorPanelState.Minimized) {
-            appendMinimizedPanel(viewportWidth, viewportHeight, out)
+        return if (panelState == InspectorPanelState.Minimized) {
+            buildMinimizedDomSnapshot(viewportWidth, viewportHeight)
         } else {
-            appendPanel(currentRoot, viewportWidth, viewportHeight, out)
-            appendVariableTooltip(viewportWidth, viewportHeight, out)
-        }
-        if (hoverPickEnabled) {
-            appendCursorTooltip(viewportWidth, viewportHeight, out)
+            buildExpandedDomSnapshot(currentRoot, viewportWidth, viewportHeight)
         }
     }
 
+    private fun buildExpandedDomSnapshot(
+        root: DOMNode,
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): InspectorDomSnapshot {
+        val clamped = clampExpandedRect(expandedRect, viewportWidth, viewportHeight)
+        expandedRect = clamped
+        panelBounds = clamped
+        minimizedBounds = Rect(0, 0, 0, 0)
+        resetNativePresentation()
+        panelActions.clear()
+        dropdownOverlays.clear()
+        dropdownLayouts.clear()
+
+        val headerRect =
+            Rect(clamped.x + 6, clamped.y + 5, clamped.width - 12, (titleFontSizePx + 16).coerceAtLeast(44))
+        headerBounds = headerRect
+        val pickOn = mode == InspectorMode.Pick
+        val selectedShort = selectedNode?.key?.toString()?.take(18) ?: "none"
+        val headerText = "Inspector  Pick:${if (pickOn) "ON" else "OFF"}  Sel:$selectedShort"
+
+        val headerButtonHeight = (secondaryFontSizePx + 10).coerceAtLeast(26)
+        val headerButtonY = headerRect.y + ((headerRect.height - headerButtonHeight) / 2)
+        val minimizeRect = Rect(headerRect.x + headerRect.width - 96, headerButtonY, 86, headerButtonHeight)
+        val pickRect = Rect(headerRect.x + headerRect.width - 264, headerButtonY, 160, headerButtonHeight)
+        panelActions += PanelAction(pickRect, ActionKind.TogglePick)
+        panelActions += PanelAction(minimizeRect, ActionKind.Minimize)
+
+        val bodyTop = headerRect.y + headerRect.height + 6
+        val bodyRect = Rect(
+            clamped.x + 6,
+            bodyTop,
+            clamped.width - 12,
+            (clamped.height - (bodyTop - clamped.y) - 4).coerceAtLeast(24)
+        )
+        contentBounds = bodyRect
+
+        val infoLines = ArrayList<String>(128)
+        var parentLabel: String? = null
+        val childLabels = ArrayList<String>(64)
+        var styleLines: List<String> = emptyList()
+
+        var y = bodyRect.y
+        val maxChars = estimateMaxChars(bodyRect.width - 12, textFontSizePx)
+        val buttonLabelMaxChars = estimateMaxChars((clamped.width - 32).coerceAtLeast(40), secondaryFontSizePx)
+        y = appendDomLine(infoLines, y, "F8 toggle, F9 mode, Esc cancel pick", maxChars)
+        y = appendDomLine(infoLines, y, "Hovered: ${hoveredNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
+        y = appendDomLine(infoLines, y, "Selected: ${selectedNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
+        y = appendDomLine(infoLines, y, "Inspector handled last: $lastHandledPointerEvent", maxChars)
+        y = appendDomLine(infoLines, y, "Pointer over Inspector: $pointerOverInspectorUi", maxChars)
+        y = appendDomLine(infoLines, y, "Hover pick enabled: $hoverPickEnabled", maxChars)
+
+        val selected = selectedNode
+        captureNativeHighlightsAndTooltips(selected, viewportWidth, viewportHeight)
+        if (selected == null) {
+            y = appendDomLine(infoLines, y, "Click element in Pick mode to inspect.", maxChars)
+            panelContentHeight = (y - bodyRect.y).coerceAtLeast(0)
+            panelScrollY = 0
+            updateScrollbarGeometry(bodyRect)
+            return InspectorDomSnapshot(
+                panelState = InspectorPanelState.Expanded,
+                panelRect = clamped,
+                headerRect = headerRect,
+                bodyRect = bodyRect,
+                headerText = headerText,
+                minimizedLines = emptyList(),
+                infoLines = infoLines,
+                parentLabel = null,
+                childLabels = emptyList(),
+                styleEditorHeight = 0,
+                styleLines = emptyList()
+            )
+        }
+
+        val pathLines = wrapPathLines(pathToNode(root, selected), maxChars)
+        pathLines.forEach { line ->
+            infoLines += line
+            y += lineHeightPx
+        }
+
+        val boxes = computeBoxes(selected)
+        y = appendDomLine(infoLines, y, "Border box: ${rectLabel(boxes.border)}", maxChars)
+        y = appendDomLine(infoLines, y, "Content box: ${rectLabel(boxes.content)}", maxChars)
+        y = appendDomLine(infoLines, y, "Margin box: ${rectLabel(boxes.margin)}", maxChars)
+        boxes.parentContent?.let {
+            y = appendDomLine(infoLines, y, "Parent content: ${rectLabel(it)}", maxChars)
+        }
+        val localPos = selected.parent?.let { parent ->
+            val parentContent = contentRect(parent)
+            "${selected.bounds.x - parentContent.x},${selected.bounds.y - parentContent.y}"
+        } ?: "${selected.bounds.x},${selected.bounds.y}"
+        y = appendDomLine(infoLines, y, "Local pos: $localPos", maxChars)
+        selected.inspectorScrollOffset()?.let { (sx, sy) ->
+            y = appendDomLine(infoLines, y, "Scroll: x=$sx y=$sy", maxChars)
+        }
+
+        val parent = selected.parent
+        if (parent != null) {
+            parentLabel = ellipsize("[Parent] ${nodeLabel(parent)}", buttonLabelMaxChars)
+            val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, rowHeightPx)
+            panelActions += PanelAction(row, ActionKind.Parent)
+            y += rowHeightPx + 2
+        }
+
+        val children = selected.children.filter { it.display != Display.None }
+        if (children.isNotEmpty()) {
+            y = appendDomLine(infoLines, y, "Children:", maxChars)
+            for (index in children.indices) {
+                val child = children[index]
+                childLabels += ellipsize("[$index] ${nodeLabel(child)}", buttonLabelMaxChars)
+                val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, rowHeightPx)
+                panelActions += PanelAction(row, ActionKind.Child, index)
+                y += rowHeightPx + 2
+            }
+        }
+
+        val inspection = selectionStyle(selected)
+        val styleEditorStartY = y + 2
+        y = buildNativeStyleEditorSection(
+            panelRect = clamped,
+            selected = selected,
+            inspection = inspection,
+            startY = styleEditorStartY
+        )
+        val styleEditorHeight = (y - styleEditorStartY).coerceAtLeast(0)
+
+        y = appendDomLine(infoLines, y, "Computed styles:", maxChars)
+        styleLines = styleRows(inspection).flatMap { line ->
+            wrapText(line, maxChars)
+        }
+        y += styleLines.size * lineHeightPx
+
+        panelContentHeight = (y - bodyRect.y).coerceAtLeast(0)
+        val maxScroll = maxOf(0, panelContentHeight - bodyRect.height)
+        panelScrollY = panelScrollY.coerceIn(0, maxScroll)
+        updateScrollbarGeometry(bodyRect)
+
+        return InspectorDomSnapshot(
+            panelState = InspectorPanelState.Expanded,
+            panelRect = clamped,
+            headerRect = headerRect,
+            bodyRect = bodyRect,
+            headerText = headerText,
+            minimizedLines = emptyList(),
+            infoLines = infoLines,
+            parentLabel = parentLabel,
+            childLabels = childLabels,
+            styleEditorHeight = styleEditorHeight,
+            styleLines = styleLines
+        )
+    }
+
+    private fun buildMinimizedDomSnapshot(
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): InspectorDomSnapshot {
+        val chipWidth = minimizedWidth().coerceAtLeast(minChipWidth)
+        val chipHeight = minimizedHeight()
+        clampMinimizedPosition(viewportWidth, viewportHeight)
+        val chipRect = Rect(minimizedPosX, minimizedPosY, chipWidth, chipHeight)
+        panelBounds = chipRect
+        minimizedBounds = chipRect
+        headerBounds = Rect(0, 0, 0, 0)
+        contentBounds = Rect(0, 0, 0, 0)
+        resetNativePresentation()
+        panelActions.clear()
+        dropdownOverlays.clear()
+        dropdownLayouts.clear()
+        panelScrollY = 0
+        panelContentHeight = 0
+        scrollbarTrackRect = Rect(0, 0, 0, 0)
+        scrollbarThumbRect = Rect(0, 0, 0, 0)
+
+        val badge = if (mode == InspectorMode.Pick) "[Pick]" else "[Locked]"
+        val selectedShort = selectedNode?.key?.toString()?.let { " $it" } ?: ""
+        val maxChars = estimateMaxChars(chipRect.width - 12, secondaryFontSizePx)
+        val lines = wrapMinimizedLabel("Inspector $badge$selectedShort", maxChars, maxLines = 2)
+        return InspectorDomSnapshot(
+            panelState = InspectorPanelState.Minimized,
+            panelRect = chipRect,
+            headerRect = null,
+            bodyRect = null,
+            headerText = "Inspector",
+            minimizedLines = lines,
+            infoLines = emptyList(),
+            parentLabel = null,
+            childLabels = emptyList(),
+            styleEditorHeight = 0,
+            styleLines = emptyList()
+        )
+    }
+
+    private fun appendDomLine(
+        lines: MutableList<String>,
+        y: Int,
+        text: String,
+        maxChars: Int
+    ): Int {
+        val wrapped = wrapText(text, maxChars)
+        lines += wrapped
+        return y + wrapped.size * lineHeightPx
+    }
+
+    private fun captureNativeHighlightsAndTooltips(
+        selected: DOMNode?,
+        viewportWidth: Int,
+        viewportHeight: Int
+    ) {
+        nativeSelectedHighlight = selected?.let { node ->
+            val boxes = computeBoxes(node)
+            InspectorHighlightSnapshot(
+                marginRect = boxes.margin,
+                borderRect = boxes.border,
+                paddingRect = boxes.padding,
+                contentRect = boxes.content,
+                parentContentRect = boxes.parentContent
+            )
+        }
+        if (hoverPickEnabled) {
+            val hovered = hoveredNode
+            nativeHoveredHighlight = hovered?.let { node ->
+                val boxes = computeBoxes(node)
+                InspectorHighlightSnapshot(
+                    marginRect = boxes.margin,
+                    borderRect = boxes.border,
+                    paddingRect = boxes.padding,
+                    contentRect = boxes.content,
+                    parentContentRect = boxes.parentContent
+                )
+            }
+            if (hovered != null) {
+                val label = resolveTooltipLabel(hovered)
+                val boxW = (label.length * (secondaryFontSizePx / 2) + 18).coerceIn(140, viewportWidth - 8)
+                val boxH = (secondaryFontSizePx + 10).coerceAtLeast(26)
+                val tooltipRect = resolveTooltipRect(viewportWidth, viewportHeight, boxW, boxH)
+                nativeCursorTooltip = InspectorTooltipSnapshot(text = label, rect = tooltipRect)
+            }
+        }
+    }
+
+    private fun buildNativeStyleEditorSection(
+        panelRect: Rect,
+        selected: DOMNode,
+        inspection: StyleInspection,
+        startY: Int
+    ): Int {
+        var y = startY + lineHeightPx
+        nativeVariableTooltip = null
+
+        val rowLeft = panelRect.x + 10
+        val rowWidth = panelRect.width - 20
+        val btnWidth = 40
+        val gap = 6
+        val controlHeight = (rowHeightPx - 8).coerceAtLeast(22)
+        val labelLineHeight = (secondaryFontSizePx - 2).coerceAtLeast(18)
+        val properties = editablePropertiesFor(selected)
+        for (property in properties) {
+            val overrideExpr = StyleEngine.inspectorOverrideFor(selected, property)
+            val effectiveValue = overrideExpr?.let(::expressionLabel) ?: literalFromComputed(inspection.computed, property)
+            val sourceTag = if (overrideExpr != null) "ins" else (inspection.propertySources[property]?.source ?: "default")
+
+            val labelText = "${property.key} [$sourceTag]"
+            val buttonsRight = rowLeft + rowWidth - 8
+            val maxLabelWidth = (rowWidth - btnWidth - gap - 36).coerceAtLeast(80)
+            val labelWidth = (rowWidth * 0.40f).toInt().coerceIn(80, maxLabelWidth)
+            val labelMaxChars = estimateMaxChars((labelWidth - 12).coerceAtLeast(24), labelLineHeight)
+            val labelLineCount = wrapText(labelText, labelMaxChars).size.coerceAtLeast(1)
+            val rowHeight = maxOf(rowHeightPx, labelLineCount * labelLineHeight + 10, controlHeight + 8)
+            val rowRect = Rect(rowLeft, y - panelScrollY, rowWidth, rowHeight)
+            val controlX = rowRect.x + labelWidth
+            val controlWidth = (buttonsRight - controlX - btnWidth - gap).coerceAtLeast(36)
+            val controlY = rowRect.y + ((rowRect.height - controlHeight) / 2)
+            val resetRect = Rect(buttonsRight - btnWidth, controlY, btnWidth, controlHeight)
+            panelActions += PanelAction(
+                bounds = resetRect,
+                kind = ActionKind.EditProperty,
+                property = property,
+                editOperation = EditOperation.ResetProperty
+            )
+
+            val editor = InspectorEditorRegistry.describe(
+                property = property,
+                literal = effectiveValue,
+                expression = overrideExpr
+            )
+            val contentRect = Rect(controlX, controlY, controlWidth, controlHeight)
+
+            var rowSnapshot = InspectorStyleEditorRowSnapshot(
+                property = property,
+                sourceTag = sourceTag,
+                rowRect = rowRect,
+                labelText = labelText,
+                resetRect = resetRect,
+                editorKind = editor.kind,
+                controlRect = contentRect,
+                controlValue = effectiveValue,
+                controlOpen = false,
+                controlHovered = false,
+                inputActive = false,
+                decrementRect = null,
+                inputRect = null,
+                incrementRect = null,
+                unitRect = null,
+                unitValue = null,
+                unitOpen = false,
+                colorPreviewRect = null,
+                colorPreviewColor = null
+            )
+
+            when (editor.kind) {
+                InspectorEditorKind.EnumSelect,
+                InspectorEditorKind.FontSelect -> {
+                    val isOpen = openValueSelectProperty == property
+                    panelActions += PanelAction(
+                        bounds = contentRect,
+                        kind = ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.ToggleValueSelect
+                    )
+                    rowSnapshot = rowSnapshot.copy(
+                        controlOpen = isOpen,
+                        controlHovered = contentRect.contains(mouseX, mouseY)
+                    )
+                }
+
+                InspectorEditorKind.StringInput -> {
+                    val isActiveInput = activeEditProperty == property && !activeEditIsNumeric
+                    val shownValue = if (isActiveInput) activeBufferWithCaret() else effectiveValue
+                    panelActions += PanelAction(
+                        bounds = contentRect,
+                        kind = ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.BeginTextEdit
+                    )
+                    var previewRect: Rect? = null
+                    var previewColor: Int? = null
+                    if (editor.showColorPreview) {
+                        previewRect = Rect(
+                            x = contentRect.x + contentRect.width - (contentRect.height - 8).coerceAtLeast(10) - 6,
+                            y = contentRect.y + 4,
+                            width = (contentRect.height - 8).coerceAtLeast(10),
+                            height = (contentRect.height - 8).coerceAtLeast(10)
+                        )
+                        previewColor = runCatching { parseColor(if (isActiveInput) activeEditBuffer else effectiveValue) }.getOrNull()
+                        panelActions += PanelAction(
+                            bounds = previewRect,
+                            kind = ActionKind.EditProperty,
+                            property = property,
+                            editOperation = EditOperation.OpenColorPicker
+                        )
+                    }
+                    rowSnapshot = rowSnapshot.copy(
+                        controlValue = shownValue,
+                        inputActive = isActiveInput,
+                        colorPreviewRect = previewRect,
+                        colorPreviewColor = previewColor
+                    )
+                }
+
+                InspectorEditorKind.NumericInput -> {
+                    val step = StylePropertyRegistry.descriptor(property).numericStep
+                    val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                    val numericValue = if (activeEditProperty == property && activeEditIsNumeric) {
+                        activeEditBuffer
+                    } else {
+                        parsed?.numberText ?: "0"
+                    }
+                    val unit = if (activeEditProperty == property && activeEditIsNumeric) {
+                        activeEditUnit ?: parsed?.unit ?: CssUnit.Px
+                    } else {
+                        parsed?.unit ?: CssUnit.Px
+                    }
+                    val buttonWidth = 34
+                    val unitWidth = if (editor.supportsUnits) 68 else 0
+                    val inputWidth =
+                        (contentRect.width - buttonWidth * 2 - unitWidth - (if (editor.supportsUnits) 12 else 6))
+                            .coerceAtLeast(64)
+                    val decRect = Rect(contentRect.x, contentRect.y, buttonWidth, contentRect.height)
+                    val inputRect = Rect(decRect.x + decRect.width + 4, contentRect.y, inputWidth, contentRect.height)
+                    val incRect = Rect(inputRect.x + inputRect.width + 4, contentRect.y, buttonWidth, contentRect.height)
+                    panelActions += PanelAction(
+                        decRect,
+                        ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.Decrement,
+                        step = step
+                    )
+                    panelActions += PanelAction(
+                        inputRect,
+                        ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.BeginTextEdit
+                    )
+                    panelActions += PanelAction(
+                        incRect,
+                        ActionKind.EditProperty,
+                        property = property,
+                        editOperation = EditOperation.Increment,
+                        step = step
+                    )
+                    var unitRect: Rect? = null
+                    if (editor.supportsUnits) {
+                        unitRect = Rect(incRect.x + incRect.width + 4, contentRect.y, unitWidth, contentRect.height)
+                        panelActions += PanelAction(
+                            bounds = unitRect,
+                            kind = ActionKind.EditProperty,
+                            property = property,
+                            editOperation = EditOperation.ToggleUnitSelect
+                        )
+                    }
+                    rowSnapshot = rowSnapshot.copy(
+                        controlValue = if (activeEditProperty == property && activeEditIsNumeric) activeBufferWithCaret() else numericValue,
+                        inputActive = activeEditProperty == property && activeEditIsNumeric,
+                        decrementRect = decRect,
+                        inputRect = inputRect,
+                        incrementRect = incRect,
+                        unitRect = unitRect,
+                        unitValue = unit.token,
+                        unitOpen = openUnitSelectProperty == property,
+                        controlOpen = false
+                    )
+                }
+            }
+
+            if (overrideExpr is StyleExpression.VariableRef && rowRect.contains(mouseX, mouseY)) {
+                val resolved = StyleEngine.resolveInspectorVariable(overrideExpr.name)
+                val body = resolved.getOrElse { "unresolved (${it.message ?: "unknown error"})" }
+                nativeVariableTooltip = InspectorTooltipSnapshot(
+                    text = "${overrideExpr.name} = $body",
+                    rect = Rect(
+                        x = (rowRect.x + rowRect.width - 360).coerceAtLeast(panelBounds.x + 8),
+                        y = (rowRect.y - lineHeightPx - 8).coerceAtLeast(panelBounds.y + 8),
+                        width = 352,
+                        height = lineHeightPx + 10
+                    )
+                )
+            }
+
+            if (openValueSelectProperty == property && editor.options.isNotEmpty()) {
+                buildNativeDropdownSnapshot(
+                    x = contentRect.x,
+                    y = contentRect.y + contentRect.height + 2,
+                    width = contentRect.width,
+                    options = editor.options,
+                    property = property,
+                    operation = EditOperation.SelectValueOption
+                )
+                rowSnapshot = rowSnapshot.copy(controlOpen = true)
+            }
+            if (openUnitSelectProperty == property && editor.supportsUnits) {
+                val units = InspectorEditorRegistry.unitOptions().map { it.token }
+                buildNativeDropdownSnapshot(
+                    x = contentRect.x + contentRect.width - 90,
+                    y = contentRect.y + contentRect.height + 2,
+                    width = 90,
+                    options = units,
+                    property = property,
+                    operation = EditOperation.SelectUnitOption
+                )
+                rowSnapshot = rowSnapshot.copy(unitOpen = true)
+            }
+
+            nativeStyleEditorRows += rowSnapshot
+            y += rowHeight + 4
+        }
+
+        val actionHeight = (secondaryFontSizePx + 10).coerceAtLeast(28)
+        val resetRect = Rect(rowLeft, y - panelScrollY, 140, actionHeight)
+        val clearRect = Rect(rowLeft + 148, y - panelScrollY, 160, actionHeight)
+        panelActions += PanelAction(resetRect, ActionKind.ResetSelectedOverrides)
+        panelActions += PanelAction(clearRect, ActionKind.ClearAllOverrides)
+        nativeStyleEditorResetRect = resetRect
+        nativeStyleEditorClearRect = clearRect
+        y += actionHeight + 4
+
+        return y
+    }
+
+    private fun buildNativeDropdownSnapshot(
+        x: Int,
+        y: Int,
+        width: Int,
+        options: List<String>,
+        property: StyleProperty,
+        operation: EditOperation
+    ) {
+        if (options.isEmpty()) return
+        val maxRows = 8
+        val visibleRows = minOf(maxRows, options.size)
+        val maxFirst = (options.size - visibleRows).coerceAtLeast(0)
+        val isUnit = operation == EditOperation.SelectUnitOption
+        val rawFirst = if (isUnit) openUnitSelectScrollIndex else openValueSelectScrollIndex
+        val first = rawFirst.coerceIn(0, maxFirst)
+        if (isUnit) {
+            openUnitSelectScrollIndex = first
+        } else {
+            openValueSelectScrollIndex = first
+        }
+        val shown = options.subList(first, first + visibleRows)
+        val optionHeight = rowHeightPx
+        val popupHeight = optionHeight * shown.size + 6
+        val viewportWidth = viewportW.coerceAtLeast(1)
+        val viewportHeight = viewportH.coerceAtLeast(1)
+        val clampedX = x.coerceIn(2, (viewportWidth - width - 2).coerceAtLeast(2))
+        val clampedY = y.coerceIn(2, (viewportHeight - popupHeight - 2).coerceAtLeast(2))
+        val popupRect = Rect(clampedX, clampedY, width, popupHeight)
+        dropdownLayouts += DropdownLayout(
+            rect = popupRect,
+            property = property,
+            isUnit = isUnit,
+            totalOptions = options.size,
+            visibleRows = visibleRows
+        )
+
+        var optionY = popupRect.y + 3
+        val optionSnapshots = ArrayList<InspectorDropdownOptionSnapshot>(shown.size)
+        shown.forEach { option ->
+            val optionRect = Rect(popupRect.x + 3, optionY, popupRect.width - 6, optionHeight - 2)
+            val hovered = optionRect.contains(mouseX, mouseY)
+            optionSnapshots += InspectorDropdownOptionSnapshot(
+                rect = optionRect,
+                text = ellipsize(option, 30),
+                value = option,
+                hovered = hovered
+            )
+            panelActions += PanelAction(
+                bounds = optionRect,
+                kind = ActionKind.EditProperty,
+                property = property,
+                editOperation = operation,
+                payload = option
+            )
+            optionY += optionHeight
+        }
+
+        val footer = if (options.size > visibleRows) {
+            "${first + 1}-${first + visibleRows}/${options.size}"
+        } else {
+            null
+        }
+        nativeDropdowns += InspectorDropdownSnapshot(
+            popupRect = popupRect,
+            property = property,
+            unitSelect = isUnit,
+            options = optionSnapshots,
+            footerText = footer
+        )
+    }
+    private fun updateScrollbarGeometry(bodyRect: Rect) {
+        if (panelContentHeight <= bodyRect.height || bodyRect.height <= 0) {
+            scrollbarTrackRect = Rect(0, 0, 0, 0)
+            scrollbarThumbRect = Rect(0, 0, 0, 0)
+            return
+        }
+        val trackWidth = 4
+        val track = Rect(
+            bodyRect.x + bodyRect.width - trackWidth - 2,
+            bodyRect.y + 2,
+            trackWidth,
+            (bodyRect.height - 4).coerceAtLeast(8)
+        )
+        val maxScroll = (panelContentHeight - bodyRect.height).coerceAtLeast(1)
+        val thumbHeight =
+            ((track.height.toFloat() * bodyRect.height.toFloat() / panelContentHeight.toFloat()).toInt()).coerceIn(
+                10,
+                track.height
+            )
+        val travel = (track.height - thumbHeight).coerceAtLeast(0)
+        val thumbY = track.y + ((panelScrollY.toFloat() / maxScroll.toFloat()) * travel.toFloat()).toInt()
+        scrollbarTrackRect = track
+        scrollbarThumbRect = Rect(track.x, thumbY, track.width, thumbHeight)
+    }
+    internal fun debugPickToggleBounds(): Rect? {
+        return panelActions.lastOrNull { it.kind == ActionKind.TogglePick }?.bounds
+    }
+
+    internal fun debugMinimizeBounds(): Rect? {
+        return panelActions.lastOrNull { it.kind == ActionKind.Minimize }?.bounds
+    }
+
+    internal fun debugContentRect(): Rect = contentBounds
+
+    internal fun debugScrollbarThumbRect(): Rect = scrollbarThumbRect
+
+    internal fun debugScrollbarTrackRect(): Rect = scrollbarTrackRect
+
+    internal fun debugSelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
+
+    internal fun debugHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
+
+    internal fun debugCursorTooltip(): InspectorTooltipSnapshot? = nativeCursorTooltip
+
+    internal fun debugVariableTooltip(): InspectorTooltipSnapshot? = nativeVariableTooltip
+
+    internal fun debugStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = nativeStyleEditorRows
+
+    internal fun debugStyleEditorResetRect(): Rect = nativeStyleEditorResetRect
+
+    internal fun debugStyleEditorClearRect(): Rect = nativeStyleEditorClearRect
+
+    internal fun debugStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
+
+    internal fun debugActiveEditBuffer(): String? = activeEditProperty?.let { activeEditBuffer }
+
+    internal fun debugActiveEditCaret(): Int? = activeEditProperty?.let {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        activeEditState.caretIndex
+    }
+
+    internal fun debugActiveEditSelectionRange(): Pair<Int, Int>? = activeEditProperty?.let {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        activeEditState.selectionStart() to activeEditState.selectionEnd()
+    }
+
+    internal fun onPickTogglePressed() {
+        setPickMode(mode != InspectorMode.Pick)
+    }
+
+    internal fun onPanelMinimizeTogglePressed() {
+        if (panelState == InspectorPanelState.Minimized) {
+            restore()
+        } else {
+            minimize()
+        }
+    }
+
+    internal fun onSelectParentPressed() {
+        selectParent()
+        mode = InspectorMode.Locked
+    }
+
+    internal fun onSelectChildPressed(index: Int) {
+        selectChild(index)
+        mode = InspectorMode.Locked
+    }
+
+    internal fun onResetPropertyPressed(property: StyleProperty): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.ResetProperty,
+            step = 1f,
+            payload = null,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onToggleValueSelectPressed(property: StyleProperty): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.ToggleValueSelect,
+            step = 1f,
+            payload = null,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onSelectValueOptionPressed(property: StyleProperty, option: String): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.SelectValueOption,
+            step = 1f,
+            payload = option,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onNumericIncrementPressed(property: StyleProperty): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.Increment,
+            step = StylePropertyRegistry.descriptor(property).numericStep,
+            payload = null,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onNumericDecrementPressed(property: StyleProperty): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.Decrement,
+            step = StylePropertyRegistry.descriptor(property).numericStep,
+            payload = null,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onToggleUnitSelectPressed(property: StyleProperty): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.ToggleUnitSelect,
+            step = 1f,
+            payload = null,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onSelectUnitOptionPressed(property: StyleProperty, option: String): Boolean {
+        val selected = selectedNode ?: return false
+        applyStyleEdit(
+            selected = selected,
+            property = property,
+            operation = EditOperation.SelectUnitOption,
+            step = 1f,
+            payload = option,
+            actionBounds = Rect(0, 0, 0, 0)
+        )
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onOpenColorPickerPressed(property: StyleProperty, anchorRect: Rect): Boolean {
+        val selected = selectedNode ?: return false
+        openColorPicker(selected, property, anchorRect)
+        mode = InspectorMode.Locked
+        return true
+    }
+
+    internal fun onResetSelectedOverridesPressed() {
+        selectedNode?.let { selected ->
+            StyleEngine.clearInspectorOverride(selected)
+            styleEditorError = null
+            cachedStyle = null
+        }
+    }
+
+    internal fun onClearAllOverridesPressed() {
+        StyleEngine.clearAllInspectorOverrides()
+        styleEditorError = null
+        cachedStyle = null
+    }
+
+    internal fun debugApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
+        val selected = selectedNode ?: return false
+        val normalized = literal.trim()
+        return runCatching {
+            StyleEngine.setInspectorOverrideLiteral(selected, property, normalized).getOrThrow()
+            cachedStyle = null
+            styleEditorError = null
+            true
+        }.getOrElse { error ->
+            styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
+            false
+        }
+    }
+
+    internal fun debugApplyNumericOverride(property: StyleProperty, numericLiteral: String, unitToken: String?): Boolean {
+        val selected = selectedNode ?: return false
+        val numberText = numericLiteral.trim()
+        if (numberText.isEmpty() || numberText == "-" || numberText == "." || numberText == "-.") {
+            return true
+        }
+        return runCatching {
+            val unit = parseCssUnitToken(unitToken ?: "px")
+            val formatted = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+            StyleEngine.setInspectorOverrideLiteral(selected, property, formatted).getOrThrow()
+            cachedStyle = null
+            styleEditorError = null
+            true
+        }.getOrElse { error ->
+            styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
+            false
+        }
+    }
+
+    private fun resetNativePresentation() {
+        nativeSelectedHighlight = null
+        nativeHoveredHighlight = null
+        nativeCursorTooltip = null
+        nativeVariableTooltip = null
+        nativeStyleEditorRows.clear()
+        nativeDropdowns.clear()
+        nativeStyleEditorResetRect = Rect(0, 0, 0, 0)
+        nativeStyleEditorClearRect = Rect(0, 0, 0, 0)
+    }
     private fun selectHovered(lock: Boolean) {
         val hovered = hoveredNode ?: return
         selectedNode = hovered
@@ -628,6 +1582,7 @@ class InspectorController(
         editSession.resetAll()
         variableTooltipText = null
         variableTooltipRect = Rect(0, 0, 0, 0)
+        resetNativePresentation()
         colorPickerManager.close()
     }
 
@@ -776,6 +1731,7 @@ class InspectorController(
         panelBounds = clamped
         minimizedBounds = Rect(0, 0, 0, 0)
         contentBounds = Rect(0, 0, 0, 0)
+        resetNativePresentation()
         panelActions.clear()
         dropdownOverlays.clear()
         dropdownLayouts.clear()
@@ -1021,54 +1977,34 @@ class InspectorController(
 
     private fun styleRows(inspection: StyleInspection): List<String> {
         val computed = inspection.computed
-        val rows = ArrayList<String>(24)
-        val values = linkedMapOf(
-            StyleProperty.DISPLAY to computed.display.name,
-            StyleProperty.WIDTH to (computed.width?.toCssLiteral() ?: "auto"),
-            StyleProperty.HEIGHT to (computed.height?.toCssLiteral() ?: "auto"),
-            StyleProperty.MARGIN to spacingLengthLabel(computed.margin),
-            StyleProperty.PADDING to spacingLengthLabel(computed.padding),
-            StyleProperty.BORDER_WIDTH to computed.borderWidth.toCssLiteral(),
-            StyleProperty.BORDER_COLOR to colorLabel(computed.borderColor),
-            StyleProperty.BACKGROUND_COLOR to (computed.backgroundColor?.let(::colorLabel) ?: "none"),
-            StyleProperty.FOREGROUND_COLOR to colorLabel(computed.foregroundColor),
-            StyleProperty.FONT_ID to (computed.fontId ?: "minecraft"),
-            StyleProperty.FONT_SIZE to (computed.fontSizeValue?.toCssLiteral() ?: (computed.fontSize?.let(::pxLiteral)
-                ?: "auto")),
-            StyleProperty.FONT_WEIGHT to computed.fontWeight.name.lowercase(),
-            StyleProperty.FONT_STYLE to computed.fontStyle.name.lowercase(),
-            StyleProperty.TEXT_DECORATION to computed.textDecoration.name,
-            StyleProperty.OBFUSCATED to computed.obfuscated.toString(),
-            StyleProperty.GAP to computed.gap.toCssLiteral(),
-            StyleProperty.FLEX_DIRECTION to computed.flexDirection.name,
-            StyleProperty.JUSTIFY_CONTENT to computed.justifyContent.name,
-            StyleProperty.ALIGN_ITEMS to computed.alignItems.name,
-            StyleProperty.GRID_COLUMNS to computed.gridColumns.toString(),
-            StyleProperty.GRID_ROWS to (computed.gridRows?.toString() ?: "auto"),
-            StyleProperty.GRID_COLUMN_SPAN to computed.gridColumnSpan.toString(),
-            StyleProperty.GRID_ROW_SPAN to computed.gridRowSpan.toString(),
-            StyleProperty.TEXT_WRAP to computed.textWrap.name,
-            StyleProperty.TEXT_FORMATTING to computed.textFormatting.name,
-            StyleProperty.TRANSFORM to "tx=${computed.transform.translateX},ty=${computed.transform.translateY},sx=${computed.transform.scaleX},sy=${computed.transform.scaleY},rot=${computed.transform.rotateDeg}",
-            StyleProperty.TRANSFORM_ORIGIN to "${computed.transformOrigin.originX} ${computed.transformOrigin.originY}",
-            StyleProperty.OPACITY to formatFloatLiteral(computed.opacity)
-        )
-        values.forEach { (property, value) ->
+        val rows = ArrayList<String>(StyleProperty.entries.size + 8)
+        for (property in StyleProperty.entries) {
+            val value = literalFromComputed(computed, property)
             val source = inspection.propertySources[property]
             val sourceLabel = source?.source ?: "default"
             rows += "${property.key}: $value <- $sourceLabel"
         }
         if (inspection.matchedRules.isNotEmpty()) {
             rows += "matched rules:"
-            inspection.matchedRules.take(4).forEach { row ->
+            inspection.matchedRules.forEach { row ->
                 rows += "  $row"
             }
         }
         return rows
     }
-
     private fun findPanelAction(mouseX: Int, mouseY: Int): PanelAction? {
         return panelActions.lastOrNull { it.bounds.contains(mouseX, mouseY) }
+    }
+
+    private fun findDropdownOptionAction(mouseX: Int, mouseY: Int): PanelAction? {
+        val layout = dropdownLayouts.lastOrNull { it.rect.contains(mouseX, mouseY) } ?: return null
+        val expectedOp = if (layout.isUnit) EditOperation.SelectUnitOption else EditOperation.SelectValueOption
+        return panelActions.lastOrNull { action ->
+            action.kind == ActionKind.EditProperty &&
+                    action.property == layout.property &&
+                    action.editOperation == expectedOp &&
+                    action.bounds.contains(mouseX, mouseY)
+        }
     }
 
     internal fun debugColorPickerActionBounds(property: StyleProperty): Rect? {
@@ -1173,6 +2109,10 @@ class InspectorController(
 
         val rowLeft = panelRect.x + 10
         val rowWidth = panelRect.width - 20
+        val btnWidth = 40
+        val gap = 6
+        val controlHeight = (rowHeightPx - 8).coerceAtLeast(22)
+        val labelLineHeight = (secondaryFontSizePx - 2).coerceAtLeast(18)
         val properties = editablePropertiesFor(selected)
         for (property in properties) {
             y = appendEditablePropertyRow(
@@ -1669,7 +2609,7 @@ class InspectorController(
                     StyleEngine.setInspectorOverrideLiteral(selected, property, next).getOrThrow()
                 }
 
-                EditOperation.BeginTextEdit -> beginTextEdit(selected, property)
+                EditOperation.BeginTextEdit -> beginTextEdit(selected, property, actionBounds)
                 EditOperation.OpenColorPicker -> openColorPicker(selected, property, actionBounds)
                 EditOperation.ToggleValueSelect -> {
                     val wasOpen = openValueSelectProperty == property
@@ -1714,32 +2654,85 @@ class InspectorController(
         }
     }
 
-    private fun beginTextEdit(selected: DOMNode, property: StyleProperty) {
-        val current = literalForEdit(selected, property)
-        val descriptor = InspectorEditorRegistry.describe(
-            property = property,
-            literal = current,
-            expression = StyleEngine.inspectorOverrideFor(selected, property)
-        )
-        if (descriptor.kind == InspectorEditorKind.NumericInput) {
-            val parsed = InspectorEditorRegistry.parseNumberUnit(current)
-            editSession.begin(
+    private fun beginTextEdit(selected: DOMNode, property: StyleProperty, actionBounds: Rect) {
+        if (activeEditProperty != property) {
+            val current = literalForEdit(selected, property)
+            val descriptor = InspectorEditorRegistry.describe(
                 property = property,
-                initialBuffer = parsed?.numberText ?: "0",
-                initialUnit = parsed?.unit ?: CssUnit.Px,
-                isNumeric = true
+                literal = current,
+                expression = StyleEngine.inspectorOverrideFor(selected, property)
             )
+            if (descriptor.kind == InspectorEditorKind.NumericInput) {
+                val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                editSession.begin(
+                    property = property,
+                    initialBuffer = parsed?.numberText ?: "0",
+                    initialUnit = parsed?.unit ?: CssUnit.Px,
+                    isNumeric = true
+                )
+            } else {
+                editSession.begin(
+                    property = property,
+                    initialBuffer = current,
+                    initialUnit = null,
+                    isNumeric = false
+                )
+            }
         } else {
-            editSession.begin(
-                property = property,
-                initialBuffer = current,
-                initialUnit = null,
-                isNumeric = false
-            )
+            activeEditState.clampToLength(activeEditBuffer.length)
         }
+        val caret = caretIndexFromPointer(activeEditBuffer, actionBounds)
+        TextEditOps.moveCaretWithSelection(activeEditState, caret, activeEditBuffer.length, KeyModifiers.shiftDown)
+        activeEditState.resetBlinkClock()
+        editSession.textSelectionDragActive = true
+        editSession.textSelectionDragProperty = property
+        editSession.textSelectionDragRect = actionBounds
         editSession.closeAllDropdowns()
     }
 
+    private fun updateActiveTextSelectionFromPointer(): Boolean {
+        if (!editSession.textSelectionDragActive) return false
+        val property = editSession.textSelectionDragProperty ?: run {
+            stopActiveTextSelectionDrag()
+            return false
+        }
+        if (activeEditProperty != property) {
+            stopActiveTextSelectionDrag()
+            return false
+        }
+        val pointerRect = resolveActiveEditPointerRect(property) ?: editSession.textSelectionDragRect
+        val caret = caretIndexFromPointer(activeEditBuffer, pointerRect)
+        TextEditOps.moveCaretWithSelection(activeEditState, caret, activeEditBuffer.length, extend = true)
+        activeEditState.resetBlinkClock()
+        return true
+    }
+
+    private fun resolveActiveEditPointerRect(property: StyleProperty): Rect? {
+        val row = nativeStyleEditorRows.lastOrNull { it.property == property } ?: return null
+        return row.inputRect ?: row.controlRect
+    }
+
+    private fun stopActiveTextSelectionDrag() {
+        editSession.textSelectionDragActive = false
+        editSession.textSelectionDragProperty = null
+        editSession.textSelectionDragRect = Rect(0, 0, 0, 0)
+    }
+
+    private fun caretIndexFromPointer(text: String, bounds: Rect): Int {
+        val textAreaStart = bounds.x + 8
+        val textAreaWidth = (bounds.width - 12).coerceAtLeast(1)
+        val charWidth = (secondaryFontSizePx * 0.56f).toInt().coerceAtLeast(6)
+        val local = (mouseX - textAreaStart).coerceIn(0, textAreaWidth)
+        val rawIndex = ((local + charWidth / 2) / charWidth)
+        return rawIndex.coerceIn(0, text.length)
+    }
+
+    private fun activeBufferWithCaret(): String {
+        activeEditState.clampToLength(activeEditBuffer.length)
+        if (!caretVisible()) return activeEditBuffer
+        val caret = activeEditState.caretIndex.coerceIn(0, activeEditBuffer.length)
+        return activeEditBuffer.substring(0, caret) + "|" + activeEditBuffer.substring(caret)
+    }
     private fun openColorPicker(selected: DOMNode, property: StyleProperty, anchorRect: Rect) {
         val literal = literalForEdit(selected, property)
         val parsedByStyle = runCatching { RgbaColor.fromArgbInt(parseColor(literal)) }.getOrNull()
@@ -2407,13 +3400,18 @@ class InspectorController(
     }
 
     private fun isInsideInspectorUi(mouseX: Int, mouseY: Int): Boolean {
+        if (dropdownLayouts.any { it.rect.contains(mouseX, mouseY) }) {
+            return true
+        }
+        if (panelActions.any { it.bounds.contains(mouseX, mouseY) }) {
+            return true
+        }
         val bounds = when (panelState) {
             InspectorPanelState.Expanded -> expandedRect
             InspectorPanelState.Minimized -> Rect(minimizedPosX, minimizedPosY, minimizedWidth(), minimizedHeight())
         }
         return bounds.contains(mouseX, mouseY)
     }
-
     private fun clampExpandedRect(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
         val safeViewportW = viewportWidth.coerceAtLeast(minPanelWidth + viewportMargin * 2)
         val safeViewportH = viewportHeight.coerceAtLeast(minPanelHeight + viewportMargin * 2)
@@ -2574,3 +3572,12 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
+
+
+
+
+
+
+
+
+

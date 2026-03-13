@@ -46,6 +46,10 @@ internal class SystemOverlayRootNode(
     internal fun setViewportBounds(width: Int, height: Int) {
         viewportWidth = width.coerceAtLeast(0)
         viewportHeight = height.coerceAtLeast(0)
+        val rect = Rect(0, 0, viewportWidth, viewportHeight)
+        bounds = rect
+        panelLaneNode.bounds = rect
+        transientLaneNode.bounds = rect
     }
 
     internal fun setLaneChildren(
