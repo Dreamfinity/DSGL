@@ -56,6 +56,10 @@ abstract class DOMNode(
     var bounds: Rect = Rect(0, 0, 0, 0)
     var width: Int? = null
     var height: Int? = null
+    var minWidth: Int? = null
+    var minHeight: Int? = null
+    var maxWidth: Int? = null
+    var maxHeight: Int? = null
     var margin: Insets = Insets.ZERO
     var padding: Insets = Insets.ZERO
     var border: Border = Border.NONE
@@ -76,10 +80,14 @@ abstract class DOMNode(
         }
     var overflow: Overflow = Overflow.Visible
         set(value) {
-            if (field == value) return
+            if (field == value && overflowX == value && overflowY == value) return
             field = value
+            overflowX = value
+            overflowY = value
             markRenderCommandsDirty()
         }
+    var overflowX: Overflow = Overflow.Visible
+    var overflowY: Overflow = Overflow.Visible
     var flexDirection: FlexDirection = FlexDirection.Row
     var justifyContent: JustifyContent = JustifyContent.Start
     var alignItems: AlignItems = AlignItems.Stretch
@@ -162,6 +170,10 @@ abstract class DOMNode(
     private var borderRadiusStyleValue: CssLength = CssLength.px(borderRadius)
     private var widthStyleValue: CssLength? = null
     private var heightStyleValue: CssLength? = null
+    private var minWidthStyleValue: CssLength? = null
+    private var minHeightStyleValue: CssLength? = null
+    private var maxWidthStyleValue: CssLength? = null
+    private var maxHeightStyleValue: CssLength? = null
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -382,14 +394,48 @@ abstract class DOMNode(
             .resolvePx(context, LengthPercentBase.ContainerWidth)
             .roundToInt()
             .coerceAtLeast(0)
-        width = widthStyleValue
+        val resolvedWidth = widthStyleValue
             ?.resolvePx(context, LengthPercentBase.ContainerWidth)
             ?.roundToInt()
             ?.coerceAtLeast(0)
-        height = heightStyleValue
+        val resolvedHeight = heightStyleValue
             ?.resolvePx(context, LengthPercentBase.ContainerHeight)
             ?.roundToInt()
             ?.coerceAtLeast(0)
+        val resolvedMinWidth = minWidthStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        val resolvedMinHeight = minHeightStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        val resolvedMaxWidth = maxWidthStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        val resolvedMaxHeight = maxHeightStyleValue
+            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+            ?.roundToInt()
+            ?.coerceAtLeast(0)
+        minWidth = resolvedMinWidth
+        minHeight = resolvedMinHeight
+        maxWidth = resolvedMaxWidth
+        maxHeight = resolvedMaxHeight
+        width = resolvedWidth?.let {
+            clampContentLengthToConstraints(
+                length = it,
+                minConstraint = resolvedMinWidth,
+                maxConstraint = resolvedMaxWidth
+            )
+        }
+        height = resolvedHeight?.let {
+            clampContentLengthToConstraints(
+                length = it,
+                minConstraint = resolvedMinHeight,
+                maxConstraint = resolvedMaxHeight
+            )
+        }
         gap = gapStyleValue
             .resolvePx(context, LengthPercentBase.ContainerWidth)
             .roundToInt()
@@ -448,6 +494,48 @@ abstract class DOMNode(
         return current
     }
 
+    internal fun clampMeasuredOuterSize(size: Size): Size {
+        val extrasWidth = (padding.horizontal + border.horizontal).coerceAtLeast(0)
+        val extrasHeight = (padding.vertical + border.vertical).coerceAtLeast(0)
+        val contentWidth = (size.width - extrasWidth).coerceAtLeast(0)
+        val contentHeight = (size.height - extrasHeight).coerceAtLeast(0)
+        val clampedContentWidth = clampContentLengthToConstraints(
+            length = contentWidth,
+            minConstraint = minWidth,
+            maxConstraint = maxWidth
+        )
+        val clampedContentHeight = clampContentLengthToConstraints(
+            length = contentHeight,
+            minConstraint = minHeight,
+            maxConstraint = maxHeight
+        )
+        return Size(
+            width = clampedContentWidth + extrasWidth,
+            height = clampedContentHeight + extrasHeight
+        )
+    }
+
+    private fun clampContentLengthToConstraints(
+        length: Int,
+        minConstraint: Int?,
+        maxConstraint: Int?
+    ): Int {
+        val normalizedMin = minConstraint?.coerceAtLeast(0)
+        val normalizedMax = maxConstraint?.coerceAtLeast(0)
+        val effectiveMax = when {
+            normalizedMin != null && normalizedMax != null -> normalizedMax.coerceAtLeast(normalizedMin)
+            else -> normalizedMax
+        }
+        var result = length.coerceAtLeast(0)
+        if (normalizedMin != null && result < normalizedMin) {
+            result = normalizedMin
+        }
+        if (effectiveMax != null && result > effectiveMax) {
+            result = effectiveMax
+        }
+        return result
+    }
+
     /** Measures the node's desired size. */
     internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         return measure(ctx)
@@ -491,7 +579,7 @@ abstract class DOMNode(
                 parentContentWidth = availableOuterWidth,
                 parentContentHeight = availableOuterHeight
             )
-            val childSize = child.measureForLayout(ctx, availableOuterWidth)
+            val childSize = child.clampMeasuredOuterSize(child.measureForLayout(ctx, availableOuterWidth))
             val childX = contentX + child.margin.left
             val childY = contentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
@@ -683,6 +771,10 @@ abstract class DOMNode(
         key = template.key
         width = template.width
         height = template.height
+        minWidth = template.minWidth
+        minHeight = template.minHeight
+        maxWidth = template.maxWidth
+        maxHeight = template.maxHeight
         margin = template.margin
         padding = template.padding
         border = template.border
@@ -690,6 +782,8 @@ abstract class DOMNode(
         align = template.align
         display = template.display
         overflow = template.overflow
+        overflowX = template.overflowX
+        overflowY = template.overflowY
         flexDirection = template.flexDirection
         justifyContent = template.justifyContent
         alignItems = template.alignItems
@@ -704,6 +798,10 @@ abstract class DOMNode(
         borderRadiusStyleValue = template.borderRadiusStyleValue
         widthStyleValue = template.widthStyleValue
         heightStyleValue = template.heightStyleValue
+        minWidthStyleValue = template.minWidthStyleValue
+        minHeightStyleValue = template.minHeightStyleValue
+        maxWidthStyleValue = template.maxWidthStyleValue
+        maxHeightStyleValue = template.maxHeightStyleValue
         gapStyleValue = template.gapStyleValue
         flexBasisStyleValue = template.flexBasisStyleValue
         borderColorStyleValue = template.borderColorStyleValue
@@ -786,6 +884,10 @@ abstract class DOMNode(
             obfuscated = textObfuscated,
             width = width?.let { CssLength.px(it) },
             height = height?.let { CssLength.px(it) },
+            minWidth = minWidth?.let { CssLength.px(it) },
+            minHeight = minHeight?.let { CssLength.px(it) },
+            maxWidth = maxWidth?.let { CssLength.px(it) },
+            maxHeight = maxHeight?.let { CssLength.px(it) },
             align = align,
             display = display,
             flexDirection = flexDirection,
@@ -802,6 +904,8 @@ abstract class DOMNode(
             gridColumnSpan = gridColumnSpan,
             gridRowSpan = gridRowSpan,
             overflow = overflow,
+            overflowX = overflowX,
+            overflowY = overflowY,
             textWrap = textWrap,
             textFormatting = textFormatting,
             transform = transform,
@@ -827,12 +931,18 @@ abstract class DOMNode(
         borderRadiusStyleValue = style.borderRadius
         widthStyleValue = style.width
         heightStyleValue = style.height
+        minWidthStyleValue = style.minWidth
+        minHeightStyleValue = style.minHeight
+        maxWidthStyleValue = style.maxWidth
+        maxHeightStyleValue = style.maxHeight
         gapStyleValue = style.gap
         flexBasisStyleValue = style.flexBasis
         borderColorStyleValue = style.borderColor
         align = style.align
         display = style.display
         overflow = style.overflow
+        overflowX = style.overflowX
+        overflowY = style.overflowY
         flexDirection = style.flexDirection
         justifyContent = style.justifyContent
         alignItems = style.alignItems
@@ -878,6 +988,10 @@ abstract class DOMNode(
                 previous.borderRadius != style.borderRadius ||
                 previous.width != style.width ||
                 previous.height != style.height ||
+                previous.minWidth != style.minWidth ||
+                previous.minHeight != style.minHeight ||
+                previous.maxWidth != style.maxWidth ||
+                previous.maxHeight != style.maxHeight ||
                 previous.align != style.align ||
                 previous.display != style.display ||
                 previous.flexDirection != style.flexDirection ||
@@ -893,6 +1007,8 @@ abstract class DOMNode(
                 previous.gridAutoFlow != style.gridAutoFlow ||
                 previous.gridColumnSpan != style.gridColumnSpan ||
                 previous.gridRowSpan != style.gridRowSpan ||
+                previous.overflowX != style.overflowX ||
+                previous.overflowY != style.overflowY ||
                 previous.textWrap != style.textWrap ||
                 previous.textFormatting != style.textFormatting ||
                 previous.fontWeight != style.fontWeight ||
@@ -1252,3 +1368,5 @@ fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     }
     return this
 }
+
+

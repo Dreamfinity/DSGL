@@ -990,9 +990,34 @@ object StyleEngine {
             StyleProperty.HEIGHT -> current.copy(
                 height = parseLengthLiteral(literal, allowNegative = false)
             )
+            StyleProperty.MIN_WIDTH -> current.copy(
+                minWidth = parseOptionalConstraintLengthLiteral(literal)
+            )
+            StyleProperty.MIN_HEIGHT -> current.copy(
+                minHeight = parseOptionalConstraintLengthLiteral(literal)
+            )
+            StyleProperty.MAX_WIDTH -> current.copy(
+                maxWidth = parseOptionalConstraintLengthLiteral(literal)
+            )
+            StyleProperty.MAX_HEIGHT -> current.copy(
+                maxHeight = parseOptionalConstraintLengthLiteral(literal)
+            )
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
-            StyleProperty.OVERFLOW -> current.copy(overflow = parseOverflow(literal))
+            StyleProperty.OVERFLOW -> {
+                val overflowAxes = parseOverflowShorthand(literal)
+                current.copy(
+                    overflow = if (overflowAxes.overflowX == overflowAxes.overflowY) {
+                        overflowAxes.overflowX
+                    } else {
+                        Overflow.Visible
+                    },
+                    overflowX = overflowAxes.overflowX,
+                    overflowY = overflowAxes.overflowY
+                )
+            }
+            StyleProperty.OVERFLOW_X -> current.copy(overflowX = parseOverflow(literal))
+            StyleProperty.OVERFLOW_Y -> current.copy(overflowY = parseOverflow(literal))
             StyleProperty.FLEX_DIRECTION -> current.copy(flexDirection = parseFlexDirection(literal))
             StyleProperty.JUSTIFY_CONTENT -> current.copy(justifyContent = parseJustifyContent(literal))
             StyleProperty.ALIGN_ITEMS -> current.copy(alignItems = parseAlignItems(literal))
@@ -1025,6 +1050,14 @@ object StyleEngine {
     private fun parseLengthLiteral(literal: String, allowNegative: Boolean): CssLength {
         val parsed = parseCssLength(literal)
         if (!allowNegative && parsed.value < 0f) {
+            error("Negative length is not allowed: '$literal'.")
+        }
+        return parsed
+    }
+
+    private fun parseOptionalConstraintLengthLiteral(literal: String): CssLength? {
+        val parsed = parseOptionalCssLength(literal)
+        if (parsed != null && parsed.value < 0f) {
             error("Negative length is not allowed: '$literal'.")
         }
         return parsed
@@ -1147,3 +1180,4 @@ object StyleEngine {
         return expanded
     }
 }
+

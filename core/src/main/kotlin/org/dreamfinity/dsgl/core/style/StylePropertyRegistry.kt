@@ -27,8 +27,26 @@ object StylePropertyRegistry {
     val all: List<StylePropertyDescriptor> = listOf(
         StylePropertyDescriptor(StyleProperty.DISPLAY, StyleEditorValueType.EnumChoice, enumOptions = listOf("block", "inline", "none", "flex", "grid")),
         StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.LengthPx, numericStep = 4f),
-        StylePropertyDescriptor(StyleProperty.OVERFLOW, StyleEditorValueType.EnumChoice, enumOptions = listOf("visible", "hidden")),
         StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.LengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.MIN_WIDTH, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.MIN_HEIGHT, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.MAX_WIDTH, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
+        StylePropertyDescriptor(StyleProperty.MAX_HEIGHT, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
+        StylePropertyDescriptor(
+            StyleProperty.OVERFLOW,
+            StyleEditorValueType.EnumChoice,
+            enumOptions = listOf("visible", "hidden", "scroll", "auto")
+        ),
+        StylePropertyDescriptor(
+            StyleProperty.OVERFLOW_X,
+            StyleEditorValueType.EnumChoice,
+            enumOptions = listOf("visible", "hidden", "scroll", "auto")
+        ),
+        StylePropertyDescriptor(
+            StyleProperty.OVERFLOW_Y,
+            StyleEditorValueType.EnumChoice,
+            enumOptions = listOf("visible", "hidden", "scroll", "auto")
+        ),
         StylePropertyDescriptor(StyleProperty.MARGIN, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.PADDING, StyleEditorValueType.SpacingLengthPx, numericStep = 1f),
         StylePropertyDescriptor(StyleProperty.BACKGROUND_COLOR, StyleEditorValueType.ColorHex, enumOptions = colorPalette()),
@@ -109,3 +127,4 @@ object StylePropertyRegistry {
         )
     }
 }
+

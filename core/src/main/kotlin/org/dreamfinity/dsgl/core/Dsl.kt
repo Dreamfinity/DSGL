@@ -657,6 +657,19 @@ class StyleScope internal constructor(private val node: DOMNode) {
         set(value) {
             setLiteral(StyleProperty.OVERFLOW, value.toCssLiteral())
         }
+
+    var overflowX: Overflow
+        get() = Overflow.Visible
+        set(value) {
+            setLiteral(StyleProperty.OVERFLOW_X, value.toCssLiteral())
+        }
+
+    var overflowY: Overflow
+        get() = Overflow.Visible
+        set(value) {
+            setLiteral(StyleProperty.OVERFLOW_Y, value.toCssLiteral())
+        }
+
     var flexDirection: FlexDirection
         get() = FlexDirection.Row
         set(value) {
@@ -707,6 +720,50 @@ class StyleScope internal constructor(private val node: DOMNode) {
             } else {
                 requireNonNegative(value, "height")
                 setLiteral(StyleProperty.HEIGHT, value.toCssLiteral())
+            }
+        }
+
+    var minWidth: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.MIN_WIDTH, "auto")
+            } else {
+                requireNonNegative(value, "min-width")
+                setLiteral(StyleProperty.MIN_WIDTH, value.toCssLiteral())
+            }
+        }
+
+    var minHeight: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.MIN_HEIGHT, "auto")
+            } else {
+                requireNonNegative(value, "min-height")
+                setLiteral(StyleProperty.MIN_HEIGHT, value.toCssLiteral())
+            }
+        }
+
+    var maxWidth: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.MAX_WIDTH, "auto")
+            } else {
+                requireNonNegative(value, "max-width")
+                setLiteral(StyleProperty.MAX_WIDTH, value.toCssLiteral())
+            }
+        }
+
+    var maxHeight: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.MAX_HEIGHT, "auto")
+            } else {
+                requireNonNegative(value, "max-height")
+                setLiteral(StyleProperty.MAX_HEIGHT, value.toCssLiteral())
             }
         }
 
@@ -1058,6 +1115,8 @@ class StyleScope internal constructor(private val node: DOMNode) {
     private fun Overflow.toCssLiteral(): String = when (this) {
         Overflow.Visible -> "visible"
         Overflow.Hidden -> "hidden"
+        Overflow.Scroll -> "scroll"
+        Overflow.Auto -> "auto"
     }
     private fun FlexDirection.toCssLiteral(): String = when (this) {
         FlexDirection.Row -> "row"
@@ -1148,3 +1207,4 @@ class ButtonScope internal constructor(private val node: ButtonNode) {
         node.onClick(handler)
     }
 }
+

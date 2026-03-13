@@ -2929,9 +2929,19 @@ class InspectorController(
             StyleProperty.OBFUSCATED -> style.obfuscated.toString()
             StyleProperty.WIDTH -> style.width?.toCssLiteral() ?: "auto"
             StyleProperty.HEIGHT -> style.height?.toCssLiteral() ?: "auto"
+            StyleProperty.MIN_WIDTH -> style.minWidth?.toCssLiteral() ?: "auto"
+            StyleProperty.MIN_HEIGHT -> style.minHeight?.toCssLiteral() ?: "auto"
+            StyleProperty.MAX_WIDTH -> style.maxWidth?.toCssLiteral() ?: "auto"
+            StyleProperty.MAX_HEIGHT -> style.maxHeight?.toCssLiteral() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
-            StyleProperty.OVERFLOW -> style.overflow.name.lowercase()
+            StyleProperty.OVERFLOW -> if (style.overflowX == style.overflowY) {
+                style.overflowX.name.lowercase()
+            } else {
+                "${style.overflowX.name.lowercase()} ${style.overflowY.name.lowercase()}"
+            }
+            StyleProperty.OVERFLOW_X -> style.overflowX.name.lowercase()
+            StyleProperty.OVERFLOW_Y -> style.overflowY.name.lowercase()
             StyleProperty.FLEX_DIRECTION -> style.flexDirection.name.lowercase()
             StyleProperty.JUSTIFY_CONTENT -> style.justifyContent.name
                 .replace(Regex("([a-z])([A-Z])"), "$1-$2")
@@ -3573,3 +3583,4 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
+

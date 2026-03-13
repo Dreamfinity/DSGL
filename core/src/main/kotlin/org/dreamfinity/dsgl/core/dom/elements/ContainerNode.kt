@@ -117,7 +117,12 @@ class ContainerNode(
         var maxWidth = 0
         var maxHeight = 0
         children.forEach { child ->
-            val size = child.measure(ctx)
+            val size = measureChildForLayout(
+                ctx = ctx,
+                child = child,
+                availableOuterWidth = null,
+                availableOuterHeight = null
+            )
             maxWidth = maxOf(maxWidth, size.width + child.margin.horizontal)
             maxHeight = maxOf(maxHeight, size.height + child.margin.vertical)
         }
@@ -186,7 +191,8 @@ class ContainerNode(
                 flushInlineLine()
                 if (hasRows) totalHeight += gap
                 val blockWidth = if (wrapWidth != null && child.width == null) {
-                    wrapWidth
+                    val stretchedOuterWidth = (wrapWidth - child.margin.horizontal).coerceAtLeast(0)
+                    child.clampMeasuredOuterSize(Size(stretchedOuterWidth, measured.height)).width + child.margin.horizontal
                 } else {
                     outerWidth
                 }
@@ -268,7 +274,8 @@ class ContainerNode(
                 flushInlineLine()
                 if (hasRows) cursorY += gap
                 val widthToRender = if (child.width == null) {
-                    (cw - child.margin.horizontal).coerceAtLeast(0)
+                    val stretchedOuterWidth = (cw - child.margin.horizontal).coerceAtLeast(0)
+                    child.clampMeasuredOuterSize(Size(stretchedOuterWidth, measured.height)).width
                 } else {
                     measured.width
                 }
@@ -481,8 +488,19 @@ class ContainerNode(
                 alignItems == AlignItems.Stretch -> crossAvailable
                 else -> item.measuredCross.coerceAtMost(crossAvailable)
             }.coerceAtLeast(0)
-
-            val crossRoom = (availableCross - crossSize - item.crossMarginStart - item.crossMarginEnd).coerceAtLeast(0)
+            val candidateWidth = if (isRow) mainSize else crossSize
+            val candidateHeight = if (isRow) crossSize else mainSize
+            val resolvedSize = item.child.clampMeasuredOuterSize(
+                Size(
+                    width = candidateWidth,
+                    height = candidateHeight
+                )
+            )
+            val childWidth = resolvedSize.width
+            val childHeight = resolvedSize.height
+            val resolvedCross = if (isRow) childHeight else childWidth
+            val resolvedMain = if (isRow) childWidth else childHeight
+            val crossRoom = (availableCross - resolvedCross - item.crossMarginStart - item.crossMarginEnd).coerceAtLeast(0)
             val crossOffset = when (alignItems) {
                 AlignItems.Start, AlignItems.Stretch -> 0
                 AlignItems.Center -> crossRoom / 2
@@ -499,8 +517,6 @@ class ContainerNode(
             } else {
                 cy + cursorMain.roundToInt()
             }
-            val childWidth = if (isRow) mainSize else crossSize
-            val childHeight = if (isRow) crossSize else mainSize
             renderContainedChild(
                 ctx = ctx,
                 child = item.child,
@@ -514,7 +530,7 @@ class ContainerNode(
                 desiredHeight = childHeight
             )
 
-            cursorMain += mainSize + item.mainMarginEnd
+            cursorMain += resolvedMain + item.mainMarginEnd
         }
     }
 
@@ -564,7 +580,7 @@ class ContainerNode(
             fixedWidth != null -> ((fixedWidth - gap * (columns - 1)).coerceAtLeast(0)) / columns
             else -> placements.maxOfOrNull { placement ->
                 val child = placement.child
-                val outerWidth = child.measure(ctx).width + child.margin.horizontal
+                val outerWidth = measureChildForLayout(ctx, child, null).width + child.margin.horizontal
                 val totalGapWithinSpan = gap * (placement.columnSpan - 1).coerceAtLeast(0)
                 ((outerWidth - totalGapWithinSpan).coerceAtLeast(0) + placement.columnSpan - 1) /
                         placement.columnSpan.coerceAtLeast(1)
@@ -610,16 +626,24 @@ class ContainerNode(
                 availableOuterHeight = cellHeight.coerceAtLeast(0)
             )
 
-            val childWidth = when {
+            val requestedChildWidth = when {
                 child.width != null -> child.width!!.coerceAtMost(availableCellWidth)
                 justifyItems == JustifyItems.Stretch -> availableCellWidth
                 else -> measured.width.coerceAtMost(availableCellWidth)
             }.coerceAtLeast(0)
-            val childHeight = when {
+            val requestedChildHeight = when {
                 child.height != null -> child.height!!.coerceAtMost(availableCellHeight)
                 alignItems == AlignItems.Stretch -> availableCellHeight
                 else -> measured.height.coerceAtMost(availableCellHeight)
             }.coerceAtLeast(0)
+            val resolvedSize = child.clampMeasuredOuterSize(
+                Size(
+                    width = requestedChildWidth,
+                    height = requestedChildHeight
+                )
+            )
+            val childWidth = resolvedSize.width
+            val childHeight = resolvedSize.height
 
             val xSpace = (availableCellWidth - childWidth).coerceAtLeast(0)
             val ySpace = (availableCellHeight - childHeight).coerceAtLeast(0)
@@ -765,8 +789,7 @@ class ContainerNode(
             val spanWidth = placement.columnSpan * colWidth + (placement.columnSpan - 1) * gap
             val availableWidth = (spanWidth - child.margin.horizontal).coerceAtLeast(0)
             val measured = measureChildForLayout(ctx, child, availableWidth)
-            val childHeight = child.height ?: measured.height
-            val outerHeight = childHeight + child.margin.vertical
+            val outerHeight = measured.height + child.margin.vertical
             if (placement.rowSpan <= 1) {
                 rowHeights[placement.row] = maxOf(rowHeights[placement.row], outerHeight)
             } else {
@@ -794,7 +817,7 @@ class ContainerNode(
             parentContentWidth = availableOuterWidth,
             parentContentHeight = availableOuterHeight
         )
-        return child.measureForLayout(ctx, availableOuterWidth)
+        return child.clampMeasuredOuterSize(child.measureForLayout(ctx, availableOuterWidth))
     }
 
     private fun constrainContentWidthForOuterLimit(outerLimit: Int, child: DOMNode): Int {
@@ -861,3 +884,4 @@ class ContainerNode(
         )
     }
 }
+

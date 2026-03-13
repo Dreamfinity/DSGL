@@ -110,12 +110,31 @@ fun parseDisplay(raw: String): Display {
     }
 }
 
+data class OverflowAxes(
+    val overflowX: Overflow,
+    val overflowY: Overflow
+)
+
 fun parseOverflow(raw: String): Overflow {
     return when (raw.trim().lowercase()) {
         "visible" -> Overflow.Visible
         "hidden" -> Overflow.Hidden
+        "scroll" -> Overflow.Scroll
+        "auto" -> Overflow.Auto
         else -> error("Unsupported overflow value '$raw'.")
     }
+}
+
+fun parseOverflowShorthand(raw: String): OverflowAxes {
+    val parts = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    require(parts.isNotEmpty()) { "overflow value cannot be empty." }
+    require(parts.size <= 2) { "overflow supports one or two values." }
+    val overflowX = parseOverflow(parts[0])
+    val overflowY = if (parts.size == 2) parseOverflow(parts[1]) else overflowX
+    return OverflowAxes(
+        overflowX = overflowX,
+        overflowY = overflowY
+    )
 }
 
 fun parseFlexDirection(raw: String): FlexDirection {
@@ -362,10 +381,21 @@ fun validateLiteralForProperty(
         }
         StyleProperty.WIDTH -> validateLengthLiteral(literal, allowNegative = false)
         StyleProperty.HEIGHT -> validateLengthLiteral(literal, allowNegative = false)
+        StyleProperty.MIN_WIDTH,
+        StyleProperty.MIN_HEIGHT,
+        StyleProperty.MAX_WIDTH,
+        StyleProperty.MAX_HEIGHT -> {
+            val parsed = parseOptionalCssLength(literal)
+            if (parsed != null && parsed.value < 0f) {
+                error("Negative length is not allowed: '$literal'.")
+            }
+        }
 
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
-        StyleProperty.OVERFLOW -> parseOverflow(literal)
+        StyleProperty.OVERFLOW -> parseOverflowShorthand(literal)
+        StyleProperty.OVERFLOW_X,
+        StyleProperty.OVERFLOW_Y -> parseOverflow(literal)
         StyleProperty.FLEX_DIRECTION -> parseFlexDirection(literal)
         StyleProperty.JUSTIFY_CONTENT -> parseJustifyContent(literal)
         StyleProperty.ALIGN_ITEMS -> parseAlignItems(literal)
@@ -426,3 +456,4 @@ fun resolveExpressionToLiteral(
         }
     }
 }
+
