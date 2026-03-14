@@ -593,6 +593,7 @@ abstract class DsglScreenHost(
                     val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
                     if (captureTarget != null) {
                         setDragCapture(captureTarget)
+                        captureTarget.beginPointerCapture(mouseX, mouseY, mappedButton)
                     } else if (dragCaptureTarget != null) {
                         releaseDragCapture()
                     }
@@ -606,6 +607,7 @@ abstract class DsglScreenHost(
                 val upEvent = MouseUpEvent(mouseX, mouseY, mappedButton)
                 upEvent.target = releaseTarget
                 EventBus.post(upEvent)
+                dragCaptureTarget?.endPointerCapture(mouseX, mouseY, mappedButton)
                 val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
                 if (!hadDragCapture && !dndConsumed) {
                     val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
@@ -632,14 +634,27 @@ abstract class DsglScreenHost(
                         dragEvent.target = dragCaptureTarget ?: hoverTarget
                         EventBus.post(dragEvent)
                     }
+                    dragCaptureTarget?.continuePointerCapture(
+                        mouseX = mouseX,
+                        mouseY = mouseY,
+                        mouseDX = dx,
+                        mouseDY = dy,
+                        button = mappedButton
+                    )
                 }
             }
         }
 
         if (dWheel != 0) {
-            val wheelEvent = MouseWheelEvent(mouseX, mouseY, dWheel)
-            wheelEvent.target = resolveWheelTarget()
-            EventBus.post(wheelEvent)
+            val wheelTarget = resolveWheelTarget()
+            if (wheelTarget != null) {
+                val wheelEvent = MouseWheelEvent(mouseX, mouseY, dWheel)
+                wheelEvent.target = wheelTarget
+                EventBus.post(wheelEvent)
+                if (!wheelEvent.cancelled) {
+                    bubbleGenericWheel(wheelTarget, mouseX, mouseY, dWheel)
+                }
+            }
         }
 
         lastMouseX = mouseX
@@ -959,6 +974,7 @@ abstract class DsglScreenHost(
     }
 
     private fun releaseDragCapture() {
+        dragCaptureTarget?.cancelPointerCapture()
         RangeInputNode.clearActiveDrag()
         SingleLineInputNode.clearActiveDrag()
         TextAreaNode.clearActiveDrag()
@@ -1070,6 +1086,17 @@ abstract class DsglScreenHost(
             }
         }
         return hoverTarget
+    }
+
+    private fun bubbleGenericWheel(target: DOMNode, mouseX: Int, mouseY: Int, delta: Int): Boolean {
+        var current: DOMNode? = target
+        while (current != null) {
+            if (current.handleGenericWheel(mouseX, mouseY, delta)) {
+                return true
+            }
+            current = current.parent
+        }
+        return false
     }
 
     private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {

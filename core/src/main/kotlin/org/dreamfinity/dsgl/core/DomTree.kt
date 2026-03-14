@@ -49,6 +49,7 @@ class DomTree(
     private var strictInvalidLayout: Boolean = false
     private var commandsDirty: Boolean = true
     private var lastStyleRevision: Long = Long.MIN_VALUE
+    private var lastScrollAnimationNanos: Long = 0L
     private var frames: Long = 0L
     private var commandRebuilds: Long = 0L
     private var chunkNodesVisitedLastFrame: Int = 0
@@ -88,6 +89,11 @@ class DomTree(
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
         frames += 1
         StyleEngine.setViewportSize(lastWidth, lastHeight)
+        val scrollDtSeconds = nextScrollAnimationDtSeconds()
+        if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
+            commandsDirty = true
+        }
+        val scrollLayoutDirty = root.consumeScrollLayoutDirtyRecursively()
         val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
         val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
             StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
@@ -103,7 +109,7 @@ class DomTree(
                 recomputedNodes = 0
             )
         }
-        if ((!laidOut || styleReport.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
+        if ((!laidOut || styleReport.layoutDirty || scrollLayoutDirty) && lastWidth > 0 && lastHeight > 0) {
             root.resolveLayoutStyleValues(
                 ctx = ctx,
                 parentContentWidth = lastWidth,
@@ -151,6 +157,18 @@ class DomTree(
 
     fun markVisualDirty() {
         commandsDirty = true
+    }
+
+    private fun nextScrollAnimationDtSeconds(): Double {
+        val nowNanos = System.nanoTime()
+        val dtSeconds = if (lastScrollAnimationNanos == 0L) {
+            1.0 / 60.0
+        } else {
+            ((nowNanos - lastScrollAnimationNanos).toDouble() / 1_000_000_000.0)
+                .coerceIn(1.0 / 240.0, 0.2)
+        }
+        lastScrollAnimationNanos = nowNanos
+        return dtSeconds
     }
 
     private fun rebuildPaintCommands(ctx: UiMeasureContext): Boolean {

@@ -62,6 +62,13 @@ class LayerDomInputRouter(
                 val drag = MouseDragEvent(prevX, prevY, dx, dy, button)
                 drag.target = dragCaptureTarget ?: hoverTarget
                 EventBus.post(drag)
+                dragCaptureTarget?.continuePointerCapture(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    mouseDX = dx,
+                    mouseDY = dy,
+                    button = button
+                )
             }
         }
         lastMoveX = mouseX
@@ -88,6 +95,7 @@ class LayerDomInputRouter(
             val capture = resolveDragCaptureTarget(target, mouseX, mouseY)
             if (capture != null) {
                 setDragCapture(capture)
+                capture.beginPointerCapture(mouseX, mouseY, button)
             } else {
                 releaseDragCapture()
             }
@@ -117,6 +125,7 @@ class LayerDomInputRouter(
         val up = MouseUpEvent(mouseX, mouseY, button)
         up.target = releaseTarget
         EventBus.post(up)
+        dragCaptureTarget?.endPointerCapture(mouseX, mouseY, button)
         if (!hadCapture && !draggedSincePress && pressed == button) {
             val click = MouseClickEvent(mouseX, mouseY, button)
             click.target = hoverTarget
@@ -145,7 +154,8 @@ class LayerDomInputRouter(
         val wheel = MouseWheelEvent(mouseX, mouseY, delta)
         wheel.target = target
         EventBus.post(wheel)
-        return wheel.cancelled
+        if (wheel.cancelled) return true
+        return bubbleGenericWheel(target, mouseX, mouseY, delta)
     }
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
@@ -196,6 +206,7 @@ class LayerDomInputRouter(
     }
 
     private fun releaseDragCapture() {
+        dragCaptureTarget?.cancelPointerCapture()
         RangeInputNode.clearActiveDrag()
         SingleLineInputNode.clearActiveDrag()
         TextAreaNode.clearActiveDrag()
@@ -269,6 +280,17 @@ class LayerDomInputRouter(
         return if (focused is TextAreaNode) focused else null
     }
 
+    private fun bubbleGenericWheel(target: DOMNode, mouseX: Int, mouseY: Int, delta: Int): Boolean {
+        var current: DOMNode? = target
+        while (current != null) {
+            if (current.handleGenericWheel(mouseX, mouseY, delta)) {
+                return true
+            }
+            current = current.parent
+        }
+        return false
+    }
+
     private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
         var current = node
         while (current != null) {
@@ -337,6 +359,7 @@ class LayerDomInputRouter(
             return true
         }
         if (node.shouldCapturePointerDrag(mouseX, mouseY)) return true
+        if (node.hasGenericWheelHandling(mouseX, mouseY)) return true
         return EventBus.hasInputListeners(node)
     }
 

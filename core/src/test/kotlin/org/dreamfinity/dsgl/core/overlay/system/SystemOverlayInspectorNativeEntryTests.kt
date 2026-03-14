@@ -20,6 +20,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorMode
@@ -41,6 +42,7 @@ class SystemOverlayInspectorNativeEntryTests {
 
     @AfterTest
     fun cleanup() {
+        KeyModifiers.sync(shift = false, control = false, meta = false)
         StyleEngine.setStylesDirectory(null)
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
@@ -621,7 +623,33 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
         assertTrue(inspector.panelScrollOffsetY > before)
     }
+    @Test
+    fun `inspector shift wheel does not consume vertical wheel path`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
 
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+
+        val bodyRect = inspector.debugContentRect()
+        val wheelX = bodyRect.x + 4
+        val wheelY = bodyRect.y + 12
+        val before = inspector.panelScrollOffsetY
+
+        KeyModifiers.sync(shift = true, control = false, meta = false)
+        assertFalse(host.handleMouseWheel(wheelX, wheelY, -120))
+        assertEquals(before, inspector.panelScrollOffsetY)
+        KeyModifiers.sync(shift = false, control = false, meta = false)
+    }
     @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
         val stylesDir = createTempStylesDir(
@@ -737,4 +765,92 @@ class SystemOverlayInspectorNativeEntryTests {
         root.resolve("test.dss").writeText(dss)
         return root
     }
+
+    @Test
+    fun `inspector consumer scroll reacts on frame update without viewport resize`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        host.paint(ctx)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        val contentRect = inspector.debugContentRect()
+        val wheelX = contentRect.x + 4
+        val wheelY = contentRect.y + 14
+        val before = inspector.panelScrollOffsetY
+
+        assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        assertTrue(inspector.panelScrollOffsetY > before)
+    }
+
+    @Test
+    fun `inspector consumer thumb drag remains smooth and stable on release`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        host.paint(ctx)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        val thumb = inspector.debugScrollbarThumbRect()
+        assertTrue(thumb.width > 0 && thumb.height > 0)
+        val dragX = thumb.x + thumb.width / 2
+        val startY = thumb.y + thumb.height / 2
+
+        assertTrue(host.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        var previousScroll = inspector.panelScrollOffsetY
+        var previousThumbY = inspector.debugScrollbarThumbRect().y
+
+        repeat(6) { step ->
+            val nextY = startY + (step + 1) * 9
+            assertTrue(host.handleMouseMove(dragX, nextY))
+            host.syncFrame(root, inspectedLayoutRevision = 3L + step, cursorX = dragX, cursorY = nextY, inspectorPointerCaptured = inspector.isPointerCaptured)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+            val currentScroll = inspector.panelScrollOffsetY
+            val currentThumbY = inspector.debugScrollbarThumbRect().y
+            assertTrue(currentScroll >= previousScroll)
+            assertTrue(currentThumbY >= previousThumbY)
+            previousScroll = currentScroll
+            previousThumbY = currentThumbY
+        }
+
+        assertTrue(host.handleMouseUp(dragX, startY + 6 * 9, MouseButton.LEFT))
+        val settledScroll = inspector.panelScrollOffsetY
+        val settledThumbY = inspector.debugScrollbarThumbRect().y
+
+        repeat(6) { idx ->
+            host.syncFrame(root, inspectedLayoutRevision = 20L + idx, cursorX = dragX, cursorY = startY, inspectorPointerCaptured = inspector.isPointerCaptured)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+            assertEquals(settledScroll, inspector.panelScrollOffsetY)
+            assertEquals(settledThumbY, inspector.debugScrollbarThumbRect().y)
+        }
+    }
 }
+

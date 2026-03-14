@@ -379,6 +379,9 @@ class InspectorController(
         this.mouseX = mouseX
         this.mouseY = mouseY
         if (dragMode != DragMode.None) return true
+        if (KeyModifiers.shiftDown) {
+            return false
+        }
         if (handleDropdownWheel(mouseX, mouseY, delta)) return true
         if (panelState != InspectorPanelState.Expanded) {
             return hitTestUi(mouseX, mouseY) || mode == InspectorMode.Pick

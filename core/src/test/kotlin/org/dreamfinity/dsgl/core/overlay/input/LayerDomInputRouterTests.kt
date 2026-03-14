@@ -20,6 +20,7 @@ import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.style.Overflow
 
 class LayerDomInputRouterTests {
     private val clipboard = RecordingClipboardAccess()
@@ -311,7 +312,46 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseDown(28, 28, MouseButton.LEFT))
         assertFalse(router.handleMouseWheel(28, 28, -120))
     }
+    @Test
+    fun `wheel axis semantics stay consistent across layers`() {
+        listOf("app-dom", "app-overlay", "system-overlay").forEach { layer ->
+            val (root, router) = createLayerRouter("wheel-axis-$layer")
+            val viewport = ContainerNode(key = "$layer-scroll").apply {
+                bounds = Rect(20, 20, 150, 70)
+                overflowX = Overflow.Auto
+                overflowY = Overflow.Auto
+            }
+            viewport.applyParent(root)
+            ContainerNode(key = "$layer-scroll-content").apply {
+                bounds = Rect(20, 20, 320, 220)
+            }.applyParent(viewport)
+            val wheelTarget = ButtonNode("wheel", key = "$layer-wheel-target").apply {
+                bounds = Rect(26, 26, 64, 20)
+                onClick { }
+            }
+            wheelTarget.applyParent(viewport)
 
+            val wheelX = wheelTarget.bounds.x + 1
+            val wheelY = wheelTarget.bounds.y + 1
+
+            KeyModifiers.sync(shift = false, control = false, meta = false)
+            assertTrue(router.handleMouseWheel(wheelX, wheelY, -120))
+            viewport.advanceScrollAnimationsRecursively(1.0 / 60.0)
+            viewport.consumeScrollLayoutDirtyRecursively()
+            val verticalState = viewport.scrollContainerState()
+            assertTrue(verticalState.scrollY > 0)
+            assertEquals(0, verticalState.scrollX)
+
+            viewport.setScrollOffsets(0, 0)
+            KeyModifiers.sync(shift = true, control = false, meta = false)
+            assertTrue(router.handleMouseWheel(wheelX, wheelY, -120))
+            viewport.advanceScrollAnimationsRecursively(1.0 / 60.0)
+            viewport.consumeScrollLayoutDirtyRecursively()
+            val horizontalState = viewport.scrollContainerState()
+            assertTrue(horizontalState.scrollX > 0)
+            assertEquals(0, horizontalState.scrollY)
+        }
+    }
     private fun createLayerRouter(key: String): Pair<ContainerNode, LayerDomInputRouter> {
         val root = ContainerNode(key = "$key-root").apply {
             bounds = Rect(0, 0, 320, 200)
