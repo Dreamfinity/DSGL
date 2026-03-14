@@ -132,8 +132,8 @@ class ContainerNode(
     private fun renderStack(ctx: UiMeasureContext, children: List<DOMNode>) {
         val cx = childContentOriginX()
         val cy = childContentOriginY()
-        val cw = contentWidth()
-        val ch = contentHeight()
+        val cw = viewportContentWidth()
+        val ch = viewportContentHeight()
         children.forEach { child ->
             val size = measureChildForLayout(
                 ctx = ctx,
@@ -210,8 +210,8 @@ class ContainerNode(
     private fun renderBlock(ctx: UiMeasureContext, children: List<DOMNode>) {
         val cx = childContentOriginX()
         val cy = childContentOriginY()
-        val cw = contentWidth()
-        val ch = contentHeight()
+        val cw = viewportContentWidth()
+        val ch = viewportContentHeight()
         var cursorY = cy
         var hasRows = false
 
@@ -338,8 +338,8 @@ class ContainerNode(
     private fun renderInline(ctx: UiMeasureContext, children: List<DOMNode>) {
         val cx = childContentOriginX()
         val cy = childContentOriginY()
-        val cw = contentWidth()
-        val ch = contentHeight()
+        val cw = viewportContentWidth()
+        val ch = viewportContentHeight()
         var cursorX = cx
         var cursorY = cy
         var lineHeight = 0
@@ -408,10 +408,10 @@ class ContainerNode(
         val isRow = flexDirection == FlexDirection.Row
         val cx = childContentOriginX()
         val cy = childContentOriginY()
-        val availableMain = if (isRow) contentWidth() else contentHeight()
-        val availableCross = if (isRow) contentHeight() else contentWidth()
-        val availableOuterWidth = contentWidth()
-        val availableOuterHeight = contentHeight()
+        val availableMain = if (isRow) viewportContentWidth() else viewportContentHeight()
+        val availableCross = if (isRow) viewportContentHeight() else viewportContentWidth()
+        val availableOuterWidth = viewportContentWidth()
+        val availableOuterHeight = viewportContentHeight()
 
         if (children.isEmpty()) return
 
@@ -594,7 +594,7 @@ class ContainerNode(
 
     private fun renderGrid(ctx: UiMeasureContext, children: List<DOMNode>) {
         val columns = gridColumns.coerceAtLeast(1)
-        val availableWidth = contentWidth()
+        val availableWidth = viewportContentWidth()
         val cx = childContentOriginX()
         val cy = childContentOriginY()
         if (children.isEmpty()) return
@@ -826,12 +826,17 @@ class ContainerNode(
     }
 
     private fun resolvedContentLimit(constrainedContentWidth: Int?): Int? {
-        val boundedExplicit = width?.let { explicit ->
-            constrainedContentWidth?.let { limit ->
-                minOf(explicit, limit.coerceAtLeast(0))
-            } ?: explicit
+        width?.let { explicitWidth ->
+            val normalizedExplicit = explicitWidth.coerceAtLeast(0)
+            if (parent?.overflowX != Overflow.Visible) {
+                // Scroll-capable/clipped parents must be able to observe real content width.
+                return normalizedExplicit
+            }
+            return constrainedContentWidth?.let { limit ->
+                minOf(normalizedExplicit, limit.coerceAtLeast(0))
+            } ?: normalizedExplicit
         }
-        return boundedExplicit ?: constrainedContentWidth?.coerceAtLeast(0)
+        return constrainedContentWidth?.coerceAtLeast(0)
     }
 
     private fun rowSpanHeight(rowHeights: IntArray, row: Int, rowSpan: Int): Int {

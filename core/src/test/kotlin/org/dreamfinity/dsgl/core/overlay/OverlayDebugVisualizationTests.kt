@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayRootNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -20,10 +21,12 @@ class OverlayDebugVisualizationTests {
     @AfterTest
     fun cleanup() {
         OverlayDebugVisualization.setTestOverride(null)
+        OverlayLayerDebugState.resetAll()
     }
 
     @Test
     fun `debug visualization disabled by default`() {
+        OverlayLayerDebugState.resetAll()
         OverlayDebugVisualization.setTestOverride(false)
         val appTree = DomTree(root = ApplicationOverlayRootNode(), styleScope = StyleApplicationScope.Application)
         val systemTree = DomTree(root = SystemOverlayRootNode(), styleScope = StyleApplicationScope.SystemOverlay)
@@ -47,6 +50,9 @@ class OverlayDebugVisualizationTests {
 
     @Test
     fun `debug visualization can be enabled without changing overlay logic contracts`() {
+        OverlayLayerDebugState.resetAll()
+        OverlayLayerDebugState.applicationOverlayTintEnabled = true
+        OverlayLayerDebugState.systemOverlayTintEnabled = true
         OverlayDebugVisualization.setTestOverride(true)
         val appTree = DomTree(root = ApplicationOverlayRootNode(), styleScope = StyleApplicationScope.Application)
         val systemTree = DomTree(root = SystemOverlayRootNode(), styleScope = StyleApplicationScope.SystemOverlay)
@@ -68,3 +74,4 @@ class OverlayDebugVisualizationTests {
         })
     }
 }
+

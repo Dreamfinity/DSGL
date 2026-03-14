@@ -421,12 +421,32 @@ class InspectorControllerTests {
             controller.handleMouseDown(988, 126, MouseButton.LEFT)
             renderFrame(controller, 1200, 700)
 
-            val row = controller.debugStyleEditorRows().firstOrNull {
-                it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
-            } ?: error("Expected color string input row.")
-            val inputRect = row.controlRect
-            val inputY = inputRect.y + inputRect.height / 2
-            val clickX = inputRect.x + 10
+            fun locateColorRow(): InspectorStyleEditorRowSnapshot {
+                return controller.debugStyleEditorRows().firstOrNull {
+                    it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
+                } ?: error("Expected color string input row.")
+            }
+
+            var row = locateColorRow()
+            var inputRect = row.inputRect ?: row.controlRect
+            var inputY = inputRect.y + inputRect.height / 2
+            var clickX = inputRect.x + 10
+            var contentRect = controller.debugContentRect()
+            var guard = 0
+            while (!contentRect.contains(clickX, inputY) && guard < 40) {
+                val wheelX = contentRect.x + 8
+                val wheelY = contentRect.y + contentRect.height / 2
+                val delta = if (inputY > contentRect.y + contentRect.height - 1) -120 else 120
+                assertTrue(controller.handleMouseWheel(wheelX, wheelY, delta))
+                renderFrame(controller, 1200, 700)
+                row = locateColorRow()
+                inputRect = row.inputRect ?: row.controlRect
+                inputY = inputRect.y + inputRect.height / 2
+                clickX = inputRect.x + 10
+                contentRect = controller.debugContentRect()
+                guard += 1
+            }
+            assertTrue(contentRect.contains(clickX, inputY), "Expected editable control to be visible in inspector viewport.")
 
             controller.onCursorMoved(clickX, inputY)
             assertTrue(controller.handleMouseDown(clickX, inputY, MouseButton.LEFT))
@@ -609,5 +629,4 @@ class InspectorControllerTests {
         val onClose: (() -> Unit)?
     )
 }
-
 

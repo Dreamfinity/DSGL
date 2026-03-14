@@ -11,6 +11,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorDomSnapshot
+import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
@@ -472,8 +473,8 @@ internal class SystemInspectorOverlayNode(
             renderNode(ctx, resetButton, row.resetRect)
 
             when (row.editorKind) {
-                org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.EnumSelect,
-                org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.FontSelect -> {
+                InspectorEditorKind.EnumSelect,
+                InspectorEditorKind.FontSelect -> {
                     val selector = scope.button(row.controlValue, {
                         key = "dsgl-system-inspector-editor-select-$index"
                     })
@@ -487,7 +488,7 @@ internal class SystemInspectorOverlayNode(
                     renderNode(ctx, selector, row.controlRect)
                 }
 
-                org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.StringInput -> {
+                InspectorEditorKind.StringInput -> {
                     val input = TextInputNode(
                         text = row.controlValue.replace("|", ""),
                         key = "dsgl-system-inspector-editor-input-$index"
@@ -520,7 +521,7 @@ internal class SystemInspectorOverlayNode(
                     }
                 }
 
-                org.dreamfinity.dsgl.core.inspector.InspectorEditorKind.NumericInput -> {
+                InspectorEditorKind.NumericInput -> {
                     row.decrementRect?.let { rect ->
                         val dec = scope.button("-", {
                             key = "dsgl-system-inspector-editor-dec-$index"

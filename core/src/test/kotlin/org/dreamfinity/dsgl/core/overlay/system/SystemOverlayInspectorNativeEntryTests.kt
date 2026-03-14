@@ -568,6 +568,11 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(scrollState.axisY.clipsToViewport)
         assertTrue(scrollState.viewportRect.width > 0 && scrollState.viewportRect.height > 0)
         assertTrue(scrollState.contentExtent.height >= scrollState.viewportRect.height)
+        assertTrue(!scrollState.axisX.scrollbarPresent)
+        assertTrue(!scrollState.axisY.scrollbarPresent)
+        assertEquals(0, scrollState.horizontalScrollbarGutter)
+        assertEquals(0, scrollState.verticalScrollbarGutter)
+        assertEquals(scrollState.baseViewportRect, scrollState.viewportRect)
         assertEquals(scrollState.viewportRect, bodyNode.overflowViewportRect())
     }
 

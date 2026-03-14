@@ -144,6 +144,14 @@ object CapabilityChecklistCatalog {
             CapabilityId.LAYOUT_VALIDATOR
         )
 
+        DemoSection.OVERFLOW_SCROLL -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.HOOK_MOUSE_CLICK,
+        )
+
         DemoSection.DISPLAY -> setOf(
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_INPUT,
@@ -340,3 +348,4 @@ object CapabilityChecklistCatalog {
             .toSet()
     }
 }
+

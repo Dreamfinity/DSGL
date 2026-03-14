@@ -29,18 +29,32 @@ data class NodeStyleApplyResult(
 data class ScrollAxisState(
     val overflow: Overflow,
     val scrollContainer: Boolean,
-    val clipsToViewport: Boolean
+    val clipsToViewport: Boolean,
+    val scrollbarPresent: Boolean,
+    val scrollbarGutter: Int
 )
 
 data class ScrollContainerState(
+    val baseViewportRect: Rect,
     val viewportRect: Rect,
     val contentExtent: Size,
     val scrollX: Int,
     val scrollY: Int,
     val maxScrollX: Int,
     val maxScrollY: Int,
+    val horizontalScrollbarGutter: Int,
+    val verticalScrollbarGutter: Int,
     val axisX: ScrollAxisState,
     val axisY: ScrollAxisState
+)
+
+private data class ScrollbarResolution(
+    val horizontalPresent: Boolean,
+    val verticalPresent: Boolean,
+    val horizontalGutter: Int,
+    val verticalGutter: Int,
+    val viewportWidth: Int,
+    val viewportHeight: Int
 )
 
 /**
@@ -599,13 +613,11 @@ abstract class DOMNode(
             bounds = next
             markRenderCommandsDirty()
         }
-        val contentX = x + border.left + padding.left
-        val contentY = y + border.top + padding.top
         val scrollState = scrollContainerState()
-        val layoutContentX = contentX - scrollState.scrollX
-        val layoutContentY = contentY - scrollState.scrollY
-        val availableOuterWidth = (width - border.horizontal - padding.horizontal).coerceAtLeast(0)
-        val availableOuterHeight = (height - border.vertical - padding.vertical).coerceAtLeast(0)
+        val layoutContentX = scrollState.viewportRect.x - scrollState.scrollX
+        val layoutContentY = scrollState.viewportRect.y - scrollState.scrollY
+        val availableOuterWidth = scrollState.viewportRect.width
+        val availableOuterHeight = scrollState.viewportRect.height
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
             child.resolveLayoutStyleValues(
@@ -1234,14 +1246,30 @@ abstract class DOMNode(
     protected fun contentHeight(): Int =
         (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
 
+    protected fun viewportContentX(): Int {
+        return scrollContainerState().viewportRect.x
+    }
+
+    protected fun viewportContentY(): Int {
+        return scrollContainerState().viewportRect.y
+    }
+
+    protected fun viewportContentWidth(): Int {
+        return scrollContainerState().viewportRect.width
+    }
+
+    protected fun viewportContentHeight(): Int {
+        return scrollContainerState().viewportRect.height
+    }
+
     protected fun childContentOriginX(): Int {
         val state = scrollContainerState()
-        return contentX() - state.scrollX
+        return state.viewportRect.x - state.scrollX
     }
 
     protected fun childContentOriginY(): Int {
         val state = scrollContainerState()
-        return contentY() - state.scrollY
+        return state.viewportRect.y - state.scrollY
     }
 
     fun setScrollOffsets(scrollX: Int, scrollY: Int) {
@@ -1254,19 +1282,42 @@ abstract class DOMNode(
     }
 
     fun scrollContainerState(): ScrollContainerState {
-        val viewportRect = Rect(
+        val baseViewportRect = Rect(
             x = contentX(),
             y = contentY(),
             width = contentWidth(),
             height = contentHeight()
         )
-        val axisX = axisStateForOverflow(overflowX)
-        val axisY = axisStateForOverflow(overflowY)
-        val normalizedRequestX = if (axisX.scrollContainer) scrollOffsetRequestX.coerceAtLeast(0) else 0
-        val normalizedRequestY = if (axisY.scrollContainer) scrollOffsetRequestY.coerceAtLeast(0) else 0
-        val contentOriginX = viewportRect.x - normalizedRequestX
-        val contentOriginY = viewportRect.y - normalizedRequestY
+        val axisXScrollContainer = overflowX != Overflow.Visible
+        val axisYScrollContainer = overflowY != Overflow.Visible
+        val normalizedRequestX = if (axisXScrollContainer) scrollOffsetRequestX.coerceAtLeast(0) else 0
+        val normalizedRequestY = if (axisYScrollContainer) scrollOffsetRequestY.coerceAtLeast(0) else 0
+        val contentOriginX = baseViewportRect.x - normalizedRequestX
+        val contentOriginY = baseViewportRect.y - normalizedRequestY
         val contentExtent = computeContentExtent(contentOriginX, contentOriginY)
+        val scrollbarResolution = resolveScrollbarResolution(
+            overflowX = overflowX,
+            overflowY = overflowY,
+            contentExtent = contentExtent,
+            baseViewportWidth = baseViewportRect.width,
+            baseViewportHeight = baseViewportRect.height
+        )
+        val viewportRect = Rect(
+            x = baseViewportRect.x,
+            y = baseViewportRect.y,
+            width = scrollbarResolution.viewportWidth,
+            height = scrollbarResolution.viewportHeight
+        )
+        val axisX = axisStateForOverflow(
+            overflowMode = overflowX,
+            scrollbarPresent = scrollbarResolution.horizontalPresent,
+            scrollbarGutter = scrollbarResolution.horizontalGutter
+        )
+        val axisY = axisStateForOverflow(
+            overflowMode = overflowY,
+            scrollbarPresent = scrollbarResolution.verticalPresent,
+            scrollbarGutter = scrollbarResolution.verticalGutter
+        )
         val maxScrollX = if (axisX.scrollContainer) {
             (contentExtent.width - viewportRect.width).coerceAtLeast(0)
         } else {
@@ -1301,23 +1352,83 @@ abstract class DOMNode(
             markRenderCommandsDirty()
         }
         return ScrollContainerState(
+            baseViewportRect = baseViewportRect,
             viewportRect = viewportRect,
             contentExtent = contentExtent,
             scrollX = normalizedScrollX,
             scrollY = normalizedScrollY,
             maxScrollX = maxScrollX,
             maxScrollY = maxScrollY,
+            horizontalScrollbarGutter = scrollbarResolution.horizontalGutter,
+            verticalScrollbarGutter = scrollbarResolution.verticalGutter,
             axisX = axisX,
             axisY = axisY
         )
     }
 
-    private fun axisStateForOverflow(overflowMode: Overflow): ScrollAxisState {
+    private fun axisStateForOverflow(
+        overflowMode: Overflow,
+        scrollbarPresent: Boolean,
+        scrollbarGutter: Int
+    ): ScrollAxisState {
         val scrollContainer = overflowMode != Overflow.Visible
+        val supportsScrollbar = overflowMode == Overflow.Scroll || overflowMode == Overflow.Auto
         return ScrollAxisState(
             overflow = overflowMode,
             scrollContainer = scrollContainer,
-            clipsToViewport = scrollContainer
+            clipsToViewport = scrollContainer,
+            scrollbarPresent = supportsScrollbar && scrollbarPresent,
+            scrollbarGutter = if (supportsScrollbar && scrollbarPresent) scrollbarGutter.coerceAtLeast(0) else 0
+        )
+    }
+
+    protected open fun scrollbarThicknessPx(): Int = 6
+
+    private fun resolveScrollbarResolution(
+        overflowX: Overflow,
+        overflowY: Overflow,
+        contentExtent: Size,
+        baseViewportWidth: Int,
+        baseViewportHeight: Int
+    ): ScrollbarResolution {
+        val thickness = scrollbarThicknessPx().coerceAtLeast(0)
+        var horizontalPresent = overflowX == Overflow.Scroll
+        var verticalPresent = overflowY == Overflow.Scroll
+        repeat(3) {
+            val viewportWidth = (baseViewportWidth - if (verticalPresent) thickness else 0).coerceAtLeast(0)
+            val viewportHeight = (baseViewportHeight - if (horizontalPresent) thickness else 0).coerceAtLeast(0)
+            val nextHorizontal = when (overflowX) {
+                Overflow.Visible, Overflow.Hidden -> false
+                Overflow.Scroll -> true
+                Overflow.Auto -> contentExtent.width > viewportWidth
+            }
+            val nextVertical = when (overflowY) {
+                Overflow.Visible, Overflow.Hidden -> false
+                Overflow.Scroll -> true
+                Overflow.Auto -> contentExtent.height > viewportHeight
+            }
+            if (nextHorizontal == horizontalPresent && nextVertical == verticalPresent) {
+                return ScrollbarResolution(
+                    horizontalPresent = nextHorizontal,
+                    verticalPresent = nextVertical,
+                    horizontalGutter = if (nextHorizontal) thickness else 0,
+                    verticalGutter = if (nextVertical) thickness else 0,
+                    viewportWidth = viewportWidth,
+                    viewportHeight = viewportHeight
+                )
+            }
+            horizontalPresent = nextHorizontal
+            verticalPresent = nextVertical
+        }
+        val viewportWidth = (baseViewportWidth - if (verticalPresent) thickness else 0).coerceAtLeast(0)
+        val viewportHeight = (baseViewportHeight - if (horizontalPresent) thickness else 0).coerceAtLeast(0)
+        return ScrollbarResolution(
+            horizontalPresent = horizontalPresent,
+            verticalPresent = verticalPresent,
+            horizontalGutter = if (horizontalPresent) thickness else 0,
+            verticalGutter = if (verticalPresent) thickness else 0,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight
         )
     }
 

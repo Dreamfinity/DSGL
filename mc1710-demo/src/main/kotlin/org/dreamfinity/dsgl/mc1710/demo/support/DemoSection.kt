@@ -8,6 +8,7 @@ enum class DemoSection(
     INSPECTOR("Inspector", "Global in-game element/style/layout inspector (F8/F9)"),
     LAYOUT_STYLE("Layout & Style", "Containers, gaps, fixed sizes, style DSL"),
     LAYOUT_DEBUG("Layout Debug", "Strict bounds validator and diagnostics"),
+    OVERFLOW_SCROLL("Overflow & Scroll", "Viewport clipping, gutters, and cross-axis overflow forcing"),
     DISPLAY("Display", "block/inline/none/flex/grid layout behaviors"),
     TEXT_WRAP("Text Wrap", "wrap/nowrap behavior for text rendering"),
     MSDF_FONTS("MSDF Fonts", "MTSDF atlas fonts: switch font, size, color, opacity, wrapping"),
@@ -26,3 +27,4 @@ enum class DemoSection(
     FOCUS_REBUILD("Focus & Rebuild", "Focus retention and invalidation"),
     MC_FEATURES("MC Features", "Pixel viewport rendering, clipping and item stacks")
 }
+

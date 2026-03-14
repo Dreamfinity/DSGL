@@ -23,6 +23,7 @@ import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
@@ -251,6 +252,14 @@ class ShowcaseWindow : DsglWindow() {
     private val sharedColorPickerManager: ColorPickerPopupManager = ColorPickerPopupManager()
     internal var sharedRangeValue by state(35L)
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
+    internal var overflowDemoOverflowX by state(Overflow.Auto)
+    internal var overflowDemoOverflowY by state(Overflow.Auto)
+    internal var overflowDemoViewportWidth by state(118L)
+    internal var overflowDemoViewportHeight by state(76L)
+    internal var overflowDemoContentWidth by state(132L)
+    internal var overflowDemoContentHeight by state(126L)
+    internal var overflowDemoVisibleClicks by state(0)
+    internal var overflowDemoEdgeClicks by state(0)
     internal var textEditingSingleValue by state("Edit this line")
     internal var textEditingPasswordValue by state("secret42")
     internal var textEditingAreaValue by state(
@@ -455,6 +464,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.LAYOUT_DEBUG -> layoutDebugSection(
+                                    this@ShowcaseWindow,
+                                    contentWidth - 10,
+                                    bodyHeight - 30
+                                )
+
+                                DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30
@@ -2554,3 +2569,4 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
+
