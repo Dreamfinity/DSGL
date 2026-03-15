@@ -79,9 +79,12 @@ class ContainerNode(
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         if (display == Display.None) {
             bounds = Rect(x, y, 0, 0)
+            resetContentLayoutScroll()
             return
         }
         bounds = Rect(x, y, width, height)
+        val scrollState = scrollContainerState()
+        setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
         val visibleChildren = layoutChildren()
         if (visibleChildren.isEmpty()) return
 

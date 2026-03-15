@@ -57,6 +57,17 @@ data class ScrollAnimationDebugState(
     val resolvedY: Int
 )
 
+data class ScrollbarDragSessionDebugState(
+    val verticalAxis: Boolean,
+    val trackStartPx: Int,
+    val trackLengthPx: Int,
+    val thumbLengthPx: Int,
+    val maxThumbTravelPx: Int,
+    val maxScroll: Int,
+    val grabOffsetPx: Int,
+    val initialResolvedScroll: Int
+)
+
 data class ScrollbarVisualAxis(
     val trackRect: Rect,
     val thumbRect: Rect,
@@ -91,9 +102,22 @@ abstract class DOMNode(
         Vertical
     }
 
+    private data class ScrollbarDragSession(
+        val axis: ScrollbarAxis,
+        val trackStartPx: Int,
+        val trackLengthPx: Int,
+        val thumbLengthPx: Int,
+        val maxThumbTravelPx: Int,
+        val maxScroll: Int,
+        val grabOffsetPx: Int,
+        val initialResolvedScroll: Int
+    )
+
     companion object {
         private val includeChildrenInRenderPass: ThreadLocal<Boolean> =
             ThreadLocal.withInitial { true }
+        private val inheritedChildRenderClipStack: ThreadLocal<MutableList<Rect?>> =
+            ThreadLocal.withInitial { ArrayList() }
 
         internal inline fun <T> withChildrenRenderPass(enabled: Boolean, block: () -> T): T {
             val previous = includeChildrenInRenderPass.get()
@@ -106,6 +130,21 @@ abstract class DOMNode(
         }
 
         internal fun isChildrenRenderPassEnabled(): Boolean = includeChildrenInRenderPass.get()
+
+        private inline fun <T> withInheritedChildRenderClipRect(clipRect: Rect?, block: () -> T): T {
+            val stack = inheritedChildRenderClipStack.get()
+            stack.add(clipRect)
+            return try {
+                block()
+            } finally {
+                stack.removeAt(stack.lastIndex)
+            }
+        }
+
+        private fun currentInheritedChildRenderClipRect(): Rect? {
+            val stack = inheritedChildRenderClipStack.get()
+            return stack.lastOrNull()
+        }
     }
 
     val children: MutableList<DOMNode> = mutableListOf()
@@ -255,8 +294,10 @@ abstract class DOMNode(
     private var scrollOffsetResolvedX: Int = 0
     private var scrollOffsetResolvedY: Int = 0
     private var scrollLayoutDirty: Boolean = false
+    private var contentLayoutScrollX: Int = 0
+    private var contentLayoutScrollY: Int = 0
     private var activeScrollbarDragAxis: ScrollbarAxis? = null
-    private var scrollbarDragAnchorPx: Int = 0
+    private var scrollbarDragSession: ScrollbarDragSession? = null
 
     private var onMouseDownHandler: ((MouseDownEvent) -> Unit)? = null
     private var onMouseUpHandler: ((MouseUpEvent) -> Unit)? = null
@@ -637,6 +678,7 @@ abstract class DOMNode(
                 bounds = next
                 markRenderCommandsDirty()
             }
+            resetContentLayoutScroll()
             return
         }
         val next = Rect(x, y, width, height)
@@ -645,8 +687,10 @@ abstract class DOMNode(
             markRenderCommandsDirty()
         }
         val scrollState = scrollContainerState()
-        val layoutContentX = scrollState.viewportRect.x - scrollState.scrollX
-        val layoutContentY = scrollState.viewportRect.y - scrollState.scrollY
+        val layoutScrollX = scrollState.scrollX
+        val layoutScrollY = scrollState.scrollY
+        val layoutContentX = scrollState.viewportRect.x - layoutScrollX
+        val layoutContentY = scrollState.viewportRect.y - layoutScrollY
         val availableOuterWidth = scrollState.viewportRect.width
         val availableOuterHeight = scrollState.viewportRect.height
         children.forEach { child ->
@@ -661,6 +705,7 @@ abstract class DOMNode(
             val childY = layoutContentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
         }
+        setContentLayoutScroll(layoutScrollX, layoutScrollY)
         scrollContainerState()
     }
 
@@ -669,22 +714,35 @@ abstract class DOMNode(
         val scrollState = scrollContainerState()
         appendScrollbarCommands(out, scrollState)
         if (!isChildrenRenderPassEnabled()) return
-        val clipRect = overflowViewportRect()
-        if (clipRect != null) {
+        val localClipRect = overflowViewportRect()
+        val inheritedClipRect = currentInheritedChildRenderClipRect()
+        if (localClipRect != null) {
+            val effectiveClipRect = if (inheritedClipRect != null) {
+                inheritedClipRect.intersection(localClipRect) ?: return
+            } else {
+                localClipRect
+            }
+            if (effectiveClipRect.width <= 0 || effectiveClipRect.height <= 0) {
+                return
+            }
             out += RenderCommand.PushClip(
-                x = clipRect.x,
-                y = clipRect.y,
-                width = clipRect.width.coerceAtLeast(0),
-                height = clipRect.height.coerceAtLeast(0)
+                x = effectiveClipRect.x,
+                y = effectiveClipRect.y,
+                width = effectiveClipRect.width.coerceAtLeast(0),
+                height = effectiveClipRect.height.coerceAtLeast(0)
             )
-            children.forEach { child ->
-                child.appendRenderCommands(ctx, out)
+            withInheritedChildRenderClipRect(effectiveClipRect) {
+                children.forEach { child ->
+                    child.appendRenderCommands(ctx, out)
+                }
             }
             out += RenderCommand.PopClip
             return
         }
-        children.forEach { child ->
-            child.appendRenderCommands(ctx, out)
+        withInheritedChildRenderClipRect(inheritedClipRect) {
+            children.forEach { child ->
+                child.appendRenderCommands(ctx, out)
+            }
         }
     }
     /** Appends render commands if this node is currently visible in render tree. */
@@ -871,7 +929,7 @@ abstract class DOMNode(
             val draggedAxis = activeScrollbarDragAxis
             val wasDragging = draggedAxis != null
             activeScrollbarDragAxis = null
-            scrollbarDragAnchorPx = 0
+            scrollbarDragSession = null
             if (wasDragging) {
                 settleReleasedDragAxis(draggedAxis)
                 markRenderCommandsDirty()
@@ -883,7 +941,7 @@ abstract class DOMNode(
         val draggedAxis = activeScrollbarDragAxis
         val wasDragging = draggedAxis != null
         activeScrollbarDragAxis = null
-        scrollbarDragAnchorPx = 0
+        scrollbarDragSession = null
         if (wasDragging) {
             settleReleasedDragAxis(draggedAxis)
             markRenderCommandsDirty()
@@ -1398,13 +1456,24 @@ abstract class DOMNode(
         return scrollContainerState().viewportRect.height
     }
 
+    protected fun setContentLayoutScroll(scrollX: Int, scrollY: Int) {
+        contentLayoutScrollX = scrollX
+        contentLayoutScrollY = scrollY
+    }
+
+    protected fun resetContentLayoutScroll() {
+        setContentLayoutScroll(0, 0)
+    }
+
     protected fun childContentOriginX(): Int {
         val state = scrollContainerState()
+        setContentLayoutScroll(state.scrollX, state.scrollY)
         return state.viewportRect.x - state.scrollX
     }
 
     protected fun childContentOriginY(): Int {
         val state = scrollContainerState()
+        setContentLayoutScroll(state.scrollX, state.scrollY)
         return state.viewportRect.y - state.scrollY
     }
 
@@ -1507,21 +1576,21 @@ abstract class DOMNode(
 
         val clampedTarget = targetScrollAxis(vertical).coerceIn(0, maxScroll)
         if (isScrollbarAxisActivelyDragged(vertical)) {
+            val clamped = resolvedScrollAxis(vertical).coerceIn(0, maxScroll)
             var changed = false
-            val clampedDisplayed = displayedScrollAxis(vertical).coerceIn(0.0, maxScroll.toDouble())
-            if (clampedDisplayed != displayedScrollAxis(vertical)) {
-                setDisplayedScrollAxis(vertical, clampedDisplayed)
+            val directDisplayed = clamped.toDouble()
+            if (displayedScrollAxis(vertical) != directDisplayed) {
+                setDisplayedScrollAxis(vertical, directDisplayed)
                 changed = true
             }
-            val resolved = clampedDisplayed.roundToInt().coerceIn(0, maxScroll)
-            if (resolved != resolvedScrollAxis(vertical)) {
-                setResolvedScrollAxis(vertical, resolved)
+            if (resolvedScrollAxis(vertical) != clamped) {
+                setResolvedScrollAxis(vertical, clamped)
                 scrollLayoutDirty = true
                 markRenderCommandsDirty()
                 changed = true
             }
-            if (targetScrollAxis(vertical) != resolved) {
-                setTargetScrollAxis(vertical, resolved)
+            if (targetScrollAxis(vertical) != clamped) {
+                setTargetScrollAxis(vertical, clamped)
                 markRenderCommandsDirty()
                 changed = true
             }
@@ -1636,7 +1705,12 @@ abstract class DOMNode(
             width = contentWidth(),
             height = contentHeight()
         )
-        val contentExtent = computeContentExtent(baseViewportRect.x, baseViewportRect.y)
+        val contentExtent = computeContentExtent(
+            contentOriginX = baseViewportRect.x,
+            contentOriginY = baseViewportRect.y,
+            layoutScrollX = contentLayoutScrollX,
+            layoutScrollY = contentLayoutScrollY
+        )
         val scrollbarResolution = resolveScrollbarResolution(
             overflowX = overflowX,
             overflowY = overflowY,
@@ -1671,22 +1745,54 @@ abstract class DOMNode(
             0
         }
         if (axisX.scrollContainer) {
+            var axisChanged = false
+            val axisDragged = isScrollbarAxisActivelyDragged(vertical = false)
             val clampedDisplayedX = scrollOffsetDisplayedX.coerceIn(0.0, maxScrollX.toDouble())
+            if (axisDragged && scrollOffsetDisplayedX != clampedDisplayedX) {
+                scrollOffsetDisplayedX = clampedDisplayedX
+                axisChanged = true
+            }
+            if (axisDragged) {
+                val clampedTargetX = scrollOffsetTargetX.coerceIn(0, maxScrollX)
+                if (scrollOffsetTargetX != clampedTargetX) {
+                    scrollOffsetTargetX = clampedTargetX
+                    axisChanged = true
+                }
+            }
             val resolvedX = clampedDisplayedX.roundToInt().coerceIn(0, maxScrollX)
             if (resolvedX != scrollOffsetResolvedX) {
                 scrollOffsetResolvedX = resolvedX
                 scrollLayoutDirty = true
+                axisChanged = true
+            }
+            if (axisChanged) {
                 markRenderCommandsDirty()
             }
         } else {
             normalizeScrollAxisForNonScrollable(vertical = false)
         }
         if (axisY.scrollContainer) {
+            var axisChanged = false
+            val axisDragged = isScrollbarAxisActivelyDragged(vertical = true)
             val clampedDisplayedY = scrollOffsetDisplayedY.coerceIn(0.0, maxScrollY.toDouble())
+            if (axisDragged && scrollOffsetDisplayedY != clampedDisplayedY) {
+                scrollOffsetDisplayedY = clampedDisplayedY
+                axisChanged = true
+            }
+            if (axisDragged) {
+                val clampedTargetY = scrollOffsetTargetY.coerceIn(0, maxScrollY)
+                if (scrollOffsetTargetY != clampedTargetY) {
+                    scrollOffsetTargetY = clampedTargetY
+                    axisChanged = true
+                }
+            }
             val resolvedY = clampedDisplayedY.roundToInt().coerceIn(0, maxScrollY)
             if (resolvedY != scrollOffsetResolvedY) {
                 scrollOffsetResolvedY = resolvedY
                 scrollLayoutDirty = true
+                axisChanged = true
+            }
+            if (axisChanged) {
                 markRenderCommandsDirty()
             }
         } else {
@@ -1933,11 +2039,12 @@ abstract class DOMNode(
         val vertical = visuals.vertical
         if (vertical != null && vertical.trackRect.contains(mouseX, mouseY)) {
             activeScrollbarDragAxis = ScrollbarAxis.Vertical
-            scrollbarDragAnchorPx = if (vertical.thumbRect.contains(mouseX, mouseY)) {
-                (mouseY - vertical.thumbRect.y).coerceIn(0, vertical.thumbRect.height.coerceAtLeast(1) - 1)
-            } else {
-                (vertical.thumbRect.height / 2).coerceAtLeast(0)
-            }
+            scrollbarDragSession = beginScrollbarDragSession(
+                axis = ScrollbarAxis.Vertical,
+                visual = vertical,
+                pointerPx = mouseY,
+                pointerInsideThumb = vertical.thumbRect.contains(mouseX, mouseY)
+            )
             markRenderCommandsDirty()
             updateScrollbarPointerDrag(mouseX, mouseY)
             return true
@@ -1946,11 +2053,12 @@ abstract class DOMNode(
         val horizontal = visuals.horizontal
         if (horizontal != null && horizontal.trackRect.contains(mouseX, mouseY)) {
             activeScrollbarDragAxis = ScrollbarAxis.Horizontal
-            scrollbarDragAnchorPx = if (horizontal.thumbRect.contains(mouseX, mouseY)) {
-                (mouseX - horizontal.thumbRect.x).coerceIn(0, horizontal.thumbRect.width.coerceAtLeast(1) - 1)
-            } else {
-                (horizontal.thumbRect.width / 2).coerceAtLeast(0)
-            }
+            scrollbarDragSession = beginScrollbarDragSession(
+                axis = ScrollbarAxis.Horizontal,
+                visual = horizontal,
+                pointerPx = mouseX,
+                pointerInsideThumb = horizontal.thumbRect.contains(mouseX, mouseY)
+            )
             markRenderCommandsDirty()
             updateScrollbarPointerDrag(mouseX, mouseY)
             return true
@@ -1958,77 +2066,85 @@ abstract class DOMNode(
         return false
     }
 
-    private fun updateScrollbarPointerDrag(mouseX: Int, mouseY: Int) {
-        val axis = activeScrollbarDragAxis ?: return
-        val state = scrollContainerState()
-        val visuals = scrollbarVisualState(state)
-        when (axis) {
-            ScrollbarAxis.Vertical -> {
-                val vertical = visuals.vertical ?: return
-                val track = vertical.trackRect
-                val thumb = vertical.thumbRect
-                val thumbTravel = (track.height - thumb.height).coerceAtLeast(0)
-                if (thumbTravel <= 0 || vertical.maxScroll <= 0) {
-                    applyDragScrollOffsets(
-                        scrollX = displayedScrollAxis(vertical = false),
-                        scrollY = 0.0,
-                        maxScrollX = state.maxScrollX,
-                        maxScrollY = state.maxScrollY
-                    )
-                    return
-                }
-                val desiredTop = (mouseY - track.y - scrollbarDragAnchorPx).coerceIn(0, thumbTravel)
-                val ratio = desiredTop.toDouble() / thumbTravel.toDouble()
-                val scrollY = (ratio * vertical.maxScroll.toDouble()).coerceIn(0.0, vertical.maxScroll.toDouble())
-                if (kotlin.math.abs(scrollY - displayedScrollAxis(vertical = true)) > 0.0001) {
-                    applyDragScrollOffsets(
-                        scrollX = displayedScrollAxis(vertical = false),
-                        scrollY = scrollY,
-                        maxScrollX = state.maxScrollX,
-                        maxScrollY = state.maxScrollY
-                    )
-                }
-            }
-
-            ScrollbarAxis.Horizontal -> {
-                val horizontal = visuals.horizontal ?: return
-                val track = horizontal.trackRect
-                val thumb = horizontal.thumbRect
-                val thumbTravel = (track.width - thumb.width).coerceAtLeast(0)
-                if (thumbTravel <= 0 || horizontal.maxScroll <= 0) {
-                    applyDragScrollOffsets(
-                        scrollX = 0.0,
-                        scrollY = displayedScrollAxis(vertical = true),
-                        maxScrollX = state.maxScrollX,
-                        maxScrollY = state.maxScrollY
-                    )
-                    return
-                }
-                val desiredLeft = (mouseX - track.x - scrollbarDragAnchorPx).coerceIn(0, thumbTravel)
-                val ratio = desiredLeft.toDouble() / thumbTravel.toDouble()
-                val scrollX = (ratio * horizontal.maxScroll.toDouble()).coerceIn(0.0, horizontal.maxScroll.toDouble())
-                if (kotlin.math.abs(scrollX - displayedScrollAxis(vertical = false)) > 0.0001) {
-                    applyDragScrollOffsets(
-                        scrollX = scrollX,
-                        scrollY = displayedScrollAxis(vertical = true),
-                        maxScrollX = state.maxScrollX,
-                        maxScrollY = state.maxScrollY
-                    )
-                }
-            }
+    private fun beginScrollbarDragSession(
+        axis: ScrollbarAxis,
+        visual: ScrollbarVisualAxis,
+        pointerPx: Int,
+        pointerInsideThumb: Boolean
+    ): ScrollbarDragSession {
+        val track = visual.trackRect
+        val thumb = visual.thumbRect
+        val trackLengthPx = if (axis == ScrollbarAxis.Vertical) {
+            track.height.coerceAtLeast(0)
+        } else {
+            track.width.coerceAtLeast(0)
         }
+        val thumbLengthPx = if (axis == ScrollbarAxis.Vertical) {
+            thumb.height.coerceAtLeast(1)
+        } else {
+            thumb.width.coerceAtLeast(1)
+        }
+        val trackStartPx = if (axis == ScrollbarAxis.Vertical) track.y else track.x
+        val thumbStartPx = if (axis == ScrollbarAxis.Vertical) thumb.y else thumb.x
+        val maxThumbTravelPx = (trackLengthPx - thumbLengthPx).coerceAtLeast(0)
+        val grabOffsetPx = if (pointerInsideThumb) {
+            (pointerPx - thumbStartPx).coerceIn(0, (thumbLengthPx - 1).coerceAtLeast(0))
+        } else {
+            (thumbLengthPx / 2).coerceAtLeast(0)
+        }
+        val initialResolvedScroll = if (axis == ScrollbarAxis.Vertical) {
+            resolvedScrollAxis(vertical = true)
+        } else {
+            resolvedScrollAxis(vertical = false)
+        }
+        return ScrollbarDragSession(
+            axis = axis,
+            trackStartPx = trackStartPx,
+            trackLengthPx = trackLengthPx,
+            thumbLengthPx = thumbLengthPx,
+            maxThumbTravelPx = maxThumbTravelPx,
+            maxScroll = visual.maxScroll.coerceAtLeast(0),
+            grabOffsetPx = grabOffsetPx,
+            initialResolvedScroll = initialResolvedScroll
+        )
+    }
+
+    private fun updateScrollbarPointerDrag(mouseX: Int, mouseY: Int) {
+        val session = scrollbarDragSession ?: return
+        val pointerAxisPx = if (session.axis == ScrollbarAxis.Vertical) mouseY else mouseX
+        val desiredThumbStartPx = if (session.maxThumbTravelPx <= 0) {
+            0
+        } else {
+            (pointerAxisPx - session.trackStartPx - session.grabOffsetPx).coerceIn(0, session.maxThumbTravelPx)
+        }
+        val desiredScroll = if (session.maxThumbTravelPx <= 0 || session.maxScroll <= 0) {
+            0
+        } else {
+            val ratio = desiredThumbStartPx.toDouble() / session.maxThumbTravelPx.toDouble()
+            (ratio * session.maxScroll.toDouble()).roundToInt().coerceIn(0, session.maxScroll)
+        }
+
+        var nextScrollX = resolvedScrollAxis(vertical = false)
+        var nextScrollY = resolvedScrollAxis(vertical = true)
+        if (session.axis == ScrollbarAxis.Vertical) {
+            nextScrollY = desiredScroll
+        } else {
+            nextScrollX = desiredScroll
+        }
+        applyDragScrollOffsets(
+            scrollX = nextScrollX,
+            scrollY = nextScrollY
+        )
     }
 
     private fun applyDragScrollOffsets(
-        scrollX: Double,
-        scrollY: Double,
-        maxScrollX: Int,
-        maxScrollY: Int
+        scrollX: Int,
+        scrollY: Int
     ) {
-        val clampedX = scrollX.coerceIn(0.0, maxScrollX.toDouble())
-        val clampedY = scrollY.coerceIn(0.0, maxScrollY.toDouble())
-        val resolvedX = clampedX.roundToInt().coerceIn(0, maxScrollX)
-        val resolvedY = clampedY.roundToInt().coerceIn(0, maxScrollY)
+        val resolvedX = scrollX.coerceAtLeast(0)
+        val resolvedY = scrollY.coerceAtLeast(0)
+        val clampedX = resolvedX.toDouble()
+        val clampedY = resolvedY.toDouble()
         var changed = false
         if (scrollOffsetDisplayedX != clampedX) {
             scrollOffsetDisplayedX = clampedX
@@ -2061,7 +2177,12 @@ abstract class DOMNode(
         }
     }
 
-    private fun computeContentExtent(contentOriginX: Int, contentOriginY: Int): Size {
+    private fun computeContentExtent(
+        contentOriginX: Int,
+        contentOriginY: Int,
+        layoutScrollX: Int,
+        layoutScrollY: Int
+    ): Size {
         var maxWidth = 0
         var maxHeight = 0
         children.forEach { child ->
@@ -2070,8 +2191,10 @@ abstract class DOMNode(
             val outerStartY = child.bounds.y - child.margin.top
             val outerEndX = outerStartX + child.bounds.width + child.margin.horizontal
             val outerEndY = outerStartY + child.bounds.height + child.margin.vertical
-            maxWidth = maxOf(maxWidth, (outerEndX - contentOriginX).coerceAtLeast(0))
-            maxHeight = maxOf(maxHeight, (outerEndY - contentOriginY).coerceAtLeast(0))
+            val normalizedOuterEndX = outerEndX + layoutScrollX
+            val normalizedOuterEndY = outerEndY + layoutScrollY
+            maxWidth = maxOf(maxWidth, (normalizedOuterEndX - contentOriginX).coerceAtLeast(0))
+            maxHeight = maxOf(maxHeight, (normalizedOuterEndY - contentOriginY).coerceAtLeast(0))
         }
         return Size(maxWidth, maxHeight)
     }
@@ -2129,6 +2252,20 @@ abstract class DOMNode(
 
     internal fun debugScrollbarVisualState(): ScrollbarVisualState {
         return scrollbarVisualState()
+    }
+
+    internal fun debugScrollbarDragSession(): ScrollbarDragSessionDebugState? {
+        val session = scrollbarDragSession ?: return null
+        return ScrollbarDragSessionDebugState(
+            verticalAxis = session.axis == ScrollbarAxis.Vertical,
+            trackStartPx = session.trackStartPx,
+            trackLengthPx = session.trackLengthPx,
+            thumbLengthPx = session.thumbLengthPx,
+            maxThumbTravelPx = session.maxThumbTravelPx,
+            maxScroll = session.maxScroll,
+            grabOffsetPx = session.grabOffsetPx,
+            initialResolvedScroll = session.initialResolvedScroll
+        )
     }
 
     /** Adds border render commands when a border is present. */

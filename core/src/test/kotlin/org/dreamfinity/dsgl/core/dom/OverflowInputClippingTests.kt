@@ -102,6 +102,40 @@ class OverflowInputClippingTests {
         assertEquals(1, clicks)
     }
 
+
+    @Test
+    fun `nested clipped containers clamp interaction to parent child intersection`() {
+        val (root, router) = createLayerRouter("nested-intersection")
+        var clicks = 0
+
+        val outer = ContainerNode(key = "outer").apply {
+            bounds = Rect(10, 10, 100, 60)
+            overflow = Overflow.Hidden
+        }
+        outer.applyParent(root)
+
+        val inner = ContainerNode(key = "inner").apply {
+            bounds = Rect(80, 20, 70, 40)
+            overflow = Overflow.Hidden
+        }
+        inner.applyParent(outer)
+
+        val child = ButtonNode("child", key = "intersection-child").apply {
+            bounds = Rect(84, 24, 60, 24)
+            onClick { clicks += 1 }
+        }
+        child.applyParent(inner)
+
+        // Visible point inside effective intersection.
+        assertTrue(router.handleMouseDown(96, 30, MouseButton.LEFT))
+        assertTrue(router.handleMouseUp(96, 30, MouseButton.LEFT))
+        assertEquals(1, clicks)
+
+        // Inside inner bounds, but outside outer clip intersection.
+        assertFalse(router.handleMouseDown(118, 30, MouseButton.LEFT))
+        assertFalse(router.handleMouseUp(118, 30, MouseButton.LEFT))
+        assertEquals(1, clicks)
+    }
     @Test
     fun `paint and pointer clipping stay consistent for clipped containers`() {
         val (root, router) = createLayerRouter("paint-input-consistency")

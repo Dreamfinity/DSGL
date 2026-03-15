@@ -6,6 +6,7 @@ import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Insets
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -132,7 +133,56 @@ class OverflowClippingTests {
         val popCount = commands.count { it is RenderCommand.PopClip }
         assertEquals(pushCount, popCount)
     }
+    @Test
+    fun `nested overflow still emits child clip when child extends beyond parent`() {
+        val leafColor = 0xFF46A0D8.toInt()
+        val root = ContainerNode(key = "root")
+        val outer = ContainerNode(backgroundColor = 0xFF111820.toInt(), key = "outer").apply {
+            width = 100
+            height = 50
+            overflow = Overflow.Hidden
+        }.applyParent(root)
+        val inner = ContainerNode(backgroundColor = 0xFF182536.toInt(), key = "inner").apply {
+            width = 80
+            height = 40
+            margin = Insets(top = 8, right = 0, bottom = 0, left = 72)
+            overflow = Overflow.Hidden
+        }.applyParent(outer)
+        FixedPaintNode(color = leafColor, nodeWidth = 120, nodeHeight = 24, key = "leaf")
+            .applyParent(inner)
 
+        val tree = DomTree(root)
+        tree.render(ctx, 240, 180)
+        val commands = tree.paint(ctx, applyStyles = false)
+
+        val outerClip = commands
+            .filterIsInstance<RenderCommand.PushClip>()
+            .firstOrNull { push ->
+                push.x == outer.bounds.x &&
+                    push.y == outer.bounds.y &&
+                    push.width == outer.bounds.width &&
+                    push.height == outer.bounds.height
+            }
+            ?: error("outer clip command missing")
+
+        val expectedInner = Rect(inner.bounds.x, inner.bounds.y, inner.bounds.width, inner.bounds.height)
+            .intersection(Rect(outerClip.x, outerClip.y, outerClip.width, outerClip.height))
+            ?: error("inner should intersect outer")
+        val pushClips = commands.filterIsInstance<RenderCommand.PushClip>()
+        val outerClipIndex = pushClips.indexOfFirst { push ->
+            push.x == outerClip.x &&
+                push.y == outerClip.y &&
+                push.width == outerClip.width &&
+                push.height == outerClip.height
+        }
+        assertTrue(outerClipIndex >= 0)
+        val innerClip = pushClips.getOrNull(outerClipIndex + 1) ?: error("inner clip command missing")
+        assertEquals(inner.bounds.x, innerClip.x)
+        assertEquals(inner.bounds.y, innerClip.y)
+        assertEquals(inner.bounds.width, innerClip.width)
+        assertEquals(inner.bounds.height, innerClip.height)
+        assertTrue(innerClip.x < expectedInner.x + expectedInner.width)
+    }
     private class FixedPaintNode(
         private val color: Int,
         private val nodeWidth: Int,
@@ -152,3 +202,6 @@ class OverflowClippingTests {
         }
     }
 }
+
+
+

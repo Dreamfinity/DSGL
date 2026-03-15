@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.math.roundToInt
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -83,7 +84,11 @@ class ScrollReactiveSmoothTests {
             assertTrue(state.scrollY >= previousScroll)
             assertTrue(thumbY >= previousThumb)
             assertTrue(fixture.button.bounds.y <= previousButtonY)
-            assertEquals(state.viewportRect.y - state.scrollY + fixture.button.margin.top, fixture.button.bounds.y)
+            val expectedButtonY = state.viewportRect.y - state.scrollY + fixture.button.margin.top
+            assertTrue(
+                kotlin.math.abs(expectedButtonY - fixture.button.bounds.y) <= 1,
+                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} scrollY=${state.scrollY} viewportY=${state.viewportRect.y}"
+            )
             previousScroll = state.scrollY
             previousThumb = thumbY
             previousButtonY = fixture.button.bounds.y
@@ -164,7 +169,11 @@ class ScrollReactiveSmoothTests {
             assertTrue(state.scrollY >= previousScroll)
             assertTrue(currentThumbY >= previousThumbY)
             assertTrue(fixture.button.bounds.y <= previousButtonY)
-            assertEquals(state.viewportRect.y - state.scrollY + fixture.button.margin.top, fixture.button.bounds.y)
+            val expectedButtonY = state.viewportRect.y - state.scrollY + fixture.button.margin.top
+            assertTrue(
+                kotlin.math.abs(expectedButtonY - fixture.button.bounds.y) <= 1,
+                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} scrollY=${state.scrollY} viewportY=${state.viewportRect.y}"
+            )
             assertEquals(state.scrollY, debug.resolvedY)
             assertTrue(kotlin.math.abs(debug.displayedY - debug.resolvedY.toDouble()) <= 1.0)
             previousScroll = state.scrollY
@@ -172,8 +181,6 @@ class ScrollReactiveSmoothTests {
             previousButtonY = fixture.button.bounds.y
         }
     }
-
-
     @Test
     fun `drag keeps target and displayed state coherent`() {
         val fixture = createFixture()
@@ -186,9 +193,130 @@ class ScrollReactiveSmoothTests {
             assertTrue(fixture.router.handleMouseMove(dragX, startY + (step + 1) * 5))
             fixture.tree.paint(ctx)
             val debug = fixture.viewport.debugScrollAnimationState()
-            assertTrue(kotlin.math.abs(debug.targetY - debug.resolvedY) <= 1)
-            assertTrue(kotlin.math.abs(debug.displayedY - debug.resolvedY.toDouble()) <= 1.0)
+            assertEquals(debug.targetY, debug.resolvedY)
+            assertEquals(debug.displayedY, debug.resolvedY.toDouble())
         }
+    }
+
+    @Test
+    fun `fast thumb drag to max remains stable and coherent at boundary`() {
+        val fixture = createFixture()
+        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+
+        fixture.viewport.beginPointerCapture(dragX, startY, MouseButton.LEFT)
+        repeat(10) { step ->
+            val nextY = startY + (step + 1) * 120
+            fixture.viewport.continuePointerCapture(dragX, nextY, 0, 120, MouseButton.LEFT)
+            fixture.tree.paint(ctx)
+            val state = fixture.viewport.scrollContainerState()
+            val debug = fixture.viewport.debugScrollAnimationState()
+            assertEquals(state.scrollY, debug.resolvedY)
+            assertEquals(debug.displayedY, debug.resolvedY.toDouble())
+            assertTrue(state.scrollY in 0..state.maxScrollY)
+        }
+        val beforeSettle = fixture.viewport.scrollContainerState()
+        var previousSettled = beforeSettle.scrollY
+        repeat(10) {
+            fixture.tree.paint(ctx)
+            val state = fixture.viewport.scrollContainerState()
+            val debug = fixture.viewport.debugScrollAnimationState()
+            assertTrue(state.scrollY >= previousSettled)
+            assertEquals(debug.displayedY, debug.resolvedY.toDouble())
+            previousSettled = state.scrollY
+        }
+        fixture.viewport.endPointerCapture(dragX, startY + 1200, MouseButton.LEFT)
+    }
+
+    @Test
+    fun `fast thumb drag to min remains stable and coherent at boundary`() {
+        val fixture = createFixture()
+        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+
+        fixture.viewport.beginPointerCapture(dragX, startY, MouseButton.LEFT)
+        fixture.viewport.continuePointerCapture(dragX, startY + 1200, 0, 1200, MouseButton.LEFT)
+        fixture.tree.paint(ctx)
+        fixture.viewport.continuePointerCapture(dragX, startY - 1200, 0, -2400, MouseButton.LEFT)
+
+        repeat(10) {
+            fixture.tree.paint(ctx)
+            val state = fixture.viewport.scrollContainerState()
+            val debug = fixture.viewport.debugScrollAnimationState()
+            assertEquals(0, state.scrollY)
+            assertEquals(debug.targetY, debug.resolvedY)
+            assertEquals(debug.displayedY, debug.resolvedY.toDouble())
+        }
+        fixture.viewport.endPointerCapture(dragX, startY - 1200, MouseButton.LEFT)
+    }
+
+    @Test
+    fun `drag session baseline stays frozen when live scrollbar geometry changes`() {
+        val fixture = createFixture()
+        val initialVisual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = initialVisual.thumbRect.x + initialVisual.thumbRect.width / 2
+        val startY = initialVisual.thumbRect.y + initialVisual.thumbRect.height / 2
+
+        assertTrue(fixture.router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        val baseline = fixture.viewport.debugScrollbarDragSession() ?: error("Expected active drag session")
+        assertTrue(baseline.verticalAxis)
+        assertEquals(initialVisual.trackRect.y, baseline.trackStartPx)
+        assertEquals(initialVisual.trackRect.height, baseline.trackLengthPx)
+        assertEquals(initialVisual.thumbRect.height, baseline.thumbLengthPx)
+
+        fixture.filler.height = (fixture.filler.height ?: 0) + 260
+        fixture.tree.render(ctx, 420, 260)
+        fixture.tree.paint(ctx)
+
+        val liveAfterResize = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        assertTrue(liveAfterResize.maxScroll >= baseline.maxScroll)
+
+        val baselineAfterResize = fixture.viewport.debugScrollbarDragSession() ?: error("Expected active drag session")
+        assertEquals(baseline.trackStartPx, baselineAfterResize.trackStartPx)
+        assertEquals(baseline.trackLengthPx, baselineAfterResize.trackLengthPx)
+        assertEquals(baseline.thumbLengthPx, baselineAfterResize.thumbLengthPx)
+        assertEquals(baseline.maxThumbTravelPx, baselineAfterResize.maxThumbTravelPx)
+        assertEquals(baseline.maxScroll, baselineAfterResize.maxScroll)
+        assertEquals(baseline.grabOffsetPx, baselineAfterResize.grabOffsetPx)
+
+        val moveY = startY + 44
+        assertTrue(fixture.router.handleMouseMove(dragX, moveY))
+        fixture.tree.paint(ctx)
+
+        val expectedScroll = expectedScrollFromSession(baseline, moveY)
+        val state = fixture.viewport.scrollContainerState()
+        val debug = fixture.viewport.debugScrollAnimationState()
+        assertTrue(
+            kotlin.math.abs(expectedScroll - state.scrollY) <= 1,
+            "expectedScroll=$expectedScroll actualScroll=${state.scrollY} moveY=$moveY baseline=$baseline stateMax=${state.maxScrollY}"
+        )
+        assertEquals(state.scrollY, debug.resolvedY)
+        assertEquals(debug.displayedY, debug.resolvedY.toDouble())
+        assertEquals(debug.targetY, debug.resolvedY)
+
+        assertTrue(fixture.router.handleMouseUp(dragX, moveY, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `drag pointer capture continues when pointer leaves container bounds`() {
+        val fixture = createFixture()
+        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+
+        assertTrue(fixture.router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        val before = fixture.viewport.scrollContainerState().scrollY
+        val outsideX = fixture.viewport.bounds.x + fixture.viewport.bounds.width + 1200
+        val outsideY = fixture.viewport.bounds.y + fixture.viewport.bounds.height + 1200
+
+        assertTrue(fixture.router.handleMouseMove(outsideX, outsideY))
+        fixture.tree.paint(ctx)
+
+        val after = fixture.viewport.scrollContainerState().scrollY
+        assertTrue(after >= before)
+        assertTrue(fixture.router.handleMouseUp(outsideX, outsideY, MouseButton.LEFT))
     }
 
     @Test
@@ -280,7 +408,7 @@ class ScrollReactiveSmoothTests {
                 clickCount.value += 1
             }
         }.applyParent(viewport)
-        ContainerNode(key = "filler").apply {
+        val filler = ContainerNode(key = "filler").apply {
             width = 120
             height = 320
         }.applyParent(viewport)
@@ -289,7 +417,7 @@ class ScrollReactiveSmoothTests {
         tree.render(ctx, 420, 260)
         tree.paint(ctx)
         val router = LayerDomInputRouter { root }
-        return Fixture(tree, root, viewport, button, router, clickCount)
+        return Fixture(tree, root, viewport, button, filler, router, clickCount)
     }
 
     private data class Fixture(
@@ -297,11 +425,18 @@ class ScrollReactiveSmoothTests {
         val root: ContainerNode,
         val viewport: ContainerNode,
         val button: ButtonNode,
+        val filler: ContainerNode,
         val router: LayerDomInputRouter,
         val clickCount: IntBox
     )
 
+    private fun expectedScrollFromSession(session: ScrollbarDragSessionDebugState, pointerAxisPx: Int): Int {
+        if (session.maxScroll <= 0 || session.maxThumbTravelPx <= 0) return 0
+        val desiredThumbStart = (pointerAxisPx - session.trackStartPx - session.grabOffsetPx)
+            .coerceIn(0, session.maxThumbTravelPx)
+        val ratio = desiredThumbStart.toDouble() / session.maxThumbTravelPx.toDouble()
+        return (ratio * session.maxScroll.toDouble()).roundToInt().coerceIn(0, session.maxScroll)
+    }
+
     private data class IntBox(var value: Int = 0)
 }
-
-

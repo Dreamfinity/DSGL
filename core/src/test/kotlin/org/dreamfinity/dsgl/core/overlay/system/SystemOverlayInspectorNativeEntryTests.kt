@@ -852,5 +852,59 @@ class SystemOverlayInspectorNativeEntryTests {
             assertEquals(settledThumbY, inspector.debugScrollbarThumbRect().y)
         }
     }
-}
+    @Test
+    fun `inspector consumer fast thumb drag to boundary stays stable`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
 
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        host.paint(ctx)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        val thumb = inspector.debugScrollbarThumbRect()
+        assertTrue(thumb.width > 0 && thumb.height > 0)
+        val dragX = thumb.x + thumb.width / 2
+        val startY = thumb.y + thumb.height / 2
+
+        assertTrue(host.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        var previousScroll = inspector.panelScrollOffsetY
+        var previousThumbY = inspector.debugScrollbarThumbRect().y
+        repeat(7) { step ->
+            val nextY = startY + (step + 1) * 120
+            assertTrue(host.handleMouseMove(dragX, nextY))
+            host.syncFrame(root, inspectedLayoutRevision = 20L + step, cursorX = dragX, cursorY = nextY, inspectorPointerCaptured = inspector.isPointerCaptured)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+            val currentScroll = inspector.panelScrollOffsetY
+            val currentThumbY = inspector.debugScrollbarThumbRect().y
+            assertTrue(currentScroll >= previousScroll)
+            assertTrue(currentThumbY >= previousThumbY)
+            previousScroll = currentScroll
+            previousThumbY = currentThumbY
+        }
+
+        val settledScroll = inspector.panelScrollOffsetY
+        val settledThumbY = inspector.debugScrollbarThumbRect().y
+        repeat(8) { idx ->
+            val boundaryY = startY + 2000
+            assertTrue(host.handleMouseMove(dragX, boundaryY))
+            host.syncFrame(root, inspectedLayoutRevision = 40L + idx, cursorX = dragX, cursorY = boundaryY, inspectorPointerCaptured = inspector.isPointerCaptured)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+            assertEquals(settledScroll, inspector.panelScrollOffsetY)
+            assertEquals(settledThumbY, inspector.debugScrollbarThumbRect().y)
+        }
+
+        assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
+    }
+}

@@ -310,6 +310,98 @@ class ScrollbarRenderingInteractionTests {
         assertTrue(afterVisual.thumbRect.y > beforeVisual.thumbRect.y)
         assertFalse(afterVisual.thumbRect == beforeVisual.thumbRect)
     }
+
+    @Test
+    fun `wheel chains to ancestor when inner container is at vertical limit`() {
+        val root = ContainerNode(key = "root").apply {
+            bounds = Rect(0, 0, 640, 360)
+        }
+        val outer = ContainerNode(key = "outer").apply {
+            bounds = Rect(20, 20, 260, 150)
+            overflowX = Overflow.Hidden
+            overflowY = Overflow.Auto
+        }.applyParent(root)
+        ContainerNode(key = "outer-content").apply {
+            bounds = Rect(outer.bounds.x, outer.bounds.y, 240, 460)
+        }.applyParent(outer)
+        val inner = ContainerNode(key = "inner").apply {
+            bounds = Rect(36, 36, 140, 72)
+            overflowX = Overflow.Hidden
+            overflowY = Overflow.Auto
+        }.applyParent(outer)
+        ContainerNode(key = "inner-content").apply {
+            bounds = Rect(inner.bounds.x, inner.bounds.y, 120, 320)
+        }.applyParent(inner)
+
+        val router = LayerDomInputRouter { root }
+        KeyModifiers.sync(shift = false, control = false, meta = false)
+        val innerMax = inner.scrollContainerState().maxScrollY
+        inner.setScrollOffsets(0, innerMax)
+        advanceScrollAnimation(root, frames = 8)
+
+        val wheelX = inner.bounds.x + 6
+        val wheelY = inner.bounds.y + 6
+        val innerBefore = inner.scrollContainerState()
+        val outerBefore = outer.scrollContainerState()
+
+        assertTrue(router.handleMouseWheel(wheelX, wheelY, -120))
+        advanceScrollAnimation(root, frames = 10)
+
+        val innerAfter = inner.scrollContainerState()
+        val outerAfter = outer.scrollContainerState()
+        val outerDebug = outer.debugScrollAnimationState()
+        assertEquals(innerBefore.scrollY, innerAfter.scrollY)
+        assertTrue(outerAfter.scrollY > outerBefore.scrollY)
+        assertEquals(outerAfter.scrollY, outerDebug.resolvedY)
+        assertTrue(kotlin.math.abs(outerDebug.displayedY - outerDebug.resolvedY.toDouble()) <= 1.0)
+    }
+
+    @Test
+    fun `dragging nested inner thumb does not affect outer scroll state`() {
+        val root = ContainerNode(key = "root").apply {
+            bounds = Rect(0, 0, 680, 420)
+        }
+        val outer = ContainerNode(key = "outer").apply {
+            bounds = Rect(18, 18, 280, 180)
+            overflowX = Overflow.Hidden
+            overflowY = Overflow.Scroll
+        }.applyParent(root)
+        ContainerNode(key = "outer-content").apply {
+            bounds = Rect(outer.bounds.x, outer.bounds.y, 250, 520)
+        }.applyParent(outer)
+
+        val inner = ContainerNode(key = "inner").apply {
+            bounds = Rect(40, 42, 160, 90)
+            overflowX = Overflow.Hidden
+            overflowY = Overflow.Scroll
+        }.applyParent(outer)
+        ContainerNode(key = "inner-content").apply {
+            bounds = Rect(inner.bounds.x, inner.bounds.y, 130, 360)
+        }.applyParent(inner)
+
+        val router = LayerDomInputRouter { root }
+        val innerThumb = inner.debugScrollbarVisualState().vertical?.thumbRect ?: error("inner thumb missing")
+        val dragX = innerThumb.x + innerThumb.width / 2
+        val startY = innerThumb.y + innerThumb.height / 2
+        val endY = startY + 32
+
+        val outerBefore = outer.scrollContainerState()
+        val innerBefore = inner.scrollContainerState()
+
+        assertTrue(router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        assertTrue(router.handleMouseMove(dragX, endY))
+        assertTrue(router.handleMouseUp(dragX, endY, MouseButton.LEFT))
+        advanceScrollAnimation(root, frames = 4)
+
+        val outerAfter = outer.scrollContainerState()
+        val innerAfter = inner.scrollContainerState()
+        val innerDebug = inner.debugScrollAnimationState()
+
+        assertEquals(outerBefore.scrollY, outerAfter.scrollY)
+        assertTrue(innerAfter.scrollY > innerBefore.scrollY)
+        assertEquals(innerAfter.scrollY, innerDebug.resolvedY)
+        assertTrue(kotlin.math.abs(innerDebug.displayedY - innerDebug.resolvedY.toDouble()) <= 1.0)
+    }
     private fun advanceScrollAnimation(node: DOMNode, frames: Int = 6) {
         repeat(frames) {
             node.advanceScrollAnimationsRecursively(1.0 / 60.0)

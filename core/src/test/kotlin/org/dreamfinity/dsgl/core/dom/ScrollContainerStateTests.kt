@@ -239,6 +239,42 @@ class ScrollContainerStateTests {
         assertEquals(0, state.axisY.scrollbarGutter)
     }
 
+
+    @Test
+    fun `mixed overflow axis combinations resolve deterministic state`() {
+        val cases = listOf(
+            Triple(Overflow.Hidden, Overflow.Auto, Pair(true, true)),
+            Triple(Overflow.Visible, Overflow.Scroll, Pair(false, true)),
+            Triple(Overflow.Scroll, Overflow.Visible, Pair(true, false))
+        )
+
+        cases.forEachIndexed { index, (overflowX, overflowY, expectedScrollContainer) ->
+            val root = ContainerNode(key = "root-$index")
+            val container = ContainerNode(key = "mixed-$index").apply {
+                width = 110
+                height = 66
+                this.overflowX = overflowX
+                this.overflowY = overflowY
+            }.applyParent(root)
+            ContainerNode(key = "child-$index").apply {
+                width = 220
+                height = 190
+            }.applyParent(container)
+
+            DomTree(root).render(ctx, 360, 220)
+            val state = container.scrollContainerState()
+
+            assertEquals(expectedScrollContainer.first, state.axisX.scrollContainer)
+            assertEquals(expectedScrollContainer.second, state.axisY.scrollContainer)
+
+            val expectedVisibleX = overflowX == Overflow.Scroll || (overflowX == Overflow.Auto && state.contentExtent.width > state.viewportRect.width)
+            val expectedVisibleY = overflowY == Overflow.Scroll || (overflowY == Overflow.Auto && state.contentExtent.height > state.viewportRect.height)
+            assertEquals(expectedVisibleX, state.axisX.scrollbarPresent)
+            assertEquals(expectedVisibleY, state.axisY.scrollbarPresent)
+            assertEquals(if (expectedVisibleX) state.horizontalScrollbarGutter else 0, state.axisX.scrollbarGutter)
+            assertEquals(if (expectedVisibleY) state.verticalScrollbarGutter else 0, state.axisY.scrollbarGutter)
+        }
+    }
     @Test
     fun `cross-axis gutter forcing enables dependent auto scrollbar deterministically`() {
         val root = ContainerNode(key = "root").apply {
