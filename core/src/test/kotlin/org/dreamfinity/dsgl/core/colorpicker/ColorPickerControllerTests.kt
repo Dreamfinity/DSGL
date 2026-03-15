@@ -5,7 +5,6 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ColorPickerControllerTests {
@@ -152,7 +151,7 @@ class ColorPickerControllerTests {
     }
 
     @Test
-    fun `eyedropper overlay uses area sampling for magnifier grid`() {
+    fun `eyedropper overlay preview path does not use area sampling`() {
         val sampler = RecordingSampler()
         val controller = ColorPickerController(
             initial = ColorPickerState(
@@ -169,8 +168,10 @@ class ColorPickerControllerTests {
         val out = ArrayList<RenderCommand>()
         controller.appendEyedropperOverlay(640, 480, out)
 
-        assertTrue(sampler.areaCalls > 0)
-        assertNotNull(sampler.lastAreaSize)
+        assertEquals(0, sampler.areaCalls)
+        assertTrue(sampler.colorCalls > 0)
+        assertTrue(out.any { it is RenderCommand.CaptureScreenRegion })
+        assertTrue(out.any { it is RenderCommand.DrawCapturedScreenRegion })
     }
 
     @Test
@@ -289,14 +290,16 @@ class ColorPickerControllerTests {
         })
     }
     private class RecordingSampler : ScreenColorSampler {
+        var colorCalls: Int = 0
         var areaCalls: Int = 0
-        var lastAreaSize: Pair<Int, Int>? = null
 
-        override fun sampleColorAt(x: Int, y: Int): Int? = 0xFF112233.toInt()
+        override fun sampleColorAt(x: Int, y: Int): Int? {
+            colorCalls += 1
+            return 0xFF112233.toInt()
+        }
 
         override fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
             areaCalls += 1
-            lastAreaSize = width to height
             var index = 0
             while (index < width * height && index < outArgb.size) {
                 outArgb[index] = 0xFF112233.toInt()
@@ -310,5 +313,4 @@ class ColorPickerControllerTests {
         return kotlin.math.abs(a - b) <= 0.01f
     }
 }
-
 

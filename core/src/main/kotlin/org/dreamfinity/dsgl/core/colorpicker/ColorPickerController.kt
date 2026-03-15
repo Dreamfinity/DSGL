@@ -93,10 +93,6 @@ class ColorPickerController(
         }
     private var eyedropperActive: Boolean = false
     private var eyedropperBaseColor: RgbaColor = state.color
-    private var eyedropperLastSampleX: Int = Int.MIN_VALUE
-    private var eyedropperLastSampleY: Int = Int.MIN_VALUE
-    private var eyedropperGridColors: IntArray = IntArray(style.eyedropperGridSize * style.eyedropperGridSize)
-    private var eyedropperGridValid: Boolean = false
     private val eyedropperOverlayDrag: FloatingPaneDragModel = FloatingPaneDragModel()
     private var eyedropperOverlayRect: Rect? = null
 
@@ -117,7 +113,6 @@ class ColorPickerController(
         eyedropperActive = false
         interaction.clearDragTarget()
         modeDropdownOpen = false
-        eyedropperGridValid = false
         eyedropperOverlayDrag.end()
         eyedropperOverlayRect = null
         clearInputEdit()
@@ -164,7 +159,6 @@ class ColorPickerController(
             eyedropperBaseColor = state.color
         }
         eyedropperActive = true
-        eyedropperGridValid = false
         eyedropperOverlayDrag.end()
         eyedropperOverlayRect = null
         modeDropdownOpen = false
@@ -174,7 +168,6 @@ class ColorPickerController(
     fun cancelEyedropper() {
         if (!eyedropperActive) return
         eyedropperActive = false
-        eyedropperGridValid = false
         eyedropperOverlayDrag.end()
         eyedropperOverlayRect = null
         applyColor(eyedropperBaseColor, notifyPreview = true, commit = false)
@@ -1057,14 +1050,7 @@ class ColorPickerController(
     }
 
     private fun sampleEyedropper(x: Int, y: Int, commit: Boolean) {
-        ensureEyedropperGridSample(x, y)
-        val gridSize = normalizedEyedropperGridSize()
-        val centerIndex = (gridSize / 2) * gridSize + (gridSize / 2)
-        val argb = if (eyedropperGridValid && centerIndex in eyedropperGridColors.indices) {
-            eyedropperGridColors[centerIndex]
-        } else {
-            screenSampler?.sampleColorAt(x, y) ?: return
-        }
+        val argb = screenSampler?.sampleColorAt(x, y) ?: return
         val sampled = RgbaColor.fromArgbInt(argb)
         val color = if (state.alphaEnabled) {
             sampled.copy(a = state.color.a)
@@ -1072,29 +1058,6 @@ class ColorPickerController(
             sampled.copy(a = 1f)
         }
         applyColor(color, notifyPreview = true, commit = commit)
-    }
-
-    private fun ensureEyedropperGridSample(centerX: Int, centerY: Int) {
-        val gridSize = normalizedEyedropperGridSize()
-        val required = gridSize * gridSize
-        if (eyedropperGridColors.size != required) {
-            eyedropperGridColors = IntArray(required)
-        }
-        if (eyedropperGridValid && eyedropperLastSampleX == centerX && eyedropperLastSampleY == centerY) {
-            return
-        }
-        val half = gridSize / 2
-        val startX = centerX - half
-        val startY = centerY - half
-        eyedropperGridValid = screenSampler?.sampleArea(
-            x = startX,
-            y = startY,
-            width = gridSize,
-            height = gridSize,
-            outArgb = eyedropperGridColors
-        ) == true
-        eyedropperLastSampleX = centerX
-        eyedropperLastSampleY = centerY
     }
 
     private fun normalizedEyedropperGridSize(): Int {
