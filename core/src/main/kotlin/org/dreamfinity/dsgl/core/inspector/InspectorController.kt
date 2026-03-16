@@ -137,8 +137,7 @@ class InspectorController(
     val selectedKey: String?
         get() = selectedKeyToken?.toString()
     val panelScrollOffsetY: Int
-        get() = panelScrollY
-
+        get() = if (nativeDomBodyScrollStateActive) (nativeDomPanelScrollYOverride ?: 0) else panelScrollY
     private var root: DOMNode? = null
     private var layoutVersion: Long = 0L
     private var mouseX: Int = 0
@@ -177,6 +176,10 @@ class InspectorController(
     private var panelContentHeight: Int = 0
     private var scrollbarTrackRect: Rect = Rect(0, 0, 0, 0)
     private var scrollbarThumbRect: Rect = Rect(0, 0, 0, 0)
+    private var nativeDomBodyScrollStateActive: Boolean = false
+    private var nativeDomPanelScrollYOverride: Int? = null
+    private var nativeDomScrollbarTrackRectOverride: Rect? = null
+    private var nativeDomScrollbarThumbRectOverride: Rect? = null
     private var scrollbarDragOffsetY: Int = 0
     private var hoverDirty: Boolean = true
     private var lastHoverMouseX: Int = Int.MIN_VALUE
@@ -1329,10 +1332,24 @@ class InspectorController(
 
     internal fun debugContentRect(): Rect = contentBounds
 
-    internal fun debugScrollbarThumbRect(): Rect = scrollbarThumbRect
+    internal fun debugScrollbarThumbRect(): Rect = if (nativeDomBodyScrollStateActive) {
+        nativeDomScrollbarThumbRectOverride ?: Rect(0, 0, 0, 0)
+    } else {
+        scrollbarThumbRect
+    }
 
-    internal fun debugScrollbarTrackRect(): Rect = scrollbarTrackRect
+    internal fun debugScrollbarTrackRect(): Rect = if (nativeDomBodyScrollStateActive) {
+        nativeDomScrollbarTrackRectOverride ?: Rect(0, 0, 0, 0)
+    } else {
+        scrollbarTrackRect
+    }
 
+    internal fun onNativeDomBodyScrollState(scrollY: Int, trackRect: Rect?, thumbRect: Rect?) {
+        nativeDomBodyScrollStateActive = true
+        nativeDomPanelScrollYOverride = scrollY.coerceAtLeast(0)
+        nativeDomScrollbarTrackRectOverride = trackRect
+        nativeDomScrollbarThumbRectOverride = thumbRect
+    }
     internal fun debugSelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
 
     internal fun debugHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
@@ -1544,6 +1561,10 @@ class InspectorController(
         nativeDropdowns.clear()
         nativeStyleEditorResetRect = Rect(0, 0, 0, 0)
         nativeStyleEditorClearRect = Rect(0, 0, 0, 0)
+        nativeDomBodyScrollStateActive = false
+        nativeDomPanelScrollYOverride = null
+        nativeDomScrollbarTrackRectOverride = null
+        nativeDomScrollbarThumbRectOverride = null
     }
     private fun selectHovered(lock: Boolean) {
         val hovered = hoveredNode ?: return
@@ -3596,3 +3617,4 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
+

@@ -15,16 +15,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
 import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
 import org.lwjgl.BufferUtils
-import org.lwjgl.opengl.ARBFragmentShader
-import org.lwjgl.opengl.ARBFramebufferObject
-import org.lwjgl.opengl.ARBShaderObjects
-import org.lwjgl.opengl.ARBVertexShader
-import org.lwjgl.opengl.EXTFramebufferObject
-import org.lwjgl.opengl.GL11
-import org.lwjgl.opengl.GL12
-import org.lwjgl.opengl.GL13
-import org.lwjgl.opengl.GL30
-import org.lwjgl.opengl.GLContext
+import org.lwjgl.opengl.*
 import java.io.File
 import java.net.URL
 import javax.imageio.ImageIO
@@ -334,9 +325,17 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL13.glActiveTexture(GL13.GL_TEXTURE0)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, sceneTextureSource.textureId)
             ARBShaderObjects.glUniform1iARB(shader.sourceTextureUniform, 0)
-            ARBShaderObjects.glUniform2fARB(shader.sourceOriginUniform, command.sourceX.toFloat(), command.sourceY.toFloat())
+            ARBShaderObjects.glUniform2fARB(
+                shader.sourceOriginUniform,
+                command.sourceX.toFloat(),
+                command.sourceY.toFloat()
+            )
             ARBShaderObjects.glUniform2fARB(shader.sourceSizeUniform, sourceWidth.toFloat(), sourceHeight.toFloat())
-            ARBShaderObjects.glUniform2fARB(shader.viewportSizeUniform, viewport.width.toFloat(), viewport.height.toFloat())
+            ARBShaderObjects.glUniform2fARB(
+                shader.viewportSizeUniform,
+                viewport.width.toFloat(),
+                viewport.height.toFloat()
+            )
             ARBShaderObjects.glUniform2fARB(
                 shader.sourceTextureSizeUniform,
                 sceneTextureSource.textureWidth.toFloat(),
@@ -385,7 +384,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 previousViewportHeight
             )
         }
-        capturedRegionValid = renderingSucceeded || fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
+        capturedRegionValid =
+            renderingSucceeded || fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
     }
 
     private fun drawCapturedScreenRegion(command: RenderCommand.DrawCapturedScreenRegion) {
@@ -1348,7 +1348,10 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             append(" recommendedReadBuffer=").append(glEnumName(recommended))
             append(" api=").append(readbackApi.name)
         }
-        logRateLimited(key = "readback:$path:${state.readFramebufferBinding}:${setup.appliedReadBuffer}", message = message)
+        logRateLimited(
+            key = "readback:$path:${state.readFramebufferBinding}:${setup.appliedReadBuffer}",
+            message = message
+        )
     }
 
     private fun isReadBufferCompatibleWithActiveTarget(readBuffer: Int, state: ReadbackBindingState): Boolean {

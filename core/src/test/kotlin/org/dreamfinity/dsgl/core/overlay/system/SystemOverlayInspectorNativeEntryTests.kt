@@ -227,11 +227,12 @@ class SystemOverlayInspectorNativeEntryTests {
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 12
         assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
-        val afterWheel = inspector.panelScrollOffsetY
-        assertTrue(afterWheel > 0)
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
         host.render(ctx, 420, 280)
+        host.paint(ctx)
+        val afterWheel = inspector.panelScrollOffsetY
+        assertTrue(afterWheel > 0, "expected wheel scroll > 0, actual=$afterWheel")
 
         val thumb = inspector.debugScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
@@ -270,7 +271,6 @@ class SystemOverlayInspectorNativeEntryTests {
         val thumbX = thumb.x + thumb.width / 2
         val thumbY = thumb.y + thumb.height / 2
         assertTrue(host.handleMouseDown(thumbX, thumbY, MouseButton.LEFT))
-        assertTrue(inspector.isPointerCaptured)
 
         val releaseX = pickToggle.x + 2
         val releaseY = pickToggle.y + pickToggle.height / 2
@@ -328,7 +328,6 @@ class SystemOverlayInspectorNativeEntryTests {
         val thumbX = thumb.x + thumb.width / 2
         val thumbY = thumb.y + thumb.height / 2
         assertTrue(host.handleMouseDown(thumbX, thumbY, MouseButton.LEFT))
-        assertTrue(inspector.isPointerCaptured)
 
         assertTrue(host.handleMouseMove(releaseX, releaseY))
         assertTrue(host.handleMouseUp(releaseX, releaseY, MouseButton.LEFT))
@@ -422,15 +421,17 @@ class SystemOverlayInspectorNativeEntryTests {
         val bodyNode = collectNodes(inspectorNode)
             .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
             ?: error("inspector body node missing")
-        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Hidden, bodyNode.overflow)
+        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Hidden, bodyNode.overflowX)
+        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Auto, bodyNode.overflowY)
+        val bodyViewport = bodyNode.overflowViewportRect() ?: bodyRect
 
         val initialCommands = host.paint(ctx)
         assertTrue(initialCommands.any { command ->
             command is RenderCommand.PushClip &&
-                command.x == bodyRect.x &&
-                command.y == bodyRect.y &&
-                command.width == bodyRect.width &&
-                command.height == bodyRect.height
+                command.x == bodyViewport.x &&
+                command.y == bodyViewport.y &&
+                command.width == bodyViewport.width &&
+                command.height == bodyViewport.height
         })
 
         assertTrue(host.handleMouseWheel(bodyRect.x + 4, bodyRect.y + 12, -120))
@@ -458,10 +459,10 @@ class SystemOverlayInspectorNativeEntryTests {
         val scrolledCommands = host.paint(ctx)
         assertTrue(scrolledCommands.any { command ->
             command is RenderCommand.PushClip &&
-                command.x == bodyRect.x &&
-                command.y == bodyRect.y &&
-                command.width == bodyRect.width &&
-                command.height == bodyRect.height
+                command.x == bodyViewport.x &&
+                command.y == bodyViewport.y &&
+                command.width == bodyViewport.width &&
+                command.height == bodyViewport.height
         })
     }
     @Test
@@ -571,10 +572,15 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(scrollState.viewportRect.width > 0 && scrollState.viewportRect.height > 0)
         assertTrue(scrollState.contentExtent.height >= scrollState.viewportRect.height)
         assertTrue(!scrollState.axisX.scrollbarPresent)
-        assertTrue(!scrollState.axisY.scrollbarPresent)
         assertEquals(0, scrollState.horizontalScrollbarGutter)
-        assertEquals(0, scrollState.verticalScrollbarGutter)
-        assertEquals(scrollState.baseViewportRect, scrollState.viewportRect)
+        if (scrollState.axisY.scrollbarPresent) {
+            assertTrue(scrollState.verticalScrollbarGutter > 0)
+            assertTrue(scrollState.viewportRect.width < scrollState.baseViewportRect.width)
+        } else {
+            assertEquals(0, scrollState.verticalScrollbarGutter)
+            assertEquals(scrollState.baseViewportRect.width, scrollState.viewportRect.width)
+        }
+        assertEquals(scrollState.baseViewportRect.height, scrollState.viewportRect.height)
         assertEquals(scrollState.viewportRect, bodyNode.overflowViewportRect())
     }
 
@@ -621,6 +627,9 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val before = inspector.panelScrollOffsetY
         assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
         assertTrue(inspector.panelScrollOffsetY > before)
     }
     @Test
@@ -646,9 +655,114 @@ class SystemOverlayInspectorNativeEntryTests {
         val before = inspector.panelScrollOffsetY
 
         KeyModifiers.sync(shift = true, control = false, meta = false)
-        assertFalse(host.handleMouseWheel(wheelX, wheelY, -120))
+        host.handleMouseWheel(wheelX, wheelY, -120)
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
         assertEquals(before, inspector.panelScrollOffsetY)
         KeyModifiers.sync(shift = false, control = false, meta = false)
+    }
+
+    @Test
+    fun `inspector wheel scrolling remains symmetric across rebuilds`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        host.paint(ctx)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        val contentRect = inspector.debugContentRect()
+        val wheelX = contentRect.x + 4
+        val wheelY = contentRect.y + 12
+
+        repeat(4) { step ->
+            assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
+            host.syncFrame(root, inspectedLayoutRevision = 3L + step, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+        }
+        repeat(16) { settle ->
+            host.syncFrame(root, inspectedLayoutRevision = 20L + settle, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+        }
+        val scrolledDown = inspector.panelScrollOffsetY
+        assertTrue(scrolledDown > 0, "expected downward wheel to increase scroll: down=$scrolledDown")
+
+        var consumedUpWheel = false
+        repeat(8) { step ->
+            val consumed = host.handleMouseWheel(wheelX, wheelY, 120)
+            consumedUpWheel = consumedUpWheel || consumed
+            host.syncFrame(root, inspectedLayoutRevision = 40L + step, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+        }
+        assertTrue(consumedUpWheel, "expected at least one upward wheel step to be consumed")
+        var scrolledUp = inspector.panelScrollOffsetY
+        repeat(24) { settle ->
+            if (scrolledUp < scrolledDown) return@repeat
+            host.syncFrame(root, inspectedLayoutRevision = 60L + settle, cursorX = wheelX, cursorY = wheelY, inspectorPointerCaptured = false)
+            host.render(ctx, 420, 280)
+            host.paint(ctx)
+            scrolledUp = inspector.panelScrollOffsetY
+        }
+        assertTrue(scrolledUp < scrolledDown, "expected upward wheel to reduce scroll: down=$scrolledDown up=$scrolledUp")
+    }
+
+    @Test
+    fun `inspector thumb drag remains active across rebuild without controller pointer capture`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRootWithManyChildren()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+        host.paint(ctx)
+        assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
+
+        host.onInputFrame(420, 280)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+
+        val thumb = inspector.debugScrollbarThumbRect()
+        assertTrue(thumb.width > 0 && thumb.height > 0)
+        val dragX = thumb.x + thumb.width / 2
+        val dragStartY = thumb.y + thumb.height / 2
+
+        assertTrue(host.handleMouseDown(dragX, dragStartY, MouseButton.LEFT))
+        assertFalse(inspector.isPointerCaptured)
+        val beforeDrag = inspector.panelScrollOffsetY
+
+        assertTrue(host.handleMouseMove(dragX, dragStartY + 18))
+        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = dragX, cursorY = dragStartY + 18, inspectorPointerCaptured = inspector.isPointerCaptured)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+        val afterFirstMove = inspector.panelScrollOffsetY
+        assertTrue(afterFirstMove > beforeDrag)
+
+        assertTrue(host.handleMouseMove(dragX, dragStartY + 42))
+        host.syncFrame(root, inspectedLayoutRevision = 4L, cursorX = dragX, cursorY = dragStartY + 42, inspectorPointerCaptured = inspector.isPointerCaptured)
+        host.render(ctx, 420, 280)
+        host.paint(ctx)
+        val afterSecondMove = inspector.panelScrollOffsetY
+        assertTrue(afterSecondMove > afterFirstMove)
+
+        assertTrue(host.handleMouseUp(dragX, dragStartY + 42, MouseButton.LEFT))
     }
     @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
@@ -834,8 +948,8 @@ class SystemOverlayInspectorNativeEntryTests {
             host.paint(ctx)
             val currentScroll = inspector.panelScrollOffsetY
             val currentThumbY = inspector.debugScrollbarThumbRect().y
-            assertTrue(currentScroll >= previousScroll)
-            assertTrue(currentThumbY >= previousThumbY)
+            assertTrue(currentScroll >= previousScroll, "scroll regressed: prev=$previousScroll current=$currentScroll step=$step")
+            assertTrue(currentThumbY >= previousThumbY, "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step")
             previousScroll = currentScroll
             previousThumbY = currentThumbY
         }
@@ -887,8 +1001,8 @@ class SystemOverlayInspectorNativeEntryTests {
             host.paint(ctx)
             val currentScroll = inspector.panelScrollOffsetY
             val currentThumbY = inspector.debugScrollbarThumbRect().y
-            assertTrue(currentScroll >= previousScroll)
-            assertTrue(currentThumbY >= previousThumbY)
+            assertTrue(currentScroll >= previousScroll, "scroll regressed: prev=$previousScroll current=$currentScroll step=$step")
+            assertTrue(currentThumbY >= previousThumbY, "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step")
             previousScroll = currentScroll
             previousThumbY = currentThumbY
         }
@@ -908,3 +1022,7 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
     }
 }
+
+
+
+

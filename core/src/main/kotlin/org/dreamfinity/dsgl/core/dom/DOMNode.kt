@@ -57,6 +57,16 @@ data class ScrollAnimationDebugState(
     val resolvedY: Int
 )
 
+data class ScrollSessionSnapshot(
+    val targetX: Int,
+    val targetY: Int,
+    val displayedX: Double,
+    val displayedY: Double,
+    val resolvedX: Int,
+    val resolvedY: Int,
+    val dragSession: ScrollbarDragSessionDebugState?
+)
+
 data class ScrollbarDragSessionDebugState(
     val verticalAxis: Boolean,
     val trackStartPx: Int,
@@ -1511,6 +1521,96 @@ abstract class DOMNode(
             resolvedX = scrollOffsetResolvedX,
             resolvedY = scrollOffsetResolvedY
         )
+    }
+
+    internal fun captureScrollSessionSnapshot(): ScrollSessionSnapshot {
+        val animation = debugScrollAnimationState()
+        return ScrollSessionSnapshot(
+            targetX = animation.targetX.coerceAtLeast(0),
+            targetY = animation.targetY.coerceAtLeast(0),
+            displayedX = if (animation.displayedX.isFinite()) animation.displayedX.coerceAtLeast(0.0) else 0.0,
+            displayedY = if (animation.displayedY.isFinite()) animation.displayedY.coerceAtLeast(0.0) else 0.0,
+            resolvedX = animation.resolvedX.coerceAtLeast(0),
+            resolvedY = animation.resolvedY.coerceAtLeast(0),
+            dragSession = debugScrollbarDragSession()
+        )
+    }
+
+    internal fun restoreScrollSessionSnapshot(snapshot: ScrollSessionSnapshot?) {
+        if (snapshot == null) return
+        var changed = false
+
+        val nextTargetX = snapshot.targetX.coerceAtLeast(0)
+        val nextTargetY = snapshot.targetY.coerceAtLeast(0)
+        val nextDisplayedX = if (snapshot.displayedX.isFinite()) snapshot.displayedX.coerceAtLeast(0.0) else 0.0
+        val nextDisplayedY = if (snapshot.displayedY.isFinite()) snapshot.displayedY.coerceAtLeast(0.0) else 0.0
+        val nextResolvedX = snapshot.resolvedX.coerceAtLeast(0)
+        val nextResolvedY = snapshot.resolvedY.coerceAtLeast(0)
+
+        if (scrollOffsetTargetX != nextTargetX) {
+            scrollOffsetTargetX = nextTargetX
+            changed = true
+        }
+        if (scrollOffsetTargetY != nextTargetY) {
+            scrollOffsetTargetY = nextTargetY
+            changed = true
+        }
+        if (scrollOffsetDisplayedX != nextDisplayedX) {
+            scrollOffsetDisplayedX = nextDisplayedX
+            changed = true
+        }
+        if (scrollOffsetDisplayedY != nextDisplayedY) {
+            scrollOffsetDisplayedY = nextDisplayedY
+            changed = true
+        }
+        if (scrollOffsetResolvedX != nextResolvedX) {
+            scrollOffsetResolvedX = nextResolvedX
+            scrollLayoutDirty = true
+            changed = true
+        }
+        if (scrollOffsetResolvedY != nextResolvedY) {
+            scrollOffsetResolvedY = nextResolvedY
+            scrollLayoutDirty = true
+            changed = true
+        }
+        if (contentLayoutScrollX != nextResolvedX) {
+            contentLayoutScrollX = nextResolvedX
+            changed = true
+        }
+        if (contentLayoutScrollY != nextResolvedY) {
+            contentLayoutScrollY = nextResolvedY
+            changed = true
+        }
+
+        val drag = snapshot.dragSession
+        if (drag == null) {
+            if (activeScrollbarDragAxis != null || scrollbarDragSession != null) {
+                activeScrollbarDragAxis = null
+                scrollbarDragSession = null
+                changed = true
+            }
+        } else {
+            val nextAxis = if (drag.verticalAxis) ScrollbarAxis.Vertical else ScrollbarAxis.Horizontal
+            val nextSession = ScrollbarDragSession(
+                axis = nextAxis,
+                trackStartPx = drag.trackStartPx,
+                trackLengthPx = drag.trackLengthPx,
+                thumbLengthPx = drag.thumbLengthPx,
+                maxThumbTravelPx = drag.maxThumbTravelPx,
+                maxScroll = drag.maxScroll.coerceAtLeast(0),
+                grabOffsetPx = drag.grabOffsetPx.coerceAtLeast(0),
+                initialResolvedScroll = drag.initialResolvedScroll.coerceAtLeast(0)
+            )
+            if (activeScrollbarDragAxis != nextAxis || scrollbarDragSession != nextSession) {
+                activeScrollbarDragAxis = nextAxis
+                scrollbarDragSession = nextSession
+                changed = true
+            }
+        }
+
+        if (changed) {
+            markRenderCommandsDirty()
+        }
     }
 
     private fun applyScrollTargets(scrollX: Int, scrollY: Int, immediate: Boolean) {
