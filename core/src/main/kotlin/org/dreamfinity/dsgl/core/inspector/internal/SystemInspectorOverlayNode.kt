@@ -94,6 +94,7 @@ internal class SystemInspectorOverlayNode(
         if (pointerCaptured) {
             controller.onCapturedPointerMove(cursorX, cursorY, width, height)
         }
+        val retainInspectorFocus = shouldRetainInspectorSubtreeFocus()
 
         val snapshot = controller.buildDomSnapshot(viewportRect.width, viewportRect.height)
         if (snapshot == null) {
@@ -111,7 +112,9 @@ internal class SystemInspectorOverlayNode(
             InspectorPanelState.Minimized -> renderMinimized(ctx, snapshot)
             InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot)
         }
-        FocusManager.retainFocus(this, updateRootReference = false)
+        if (retainInspectorFocus) {
+            FocusManager.retainFocus(this, updateRootReference = false)
+        }
     }
     private fun resolveInputBounds(viewportRect: Rect, panelRect: Rect?): Rect {
         if (controller.blocksUnderlyingInput() || controller.isPointerCaptured) {
@@ -747,6 +750,20 @@ internal class SystemInspectorOverlayNode(
         return "dsgl-system-inspector-dropdown-${dropdown.property.key}-${if (dropdown.unitSelect) "unit" else "value"}"
     }
 
+    private fun shouldRetainInspectorSubtreeFocus(): Boolean {
+        val focused = FocusManager.focusedNode() ?: return false
+        return isSameOrAncestor(this, focused)
+    }
+
+    private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
+        var current = node
+        while (current != null) {
+            if (current === candidate) return true
+            current = current.parent
+        }
+        return false
+    }
+
     private fun translateRectY(rect: Rect, deltaY: Int): Rect {
         return Rect(rect.x, rect.y + deltaY, rect.width, rect.height)
     }
@@ -764,8 +781,3 @@ internal class SystemInspectorOverlayNode(
         node.render(ctx, rect.x, rect.y, rect.width, rect.height)
     }
 }
-
-
-
-
-
