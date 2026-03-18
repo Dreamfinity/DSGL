@@ -1345,6 +1345,41 @@ class InspectorController(
 
     internal fun debugStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
 
+    internal fun hasOpenStyleDropdown(): Boolean {
+        return openValueSelectProperty != null || openUnitSelectProperty != null
+    }
+
+    internal fun closeOpenStyleDropdowns(): Boolean {
+        if (!hasOpenStyleDropdown()) return false
+        editSession.closeAllDropdowns()
+        return true
+    }
+
+    internal fun handleOpenStyleDropdownWheel(delta: Int): Boolean {
+        if (delta == 0 || KeyModifiers.shiftDown) return false
+        val openDropdown = resolveOpenStyleDropdown() ?: return false
+        val maxRows = 8
+        val visibleRows = minOf(maxRows, openDropdown.optionCount)
+        val maxFirst = (openDropdown.optionCount - visibleRows).coerceAtLeast(0)
+        if (maxFirst <= 0) return true
+
+        val steps = (kotlin.math.abs(delta) / 120).coerceAtLeast(1)
+        val current = if (openDropdown.unitSelect) openUnitSelectScrollIndex else openValueSelectScrollIndex
+        val next = if (delta < 0) {
+            (current + steps).coerceAtMost(maxFirst)
+        } else {
+            (current - steps).coerceAtLeast(0)
+        }
+        if (next == current) return true
+
+        if (openDropdown.unitSelect) {
+            openUnitSelectScrollIndex = next
+        } else {
+            openValueSelectScrollIndex = next
+        }
+        return true
+    }
+
     internal fun debugActiveEditBuffer(): String? = activeEditProperty?.let { activeEditBuffer }
 
     internal fun debugActiveEditCaret(): Int? = activeEditProperty?.let {
@@ -1496,6 +1531,32 @@ class InspectorController(
         StyleEngine.clearAllInspectorOverrides()
         styleEditorError = null
         cachedStyle = null
+    }
+
+    private data class OpenStyleDropdown(
+        val unitSelect: Boolean,
+        val optionCount: Int
+    )
+
+    private fun resolveOpenStyleDropdown(): OpenStyleDropdown? {
+        val unitProperty = openUnitSelectProperty
+        if (unitProperty != null) {
+            val optionCount = InspectorEditorRegistry.unitOptions().size
+            if (optionCount <= 0) return null
+            return OpenStyleDropdown(unitSelect = true, optionCount = optionCount)
+        }
+
+        val valueProperty = openValueSelectProperty ?: return null
+        val selected = selectedNode ?: return null
+        val literal = literalForEdit(selected, valueProperty)
+        val editor = InspectorEditorRegistry.describe(
+            property = valueProperty,
+            literal = literal,
+            expression = StyleEngine.inspectorOverrideFor(selected, valueProperty)
+        )
+        val optionCount = editor.options.size
+        if (optionCount <= 0) return null
+        return OpenStyleDropdown(unitSelect = false, optionCount = optionCount)
     }
 
     internal fun debugApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
