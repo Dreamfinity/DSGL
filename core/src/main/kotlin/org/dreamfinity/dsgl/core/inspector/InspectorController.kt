@@ -178,6 +178,7 @@ class InspectorController(
     private var scrollbarThumbRect: Rect = Rect(0, 0, 0, 0)
     private var nativeDomBodyScrollStateActive: Boolean = false
     private var nativeDomPanelScrollYOverride: Int? = null
+    private var nativeDomLastKnownBodyScrollY: Int = 0
     private var nativeDomScrollbarTrackRectOverride: Rect? = null
     private var nativeDomScrollbarThumbRectOverride: Rect? = null
     private var scrollbarDragOffsetY: Int = 0
@@ -920,6 +921,7 @@ class InspectorController(
         dropdownLayouts.clear()
         panelScrollY = 0
         panelContentHeight = 0
+        nativeDomLastKnownBodyScrollY = 0
         scrollbarTrackRect = Rect(0, 0, 0, 0)
         scrollbarThumbRect = Rect(0, 0, 0, 0)
 
@@ -998,6 +1000,7 @@ class InspectorController(
     ): Int {
         var y = startY + lineHeightPx
         nativeVariableTooltip = null
+        val pointerProjectionScrollY = resolvedNativePointerProjectionScrollY()
 
         val rowLeft = panelRect.x + 10
         val rowWidth = panelRect.width - 20
@@ -1018,7 +1021,7 @@ class InspectorController(
             val labelMaxChars = estimateMaxChars((labelWidth - 12).coerceAtLeast(24), labelLineHeight)
             val labelLineCount = wrapText(labelText, labelMaxChars).size.coerceAtLeast(1)
             val rowHeight = maxOf(rowHeightPx, labelLineCount * labelLineHeight + 10, controlHeight + 8)
-            val rowRect = Rect(rowLeft, y - panelScrollY, rowWidth, rowHeight)
+            val rowRect = Rect(rowLeft, y, rowWidth, rowHeight)
             val controlX = rowRect.x + labelWidth
             val controlWidth = (buttonsRight - controlX - btnWidth - gap).coerceAtLeast(36)
             val controlY = rowRect.y + ((rowRect.height - controlHeight) / 2)
@@ -1063,6 +1066,7 @@ class InspectorController(
                 InspectorEditorKind.EnumSelect,
                 InspectorEditorKind.FontSelect -> {
                     val isOpen = openValueSelectProperty == property
+                    val projectedControlRect = projectRectForNativePointer(contentRect, pointerProjectionScrollY)
                     panelActions += PanelAction(
                         bounds = contentRect,
                         kind = ActionKind.EditProperty,
@@ -1071,7 +1075,7 @@ class InspectorController(
                     )
                     rowSnapshot = rowSnapshot.copy(
                         controlOpen = isOpen,
-                        controlHovered = contentRect.contains(mouseX, mouseY)
+                        controlHovered = projectedControlRect.contains(mouseX, mouseY)
                     )
                 }
 
@@ -1153,14 +1157,15 @@ class InspectorController(
                 }
             }
 
-            if (overrideExpr is StyleExpression.VariableRef && rowRect.contains(mouseX, mouseY)) {
+            val projectedRowRect = projectRectForNativePointer(rowRect, pointerProjectionScrollY)
+            if (overrideExpr is StyleExpression.VariableRef && projectedRowRect.contains(mouseX, mouseY)) {
                 val resolved = StyleEngine.resolveInspectorVariable(overrideExpr.name)
                 val body = resolved.getOrElse { "unresolved (${it.message ?: "unknown error"})" }
                 nativeVariableTooltip = InspectorTooltipSnapshot(
                     text = "${overrideExpr.name} = $body",
                     rect = Rect(
-                        x = (rowRect.x + rowRect.width - 360).coerceAtLeast(panelBounds.x + 8),
-                        y = (rowRect.y - lineHeightPx - 8).coerceAtLeast(panelBounds.y + 8),
+                        x = (projectedRowRect.x + projectedRowRect.width - 360).coerceAtLeast(panelBounds.x + 8),
+                        y = (projectedRowRect.y - lineHeightPx - 8).coerceAtLeast(panelBounds.y + 8),
                         width = 352,
                         height = lineHeightPx + 10
                     )
@@ -1174,7 +1179,8 @@ class InspectorController(
                     width = contentRect.width,
                     options = editor.options,
                     property = property,
-                    operation = EditOperation.SelectValueOption
+                    operation = EditOperation.SelectValueOption,
+                    pointerProjectionScrollY = pointerProjectionScrollY
                 )
                 rowSnapshot = rowSnapshot.copy(controlOpen = true)
             }
@@ -1186,7 +1192,8 @@ class InspectorController(
                     width = 90,
                     options = units,
                     property = property,
-                    operation = EditOperation.SelectUnitOption
+                    operation = EditOperation.SelectUnitOption,
+                    pointerProjectionScrollY = pointerProjectionScrollY
                 )
                 rowSnapshot = rowSnapshot.copy(unitOpen = true)
             }
@@ -1196,8 +1203,8 @@ class InspectorController(
         }
 
         val actionHeight = (secondaryFontSizePx + 10).coerceAtLeast(28)
-        val resetRect = Rect(rowLeft, y - panelScrollY, 140, actionHeight)
-        val clearRect = Rect(rowLeft + 148, y - panelScrollY, 160, actionHeight)
+        val resetRect = Rect(rowLeft, y, 140, actionHeight)
+        val clearRect = Rect(rowLeft + 148, y, 160, actionHeight)
         panelActions += PanelAction(resetRect, ActionKind.ResetSelectedOverrides)
         panelActions += PanelAction(clearRect, ActionKind.ClearAllOverrides)
         nativeStyleEditorResetRect = resetRect
@@ -1213,7 +1220,8 @@ class InspectorController(
         width: Int,
         options: List<String>,
         property: StyleProperty,
-        operation: EditOperation
+        operation: EditOperation,
+        pointerProjectionScrollY: Int
     ) {
         if (options.isEmpty()) return
         val maxRows = 8
@@ -1247,7 +1255,7 @@ class InspectorController(
         val optionSnapshots = ArrayList<InspectorDropdownOptionSnapshot>(shown.size)
         shown.forEach { option ->
             val optionRect = Rect(popupRect.x + 3, optionY, popupRect.width - 6, optionHeight - 2)
-            val hovered = optionRect.contains(mouseX, mouseY)
+            val hovered = projectRectForNativePointer(optionRect, pointerProjectionScrollY).contains(mouseX, mouseY)
             optionSnapshots += InspectorDropdownOptionSnapshot(
                 rect = optionRect,
                 text = ellipsize(option, 30),
@@ -1326,6 +1334,7 @@ class InspectorController(
     internal fun onNativeDomBodyScrollState(scrollY: Int, trackRect: Rect?, thumbRect: Rect?) {
         nativeDomBodyScrollStateActive = true
         nativeDomPanelScrollYOverride = scrollY.coerceAtLeast(0)
+        nativeDomLastKnownBodyScrollY = scrollY.coerceAtLeast(0)
         nativeDomScrollbarTrackRectOverride = trackRect
         nativeDomScrollbarThumbRectOverride = thumbRect
     }
@@ -1606,6 +1615,20 @@ class InspectorController(
         nativeDomScrollbarTrackRectOverride = null
         nativeDomScrollbarThumbRectOverride = null
     }
+    private fun resolvedNativePointerProjectionScrollY(): Int {
+        val current = nativeDomPanelScrollYOverride
+        return when {
+            current != null -> current.coerceAtLeast(0)
+            nativeDomLastKnownBodyScrollY > 0 -> nativeDomLastKnownBodyScrollY
+            else -> panelScrollY.coerceAtLeast(0)
+        }
+    }
+
+    private fun projectRectForNativePointer(rect: Rect, scrollY: Int): Rect {
+        if (scrollY <= 0) return rect
+        return Rect(rect.x, rect.y - scrollY, rect.width, rect.height)
+    }
+
     private fun selectHovered(lock: Boolean) {
         val hovered = hoveredNode ?: return
         selectedNode = hovered
@@ -1640,6 +1663,7 @@ class InspectorController(
         dragMoved = false
         panelScrollY = 0
         panelContentHeight = 0
+        nativeDomLastKnownBodyScrollY = 0
         scrollbarTrackRect = Rect(0, 0, 0, 0)
         scrollbarThumbRect = Rect(0, 0, 0, 0)
         scrollbarDragOffsetY = 0
@@ -1990,6 +2014,7 @@ class InspectorController(
         contentBounds = Rect(0, 0, 0, 0)
         panelScrollY = 0
         panelContentHeight = 0
+        nativeDomLastKnownBodyScrollY = 0
         panelActions.clear()
         dropdownOverlays.clear()
         dropdownLayouts.clear()
