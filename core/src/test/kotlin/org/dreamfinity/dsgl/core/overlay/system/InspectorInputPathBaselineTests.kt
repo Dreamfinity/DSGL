@@ -69,10 +69,14 @@ class InspectorInputPathBaselineTests {
         assertTrue(methodNames.contains("handleMouseWheel"))
         assertTrue(methodNames.contains("handleKeyDown"))
         assertTrue(methodNames.contains("onCapturedPointerMove"))
+        assertTrue(InspectorController::class.java.declaredFields.any { it.name == "panelActions" })
+        assertTrue(InspectorController::class.java.declaredFields.any { it.name == "dropdownLayouts" })
+        assertTrue(InspectorController::class.java.declaredMethods.any { it.name == "findPanelAction" })
+        assertTrue(InspectorController::class.java.declaredMethods.any { it.name == "findDropdownOptionAction" })
     }
 
     @Test
-    fun `inspector text editing baseline remains controller coordinated with dom rendered inputs`() {
+    fun `inspector text editing baseline is dom rendered while controller edit session stays inactive`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
         inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
@@ -95,7 +99,6 @@ class InspectorInputPathBaselineTests {
             ?: error("expected string editor row")
         assertTrue(textRow.controlRect.width > 0)
         assertTrue(textRow.controlRect.height > 0)
-
         val methodNames = InspectorController::class.java.methods.map { it.name }.toSet()
         assertTrue(methodNames.contains("handleKeyDown"))
         assertTrue(InspectorController::class.java.declaredMethods.any { it.name.startsWith("debugActiveEditBuffer") })
