@@ -402,98 +402,34 @@ class InspectorControllerTests {
 
 
     @Test
-    fun `inspector text edit supports selection shortcuts and pointer caret behavior`() {
-        val clipboard = RecordingClipboardAccess()
-        ClipboardBridge.install(clipboard)
-        KeyModifiers.sync(shift = false, control = false, meta = false)
-        try {
-            val controller = InspectorController()
-            controller.toggle()
+    fun `native inspector rows no longer activate controller text edit session`() {
+        val controller = InspectorController()
+        controller.toggle()
 
-            val root = container("root", 0, 0, 1400, 900)
-            val selected = container("target", 980, 120, 180, 120)
-            selected.applyParent(root)
-            StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
+        val root = container("root", 0, 0, 1400, 900)
+        val selected = container("target", 980, 120, 180, 120)
+        selected.applyParent(root)
+        StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
 
-            controller.onLayoutCommitted(root, 1L)
-            renderFrame(controller, 1200, 700)
-            controller.onCursorMoved(988, 126)
-            controller.handleMouseDown(988, 126, MouseButton.LEFT)
-            renderFrame(controller, 1200, 700)
+        controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        assertTrue(controller.handleMouseDown(988, 126, MouseButton.LEFT))
+        renderFrame(controller, 1200, 700)
 
-            fun locateColorRow(): InspectorStyleEditorRowSnapshot {
-                return controller.debugStyleEditorRows().firstOrNull {
-                    it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
-                } ?: error("Expected color string input row.")
-            }
+        val row = controller.debugStyleEditorRows().firstOrNull {
+            it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
+        } ?: error("Expected color string input row.")
+        val inputRect = row.inputRect ?: row.controlRect
+        val clickX = inputRect.x + 10
+        val clickY = inputRect.y + inputRect.height / 2
 
-            var row = locateColorRow()
-            var inputRect = row.inputRect ?: row.controlRect
-            var inputY = inputRect.y + inputRect.height / 2
-            var clickX = inputRect.x + 10
-            var contentRect = controller.debugContentRect()
-            var guard = 0
-            while (!contentRect.contains(clickX, inputY) && guard < 40) {
-                val wheelX = contentRect.x + 8
-                val wheelY = contentRect.y + contentRect.height / 2
-                val delta = if (inputY > contentRect.y + contentRect.height - 1) -120 else 120
-                assertTrue(controller.handleMouseWheel(wheelX, wheelY, delta))
-                renderFrame(controller, 1200, 700)
-                row = locateColorRow()
-                inputRect = row.inputRect ?: row.controlRect
-                inputY = inputRect.y + inputRect.height / 2
-                clickX = inputRect.x + 10
-                contentRect = controller.debugContentRect()
-                guard += 1
-            }
-            assertTrue(contentRect.contains(clickX, inputY), "Expected editable control to be visible in inspector viewport.")
+        controller.onCursorMoved(clickX, clickY)
+        controller.handleMouseDown(clickX, clickY, MouseButton.LEFT)
+        controller.handleMouseUp(clickX, clickY, MouseButton.LEFT)
 
-            controller.onCursorMoved(clickX, inputY)
-            assertTrue(controller.handleMouseDown(clickX, inputY, MouseButton.LEFT))
-            assertTrue(controller.handleMouseUp(clickX, inputY, MouseButton.LEFT))
-
-            val initial = controller.debugActiveEditBuffer() ?: error("Expected active edit buffer.")
-
-            KeyModifiers.sync(shift = false, control = true, meta = false)
-            assertTrue(controller.handleKeyDown(KeyCodes.A, 'a'))
-            val selectAll = controller.debugActiveEditSelectionRange() ?: error("Expected active selection.")
-            assertEquals(0, selectAll.first)
-            assertEquals(initial.length, selectAll.second)
-
-            assertTrue(controller.handleKeyDown(KeyCodes.C, 'c'))
-            assertEquals(initial, clipboard.contents)
-
-            assertTrue(controller.handleKeyDown(KeyCodes.X, 'x'))
-            assertEquals("", controller.debugActiveEditBuffer())
-
-            assertTrue(controller.handleKeyDown(KeyCodes.V, 'v'))
-            assertEquals(initial, controller.debugActiveEditBuffer())
-
-            KeyModifiers.sync(shift = true, control = false, meta = false)
-            assertTrue(controller.handleKeyDown(KeyCodes.LEFT, 0.toChar()))
-            val shiftSelection = controller.debugActiveEditSelectionRange() ?: error("Expected shift selection.")
-            assertEquals(1, shiftSelection.second - shiftSelection.first)
-
-            KeyModifiers.sync(shift = false, control = false, meta = false)
-            val dragStartX = inputRect.x + 10
-            val dragEndX = (dragStartX + 36).coerceAtMost(inputRect.x + inputRect.width - 4)
-            controller.onCursorMoved(dragStartX, inputY)
-            assertTrue(controller.handleMouseDown(dragStartX, inputY, MouseButton.LEFT))
-            controller.onCursorMoved(dragEndX, inputY)
-            assertTrue(controller.handleMouseUp(dragEndX, inputY, MouseButton.LEFT))
-            val dragSelection = controller.debugActiveEditSelectionRange() ?: error("Expected drag selection.")
-            assertTrue(dragSelection.second > dragSelection.first)
-
-            val nearStartX = inputRect.x + 8
-            controller.onCursorMoved(nearStartX, inputY)
-            assertTrue(controller.handleMouseDown(nearStartX, inputY, MouseButton.LEFT))
-            assertTrue(controller.handleMouseUp(nearStartX, inputY, MouseButton.LEFT))
-            val caret = controller.debugActiveEditCaret() ?: error("Expected active caret.")
-            assertTrue(caret <= 1)
-        } finally {
-            ClipboardBridge.install(null)
-            KeyModifiers.sync(shift = false, control = false, meta = false)
-        }
+        assertNull(controller.debugActiveEditBuffer())
+        assertFalse(controller.handleKeyDown(KeyCodes.A, 'a'))
     }
 
     @Test
@@ -629,4 +565,7 @@ class InspectorControllerTests {
         val onClose: (() -> Unit)?
     )
 }
+
+
+
 

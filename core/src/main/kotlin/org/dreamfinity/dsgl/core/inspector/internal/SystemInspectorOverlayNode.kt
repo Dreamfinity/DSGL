@@ -475,7 +475,7 @@ internal class SystemInspectorOverlayNode(
                 InspectorEditorKind.StringInput -> {
                     val input = TextInputNode(
                         text = row.controlValue.replace("|", ""),
-                        key = "dsgl-system-inspector-editor-input-$index"
+                        key = "dsgl-system-inspector-editor-input-${row.property.key}"
                     )
                     input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
                     input.focusedBackgroundColor = input.backgroundColor
@@ -523,7 +523,7 @@ internal class SystemInspectorOverlayNode(
                     row.inputRect?.let { rect ->
                         val input = TextInputNode(
                             text = row.controlValue.replace("|", ""),
-                            key = "dsgl-system-inspector-editor-numeric-input-$index"
+                            key = "dsgl-system-inspector-editor-numeric-input-${row.property.key}"
                         )
                         input.allowedChars = "-0123456789."
                         input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B

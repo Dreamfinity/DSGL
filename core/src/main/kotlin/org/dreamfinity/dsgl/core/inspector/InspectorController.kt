@@ -1076,14 +1076,6 @@ class InspectorController(
                 }
 
                 InspectorEditorKind.StringInput -> {
-                    val isActiveInput = activeEditProperty == property && !activeEditIsNumeric
-                    val shownValue = if (isActiveInput) activeBufferWithCaret() else effectiveValue
-                    panelActions += PanelAction(
-                        bounds = contentRect,
-                        kind = ActionKind.EditProperty,
-                        property = property,
-                        editOperation = EditOperation.BeginTextEdit
-                    )
                     var previewRect: Rect? = null
                     var previewColor: Int? = null
                     if (editor.showColorPreview) {
@@ -1093,7 +1085,7 @@ class InspectorController(
                             width = (contentRect.height - 8).coerceAtLeast(10),
                             height = (contentRect.height - 8).coerceAtLeast(10)
                         )
-                        previewColor = runCatching { parseColor(if (isActiveInput) activeEditBuffer else effectiveValue) }.getOrNull()
+                        previewColor = runCatching { parseColor(effectiveValue) }.getOrNull()
                         panelActions += PanelAction(
                             bounds = previewRect,
                             kind = ActionKind.EditProperty,
@@ -1102,8 +1094,8 @@ class InspectorController(
                         )
                     }
                     rowSnapshot = rowSnapshot.copy(
-                        controlValue = shownValue,
-                        inputActive = isActiveInput,
+                        controlValue = effectiveValue,
+                        inputActive = false,
                         colorPreviewRect = previewRect,
                         colorPreviewColor = previewColor
                     )
@@ -1112,16 +1104,8 @@ class InspectorController(
                 InspectorEditorKind.NumericInput -> {
                     val step = StylePropertyRegistry.descriptor(property).numericStep
                     val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
-                    val numericValue = if (activeEditProperty == property && activeEditIsNumeric) {
-                        activeEditBuffer
-                    } else {
-                        parsed?.numberText ?: "0"
-                    }
-                    val unit = if (activeEditProperty == property && activeEditIsNumeric) {
-                        activeEditUnit ?: parsed?.unit ?: CssUnit.Px
-                    } else {
-                        parsed?.unit ?: CssUnit.Px
-                    }
+                    val numericValue = parsed?.numberText ?: "0"
+                    val unit = parsed?.unit ?: CssUnit.Px
                     val buttonWidth = 34
                     val unitWidth = if (editor.supportsUnits) 68 else 0
                     val inputWidth =
@@ -1137,12 +1121,7 @@ class InspectorController(
                         editOperation = EditOperation.Decrement,
                         step = step
                     )
-                    panelActions += PanelAction(
-                        inputRect,
-                        ActionKind.EditProperty,
-                        property = property,
-                        editOperation = EditOperation.BeginTextEdit
-                    )
+
                     panelActions += PanelAction(
                         incRect,
                         ActionKind.EditProperty,
@@ -1161,8 +1140,8 @@ class InspectorController(
                         )
                     }
                     rowSnapshot = rowSnapshot.copy(
-                        controlValue = if (activeEditProperty == property && activeEditIsNumeric) activeBufferWithCaret() else numericValue,
-                        inputActive = activeEditProperty == property && activeEditIsNumeric,
+                        controlValue = numericValue,
+                        inputActive = false,
                         decrementRect = decRect,
                         inputRect = inputRect,
                         incrementRect = incRect,
