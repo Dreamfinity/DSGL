@@ -1338,6 +1338,21 @@ class InspectorController(
         nativeDomScrollbarTrackRectOverride = trackRect
         nativeDomScrollbarThumbRectOverride = thumbRect
     }
+
+    internal fun onNativeDomExpandedPanelRect(rect: Rect, viewportWidth: Int, viewportHeight: Int) {
+        val clamped = clampExpandedRect(rect, viewportWidth, viewportHeight)
+        expandedRect = clamped
+        panelBounds = clamped
+        minimizedBounds = Rect(0, 0, 0, 0)
+    }
+
+    internal fun onNativeDomMinimizedPanelPosition(x: Int, y: Int, viewportWidth: Int, viewportHeight: Int) {
+        minimizedPosX = x
+        minimizedPosY = y
+        clampMinimizedPosition(viewportWidth, viewportHeight)
+        minimizedBounds = Rect(minimizedPosX, minimizedPosY, minimizedWidth(), minimizedHeight())
+    }
+
     internal fun debugSelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
 
     internal fun debugHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
@@ -3704,4 +3719,3 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
-

@@ -293,7 +293,7 @@ class SystemOverlayHost(
             }
             syncDragSession(
                 entryState = state,
-                dragging = inspectorController.isDraggingPanel,
+                dragging = node.isDomPanelDragActive(),
                 dragType = OverlayPanelDragType.PanelMove,
                 pointerX = frame.cursorX,
                 pointerY = frame.cursorY
@@ -682,4 +682,3 @@ class SystemOverlayHost(
         }
     }
 }
-
