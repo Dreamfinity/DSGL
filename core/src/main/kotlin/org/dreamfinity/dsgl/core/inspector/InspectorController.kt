@@ -1354,6 +1354,28 @@ class InspectorController(
 
     internal fun debugStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
 
+    internal fun onNativeDomDropdownSnapshots(dropdowns: List<InspectorDropdownSnapshot>) {
+        nativeDropdowns.clear()
+        nativeDropdowns.addAll(dropdowns)
+    }
+
+    internal fun resolveDropdownOptionsForProperty(property: StyleProperty, unitSelect: Boolean): List<String> {
+        if (unitSelect) {
+            return InspectorEditorRegistry.unitOptions().map { it.token }
+        }
+        val selected = selectedNode ?: return emptyList()
+        val literal = literalForEdit(selected, property)
+        val descriptor = InspectorEditorRegistry.describe(
+            property = property,
+            literal = literal,
+            expression = StyleEngine.inspectorOverrideFor(selected, property)
+        )
+        if (descriptor.kind != InspectorEditorKind.EnumSelect && descriptor.kind != InspectorEditorKind.FontSelect) {
+            return emptyList()
+        }
+        return descriptor.options
+    }
+
     internal fun hasOpenStyleDropdown(): Boolean {
         return openValueSelectProperty != null || openUnitSelectProperty != null
     }

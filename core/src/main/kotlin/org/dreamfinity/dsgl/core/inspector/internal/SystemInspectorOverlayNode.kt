@@ -12,10 +12,14 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorDomSnapshot
+import org.dreamfinity.dsgl.core.inspector.InspectorDropdownOptionSnapshot
+import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
+import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
+import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.dreamfinity.dsgl.core.style.TextWrap
 import java.util.LinkedHashMap
 
@@ -33,16 +37,22 @@ internal class SystemInspectorOverlayNode(
     private var pointerCaptured: Boolean = false
     private var persistedBodyScrollSession: ScrollSessionSnapshot? = null
     private val persistedDropdownScrollSession: MutableMap<String, ScrollSessionSnapshot> = LinkedHashMap()
+    private var activeDomDropdown: ActiveDomDropdown? = null
+
+    private data class ActiveDomDropdown(
+        val property: StyleProperty,
+        val unitSelect: Boolean
+    )
 
     init {
         EventBus.run {
             this@SystemInspectorOverlayNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (
                     event.mouseButton == MouseButton.LEFT &&
-                    controller.hasOpenStyleDropdown() &&
+                    activeDomDropdown != null &&
                     shouldDismissOpenDropdownOnPointerDown(event.target)
                 ) {
-                    controller.closeOpenStyleDropdowns()
+                    closeActiveDomDropdown()
                 }
                 if (isDomOwnedInteractionTarget(event.target)) return@addEventListener
                 if (controller.handleMouseDown(event.mouseX, event.mouseY, event.mouseButton)) {
@@ -65,12 +75,13 @@ internal class SystemInspectorOverlayNode(
                 event.cancelled = true
             }
             this@SystemInspectorOverlayNode.addEventListener(Events.WHEEL) { event: MouseWheelEvent ->
-                if (controller.handleOpenStyleDropdownWheel(event.dWheel)) {
+                if (handleActiveDomDropdownWheel(event.dWheel)) {
                     event.cancelled = true
                 }
             }
         }
     }
+
     fun bindInspectedTree(root: DOMNode?, layoutRevision: Long) {
         inspectedRoot = root
         inspectedLayoutRevision = layoutRevision
@@ -113,6 +124,7 @@ internal class SystemInspectorOverlayNode(
             clearTree()
             persistedBodyScrollSession = null
             persistedDropdownScrollSession.clear()
+            closeActiveDomDropdown()
             controller.onNativeDomBodyScrollState(0, null, null)
             return
         }
@@ -147,6 +159,7 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun renderMinimized(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot) {
+        closeActiveDomDropdown()
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
@@ -353,7 +366,9 @@ internal class SystemInspectorOverlayNode(
             Rect(contentX, y, contentW, lineHeightPx),
         )
 
-        renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY)
+        val styleRows = controller.debugStyleEditorRows()
+        reconcileActiveDomDropdown(styleRows)
+        renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY, styleRows)
         y += snapshot.styleEditorHeight
 
         snapshot.styleLines.forEachIndexed { index, line ->
@@ -374,7 +389,7 @@ internal class SystemInspectorOverlayNode(
             y += lineHeightPx
         }
 
-        renderDropdowns(scope, ctx, bodyScrollY, viewportWidth, viewportHeight)
+        renderDropdowns(scope, ctx, styleRows, bodyScrollY, viewportWidth, viewportHeight)
         body.restoreScrollSessionSnapshot(persistedBodyScrollSession)
         val bodyState = body.scrollContainerState()
         persistedBodyScrollSession = body.captureScrollSessionSnapshot()
@@ -427,8 +442,13 @@ internal class SystemInspectorOverlayNode(
         renderNode(ctx, layer, rect)
     }
 
-    private fun renderStyleEditorRows(scope: UiScope, parentNode: DOMNode, ctx: UiMeasureContext, bodyScrollY: Int) {
-        val rows = controller.debugStyleEditorRows()
+    private fun renderStyleEditorRows(
+        scope: UiScope,
+        parentNode: DOMNode,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        rows: List<InspectorStyleEditorRowSnapshot>
+    ) {
         rows.forEachIndexed { index, row ->
             val rowRect = translateRectY(row.rowRect, -bodyScrollY)
             val rowNode = scope.div({
@@ -471,15 +491,16 @@ internal class SystemInspectorOverlayNode(
             when (row.editorKind) {
                 InspectorEditorKind.EnumSelect,
                 InspectorEditorKind.FontSelect -> {
+                    val valueOpen = isDomDropdownOpen(row.property, unitSelect = false)
                     val selector = scope.button(row.controlValue, {
                         key = "dsgl-system-inspector-editor-select-$index"
                     })
-                    selector.backgroundColor = if (row.controlOpen) 0x334D5D70 else if (row.controlHovered) 0x2A425164 else 0x22313D4B
-                    selector.border = Border.all(1, if (row.controlOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+                    selector.backgroundColor = if (valueOpen) 0x334D5D70 else if (row.controlHovered) 0x2A425164 else 0x22313D4B
+                    selector.border = Border.all(1, if (valueOpen) 0xFFA8C6E6.toInt() else 0x77607084)
                     selector.textColor = 0xFFE6EDF6.toInt()
                     selector.fontSize = 18
                     selector.onClick {
-                        controller.onToggleValueSelectPressed(row.property)
+                        toggleDomDropdown(row.property, unitSelect = false)
                     }
                     renderNode(ctx, selector, translateRectY(row.controlRect, -bodyScrollY))
                 }
@@ -568,15 +589,16 @@ internal class SystemInspectorOverlayNode(
                         renderNode(ctx, inc, translateRectY(rect, -bodyScrollY))
                     }
                     row.unitRect?.let { rect ->
+                        val unitOpen = isDomDropdownOpen(row.property, unitSelect = true)
                         val unit = scope.button(row.unitValue ?: "px", {
                             key = "dsgl-system-inspector-editor-unit-$index"
                         })
-                        unit.backgroundColor = if (row.unitOpen) 0x334D5D70 else 0x22313D4B
-                        unit.border = Border.all(1, if (row.unitOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+                        unit.backgroundColor = if (unitOpen) 0x334D5D70 else 0x22313D4B
+                        unit.border = Border.all(1, if (unitOpen) 0xFFA8C6E6.toInt() else 0x77607084)
                         unit.textColor = 0xFFE6EDF6.toInt()
                         unit.fontSize = 18
                         unit.onClick {
-                            controller.onToggleUnitSelectPressed(row.property)
+                            toggleDomDropdown(row.property, unitSelect = true)
                         }
                         renderNode(ctx, unit, translateRectY(rect, -bodyScrollY))
                     }
@@ -614,118 +636,226 @@ internal class SystemInspectorOverlayNode(
             renderNode(ctx, clearButton, translateRectY(clearRect, -bodyScrollY))
         }
     }
+
     private fun renderDropdowns(
         scope: UiScope,
         ctx: UiMeasureContext,
+        rows: List<InspectorStyleEditorRowSnapshot>,
         bodyScrollY: Int,
         viewportWidth: Int,
         viewportHeight: Int
     ) {
-        controller.debugStyleEditorDropdowns().forEachIndexed { index, dropdown ->
-            val dropdownKey = dropdownScrollKey(dropdown)
-            val persistedDropdownSession = persistedDropdownScrollSession[dropdownKey]
-            val persistedDropdownY = persistedDropdownSession?.resolvedY?.coerceAtLeast(0) ?: 0
-            val popupRect = resolveDropdownPopupRect(dropdown, bodyScrollY, viewportWidth, viewportHeight)
-            val popup = scope.div({
-                key = dropdownKey
+        val dropdown = resolveDomDropdownSnapshot(rows, bodyScrollY, viewportWidth, viewportHeight)
+        if (dropdown == null) {
+            controller.onNativeDomDropdownSnapshots(emptyList())
+            return
+        }
+
+        val dropdownKey = dropdownScrollKey(dropdown.property, dropdown.unitSelect)
+        val persistedDropdownSession = persistedDropdownScrollSession[dropdownKey]
+        val persistedDropdownY = persistedDropdownSession?.resolvedY?.coerceAtLeast(0) ?: 0
+        val popup = scope.div({
+            key = dropdownKey
+            style = {
+                display = Display.Block
+            }
+        })
+        popup.backgroundColor = 0xEE202A36.toInt()
+        popup.border = Border.all(1, 0xCC596A80.toInt())
+        popup.overflowY = Overflow.Auto
+        renderNode(ctx, popup, dropdown.popupRect)
+
+        dropdown.options.forEachIndexed { optionIndex, option ->
+            val optionRect = Rect(
+                option.rect.x,
+                option.rect.y - persistedDropdownY,
+                option.rect.width,
+                option.rect.height
+            )
+            val hovered = optionRect.contains(cursorX, cursorY)
+            val button = scope.button(option.text, {
+                key = "$dropdownKey-option-$optionIndex"
+            })
+            button.backgroundColor = if (hovered) 0x2D4C6279 else 0x22313D4B
+            button.border = Border.all(1, if (hovered) 0xCC95B3D3.toInt() else 0x664F6076)
+            button.textColor = if (hovered) 0xFFFFFFFF.toInt() else 0xFFE6EDF6.toInt()
+            button.fontSize = 18
+            button.onClick {
+                if (dropdown.unitSelect) {
+                    controller.onSelectUnitOptionPressed(dropdown.property, option.value)
+                } else {
+                    controller.onSelectValueOptionPressed(dropdown.property, option.value)
+                }
+                closeActiveDomDropdown()
+            }
+            renderNode(ctx, button, optionRect)
+        }
+
+        dropdown.footerText?.let { footer ->
+            val footerNode = scope.text(props = {
+                key = "$dropdownKey-footer"
+                value = footer
                 style = {
-                    display = Display.Block
+                    textWrap = TextWrap.NoWrap
                 }
             })
-            popup.backgroundColor = 0xEE202A36.toInt()
-            popup.border = Border.all(1, 0xCC596A80.toInt())
-            popup.overflowY = Overflow.Auto
-            renderNode(ctx, popup, popupRect)
-
-            val popupOffsetX = popupRect.x - dropdown.popupRect.x
-            val popupOffsetY = popupRect.y - dropdown.popupRect.y
-            dropdown.options.forEachIndexed { optionIndex, option ->
-                val button = scope.button(option.text, {
-                    key = "dsgl-system-inspector-dropdown-$index-option-$optionIndex"
-                })
-                button.backgroundColor = if (option.hovered) 0x2D4C6279 else 0x22313D4B
-                button.border = Border.all(1, if (option.hovered) 0xCC95B3D3.toInt() else 0x664F6076)
-                button.textColor = if (option.hovered) 0xFFFFFFFF.toInt() else 0xFFE6EDF6.toInt()
-                button.fontSize = 18
-                button.onClick {
-                    if (dropdown.unitSelect) {
-                        controller.onSelectUnitOptionPressed(dropdown.property, option.value)
-                    } else {
-                        controller.onSelectValueOptionPressed(dropdown.property, option.value)
-                    }
-                }
-                val optionRect = Rect(
-                    option.rect.x + popupOffsetX,
-                    option.rect.y + popupOffsetY - persistedDropdownY,
-                    option.rect.width,
-                    option.rect.height
+            footerNode.color = 0xFF8EA6BF.toInt()
+            footerNode.fontSize = 18
+            renderNode(
+                ctx,
+                footerNode,
+                Rect(
+                    dropdown.popupRect.x + 6,
+                    dropdown.popupRect.y + dropdown.popupRect.height - 22 - persistedDropdownY,
+                    (dropdown.popupRect.width - 12).coerceAtLeast(20),
+                    20
                 )
-                renderNode(ctx, button, optionRect)
-            }
-
-            dropdown.footerText?.let { footer ->
-                val footerNode = scope.text(props = {
-                    key = "dsgl-system-inspector-dropdown-$index-footer"
-                    value = footer
-                    style = {
-                        textWrap = TextWrap.NoWrap
-                    }
-                })
-                footerNode.color = 0xFF8EA6BF.toInt()
-                footerNode.fontSize = 18
-                renderNode(
-                    ctx,
-                    footerNode,
-                    Rect(
-                        popupRect.x + 6,
-                        popupRect.y + popupRect.height - 22 - persistedDropdownY,
-                        (popupRect.width - 12).coerceAtLeast(20),
-                        20
-                    )
-                )
-            }
-            popup.restoreScrollSessionSnapshot(persistedDropdownSession)
-            popup.scrollContainerState()
-            persistedDropdownScrollSession[dropdownKey] = popup.captureScrollSessionSnapshot()
+            )
         }
+
+        popup.restoreScrollSessionSnapshot(persistedDropdownSession)
+        popup.scrollContainerState()
+        persistedDropdownScrollSession[dropdownKey] = popup.captureScrollSessionSnapshot()
+        controller.onNativeDomDropdownSnapshots(listOf(dropdown))
     }
 
-    private fun resolveDropdownPopupRect(
-        dropdown: org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot,
+    private fun resolveDomDropdownSnapshot(
+        rows: List<InspectorStyleEditorRowSnapshot>,
         bodyScrollY: Int,
         viewportWidth: Int,
         viewportHeight: Int
-    ): Rect {
-        val fallback = translateRectY(dropdown.popupRect, -bodyScrollY)
-        val triggerRect = resolveDropdownTriggerRect(dropdown, bodyScrollY)
-        if (triggerRect == null) {
-            return fallback
+    ): InspectorDropdownSnapshot? {
+        val activeDropdown = activeDomDropdown ?: return null
+        val row = rows.firstOrNull { it.property == activeDropdown.property } ?: run {
+            closeActiveDomDropdown()
+            return null
+        }
+        if (activeDropdown.unitSelect && row.unitRect == null) {
+            closeActiveDomDropdown()
+            return null
         }
 
-        val width = dropdown.popupRect.width
-        val height = dropdown.popupRect.height
-        val rawX = if (dropdown.unitSelect) {
-            triggerRect.x + triggerRect.width - width
-        } else {
-            triggerRect.x
+        val options = controller.resolveDropdownOptionsForProperty(activeDropdown.property, activeDropdown.unitSelect)
+        if (options.isEmpty()) {
+            closeActiveDomDropdown()
+            return null
         }
-        val rawY = triggerRect.y + triggerRect.height + 2
-        val clampedX = rawX.coerceIn(2, (viewportWidth - width - 2).coerceAtLeast(2))
-        val clampedY = rawY.coerceIn(2, (viewportHeight - height - 2).coerceAtLeast(2))
-        return Rect(clampedX, clampedY, width, height)
-    }
 
-    private fun resolveDropdownTriggerRect(
-        dropdown: org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot,
-        bodyScrollY: Int
-    ): Rect? {
-        val row = controller.debugStyleEditorRows().firstOrNull { it.property == dropdown.property } ?: return null
-        val triggerRect = if (dropdown.unitSelect) {
+        val triggerRect = if (activeDropdown.unitSelect) {
             row.unitRect ?: row.controlRect
         } else {
             row.controlRect
         }
-        return translateRectY(triggerRect, -bodyScrollY)
+        val visibleTriggerRect = translateRectY(triggerRect, -bodyScrollY)
+
+        val maxChars = options.maxOfOrNull { it.length } ?: 0
+        val estimatedTextWidth = (maxChars * 8 + 22).coerceAtLeast(120)
+        val popupWidth = maxOf(triggerRect.width, estimatedTextWidth).coerceAtLeast(120)
+        val optionHeight = 24
+        val maxVisibleRows = 8
+        val visibleRows = minOf(maxVisibleRows, options.size)
+        val footerText = if (options.size > visibleRows) "Scroll for more" else null
+        val footerHeight = if (footerText != null) 22 else 0
+        val popupHeight = (visibleRows * optionHeight + footerHeight + 4).coerceAtLeast(optionHeight + 4)
+
+        val rawX = if (activeDropdown.unitSelect) {
+            visibleTriggerRect.x + visibleTriggerRect.width - popupWidth
+        } else {
+            visibleTriggerRect.x
+        }
+        val rawY = visibleTriggerRect.y + visibleTriggerRect.height + 2
+        val clampedX = rawX.coerceIn(2, (viewportWidth - popupWidth - 2).coerceAtLeast(2))
+        val clampedY = rawY.coerceIn(2, (viewportHeight - popupHeight - 2).coerceAtLeast(2))
+        val popupRect = Rect(clampedX, clampedY, popupWidth, popupHeight)
+
+        val optionWidth = (popupRect.width - 4).coerceAtLeast(20)
+        val optionSnapshots = options.mapIndexed { index, option ->
+            InspectorDropdownOptionSnapshot(
+                rect = Rect(
+                    popupRect.x + 2,
+                    popupRect.y + 2 + index * optionHeight,
+                    optionWidth,
+                    optionHeight
+                ),
+                text = option,
+                value = option,
+                hovered = false
+            )
+        }
+
+        return InspectorDropdownSnapshot(
+            popupRect = popupRect,
+            property = activeDropdown.property,
+            unitSelect = activeDropdown.unitSelect,
+            options = optionSnapshots,
+            footerText = footerText
+        )
+    }
+
+    private fun handleActiveDomDropdownWheel(delta: Int): Boolean {
+        if (delta == 0 || KeyModifiers.shiftDown) return false
+        val activeDropdown = activeDomDropdown ?: return false
+        val dropdownKey = dropdownScrollKey(activeDropdown.property, activeDropdown.unitSelect)
+        val current = persistedDropdownScrollSession[dropdownKey]
+        val baseResolved = current?.resolvedY?.coerceAtLeast(0) ?: 0
+        val steps = (kotlin.math.abs(delta) / 120).coerceAtLeast(1)
+        val amount = steps * 18
+        val nextResolved = if (delta < 0) {
+            baseResolved + amount
+        } else {
+            (baseResolved - amount).coerceAtLeast(0)
+        }
+        val nextTarget = if (delta < 0) {
+            (current?.targetY?.coerceAtLeast(0) ?: baseResolved) + amount
+        } else {
+            ((current?.targetY?.coerceAtLeast(0) ?: baseResolved) - amount).coerceAtLeast(0)
+        }
+        persistedDropdownScrollSession[dropdownKey] = ScrollSessionSnapshot(
+            targetX = current?.targetX?.coerceAtLeast(0) ?: 0,
+            targetY = nextTarget,
+            displayedX = current?.displayedX?.takeIf { it.isFinite() }?.coerceAtLeast(0.0) ?: 0.0,
+            displayedY = nextResolved.toDouble(),
+            resolvedX = current?.resolvedX?.coerceAtLeast(0) ?: 0,
+            resolvedY = nextResolved,
+            dragSession = current?.dragSession
+        )
+        return true
+    }
+
+    private fun reconcileActiveDomDropdown(rows: List<InspectorStyleEditorRowSnapshot>) {
+        val activeDropdown = activeDomDropdown ?: return
+        val row = rows.firstOrNull { it.property == activeDropdown.property } ?: run {
+            closeActiveDomDropdown()
+            return
+        }
+        if (activeDropdown.unitSelect && row.unitRect == null) {
+            closeActiveDomDropdown()
+            return
+        }
+        val options = controller.resolveDropdownOptionsForProperty(activeDropdown.property, activeDropdown.unitSelect)
+        if (options.isEmpty()) {
+            closeActiveDomDropdown()
+        }
+    }
+
+    private fun isDomDropdownOpen(property: StyleProperty, unitSelect: Boolean): Boolean {
+        val activeDropdown = activeDomDropdown ?: return false
+        return activeDropdown.property == property && activeDropdown.unitSelect == unitSelect
+    }
+
+    private fun toggleDomDropdown(property: StyleProperty, unitSelect: Boolean) {
+        val activeDropdown = activeDomDropdown
+        if (activeDropdown != null && activeDropdown.property == property && activeDropdown.unitSelect == unitSelect) {
+            closeActiveDomDropdown()
+            return
+        }
+        activeDomDropdown = ActiveDomDropdown(property = property, unitSelect = unitSelect)
+    }
+
+    private fun closeActiveDomDropdown() {
+        if (activeDomDropdown == null) return
+        activeDomDropdown = null
+        controller.onNativeDomDropdownSnapshots(emptyList())
     }
 
     private fun shouldDismissOpenDropdownOnPointerDown(target: DOMNode?): Boolean {
@@ -829,8 +959,8 @@ internal class SystemInspectorOverlayNode(
         return out
     }
 
-    private fun dropdownScrollKey(dropdown: org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot): String {
-        return "dsgl-system-inspector-dropdown-${dropdown.property.key}-${if (dropdown.unitSelect) "unit" else "value"}"
+    private fun dropdownScrollKey(property: StyleProperty, unitSelect: Boolean): String {
+        return "dsgl-system-inspector-dropdown-${property.key}-${if (unitSelect) "unit" else "value"}"
     }
 
     private fun shouldRetainInspectorSubtreeFocus(): Boolean {
@@ -864,4 +994,3 @@ internal class SystemInspectorOverlayNode(
         node.render(ctx, rect.x, rect.y, rect.width, rect.height)
     }
 }
-

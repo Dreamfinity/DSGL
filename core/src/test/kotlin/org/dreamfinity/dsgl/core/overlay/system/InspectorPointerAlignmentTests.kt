@@ -116,8 +116,10 @@ class InspectorPointerAlignmentTests {
         val (triggerRect, openedOnVisible) = openDropdownFromVisibleSelectRow(fixture, row)
         assertEquals(property, openedOnVisible.property)
 
-        fixture.inspector.closeOpenStyleDropdowns()
+        fixture.host.handleMouseDown(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
+        fixture.host.handleMouseUp(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
         syncAndRender(fixture, triggerRect.x + 2, triggerRect.y + 2)
+        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
 
         val rawX = row.controlRect.x + 2
         val rawY = row.controlRect.y + (row.controlRect.height / 2).coerceAtLeast(1)
@@ -339,8 +341,4 @@ class InspectorPointerAlignmentTests {
         var viewportHeight: Int
     )
 }
-
-
-
-
 
