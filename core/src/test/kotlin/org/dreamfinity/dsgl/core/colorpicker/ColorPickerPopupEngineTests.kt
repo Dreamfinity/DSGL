@@ -629,6 +629,25 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
+    fun `has active eyedropper reports popup sampler activity`() {
+        val engine = ColorPickerPopupEngine()
+        val owner = "owner"
+        engine.onFrame(900, 700)
+        engine.open(
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(120, 80, 18, 18),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
+            )
+        )
+        assertFalse(engine.hasActiveEyedropper())
+
+        val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
+        assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
+
+        assertTrue(engine.hasActiveEyedropper())
+    }
+    @Test
     fun `manager reuses same owner token`() {
         val fakeHost = FakeColorPickerHost()
         val manager = ColorPickerPopupManager(host = fakeHost)
@@ -694,4 +713,5 @@ class ColorPickerPopupEngineTests {
         override fun isOpen(): Boolean = false
     }
 }
+
 

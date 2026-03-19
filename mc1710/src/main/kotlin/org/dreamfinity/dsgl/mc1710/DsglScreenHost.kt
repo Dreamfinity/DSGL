@@ -7,6 +7,8 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.colorpicker.ActiveColorSamplerOwner
+import org.dreamfinity.dsgl.core.colorpicker.ActiveColorSamplerOwnershipRouter
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
@@ -93,6 +95,9 @@ abstract class DsglScreenHost(
     private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
     private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
     private val debugOverlayHost: OverlayDebugControlHost = OverlayDebugControlHost()
+    private val colorSamplerOwnershipRouter: ActiveColorSamplerOwnershipRouter = ActiveColorSamplerOwnershipRouter()
+    private var activeColorSamplerOwner: ActiveColorSamplerOwner = ActiveColorSamplerOwner.None
+    private var activeInlineColorSamplerNode: ColorPickerInlineNode? = null
     private val inspectorInputDebug: Boolean = false
     private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
     private val phaseTraceDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.rebuild.trace")
@@ -132,6 +137,9 @@ abstract class DsglScreenHost(
         )
         inspector.deactivate()
         inspectorPointerCaptured = false
+        colorSamplerOwnershipRouter.reset()
+        activeColorSamplerOwner = ActiveColorSamplerOwner.None
+        activeInlineColorSamplerNode = null
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
@@ -226,6 +234,7 @@ abstract class DsglScreenHost(
         SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
+        refreshActiveColorSamplerOwner(tree.root)
         val applicationOverlayCommands = if (!appOverlayRenderEnabled) {
             emptyList()
         } else {
@@ -269,9 +278,10 @@ abstract class DsglScreenHost(
         }
         val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.engine.isOpen()
+        val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         val colorPickerBlocks = !inspectorBlocks && (
                 (systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()) ||
-                        (appOverlayInputEnabled && ColorPickerRuntime.engine.isOpen())
+                        (appOverlayInputEnabled && ColorPickerRuntime.engine.isOpen() && !inlineSamplerOwnsSession)
                 )
         if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
@@ -355,6 +365,9 @@ abstract class DsglScreenHost(
         clearHoverChainStates()
         inspector.deactivate()
         inspectorPointerCaptured = false
+        colorSamplerOwnershipRouter.reset()
+        activeColorSamplerOwner = ActiveColorSamplerOwner.None
+        activeInlineColorSamplerNode = null
         layoutRevision = 0L
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
@@ -569,6 +582,7 @@ abstract class DsglScreenHost(
             inspectorPointerCaptured = inspectorPointerCaptured
         )
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+        refreshActiveColorSamplerOwner(tree.root)
         val appPressMove = mouseButton == -1 && eventButton != -1
         if (!appPressMove && consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
             consumeOverlayPointerState(mouseX, mouseY)
@@ -834,20 +848,23 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton?,
         buttonPressed: Boolean
     ): Boolean {
-        if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (mouseButton != -1 && mappedButton != null) {
-            val consumedByColorPicker = if (buttonPressed) {
-                ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedByColorPicker) {
+        val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
+        if (!inlineSamplerOwnsSession) {
+            if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
                 return true
             }
-        } else if (mouseButton == -1 && ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            return true
+            if (mouseButton != -1 && mappedButton != null) {
+                val consumedByColorPicker = if (buttonPressed) {
+                    ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+                if (consumedByColorPicker) {
+                    return true
+                }
+            } else if (mouseButton == -1 && ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+                return true
+            }
         }
 
         if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
@@ -921,10 +938,47 @@ abstract class DsglScreenHost(
         inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPopupHost())
     }
 
+    private fun refreshActiveColorSamplerOwner(root: DOMNode?) {
+        val inlineByToken = LinkedHashMap<Any, ColorPickerInlineNode>()
+        if (root != null) {
+            collectActiveInlineColorSamplers(root, inlineByToken)
+        }
+        val focusedInline = FocusManager.focusedNode() as? ColorPickerInlineNode
+        if (focusedInline != null && focusedInline.wantsGlobalPointerInput()) {
+            inlineByToken.putIfAbsent(colorSamplerToken(focusedInline), focusedInline)
+        }
+        activeColorSamplerOwner = colorSamplerOwnershipRouter.update(
+            popupEyedropperActive = ColorPickerRuntime.engine.hasActiveEyedropper(),
+            inlineActiveTokens = inlineByToken.keys.toSet()
+        )
+        activeInlineColorSamplerNode = when (val owner = activeColorSamplerOwner) {
+            is ActiveColorSamplerOwner.Inline -> inlineByToken[owner.token]
+            else -> null
+        }
+    }
+
+    private fun collectActiveInlineColorSamplers(
+        node: DOMNode,
+        out: MutableMap<Any, ColorPickerInlineNode>
+    ) {
+        if (node is ColorPickerInlineNode && node.wantsGlobalPointerInput()) {
+            out.putIfAbsent(colorSamplerToken(node), node)
+        }
+        for (child in node.children) {
+            collectActiveInlineColorSamplers(child, out)
+        }
+    }
+
+    private fun colorSamplerToken(node: ColorPickerInlineNode): Any {
+        return node.key ?: node
+    }
+
     private fun resolveForcedPointerTarget(): DOMNode? {
-        val focused = FocusManager.focusedNode()
-        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
-            return focused
+        if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
+            val inline = activeInlineColorSamplerNode
+            if (inline != null && inline.wantsGlobalPointerInput()) {
+                return inline
+            }
         }
         return null
     }
@@ -932,9 +986,10 @@ abstract class DsglScreenHost(
     private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
         val layer = OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application)
         if (layer != UiLayerId.ApplicationOverlay) return
-        val focused = FocusManager.focusedNode()
-        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
-            focused.appendEyedropperOverlayCommands(
+        if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
+            val inline = activeInlineColorSamplerNode ?: return
+            if (!inline.wantsGlobalPointerInput()) return
+            inline.appendEyedropperOverlayCommands(
                 viewportWidth = lastWidth.coerceAtLeast(1),
                 viewportHeight = lastHeight.coerceAtLeast(1),
                 out = out
@@ -943,16 +998,27 @@ abstract class DsglScreenHost(
     }
 
     private fun captureColorPickerEyedropperSamples() {
+        refreshActiveColorSamplerOwner(domTree?.root)
         if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.System) == UiLayerId.SystemOverlay) {
             systemOverlayHost.captureSystemColorPickerEyedropperSample()
         }
         if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application) != UiLayerId.ApplicationOverlay) {
             return
         }
-        ColorPickerRuntime.engine.captureEyedropperSample()
-        val focused = FocusManager.focusedNode()
-        if (focused is ColorPickerInlineNode && focused.wantsGlobalPointerInput()) {
-            focused.captureEyedropperSample()
+        when (activeColorSamplerOwner) {
+            ActiveColorSamplerOwner.Popup -> ColorPickerRuntime.engine.captureEyedropperSample()
+            is ActiveColorSamplerOwner.Inline -> {
+                val inline = activeInlineColorSamplerNode
+                if (inline != null && inline.wantsGlobalPointerInput()) {
+                    inline.captureEyedropperSample()
+                }
+            }
+
+            ActiveColorSamplerOwner.None -> {
+                if (ColorPickerRuntime.engine.hasActiveEyedropper()) {
+                    ColorPickerRuntime.engine.captureEyedropperSample()
+                }
+            }
         }
     }
 

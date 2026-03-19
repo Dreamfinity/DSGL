@@ -259,6 +259,10 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         popup?.controller?.sampleEyedropperAtHover()
     }
 
+    fun hasActiveEyedropper(): Boolean {
+        return popup?.controller?.isEyedropperActive() == true
+    }
+
     fun appendOverlayCommands(out: MutableList<RenderCommand>) {
         val current = popup ?: return
         refreshLayout(current)
@@ -513,3 +517,4 @@ object ColorPickerRuntime {
     val engine: ColorPickerPopupEngine = ColorPickerPopupEngine()
     val host: ColorPickerPopupHost = engine
 }
+
