@@ -13,7 +13,7 @@ plugins {
 
 val fontsRootDir: File = rootProject.file("fonts")
 val msdfGeneratorExe: File = rootProject.file("bin/msdf-atlas-gen.exe")
-val generatedFontsResourcesDir: File = project.file("precompiled_fonts")
+val generatedPrecompiledFontsDir: File = project.file("precompiled_fonts")
 
 tasks.register("generateMsdfAtlases") {
     group = "assets"
@@ -24,15 +24,15 @@ tasks.register("generateMsdfAtlases") {
     }
 
     inputs.files(ttfTree)
-    val registryFile = File(generatedFontsResourcesDir, "generated-fonts.txt")
+    val registryFile = File(generatedPrecompiledFontsDir, "generated-fonts.txt")
     println("Fonts registry file: ${registryFile.path}")
     outputs.file(registryFile)
     ttfTree.files.forEach { ttf ->
         val relative = ttf.relativeTo(fontsRootDir).invariantSeparatorsPath
         val base = relative.removeSuffix(".ttf")
-        outputs.file(File(generatedFontsResourcesDir, "$base-mtsdf.png"))
-        outputs.file(File(generatedFontsResourcesDir, "$base-meta.json"))
-        outputs.file(File(generatedFontsResourcesDir, "$base.ttf"))
+        outputs.file(File(generatedPrecompiledFontsDir, "$base-mtsdf.png"))
+        outputs.file(File(generatedPrecompiledFontsDir, "$base-meta.json"))
+        outputs.file(File(generatedPrecompiledFontsDir, "$base.ttf"))
     }
 
     doLast {
@@ -48,9 +48,9 @@ tasks.register("generateMsdfAtlases") {
         fonts.forEach { ttf ->
             val relative = ttf.relativeTo(fontsRootDir).invariantSeparatorsPath
             val base = relative.removeSuffix(".ttf")
-            val outputPng = File(generatedFontsResourcesDir, "$base-mtsdf.png")
-            val outputJson = File(generatedFontsResourcesDir, "$base-meta.json")
-            val outputTtf = File(generatedFontsResourcesDir, "$base.ttf")
+            val outputPng = File(generatedPrecompiledFontsDir, "$base-mtsdf.png")
+            val outputJson = File(generatedPrecompiledFontsDir, "$base-meta.json")
+            val outputTtf = File(generatedPrecompiledFontsDir, "$base.ttf")
             outputPng.parentFile?.mkdirs()
             outputJson.parentFile?.mkdirs()
             outputTtf.parentFile?.mkdirs()
@@ -98,14 +98,14 @@ tasks.register("generateMsdfAtlases") {
             println("Generating rgba (binary) atlas for $fontArg")
             println("Command is: '${rgbaArgs.joinToString(" ")}'")
 
-            val genGRBAResult = exec {
+            val genRGBAResult = exec {
                 workingDir = rootProject.projectDir
                 commandLine(rgbaArgs)
                 isIgnoreExitValue = true
             }
-            if (genGRBAResult.exitValue != 0) {
+            if (genRGBAResult.exitValue != 0) {
                 throw GradleException(
-                    "msdf-atlas-gen failed for '$fontArg' with exit code ${genGRBAResult.exitValue}. " +
+                    "msdf-atlas-gen failed for '$fontArg' with exit code ${genRGBAResult.exitValue}. " +
                             "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'"
                 )
             }
@@ -127,7 +127,7 @@ tasks.register("compressMsdfRgbaAtlases") {
     description = "Vertically flip custom *.rgba atlases in-memory and deflate-compress to *.rgba.deflate (no deps)."
     dependsOn("generateMsdfAtlases")
 
-    val rgbaTree = fileTree(generatedFontsResourcesDir) { include("**/*-mtsdf.rgba") }
+    val rgbaTree = fileTree(generatedPrecompiledFontsDir) { include("**/*-mtsdf.rgba") }
 
     inputs.files(rgbaTree)
     rgbaTree.files.forEach { rgba ->
