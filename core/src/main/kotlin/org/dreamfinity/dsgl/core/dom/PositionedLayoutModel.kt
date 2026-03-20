@@ -10,12 +10,31 @@ internal object PositionedLayoutModel {
         val value: CssLength?
     )
 
+    data class OrderingPriority(
+        val positionedBucket: Int,
+        val zIndex: Int,
+        val domOrder: Int
+    )
+
+    data class ChildEntry(
+        val node: DOMNode,
+        val priority: OrderingPriority
+    )
+
     fun isPositioned(node: DOMNode): Boolean {
         return node.position != PositionMode.Static
     }
 
     private fun effectiveOrderingZIndex(node: DOMNode): Int {
         return if (isPositioned(node)) node.zIndex else 0
+    }
+
+    fun orderingPriority(node: DOMNode, domOrder: Int): OrderingPriority {
+        return OrderingPriority(
+            positionedBucket = if (isPositioned(node)) 1 else 0,
+            zIndex = effectiveOrderingZIndex(node),
+            domOrder = domOrder
+        )
     }
 
     fun rootStackingScope(node: DOMNode): DOMNode {
@@ -77,14 +96,15 @@ internal object PositionedLayoutModel {
 
         return children
             .withIndex()
+            .map { indexed -> ChildEntry(indexed.value, orderingPriority(indexed.value, indexed.index)) }
             .sortedWith(
                 compareBy(
-                    { if (isPositioned(it.value)) 1 else 0 },
-                    { effectiveOrderingZIndex(it.value) },
-                    { it.index }
+                    { it.priority.positionedBucket },
+                    { it.priority.zIndex },
+                    { it.priority.domOrder }
                 )
             )
-            .map { it.value }
+            .map { it.node }
     }
 
     fun orderedChildrenForHitTesting(parent: DOMNode): List<DOMNode> {
