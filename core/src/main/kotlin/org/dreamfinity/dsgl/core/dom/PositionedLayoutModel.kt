@@ -14,6 +14,10 @@ internal object PositionedLayoutModel {
         return node.position != PositionMode.Static
     }
 
+    private fun effectiveOrderingZIndex(node: DOMNode): Int {
+        return if (isPositioned(node)) node.zIndex else 0
+    }
+
     fun rootStackingScope(node: DOMNode): DOMNode {
         var current = node
         while (current.parent != null) {
@@ -60,23 +64,23 @@ internal object PositionedLayoutModel {
     fun orderedChildrenForPaint(parent: DOMNode): List<DOMNode> {
         val children = parent.children
         if (children.size <= 1) return children
-        var hasPositionedOrCustomZ = false
+        var hasPositioned = false
         children.forEach { child ->
-            if (isPositioned(child) || child.zIndex != 0) {
-                hasPositionedOrCustomZ = true
+            if (isPositioned(child)) {
+                hasPositioned = true
                 return@forEach
             }
         }
-        if (!hasPositionedOrCustomZ) {
+        if (!hasPositioned) {
             return children
         }
 
         return children
             .withIndex()
             .sortedWith(
-                compareBy<IndexedValue<DOMNode>>(
+                compareBy(
                     { if (isPositioned(it.value)) 1 else 0 },
-                    { it.value.zIndex },
+                    { effectiveOrderingZIndex(it.value) },
                     { it.index }
                 )
             )
