@@ -27,6 +27,19 @@ class StylePropertyRegistryTests {
     }
 
     @Test
+    fun `position and z-index expose property-aware grammar metadata`() {
+        val position = StylePropertyRegistry.descriptor(StyleProperty.POSITION)
+        assertEquals(StyleValueGrammarKind.Enum, position.grammarKind)
+        assertEquals(StyleInspectorEditorKind.EnumSelect, position.inspectorEditorKind)
+        assertEquals("absolute", StylePropertyRegistry.parseEnumLiteral(StyleProperty.POSITION, "Absolute"))
+
+        val zIndex = StylePropertyRegistry.descriptor(StyleProperty.Z_INDEX)
+        assertEquals(StyleValueGrammarKind.UnitlessInt, zIndex.grammarKind)
+        assertEquals(StyleInspectorEditorKind.NumericInput, zIndex.inspectorEditorKind)
+        assertEquals(-7, StylePropertyRegistry.parseUnitlessIntLiteral(StyleProperty.Z_INDEX, "-7"))
+    }
+
+    @Test
     fun `registry includes text style editable properties`() {
         val properties = StylePropertyRegistry.all.map { it.property }.toSet()
         assertTrue(StyleProperty.FOREGROUND_COLOR in properties)
@@ -36,3 +49,4 @@ class StylePropertyRegistryTests {
         assertTrue(StyleProperty.ALIGN in properties)
     }
 }
+

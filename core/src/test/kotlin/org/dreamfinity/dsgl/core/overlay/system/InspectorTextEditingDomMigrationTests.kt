@@ -111,7 +111,7 @@ class InspectorTextEditingDomMigrationTests {
         val numericInput = findVisibleInputNode(
             host = fixture.host,
             inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-"
+            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
         )
 
         focusInputByClick(fixture.host, numericInput)
@@ -145,7 +145,7 @@ class InspectorTextEditingDomMigrationTests {
         val firstInput = findVisibleInputNode(
             host = fixture.host,
             inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-"
+            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
         )
         val inputKey = firstInput.key ?: error("expected keyed inspector input")
         val focused = focusInputByClick(fixture.host, firstInput)
@@ -166,7 +166,7 @@ class InspectorTextEditingDomMigrationTests {
         val refreshed = findVisibleInputNode(
             host = fixture.host,
             inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-"
+            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
         )
         assertEquals(inputKey, refreshed.key)
         assertEquals("42", refreshed.text)
@@ -181,7 +181,7 @@ class InspectorTextEditingDomMigrationTests {
         val refreshedAgain = findVisibleInputNode(
             host = fixture.host,
             inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-"
+            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
         )
         assertEquals("37", refreshedAgain.text)
         assertNull(fixture.inspector.debugActiveEditBuffer())
@@ -302,9 +302,4 @@ class InspectorTextEditingDomMigrationTests {
         }
     }
 }
-
-
-
-
-
 

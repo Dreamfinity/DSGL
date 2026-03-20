@@ -1107,9 +1107,9 @@ class InspectorController(
 
                 InspectorEditorKind.NumericInput -> {
                     val step = StylePropertyRegistry.descriptor(property).numericStep
-                    val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                    val parsed = InspectorEditorRegistry.parseNumericLiteral(property, effectiveValue)
                     val numericValue = parsed?.numberText ?: "0"
-                    val unit = parsed?.unit ?: CssUnit.Px
+                    val unit = parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                     val buttonWidth = 34
                     val unitWidth = if (editor.supportsUnits) 68 else 0
                     val inputWidth =
@@ -1150,7 +1150,7 @@ class InspectorController(
                         inputRect = inputRect,
                         incrementRect = incRect,
                         unitRect = unitRect,
-                        unitValue = unit.token,
+                        unitValue = if (editor.supportsUnits) unit?.token else null,
                         unitOpen = openUnitSelectProperty == property,
                         controlOpen = false
                     )
@@ -1626,8 +1626,7 @@ class InspectorController(
             return true
         }
         return runCatching {
-            val unit = parseCssUnitToken(unitToken ?: "px")
-            val formatted = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+            val formatted = InspectorEditorRegistry.formatNumericLiteral(property, numberText, unitToken)
             StyleEngine.setInspectorOverrideLiteral(selected, property, formatted).getOrThrow()
             cachedStyle = null
             styleEditorError = null
@@ -2397,16 +2396,16 @@ class InspectorController(
 
             InspectorEditorKind.NumericInput -> {
                 val step = StylePropertyRegistry.descriptor(property).numericStep
-                val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                val parsed = InspectorEditorRegistry.parseNumericLiteral(property, effectiveValue)
                 val numericValue = if (activeEditProperty == property && activeEditIsNumeric) {
                     activeEditBuffer
                 } else {
                     parsed?.numberText ?: "0"
                 }
                 val unit = if (activeEditProperty == property && activeEditIsNumeric) {
-                    activeEditUnit ?: parsed?.unit ?: CssUnit.Px
+                    activeEditUnit ?: parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                 } else {
-                    parsed?.unit ?: CssUnit.Px
+                    parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                 }
                 val buttonWidth = 34
                 val unitWidth = if (editor.supportsUnits) 68 else 0
@@ -2443,7 +2442,7 @@ class InspectorController(
                     val unitRect = Rect(incRect.x + incRect.width + 4, contentRect.y, unitWidth, contentRect.height)
                     drawValueSelector(
                         bounds = unitRect,
-                        value = unit.token,
+                        value = unit?.token ?: "px",
                         isOpen = openUnitSelectProperty == property,
                         hovered = unitRect.contains(mouseX, mouseY),
                         out = out
@@ -2773,11 +2772,14 @@ class InspectorController(
                 }
 
                 EditOperation.SelectUnitOption -> {
-                    val unit = parseCssUnitToken(payload ?: error("Missing unit payload."))
                     val current = literalForEdit(selected, property)
-                    val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                    val parsed = InspectorEditorRegistry.parseNumericLiteral(property, current)
                     val numberText = parsed?.numberText ?: "0"
-                    val nextLiteral = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+                    val nextLiteral = InspectorEditorRegistry.formatNumericLiteral(
+                        property = property,
+                        numberText = numberText,
+                        unitToken = payload
+                    )
                     StyleEngine.setInspectorOverrideLiteral(selected, property, nextLiteral).getOrThrow()
                     openUnitSelectProperty = null
                     openUnitSelectScrollIndex = 0
@@ -2799,11 +2801,11 @@ class InspectorController(
                 expression = StyleEngine.inspectorOverrideFor(selected, property)
             )
             if (descriptor.kind == InspectorEditorKind.NumericInput) {
-                val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                val parsed = InspectorEditorRegistry.parseNumericLiteral(property, current)
                 editSession.begin(
                     property = property,
                     initialBuffer = parsed?.numberText ?: "0",
-                    initialUnit = parsed?.unit ?: CssUnit.Px,
+                    initialUnit = parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property),
                     isNumeric = true
                 )
             } else {
@@ -2922,12 +2924,16 @@ class InspectorController(
         val property = activeEditProperty ?: return
         runCatching {
             val literal = if (activeEditIsNumeric) {
-                InspectorEditorRegistry.formatNumberUnit(activeEditBuffer, activeEditUnit ?: CssUnit.Px)
+                InspectorEditorRegistry.formatNumericLiteral(
+                    property = property,
+                    numberText = activeEditBuffer,
+                    unitToken = activeEditUnit?.token
+                )
             } else {
                 activeEditBuffer.trim()
             }
             val normalized = if (literal.isEmpty()) {
-                if (activeEditIsNumeric) "0px" else ""
+                if (activeEditIsNumeric) InspectorEditorRegistry.defaultNumericLiteral(property) else ""
             } else {
                 literal
             }
@@ -2938,18 +2944,6 @@ class InspectorController(
             styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
         }
         editSession.clearActiveEdit()
-    }
-
-    private fun parseCssUnitToken(raw: String): CssUnit {
-        return when (raw.trim().lowercase()) {
-            "px" -> CssUnit.Px
-            "em" -> CssUnit.Em
-            "rem" -> CssUnit.Rem
-            "vw" -> CssUnit.Vw
-            "vh" -> CssUnit.Vh
-            "%" -> CssUnit.Percent
-            else -> error("Unsupported unit '$raw'.")
-        }
     }
 
     private fun enumOptions(property: StyleProperty): List<String>? {

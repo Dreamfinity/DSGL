@@ -5,9 +5,13 @@ import org.dreamfinity.dsgl.core.style.CssLength
 import org.dreamfinity.dsgl.core.style.CssUnit
 import org.dreamfinity.dsgl.core.style.StyleEditorValueType
 import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleInspectorEditorKind
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.dreamfinity.dsgl.core.style.StylePropertyRegistry
+import org.dreamfinity.dsgl.core.style.StyleValueGrammarKind
 import org.dreamfinity.dsgl.core.style.parseCssLength
+import org.dreamfinity.dsgl.core.style.parseFloatLike
+import org.dreamfinity.dsgl.core.style.parseIntLike
 import org.dreamfinity.dsgl.core.style.toCssLiteral
 
 enum class InspectorEditorKind {
@@ -31,17 +35,6 @@ data class InspectorNumberUnitValue(
 )
 
 object InspectorEditorRegistry {
-    private val lengthValueTypes: Set<StyleEditorValueType> = linkedSetOf(
-        StyleEditorValueType.LengthPx,
-        StyleEditorValueType.OptionalLengthPx,
-        StyleEditorValueType.SpacingLengthPx
-    )
-    private val numericValueTypes: Set<StyleEditorValueType> = linkedSetOf(
-        StyleEditorValueType.IntNumber,
-        StyleEditorValueType.OptionalIntNumber,
-        StyleEditorValueType.FloatNumber,
-        StyleEditorValueType.Spacing
-    )
     private val unitOptions: List<CssUnit> = listOf(
         CssUnit.Px,
         CssUnit.Em,
@@ -52,53 +45,111 @@ object InspectorEditorRegistry {
     )
 
     fun describe(property: StyleProperty, literal: String, expression: StyleExpression?): InspectorEditorDescriptor {
-        if (property == StyleProperty.FONT_ID) {
-            return InspectorEditorDescriptor(
-                kind = InspectorEditorKind.FontSelect,
-                options = fontOptions()
-            )
-        }
         val descriptor = StylePropertyRegistry.descriptor(property)
-        if (descriptor.valueType == StyleEditorValueType.EnumChoice) {
-            return InspectorEditorDescriptor(
-                kind = InspectorEditorKind.EnumSelect,
-                options = descriptor.enumOptions
-            )
+        return when (descriptor.inspectorEditorKind) {
+            StyleInspectorEditorKind.FontSelect -> {
+                InspectorEditorDescriptor(
+                    kind = InspectorEditorKind.FontSelect,
+                    options = fontOptions()
+                )
+            }
+
+            StyleInspectorEditorKind.EnumSelect -> {
+                InspectorEditorDescriptor(
+                    kind = InspectorEditorKind.EnumSelect,
+                    options = descriptor.enumOptions
+                )
+            }
+
+            StyleInspectorEditorKind.NumericInput -> {
+                InspectorEditorDescriptor(
+                    kind = InspectorEditorKind.NumericInput,
+                    supportsUnits = descriptor.grammarKind == StyleValueGrammarKind.LengthLike
+                )
+            }
+
+            StyleInspectorEditorKind.StringInput -> {
+                InspectorEditorDescriptor(
+                    kind = InspectorEditorKind.StringInput,
+                    showColorPreview = isColorProperty(property) ||
+                        looksLikeColorLiteral(literal) ||
+                        expression is StyleExpression.VariableRef
+                )
+            }
         }
-        if (descriptor.valueType in lengthValueTypes) {
-            return InspectorEditorDescriptor(
-                kind = InspectorEditorKind.NumericInput,
-                supportsUnits = true
-            )
+    }
+
+    fun parseNumericLiteral(property: StyleProperty, rawLiteral: String): InspectorNumberUnitValue? {
+        val descriptor = StylePropertyRegistry.descriptor(property)
+        return when (descriptor.valueType) {
+            StyleEditorValueType.LengthPx,
+            StyleEditorValueType.OptionalLengthPx,
+            StyleEditorValueType.SpacingLengthPx -> parseLengthLikeNumberUnit(rawLiteral)
+
+            StyleEditorValueType.IntNumber -> parseUnitlessInt(rawLiteral, allowAuto = false)
+            StyleEditorValueType.OptionalIntNumber -> parseUnitlessInt(rawLiteral, allowAuto = true)
+            StyleEditorValueType.FloatNumber,
+            StyleEditorValueType.Spacing -> parseUnitlessFloat(rawLiteral)
+
+            else -> null
         }
-        if (descriptor.valueType in numericValueTypes) {
-            return InspectorEditorDescriptor(
-                kind = InspectorEditorKind.NumericInput,
-                supportsUnits = false
-            )
+    }
+
+    fun formatNumericLiteral(
+        property: StyleProperty,
+        numberText: String,
+        unitToken: String?
+    ): String {
+        val descriptor = StylePropertyRegistry.descriptor(property)
+        return when (descriptor.valueType) {
+            StyleEditorValueType.LengthPx,
+            StyleEditorValueType.OptionalLengthPx,
+            StyleEditorValueType.SpacingLengthPx -> {
+                val unit = parseCssUnitToken(unitToken) ?: CssUnit.Px
+                formatNumberUnit(numberText, unit)
+            }
+
+            StyleEditorValueType.IntNumber -> parseIntLike(numberText.trim()).toString()
+
+            StyleEditorValueType.OptionalIntNumber -> {
+                val normalized = numberText.trim()
+                if (normalized.equals("auto", ignoreCase = true)) {
+                    "auto"
+                } else {
+                    parseIntLike(normalized).toString()
+                }
+            }
+
+            StyleEditorValueType.FloatNumber,
+            StyleEditorValueType.Spacing -> {
+                val normalized = numberText.trim()
+                if (normalized.isEmpty()) {
+                    "0"
+                } else {
+                    stripTrailingZeros(parseFloatLike(normalized))
+                }
+            }
+
+            else -> numberText.trim()
         }
-        return InspectorEditorDescriptor(
-            kind = InspectorEditorKind.StringInput,
-            showColorPreview = isColorProperty(property) || looksLikeColorLiteral(literal) || expression is StyleExpression.VariableRef
-        )
+    }
+
+    fun defaultNumericLiteral(property: StyleProperty): String {
+        val descriptor = StylePropertyRegistry.descriptor(property)
+        return when (descriptor.grammarKind) {
+            StyleValueGrammarKind.LengthLike -> "0px"
+            StyleValueGrammarKind.UnitlessInt -> "0"
+            else -> "0"
+        }
+    }
+
+    fun defaultNumericUnit(property: StyleProperty): CssUnit? {
+        val descriptor = StylePropertyRegistry.descriptor(property)
+        return if (descriptor.grammarKind == StyleValueGrammarKind.LengthLike) CssUnit.Px else null
     }
 
     fun parseNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
-        val normalized = rawLiteral.trim()
-        if (normalized.isEmpty()) return null
-        if (normalized.equals("auto", ignoreCase = true)) {
-            return InspectorNumberUnitValue(numberText = "0", unit = CssUnit.Px, isAuto = true)
-        }
-        val token = normalized.split(Regex("\\s+")).firstOrNull()?.trim().orEmpty()
-        if (token.isEmpty()) return null
-        return runCatching {
-            val parsed = parseCssLength(token, allowUnitlessZero = true)
-            InspectorNumberUnitValue(
-                numberText = stripTrailingZeros(parsed.value),
-                unit = parsed.unit,
-                isAuto = false
-            )
-        }.getOrNull()
+        return parseLengthLikeNumberUnit(rawLiteral)
     }
 
     fun formatNumberUnit(numberText: String, unit: CssUnit?): String {
@@ -127,6 +178,66 @@ object InspectorEditorRegistry {
 
     private fun fontOptions(): List<String> {
         return FontRegistry.allFontIds().sortedBy { it.lowercase() }
+    }
+
+    private fun parseLengthLikeNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
+        val normalized = rawLiteral.trim()
+        if (normalized.isEmpty()) return null
+        if (normalized.equals("auto", ignoreCase = true)) {
+            return InspectorNumberUnitValue(numberText = "0", unit = CssUnit.Px, isAuto = true)
+        }
+        val token = normalized.split(Regex("\\s+")).firstOrNull()?.trim().orEmpty()
+        if (token.isEmpty()) return null
+        return runCatching {
+            val parsed = parseCssLength(token, allowUnitlessZero = true)
+            InspectorNumberUnitValue(
+                numberText = stripTrailingZeros(parsed.value),
+                unit = parsed.unit,
+                isAuto = false
+            )
+        }.getOrNull()
+    }
+
+    private fun parseUnitlessInt(rawLiteral: String, allowAuto: Boolean): InspectorNumberUnitValue? {
+        val normalized = rawLiteral.trim()
+        if (normalized.isEmpty()) return null
+        if (allowAuto && normalized.equals("auto", ignoreCase = true)) {
+            return InspectorNumberUnitValue(numberText = "0", unit = null, isAuto = true)
+        }
+        return runCatching {
+            val parsed = parseIntLike(normalized)
+            InspectorNumberUnitValue(
+                numberText = parsed.toString(),
+                unit = null,
+                isAuto = false
+            )
+        }.getOrNull()
+    }
+
+    private fun parseUnitlessFloat(rawLiteral: String): InspectorNumberUnitValue? {
+        val normalized = rawLiteral.trim()
+        if (normalized.isEmpty()) return null
+        return runCatching {
+            val parsed = parseFloatLike(normalized)
+            InspectorNumberUnitValue(
+                numberText = stripTrailingZeros(parsed),
+                unit = null,
+                isAuto = false
+            )
+        }.getOrNull()
+    }
+
+    private fun parseCssUnitToken(unitToken: String?): CssUnit? {
+        if (unitToken == null) return null
+        return when (unitToken.trim().lowercase()) {
+            "px" -> CssUnit.Px
+            "em" -> CssUnit.Em
+            "rem" -> CssUnit.Rem
+            "vw" -> CssUnit.Vw
+            "vh" -> CssUnit.Vh
+            "%" -> CssUnit.Percent
+            else -> null
+        }
     }
 
     private fun stripTrailingZeros(value: Float): String {

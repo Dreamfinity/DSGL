@@ -175,7 +175,7 @@ class InspectorDragScrollDomMigrationTests {
     @Test
     fun `text-edit migration remains intact after drag-scroll migration`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val input = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        val input = findVisibleInputNode(fixture, "width")
         val (focusX, focusY) = focusInputByClick(fixture, input)
         syncAndRender(fixture, focusX, focusY)
 
@@ -183,7 +183,7 @@ class InspectorDragScrollDomMigrationTests {
         assertTrue(fixture.host.handleKeyDown(0, '7'))
         syncAndRender(fixture, focusX, focusY)
 
-        val refreshed = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        val refreshed = findVisibleInputNode(fixture, "width")
         assertTrue(refreshed.text.contains('7') || refreshed.text != before)
     }
 
@@ -328,19 +328,19 @@ class InspectorDragScrollDomMigrationTests {
         return center to y
     }
 
-    private fun findVisibleInputNode(fixture: Fixture, keyPrefix: String): TextInputNode {
+    private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
         val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
             ?: error("inspector entry missing")
         val contentRect = fixture.inspector.debugContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "").startsWith(keyPrefix) }
+            .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
 
         return candidates.firstOrNull { node ->
             val probeX = node.bounds.x + 2
             val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
             contentRect.contains(probeX, probeY)
-        } ?: candidates.firstOrNull() ?: error("expected inspector input for prefix '$keyPrefix'")
+        } ?: candidates.firstOrNull() ?: error("expected inspector input for property '$propertyKey'")
     }
 
     private fun inspectedRoot(withManyChildren: Boolean): ContainerNode {
@@ -380,3 +380,4 @@ class InspectorDragScrollDomMigrationTests {
         var viewportHeight: Int
     )
 }
+

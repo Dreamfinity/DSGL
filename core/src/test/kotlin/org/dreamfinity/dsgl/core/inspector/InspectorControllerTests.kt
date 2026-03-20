@@ -496,6 +496,29 @@ class InspectorControllerTests {
         assertTrue(literal.equals(option.text, ignoreCase = true))
     }
 
+
+    @Test
+    fun `numeric override commit follows property grammar`() {
+        val controller = InspectorController()
+        controller.toggle()
+
+        val root = container("root", 0, 0, 1400, 900)
+        val selected = container("target", 980, 120, 180, 120)
+        selected.applyParent(root)
+
+        controller.onLayoutCommitted(root, 1L)
+        renderFrame(controller, 1200, 700)
+        controller.onCursorMoved(988, 126)
+        controller.handleMouseDown(988, 126, MouseButton.LEFT)
+
+        assertTrue(controller.debugApplyNumericOverride(StyleProperty.Z_INDEX, "5", "px"))
+        val zIndexLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.Z_INDEX) as? StyleExpression.Literal)?.value
+        assertEquals("5", zIndexLiteral)
+
+        assertTrue(controller.debugApplyNumericOverride(StyleProperty.WIDTH, "24", "em"))
+        val widthLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.WIDTH) as? StyleExpression.Literal)?.value
+        assertEquals("24em", widthLiteral)
+    }
     private fun renderFrame(controller: InspectorController, viewportWidth: Int, viewportHeight: Int): InspectorDomSnapshot {
         return controller.buildDomSnapshot(viewportWidth, viewportHeight)
             ?: error("Inspector snapshot must exist while active.")
@@ -565,7 +588,4 @@ class InspectorControllerTests {
         val onClose: (() -> Unit)?
     )
 }
-
-
-
 

@@ -276,6 +276,52 @@ class DssParserTests {
         assertEquals("dsgl-root", data.rules.single().selector.typeName)
     }
 
+
+    @Test
+    fun `parses z-index as unitless integer`() {
+        val data = DssParser.parse(
+            """
+            .panel { z-index: 5; }
+            """.trimIndent(),
+            "z-index.dss"
+        )
+
+        val expression = data.rules.single().declarations.get(StyleProperty.Z_INDEX)
+        val literal = assertIs<StyleExpression.Literal>(expression)
+        assertEquals("5", literal.value)
+    }
+
+    @Test
+    fun `rejects unitized z-index literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .panel { z-index: 5px; }
+                """.trimIndent(),
+                "z-index-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected number") == true)
+    }
+
+    @Test
+    fun `parses position enum values`() {
+        val data = DssParser.parse(
+            """
+            .a { position: static; }
+            .b { position: relative; }
+            .c { position: absolute; }
+            .d { position: fixed; }
+            """.trimIndent(),
+            "position.dss"
+        )
+
+        assertEquals(4, data.rules.size)
+        val values = data.rules.mapNotNull { rule ->
+            (rule.declarations.get(StyleProperty.POSITION) as? StyleExpression.Literal)?.value
+        }
+        assertEquals(listOf("static", "relative", "absolute", "fixed"), values)
+    }
     @Test
     fun `unitless non-zero length literal is rejected`() {
         val error = assertFailsWith<DssParseException> {
@@ -289,3 +335,4 @@ class DssParserTests {
         assertTrue(error.message?.contains("Expected explicit unit") == true)
     }
 }
+

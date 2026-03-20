@@ -30,12 +30,52 @@ class InspectorEditorRegistryTests {
     }
 
     @Test
-    fun `parses numeric literal into number and unit`() {
-        val parsed = InspectorEditorRegistry.parseNumberUnit("12.5vh")
+    fun `position is exposed as enum select with explicit options`() {
+        val position = InspectorEditorRegistry.describe(
+            property = StyleProperty.POSITION,
+            literal = "relative",
+            expression = StyleExpression.Literal("relative")
+        )
+
+        assertEquals(InspectorEditorKind.EnumSelect, position.kind)
+        assertEquals(listOf("static", "relative", "absolute", "fixed"), position.options)
+    }
+
+    @Test
+    fun `z-index uses unitless numeric grammar in inspector`() {
+        val descriptor = InspectorEditorRegistry.describe(
+            property = StyleProperty.Z_INDEX,
+            literal = "5",
+            expression = StyleExpression.Literal("5")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+        assertFalse(descriptor.supportsUnits)
+
+        val parsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.Z_INDEX, "5")
+        assertNotNull(parsed)
+        assertEquals("5", parsed.numberText)
+        assertEquals(null, parsed.unit)
+        assertFalse(parsed.isAuto)
+
+        assertEquals("7", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.Z_INDEX, "7", "px"))
+    }
+
+    @Test
+    fun `length-like numeric properties keep unit-aware grammar`() {
+        val width = InspectorEditorRegistry.describe(
+            property = StyleProperty.WIDTH,
+            literal = "12px",
+            expression = StyleExpression.Literal("12px")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, width.kind)
+        assertTrue(width.supportsUnits)
+
+        val parsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.WIDTH, "12.5vh")
         assertNotNull(parsed)
         assertEquals("12.5", parsed.numberText)
         assertEquals(CssUnit.Vh, parsed.unit)
-        assertFalse(parsed.isAuto)
+
+        assertEquals("18em", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.WIDTH, "18", "em"))
     }
 
     @Test
@@ -70,3 +110,4 @@ class InspectorEditorRegistryTests {
         assertFalse(plain.showColorPreview)
     }
 }
+
