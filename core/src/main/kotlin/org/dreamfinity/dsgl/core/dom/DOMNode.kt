@@ -306,6 +306,8 @@ abstract class DOMNode(
     private var topStyleValue: CssLength? = null
     private var rightStyleValue: CssLength? = null
     private var bottomStyleValue: CssLength? = null
+    private var relativeVisualOffsetXPx: Int = 0
+    private var relativeVisualOffsetYPx: Int = 0
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -587,6 +589,38 @@ abstract class DOMNode(
             ?.resolvePx(context, LengthPercentBase.ContainerWidth)
             ?.roundToInt()
             ?.coerceAtLeast(0)
+
+        val resolvedRelativeOffsetX = resolveRelativeVisualOffsetXPx(context)
+        val resolvedRelativeOffsetY = resolveRelativeVisualOffsetYPx(context)
+        if (relativeVisualOffsetXPx != resolvedRelativeOffsetX || relativeVisualOffsetYPx != resolvedRelativeOffsetY) {
+            relativeVisualOffsetXPx = resolvedRelativeOffsetX
+            relativeVisualOffsetYPx = resolvedRelativeOffsetY
+            markRenderCommandsDirty()
+        }
+    }
+
+    private fun resolveRelativeVisualOffsetXPx(context: LengthResolveContext): Int {
+        if (position != PositionMode.Relative) return 0
+        val resolution = PositionedLayoutModel.resolveHorizontalOffset(left = leftStyleValue, right = rightStyleValue)
+        val value = resolution.value ?: return 0
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.LEFT -> magnitude
+            StyleProperty.RIGHT -> -magnitude
+            else -> 0
+        }
+    }
+
+    private fun resolveRelativeVisualOffsetYPx(context: LengthResolveContext): Int {
+        if (position != PositionMode.Relative) return 0
+        val resolution = PositionedLayoutModel.resolveVerticalOffset(top = topStyleValue, bottom = bottomStyleValue)
+        val value = resolution.value ?: return 0
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.TOP -> magnitude
+            StyleProperty.BOTTOM -> -magnitude
+            else -> 0
+        }
     }
 
     internal fun resolveFlexBasisForAxis(
@@ -1104,6 +1138,8 @@ abstract class DOMNode(
         topStyleValue = template.topStyleValue
         rightStyleValue = template.rightStyleValue
         bottomStyleValue = template.bottomStyleValue
+        relativeVisualOffsetXPx = template.relativeVisualOffsetXPx
+        relativeVisualOffsetYPx = template.relativeVisualOffsetYPx
         gapStyleValue = template.gapStyleValue
         flexBasisStyleValue = template.flexBasisStyleValue
         borderColorStyleValue = template.borderColorStyleValue
@@ -1385,7 +1421,19 @@ abstract class DOMNode(
         renderCommandsRevision += 1L
     }
 
-    fun effectiveTransform(): UiTransform = animatedTransform ?: transform
+    fun effectiveTransform(): UiTransform {
+        val base = animatedTransform ?: transform
+        if (position != PositionMode.Relative) {
+            return base
+        }
+        if (relativeVisualOffsetXPx == 0 && relativeVisualOffsetYPx == 0) {
+            return base
+        }
+        return base.copy(
+            translateX = base.translateX + relativeVisualOffsetXPx.toFloat(),
+            translateY = base.translateY + relativeVisualOffsetYPx.toFloat()
+        )
+    }
 
     fun effectiveOpacity(): Float = (animatedOpacity ?: opacity).coerceIn(0f, 1f)
 
