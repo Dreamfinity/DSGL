@@ -40,6 +40,21 @@ class StylePropertyRegistryTests {
     }
 
     @Test
+    fun `offset properties use length-like grammar and numeric inspector editor`() {
+        listOf(
+            StyleProperty.LEFT,
+            StyleProperty.TOP,
+            StyleProperty.RIGHT,
+            StyleProperty.BOTTOM
+        ).forEach { property ->
+            val descriptor = StylePropertyRegistry.descriptor(property)
+            assertEquals(StyleValueGrammarKind.LengthLike, descriptor.grammarKind)
+            assertEquals(StyleInspectorEditorKind.NumericInput, descriptor.inspectorEditorKind)
+            assertEquals(StyleEditorValueType.OptionalLengthPx, descriptor.valueType)
+        }
+    }
+
+    @Test
     fun `registry includes text style editable properties`() {
         val properties = StylePropertyRegistry.all.map { it.property }.toSet()
         assertTrue(StyleProperty.FOREGROUND_COLOR in properties)

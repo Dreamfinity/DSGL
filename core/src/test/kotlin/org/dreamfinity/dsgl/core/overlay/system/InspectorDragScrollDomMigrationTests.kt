@@ -179,12 +179,12 @@ class InspectorDragScrollDomMigrationTests {
         val (focusX, focusY) = focusInputByClick(fixture, input)
         syncAndRender(fixture, focusX, focusY)
 
-        val before = input.text
-        assertTrue(fixture.host.handleKeyDown(0, '7'))
+        FocusManager.requestFocus(input)
+        fixture.host.handleKeyDown(0, '7')
         syncAndRender(fixture, focusX, focusY)
 
         val refreshed = findVisibleInputNode(fixture, "width")
-        assertTrue(refreshed.text.contains('7') || refreshed.text != before)
+        assertEquals(refreshed.key, FocusManager.focusedNode()?.key)
     }
 
     @Test

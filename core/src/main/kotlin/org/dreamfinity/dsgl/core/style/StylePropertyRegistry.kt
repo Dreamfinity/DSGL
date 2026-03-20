@@ -50,6 +50,34 @@ object StylePropertyRegistry {
             inspectorEditorKind = StyleInspectorEditorKind.EnumSelect
         ),
         StylePropertyDescriptor(
+            property = StyleProperty.LEFT,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.TOP,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.RIGHT,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.BOTTOM,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
             property = StyleProperty.Z_INDEX,
             valueType = StyleEditorValueType.IntNumber,
             numericStep = 1f,

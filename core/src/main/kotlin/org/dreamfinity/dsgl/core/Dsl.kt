@@ -657,12 +657,51 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.POSITION, value.toCssLiteral())
         }
 
+    var left: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.LEFT, "auto")
+            } else {
+                setLiteral(StyleProperty.LEFT, value.toCssLiteral())
+            }
+        }
+
+    var top: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.TOP, "auto")
+            } else {
+                setLiteral(StyleProperty.TOP, value.toCssLiteral())
+            }
+        }
+
+    var right: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.RIGHT, "auto")
+            } else {
+                setLiteral(StyleProperty.RIGHT, value.toCssLiteral())
+            }
+        }
+
+    var bottom: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.BOTTOM, "auto")
+            } else {
+                setLiteral(StyleProperty.BOTTOM, value.toCssLiteral())
+            }
+        }
+
     var zIndex: Int
         get() = 0
         set(value) {
             setLiteral(StyleProperty.Z_INDEX, value.toString())
         }
-
 
     var overflow: Overflow
         get() = Overflow.Visible
@@ -1225,5 +1264,4 @@ class ButtonScope internal constructor(private val node: ButtonNode) {
         node.onClick(handler)
     }
 }
-
 

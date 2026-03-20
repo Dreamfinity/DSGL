@@ -6,7 +6,10 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
+import org.dreamfinity.dsgl.core.style.CssLength
+import org.dreamfinity.dsgl.core.style.CssUnit
 import org.dreamfinity.dsgl.core.style.PositionMode
+import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -127,6 +130,30 @@ class PositionedLayoutModelTests {
         assertFalse(aHigh.sharesRootStackingScopeForPositioning(bOnly))
     }
 
+
+    @Test
+    fun `offset precedence contract prefers left over right and top over bottom`() {
+        val left = CssLength.px(12)
+        val right = CssLength(2f, CssUnit.Em)
+        val top = CssLength(1f, CssUnit.Rem)
+        val bottom = CssLength(4f, CssUnit.Vh)
+
+        val horizontal = PositionedLayoutModel.resolveHorizontalOffset(left = left, right = right)
+        assertEquals(StyleProperty.LEFT, horizontal.sourceProperty)
+        assertEquals(left, horizontal.value)
+
+        val vertical = PositionedLayoutModel.resolveVerticalOffset(top = top, bottom = bottom)
+        assertEquals(StyleProperty.TOP, vertical.sourceProperty)
+        assertEquals(top, vertical.value)
+
+        val horizontalFallback = PositionedLayoutModel.resolveHorizontalOffset(left = null, right = right)
+        assertEquals(StyleProperty.RIGHT, horizontalFallback.sourceProperty)
+        assertEquals(right, horizontalFallback.value)
+
+        val verticalFallback = PositionedLayoutModel.resolveVerticalOffset(top = null, bottom = bottom)
+        assertEquals(StyleProperty.BOTTOM, verticalFallback.sourceProperty)
+        assertEquals(bottom, verticalFallback.value)
+    }
     @Test
     fun `dispatch click follows reverse paint order`() {
         val root = ContainerNode(key = "click-root").apply {
@@ -158,5 +185,4 @@ class PositionedLayoutModelTests {
         assertEquals(0, underClicks)
     }
 }
-
 

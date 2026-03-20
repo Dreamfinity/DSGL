@@ -78,6 +78,19 @@ class InspectorEditorRegistryTests {
         assertEquals("18em", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.WIDTH, "18", "em"))
     }
 
+
+    @Test
+    fun `offset properties expose unit-aware numeric editor`() {
+        listOf(StyleProperty.LEFT, StyleProperty.TOP, StyleProperty.RIGHT, StyleProperty.BOTTOM).forEach { property ->
+            val descriptor = InspectorEditorRegistry.describe(
+                property = property,
+                literal = "auto",
+                expression = StyleExpression.Literal("auto")
+            )
+            assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+            assertTrue(descriptor.supportsUnits)
+        }
+    }
     @Test
     fun `parses auto as special numeric state`() {
         val parsed = InspectorEditorRegistry.parseNumberUnit("auto")

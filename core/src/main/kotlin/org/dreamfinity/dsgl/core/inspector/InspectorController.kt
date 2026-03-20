@@ -3066,6 +3066,10 @@ class InspectorController(
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
             StyleProperty.POSITION -> style.position.name.lowercase()
+            StyleProperty.LEFT -> style.left?.toCssLiteral() ?: "auto"
+            StyleProperty.TOP -> style.top?.toCssLiteral() ?: "auto"
+            StyleProperty.RIGHT -> style.right?.toCssLiteral() ?: "auto"
+            StyleProperty.BOTTOM -> style.bottom?.toCssLiteral() ?: "auto"
             StyleProperty.Z_INDEX -> style.zIndex.toString()
             StyleProperty.OVERFLOW -> if (style.overflowX == style.overflowY) {
                 style.overflowX.name.lowercase()

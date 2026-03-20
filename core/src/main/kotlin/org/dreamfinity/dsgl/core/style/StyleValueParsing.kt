@@ -404,6 +404,10 @@ fun validateLiteralForProperty(
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
         StyleProperty.POSITION -> StylePropertyRegistry.parseEnumLiteral(property, literal)
+        StyleProperty.LEFT,
+        StyleProperty.TOP,
+        StyleProperty.RIGHT,
+        StyleProperty.BOTTOM -> parseOptionalCssLength(literal)
         StyleProperty.Z_INDEX -> StylePropertyRegistry.parseUnitlessIntLiteral(property, literal)
         StyleProperty.OVERFLOW -> parseOverflowShorthand(literal)
         StyleProperty.OVERFLOW_X,

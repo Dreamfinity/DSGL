@@ -323,6 +323,39 @@ class DssParserTests {
         assertEquals(listOf("static", "relative", "absolute", "fixed"), values)
     }
     @Test
+    fun `parses offset properties through length-like grammar`() {
+        val data = DssParser.parse(
+            """
+            .panel {
+              left: 10px;
+              top: 1.5em;
+              right: auto;
+              bottom: 0;
+            }
+            """.trimIndent(),
+            "offsets.dss"
+        )
+
+        val declarations = data.rules.single().declarations
+        assertEquals("10px", (declarations.get(StyleProperty.LEFT) as? StyleExpression.Literal)?.value)
+        assertEquals("1.5em", (declarations.get(StyleProperty.TOP) as? StyleExpression.Literal)?.value)
+        assertEquals("auto", (declarations.get(StyleProperty.RIGHT) as? StyleExpression.Literal)?.value)
+        assertEquals("0", (declarations.get(StyleProperty.BOTTOM) as? StyleExpression.Literal)?.value)
+    }
+
+    @Test
+    fun `rejects invalid offset literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .panel { left: nope; }
+                """.trimIndent(),
+                "offsets-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected CSS length") == true)
+    }
+    @Test
     fun `unitless non-zero length literal is rejected`() {
         val error = assertFailsWith<DssParseException> {
             DssParser.parse(

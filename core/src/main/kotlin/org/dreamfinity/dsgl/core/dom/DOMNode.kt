@@ -302,6 +302,10 @@ abstract class DOMNode(
     private var minHeightStyleValue: CssLength? = null
     private var maxWidthStyleValue: CssLength? = null
     private var maxHeightStyleValue: CssLength? = null
+    private var leftStyleValue: CssLength? = null
+    private var topStyleValue: CssLength? = null
+    private var rightStyleValue: CssLength? = null
+    private var bottomStyleValue: CssLength? = null
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -1096,6 +1100,10 @@ abstract class DOMNode(
         minHeightStyleValue = template.minHeightStyleValue
         maxWidthStyleValue = template.maxWidthStyleValue
         maxHeightStyleValue = template.maxHeightStyleValue
+        leftStyleValue = template.leftStyleValue
+        topStyleValue = template.topStyleValue
+        rightStyleValue = template.rightStyleValue
+        bottomStyleValue = template.bottomStyleValue
         gapStyleValue = template.gapStyleValue
         flexBasisStyleValue = template.flexBasisStyleValue
         borderColorStyleValue = template.borderColorStyleValue
@@ -1185,6 +1193,10 @@ abstract class DOMNode(
             align = align,
             display = display,
             position = position,
+            left = leftStyleValue,
+            top = topStyleValue,
+            right = rightStyleValue,
+            bottom = bottomStyleValue,
             zIndex = zIndex,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
@@ -1231,6 +1243,10 @@ abstract class DOMNode(
         minHeightStyleValue = style.minHeight
         maxWidthStyleValue = style.maxWidth
         maxHeightStyleValue = style.maxHeight
+        leftStyleValue = style.left
+        topStyleValue = style.top
+        rightStyleValue = style.right
+        bottomStyleValue = style.bottom
         gapStyleValue = style.gap
         flexBasisStyleValue = style.flexBasis
         borderColorStyleValue = style.borderColor
@@ -1292,6 +1308,10 @@ abstract class DOMNode(
                 previous.maxHeight != style.maxHeight ||
                 previous.align != style.align ||
                 previous.display != style.display ||
+                previous.left != style.left ||
+                previous.top != style.top ||
+                previous.right != style.right ||
+                previous.bottom != style.bottom ||
                 previous.flexDirection != style.flexDirection ||
                 previous.justifyContent != style.justifyContent ||
                 previous.alignItems != style.alignItems ||
@@ -2548,5 +2568,4 @@ fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     }
     return this
 }
-
 

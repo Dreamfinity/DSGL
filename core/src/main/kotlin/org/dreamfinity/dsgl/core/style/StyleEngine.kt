@@ -1005,6 +1005,10 @@ object StyleEngine {
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
             StyleProperty.POSITION -> current.copy(position = parsePosition(literal))
+            StyleProperty.LEFT -> current.copy(left = parseOptionalCssLength(literal))
+            StyleProperty.TOP -> current.copy(top = parseOptionalCssLength(literal))
+            StyleProperty.RIGHT -> current.copy(right = parseOptionalCssLength(literal))
+            StyleProperty.BOTTOM -> current.copy(bottom = parseOptionalCssLength(literal))
             StyleProperty.Z_INDEX -> current.copy(zIndex = parseIntLike(literal))
             StyleProperty.OVERFLOW -> {
                 val overflowAxes = parseOverflowShorthand(literal)
