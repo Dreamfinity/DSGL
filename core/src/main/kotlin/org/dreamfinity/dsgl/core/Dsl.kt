@@ -651,6 +651,18 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.DISPLAY, value.toCssLiteral())
         }
 
+    var position: PositionMode
+        get() = PositionMode.Static
+        set(value) {
+            setLiteral(StyleProperty.POSITION, value.toCssLiteral())
+        }
+
+    var zIndex: Int
+        get() = 0
+        set(value) {
+            setLiteral(StyleProperty.Z_INDEX, value.toString())
+        }
+
 
     var overflow: Overflow
         get() = Overflow.Visible
@@ -1111,6 +1123,12 @@ class StyleScope internal constructor(private val node: DOMNode) {
         Display.Grid -> "grid"
     }
 
+    private fun PositionMode.toCssLiteral(): String = when (this) {
+        PositionMode.Static -> "static"
+        PositionMode.Relative -> "relative"
+        PositionMode.Absolute -> "absolute"
+        PositionMode.Fixed -> "fixed"
+    }
 
     private fun Overflow.toCssLiteral(): String = when (this) {
         Overflow.Visible -> "visible"
@@ -1207,4 +1225,5 @@ class ButtonScope internal constructor(private val node: ButtonNode) {
         node.onClick(handler)
     }
 }
+
 

@@ -26,6 +26,8 @@ data class StylePropertyDescriptor(
 object StylePropertyRegistry {
     val all: List<StylePropertyDescriptor> = listOf(
         StylePropertyDescriptor(StyleProperty.DISPLAY, StyleEditorValueType.EnumChoice, enumOptions = listOf("block", "inline", "none", "flex", "grid")),
+        StylePropertyDescriptor(StyleProperty.POSITION, StyleEditorValueType.EnumChoice, enumOptions = listOf("static", "relative", "absolute", "fixed")),
+        StylePropertyDescriptor(StyleProperty.Z_INDEX, StyleEditorValueType.IntNumber, numericStep = 1f, minInt = Int.MIN_VALUE),
         StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.LengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.LengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.MIN_WIDTH, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),

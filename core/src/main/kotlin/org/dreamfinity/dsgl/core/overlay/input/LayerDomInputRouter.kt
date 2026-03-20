@@ -324,8 +324,7 @@ class LayerDomInputRouter(
         if (!root.bounds.contains(local.first, local.second)) return false
         val childInputClipRect = root.inputClipRectForChildren(parentInputClipRect)
         out.add(root)
-        for (i in root.children.size - 1 downTo 0) {
-            val child = root.children[i]
+        root.orderedChildrenForHitTestingTraversal().forEach { child ->
             if (
                 collectHoverChainLocal(
                     root = child,
@@ -445,7 +444,4 @@ class LayerDomInputRouter(
         target.onmouseover?.invoke(event)
     }
 }
-
-
-
 

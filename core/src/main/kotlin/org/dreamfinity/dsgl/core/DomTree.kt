@@ -281,7 +281,7 @@ class DomTree(
             0L
         } else {
             var signature = 1L
-            val expectedChildren = node.children
+            val expectedChildren = node.orderedChildrenForPaintTraversal()
             var childrenChanged = chunk.children.size != expectedChildren.size
             if (childrenChanged) {
                 chunk.children.clear()
@@ -433,3 +433,4 @@ class DomTree(
         }
     }
 }
+

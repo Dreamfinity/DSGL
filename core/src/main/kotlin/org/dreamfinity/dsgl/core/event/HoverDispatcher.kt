@@ -28,8 +28,7 @@ internal fun collectHoverChain(
     val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
     if (!root.bounds.contains(local.first, local.second)) return false
     out.add(root)
-    for (i in root.children.size - 1 downTo 0) {
-        val child = root.children[i]
+    root.orderedChildrenForHitTestingTraversal().forEach { child ->
         if (collectHoverChain(child, mouseX, mouseY, worldTransform, out)) return true
     }
     return true
@@ -140,3 +139,4 @@ private fun label(element: DOMNode): String {
     val keyPart = element.key?.let { " key=$it" } ?: ""
     return element.javaClass.simpleName + keyPart
 }
+

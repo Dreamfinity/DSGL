@@ -184,6 +184,18 @@ abstract class DOMNode(
                 }
             }
         }
+    var position: PositionMode = PositionMode.Static
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
+    var zIndex: Int = 0
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
     var overflow: Overflow = Overflow.Visible
         set(value) {
             if (field == value && overflowX == value && overflowY == value) return
@@ -621,6 +633,35 @@ abstract class DOMNode(
         return current
     }
 
+
+    internal fun participatesInPositionedOrderingModel(): Boolean {
+        return PositionedLayoutModel.isPositioned(this)
+    }
+
+    internal fun rootStackingScopeForPositioning(): DOMNode {
+        return PositionedLayoutModel.rootStackingScope(this)
+    }
+
+    internal fun sharesRootStackingScopeForPositioning(other: DOMNode): Boolean {
+        return PositionedLayoutModel.sharesRootStackingScope(this, other)
+    }
+
+    internal fun containingBlockForAbsolutePositioning(): DOMNode {
+        return PositionedLayoutModel.containingBlockForAbsolute(this)
+    }
+
+    internal fun fixedViewportRootForPositioning(): DOMNode {
+        return PositionedLayoutModel.fixedViewportRoot(this)
+    }
+
+    internal fun orderedChildrenForPaintTraversal(): List<DOMNode> {
+        return PositionedLayoutModel.orderedChildrenForPaint(this)
+    }
+
+    internal fun orderedChildrenForHitTestingTraversal(): List<DOMNode> {
+        return PositionedLayoutModel.orderedChildrenForHitTesting(this)
+    }
+
     internal fun clampMeasuredOuterSize(size: Size): Size {
         val extrasWidth = (padding.horizontal + border.horizontal).coerceAtLeast(0)
         val extrasHeight = (padding.vertical + border.vertical).coerceAtLeast(0)
@@ -742,7 +783,7 @@ abstract class DOMNode(
                 height = effectiveClipRect.height.coerceAtLeast(0)
             )
             withInheritedChildRenderClipRect(effectiveClipRect) {
-                children.forEach { child ->
+                orderedChildrenForPaintTraversal().forEach { child ->
                     child.appendRenderCommands(ctx, out)
                 }
             }
@@ -750,7 +791,7 @@ abstract class DOMNode(
             return
         }
         withInheritedChildRenderClipRect(inheritedClipRect) {
-            children.forEach { child ->
+            orderedChildrenForPaintTraversal().forEach { child ->
                 child.appendRenderCommands(ctx, out)
             }
         }
@@ -1032,6 +1073,8 @@ abstract class DOMNode(
         borderRadius = template.borderRadius
         align = template.align
         display = template.display
+        position = template.position
+        zIndex = template.zIndex
         overflow = template.overflow
         overflowX = template.overflowX
         overflowY = template.overflowY
@@ -1141,6 +1184,8 @@ abstract class DOMNode(
             maxHeight = maxHeight?.let { CssLength.px(it) },
             align = align,
             display = display,
+            position = position,
+            zIndex = zIndex,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
             alignItems = alignItems,
@@ -1191,6 +1236,8 @@ abstract class DOMNode(
         borderColorStyleValue = style.borderColor
         align = style.align
         display = style.display
+        position = style.position
+        zIndex = style.zIndex
         overflow = style.overflow
         overflowX = style.overflowX
         overflowY = style.overflowY
@@ -1297,6 +1344,8 @@ abstract class DOMNode(
         result = 31L * result + bounds.hashCode().toLong()
         result = 31L * result + if (dragRenderHidden) 1L else 0L
         result = 31L * result + display.ordinal.toLong()
+        result = 31L * result + position.ordinal.toLong()
+        result = 31L * result + zIndex.toLong()
         result = 31L * result + overflow.ordinal.toLong()
         result = 31L * result + overflowX.ordinal.toLong()
         result = 31L * result + overflowY.ordinal.toLong()

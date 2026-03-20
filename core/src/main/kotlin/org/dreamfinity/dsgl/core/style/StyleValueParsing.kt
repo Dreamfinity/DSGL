@@ -110,6 +110,16 @@ fun parseDisplay(raw: String): Display {
     }
 }
 
+fun parsePosition(raw: String): PositionMode {
+    return when (raw.trim().lowercase()) {
+        "static" -> PositionMode.Static
+        "relative" -> PositionMode.Relative
+        "absolute" -> PositionMode.Absolute
+        "fixed" -> PositionMode.Fixed
+        else -> error("Unsupported position value '$raw'.")
+    }
+}
+
 data class OverflowAxes(
     val overflowX: Overflow,
     val overflowY: Overflow
@@ -393,6 +403,8 @@ fun validateLiteralForProperty(
 
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
+        StyleProperty.POSITION -> parsePosition(literal)
+        StyleProperty.Z_INDEX -> parseIntLike(literal)
         StyleProperty.OVERFLOW -> parseOverflowShorthand(literal)
         StyleProperty.OVERFLOW_X,
         StyleProperty.OVERFLOW_Y -> parseOverflow(literal)

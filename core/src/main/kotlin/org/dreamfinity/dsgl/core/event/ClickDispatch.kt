@@ -37,10 +37,10 @@ internal fun dispatchClickInternal(
     }
 
     val childInputClipRect = element.inputClipRectForChildren(parentInputClipRect)
-    for (i in element.children.size - 1 downTo 0) {
+    element.orderedChildrenForHitTestingTraversal().forEach { child ->
         if (
             dispatchClickInternal(
-                element = element.children[i],
+                element = child,
                 event = event,
                 parentTransform = worldTransform,
                 parentInputClipRect = childInputClipRect
@@ -52,3 +52,4 @@ internal fun dispatchClickInternal(
 
     return element.handleClick(event)
 }
+

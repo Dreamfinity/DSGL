@@ -25,6 +25,13 @@ enum class Display {
     Grid
 }
 
+enum class PositionMode {
+    Static,
+    Relative,
+    Absolute,
+    Fixed
+}
+
 enum class Overflow {
     Visible,
     Hidden,
@@ -153,6 +160,8 @@ enum class StyleProperty(val key: String) {
     MAX_HEIGHT("max-height"),
     ALIGN("align"),
     DISPLAY("display"),
+    POSITION("position"),
+    Z_INDEX("z-index"),
     FLEX_DIRECTION("flex-direction"),
     JUSTIFY_CONTENT("justify-content"),
     ALIGN_ITEMS("align-items"),
@@ -200,6 +209,9 @@ enum class StyleProperty(val key: String) {
                     "fontstyle" to FONT_STYLE,
                     "font-style" to FONT_STYLE
                 ) + mapOf(
+            "position" to POSITION,
+            "zindex" to Z_INDEX,
+            "z-index" to Z_INDEX,
             "flexdirection" to FLEX_DIRECTION,
             "flex-direction" to FLEX_DIRECTION,
             "justifycontent" to JUSTIFY_CONTENT,
@@ -328,6 +340,8 @@ data class ComputedStyle(
     val maxHeight: CssLength?,
     val align: StyleAlign,
     val display: Display,
+    val position: PositionMode,
+    val zIndex: Int,
     val flexDirection: FlexDirection,
     val justifyContent: JustifyContent,
     val alignItems: AlignItems,
@@ -375,6 +389,8 @@ data class ComputedStyleDefaults(
     val maxHeight: CssLength? = null,
     val align: StyleAlign = StyleAlign.START,
     val display: Display = Display.Block,
+    val position: PositionMode = PositionMode.Static,
+    val zIndex: Int = 0,
     val flexDirection: FlexDirection = FlexDirection.Row,
     val justifyContent: JustifyContent = JustifyContent.Start,
     val alignItems: AlignItems = AlignItems.Stretch,
@@ -422,6 +438,8 @@ data class ComputedStyleDefaults(
             maxHeight = maxHeight,
             align = align,
             display = display,
+            position = position,
+            zIndex = zIndex,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
             alignItems = alignItems,

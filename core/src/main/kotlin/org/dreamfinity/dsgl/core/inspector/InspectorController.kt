@@ -3071,6 +3071,8 @@ class InspectorController(
             StyleProperty.MAX_HEIGHT -> style.maxHeight?.toCssLiteral() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
+            StyleProperty.POSITION -> style.position.name.lowercase()
+            StyleProperty.Z_INDEX -> style.zIndex.toString()
             StyleProperty.OVERFLOW -> if (style.overflowX == style.overflowY) {
                 style.overflowX.name.lowercase()
             } else {
@@ -3719,3 +3721,4 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
+
