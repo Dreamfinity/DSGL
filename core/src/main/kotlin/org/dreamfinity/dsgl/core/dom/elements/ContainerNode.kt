@@ -43,12 +43,13 @@ class ContainerNode(
         if (display == Display.None) {
             return Size(0, 0)
         }
-        val visibleChildren = layoutChildren()
+        val visibleChildren = visibleChildren()
+        val inFlowChildren = inFlowChildren(visibleChildren)
         val resolvedWrapWidth = resolvedContentLimit(constrainedContentWidth)
         val boundedExplicitWidth = width?.let { explicit ->
             resolvedWrapWidth?.let { minOf(explicit, it) } ?: explicit
         }
-        if (visibleChildren.isEmpty()) {
+        if (inFlowChildren.isEmpty()) {
             val contentWidth = boundedExplicitWidth ?: 0
             val contentHeight = height ?: 0
             return Size(
@@ -58,11 +59,11 @@ class ContainerNode(
         }
 
         val contentSize = when {
-            stackLayout -> measureStack(ctx, visibleChildren)
-            display == Display.Flex -> measureFlex(ctx, visibleChildren, resolvedWrapWidth)
-            display == Display.Grid -> measureGrid(ctx, visibleChildren, resolvedWrapWidth)
-            display == Display.Inline -> measureInline(ctx, visibleChildren, resolvedWrapWidth)
-            else -> measureBlock(ctx, visibleChildren, resolvedWrapWidth)
+            stackLayout -> measureStack(ctx, inFlowChildren)
+            display == Display.Flex -> measureFlex(ctx, inFlowChildren, resolvedWrapWidth)
+            display == Display.Grid -> measureGrid(ctx, inFlowChildren, resolvedWrapWidth)
+            display == Display.Inline -> measureInline(ctx, inFlowChildren, resolvedWrapWidth)
+            else -> measureBlock(ctx, inFlowChildren, resolvedWrapWidth)
         }
         val contentWidth = when {
             boundedExplicitWidth != null -> boundedExplicitWidth
@@ -85,15 +86,22 @@ class ContainerNode(
         bounds = Rect(x, y, width, height)
         val scrollState = scrollContainerState()
         setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
-        val visibleChildren = layoutChildren()
+        val visibleChildren = visibleChildren()
         if (visibleChildren.isEmpty()) return
+        val inFlowChildren = inFlowChildren(visibleChildren)
+        val outOfFlowChildren = outOfFlowChildren(visibleChildren)
 
-        when {
-            stackLayout -> renderStack(ctx, visibleChildren)
-            display == Display.Flex -> renderFlex(ctx, visibleChildren)
-            display == Display.Grid -> renderGrid(ctx, visibleChildren)
-            display == Display.Inline -> renderInline(ctx, visibleChildren)
-            else -> renderBlock(ctx, visibleChildren)
+        if (inFlowChildren.isNotEmpty()) {
+            when {
+                stackLayout -> renderStack(ctx, inFlowChildren)
+                display == Display.Flex -> renderFlex(ctx, inFlowChildren)
+                display == Display.Grid -> renderGrid(ctx, inFlowChildren)
+                display == Display.Inline -> renderInline(ctx, inFlowChildren)
+                else -> renderBlock(ctx, inFlowChildren)
+            }
+        }
+        if (outOfFlowChildren.isNotEmpty()) {
+            renderOutOfFlowChildren(ctx, outOfFlowChildren)
         }
     }
 
@@ -112,8 +120,45 @@ class ContainerNode(
         backgroundColor = value
     }
 
-    private fun layoutChildren(): List<DOMNode> {
+    private fun visibleChildren(): List<DOMNode> {
         return children.filter { it.display != Display.None }
+    }
+
+    private fun inFlowChildren(children: List<DOMNode>): List<DOMNode> {
+        return children.filter { !it.isRemovedFromNormalFlowForPositioning() }
+    }
+
+    private fun outOfFlowChildren(children: List<DOMNode>): List<DOMNode> {
+        return children.filter { it.isRemovedFromNormalFlowForPositioning() }
+    }
+
+    private fun renderOutOfFlowChildren(ctx: UiMeasureContext, children: List<DOMNode>) {
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
+        val cw = viewportContentWidth()
+        val ch = viewportContentHeight()
+        children.forEach { child ->
+            val measured = measureChildForLayout(
+                ctx = ctx,
+                child = child,
+                availableOuterWidth = cw,
+                availableOuterHeight = ch
+            )
+            val childX = cx + child.margin.left
+            val childY = cy + child.margin.top
+            renderContainedChild(
+                ctx = ctx,
+                child = child,
+                parentContentX = cx,
+                parentContentY = cy,
+                parentContentWidth = cw,
+                parentContentHeight = ch,
+                desiredX = childX,
+                desiredY = childY,
+                desiredWidth = measured.width,
+                desiredHeight = measured.height
+            )
+        }
     }
 
     private fun measureStack(ctx: UiMeasureContext, children: List<DOMNode>): Size {
@@ -883,12 +928,36 @@ class ContainerNode(
         desiredWidth: Int,
         desiredHeight: Int
     ) {
+        val positionedRect = when (child.position) {
+            PositionMode.Absolute -> child.resolveAbsoluteLayoutRect(
+                ctx = ctx,
+                desiredX = desiredX,
+                desiredY = desiredY,
+                desiredWidth = desiredWidth,
+                desiredHeight = desiredHeight
+            )
+
+            PositionMode.Fixed -> child.resolveFixedLayoutRect(
+                ctx = ctx,
+                desiredX = desiredX,
+                desiredY = desiredY,
+                desiredWidth = desiredWidth,
+                desiredHeight = desiredHeight
+            )
+
+            else -> Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
         child.render(
             ctx = ctx,
-            x = desiredX,
-            y = desiredY,
-            width = desiredWidth.coerceAtLeast(0),
-            height = desiredHeight.coerceAtLeast(0)
+            x = positionedRect.x,
+            y = positionedRect.y,
+            width = positionedRect.width.coerceAtLeast(0),
+            height = positionedRect.height.coerceAtLeast(0)
         )
     }
 }

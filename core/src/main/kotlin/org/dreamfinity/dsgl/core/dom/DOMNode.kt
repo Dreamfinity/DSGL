@@ -692,6 +692,86 @@ abstract class DOMNode(
         return PositionedLayoutModel.fixedViewportRoot(this)
     }
 
+    internal fun isRemovedFromNormalFlowForPositioning(): Boolean {
+        return position == PositionMode.Absolute || position == PositionMode.Fixed
+    }
+
+    internal fun resolveAbsoluteLayoutRect(
+        ctx: UiMeasureContext,
+        desiredX: Int,
+        desiredY: Int,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ): Rect {
+        if (position != PositionMode.Absolute) {
+            return Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
+
+        val containingBlockRect = absoluteContainingBlockRect()
+        val offsetContext = positioningOffsetResolveContext(ctx, containingBlockRect)
+        val resolvedX = resolvePositionedX(
+            context = offsetContext,
+            containerRect = containingBlockRect,
+            desiredX = desiredX,
+            desiredWidth = desiredWidth
+        )
+        val resolvedY = resolvePositionedY(
+            context = offsetContext,
+            containerRect = containingBlockRect,
+            desiredY = desiredY,
+            desiredHeight = desiredHeight
+        )
+        return Rect(
+            x = resolvedX,
+            y = resolvedY,
+            width = desiredWidth.coerceAtLeast(0),
+            height = desiredHeight.coerceAtLeast(0)
+        )
+    }
+
+    internal fun resolveFixedLayoutRect(
+        ctx: UiMeasureContext,
+        desiredX: Int,
+        desiredY: Int,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ): Rect {
+        if (position != PositionMode.Fixed) {
+            return Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
+
+        val viewportRect = fixedViewportAnchorRect()
+        val offsetContext = positioningOffsetResolveContext(ctx, viewportRect)
+        val resolvedX = resolvePositionedX(
+            context = offsetContext,
+            containerRect = viewportRect,
+            desiredX = desiredX,
+            desiredWidth = desiredWidth
+        )
+        val resolvedY = resolvePositionedY(
+            context = offsetContext,
+            containerRect = viewportRect,
+            desiredY = desiredY,
+            desiredHeight = desiredHeight
+        )
+        return Rect(
+            x = resolvedX,
+            y = resolvedY,
+            width = desiredWidth.coerceAtLeast(0),
+            height = desiredHeight.coerceAtLeast(0)
+        )
+    }
+
     internal fun orderedChildrenForPaintTraversal(): List<DOMNode> {
         return PositionedLayoutModel.orderedChildrenForPaint(this)
     }
@@ -740,6 +820,78 @@ abstract class DOMNode(
             result = effectiveMax
         }
         return result
+    }
+
+    private fun absoluteContainingBlockRect(): Rect {
+        val containing = containingBlockForAbsolutePositioning()
+        val state = containing.scrollContainerState()
+        return Rect(
+            x = state.viewportRect.x - state.scrollX,
+            y = state.viewportRect.y - state.scrollY,
+            width = state.viewportRect.width.coerceAtLeast(0),
+            height = state.viewportRect.height.coerceAtLeast(0)
+        )
+    }
+
+    private fun fixedViewportAnchorRect(): Rect {
+        val root = fixedViewportRootForPositioning()
+        val state = root.scrollContainerState()
+        return Rect(
+            x = state.viewportRect.x,
+            y = state.viewportRect.y,
+            width = state.viewportRect.width.coerceAtLeast(0),
+            height = state.viewportRect.height.coerceAtLeast(0)
+        )
+    }
+
+    private fun positioningOffsetResolveContext(
+        ctx: UiMeasureContext,
+        containerRect: Rect
+    ): LengthResolveContext {
+        val rootFontSizePx = rootNode().resolveFontSize(ctx).toFloat()
+        val inheritedFontSizePx = (parent?.resolveFontSize(ctx) ?: resolveFontSize(ctx)).toFloat()
+        val currentFontSizePx = resolveFontSize(ctx).toFloat()
+        return LengthResolveContext(
+            viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
+            viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
+            containingBlockWidthPx = containerRect.width.coerceAtLeast(0).toFloat(),
+            containingBlockHeightPx = containerRect.height.coerceAtLeast(0).toFloat(),
+            rootFontSizePx = rootFontSizePx,
+            currentFontSizePx = currentFontSizePx,
+            inheritedFontSizePx = inheritedFontSizePx
+        )
+    }
+
+    private fun resolvePositionedX(
+        context: LengthResolveContext,
+        containerRect: Rect,
+        desiredX: Int,
+        desiredWidth: Int
+    ): Int {
+        val resolution = PositionedLayoutModel.resolveHorizontalOffset(left = leftStyleValue, right = rightStyleValue)
+        val value = resolution.value ?: return desiredX
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.LEFT -> containerRect.x + magnitude
+            StyleProperty.RIGHT -> containerRect.x + containerRect.width - desiredWidth - magnitude
+            else -> desiredX
+        }
+    }
+
+    private fun resolvePositionedY(
+        context: LengthResolveContext,
+        containerRect: Rect,
+        desiredY: Int,
+        desiredHeight: Int
+    ): Int {
+        val resolution = PositionedLayoutModel.resolveVerticalOffset(top = topStyleValue, bottom = bottomStyleValue)
+        val value = resolution.value ?: return desiredY
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.TOP -> containerRect.y + magnitude
+            StyleProperty.BOTTOM -> containerRect.y + containerRect.height - desiredHeight - magnitude
+            else -> desiredY
+        }
     }
 
     /** Measures the node's desired size. */
@@ -1344,6 +1496,7 @@ abstract class DOMNode(
                 previous.maxHeight != style.maxHeight ||
                 previous.align != style.align ||
                 previous.display != style.display ||
+                previous.position != style.position ||
                 previous.left != style.left ||
                 previous.top != style.top ||
                 previous.right != style.right ||
@@ -2404,6 +2557,7 @@ abstract class DOMNode(
         var maxHeight = 0
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
+            if (child.isRemovedFromNormalFlowForPositioning()) return@forEach
             val outerStartX = child.bounds.x - child.margin.left
             val outerStartY = child.bounds.y - child.margin.top
             val outerEndX = outerStartX + child.bounds.width + child.margin.horizontal
