@@ -1523,7 +1523,8 @@ abstract class DOMNode(
                 previous.textDecoration != style.textDecoration ||
                 previous.obfuscated != style.obfuscated ||
                 previous.fontId != style.fontId ||
-                previous.fontSize != style.fontSize
+                previous.fontSize != style.fontSize ||
+                previous.lineHeight != style.lineHeight
         return NodeStyleApplyResult(
             visualDirty = true,
             layoutDirty = layoutDirty

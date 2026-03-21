@@ -38,18 +38,18 @@ class TextLineSpaceReservationBaselineTests {
     }
 
     @Test
-    fun `text node intrinsic height baseline uses measure-context font height`() {
+    fun `text node intrinsic height baseline uses explicit normal line-height rule`() {
         val node = TextNode(TextSource.Static("single line"), key = "text.single").apply {
             fontSize = 16
         }
 
         val measured = node.measure(ctx)
 
-        assertEquals(expectedLineHeightPx(16), measured.height)
+        assertEquals(expectedNormalLineHeightPx(16), measured.height)
     }
 
     @Test
-    fun `div with span text baseline reserves one font-height line`() {
+    fun `div with span text baseline reserves one normal line-height line`() {
         val div = ContainerNode(key = "div.root").apply {
             display = Display.Block
             width = 320
@@ -64,12 +64,12 @@ class TextLineSpaceReservationBaselineTests {
         val measured = div.measure(ctx)
         div.render(ctx, 0, 0, measured.width, measured.height)
 
-        assertEquals(expectedLineHeightPx(16), span.bounds.height)
-        assertEquals(expectedLineHeightPx(16), div.bounds.height)
+        assertEquals(expectedNormalLineHeightPx(16), span.bounds.height)
+        assertEquals(expectedNormalLineHeightPx(16), div.bounds.height)
     }
 
     @Test
-    fun `many text rows baseline stays tightly packed by font-height-per-line`() {
+    fun `many text rows baseline stays tightly packed by text node normal line-height`() {
         val rowCount = 20
         val fontSize = 16
         val root = ContainerNode(key = "rows.root").apply {
@@ -90,7 +90,7 @@ class TextLineSpaceReservationBaselineTests {
         val measured = root.measure(ctx)
         root.render(ctx, 0, 0, measured.width, measured.height)
 
-        val expectedRowHeight = expectedLineHeightPx(fontSize)
+        val expectedRowHeight = expectedNormalLineHeightPx(fontSize)
         assertEquals(expectedRowHeight * rowCount, measured.height)
         root.children.forEach { row ->
             assertEquals(expectedRowHeight, row.bounds.height)
@@ -136,13 +136,12 @@ class TextLineSpaceReservationBaselineTests {
         val tree = DomTree(root)
         tree.render(ctx, 320, 120)
 
-        assertEquals(expectedLineHeightPx(12), withoutWorkaround.bounds.height)
-        assertEquals(expectedLineHeightPx(20), withWorkaround.bounds.height)
+        assertEquals(expectedNormalLineHeightPx(12), withoutWorkaround.bounds.height)
         assertTrue(withWorkaround.bounds.height > withoutWorkaround.bounds.height)
     }
 
     @Test
-    fun `font-size scaling baseline maps to font-height path`() {
+    fun `font-size scaling baseline maps to explicit normal line-height rule`() {
         val small = TextNode(TextSource.Static("small"), key = "text.small").apply {
             fontSize = 12
         }
@@ -153,13 +152,74 @@ class TextLineSpaceReservationBaselineTests {
         val smallMeasured = small.measure(ctx)
         val largeMeasured = large.measure(ctx)
 
-        assertEquals(expectedLineHeightPx(12), smallMeasured.height)
-        assertEquals(expectedLineHeightPx(24), largeMeasured.height)
+        assertEquals(expectedNormalLineHeightPx(12), smallMeasured.height)
+        assertEquals(expectedNormalLineHeightPx(24), largeMeasured.height)
         assertTrue(largeMeasured.height > smallMeasured.height)
     }
 
-    private fun expectedLineHeightPx(fontSize: Int): Int {
-        return ctx.fontHeight(fontId = null, fontSize = fontSize)
+    @Test
+    fun `explicit line-height override drives text node intrinsic height`() {
+        val node = TextNode(TextSource.Static("single line"), key = "text.override").apply {
+            fontSize = 16
+            applyStyle {
+                lineHeight(24.px)
+            }
+        }
+        StyleEngine.applyStylesRecursively(node)
+
+        val measured = node.measure(ctx)
+
+        assertEquals(24, measured.height)
+    }
+
+    @Test
+    fun `text width measurement remains stable when line-height changes`() {
+        val node = TextNode(TextSource.Static("width-check"), key = "text.width").apply {
+            fontSize = 16
+        }
+
+        StyleEngine.applyStylesRecursively(node)
+        val baselineWidth = node.measure(ctx).width
+
+        node.inlineStyleDeclarations.set(
+            org.dreamfinity.dsgl.core.style.StyleProperty.LINE_HEIGHT,
+            org.dreamfinity.dsgl.core.style.StyleExpression.Literal("32px")
+        )
+        StyleEngine.clearCache()
+        StyleEngine.applyStylesRecursively(node)
+        val overriddenWidth = node.measure(ctx).width
+
+        assertEquals(baselineWidth, overriddenWidth)
+    }
+
+    @Test
+    fun `inspector line-height override affects measured text intrinsic height`() {
+        val root = ContainerNode(key = "root").apply {
+            display = Display.Block
+        }
+        val node = TextNode(TextSource.Static("inspector"), key = "text.inspector").apply {
+            fontSize = 16
+        }.applyParent(root)
+
+        StyleEngine.applyStylesRecursively(root)
+        val baselineHeight = node.measure(ctx).height
+        assertEquals(expectedNormalLineHeightPx(16), baselineHeight)
+
+        StyleEngine.setInspectorOverrideLiteral(node, org.dreamfinity.dsgl.core.style.StyleProperty.LINE_HEIGHT, "22px")
+            .getOrThrow()
+        StyleEngine.applyStylesRecursively(root)
+        val overriddenHeight = node.measure(ctx).height
+
+        assertEquals(22, overriddenHeight)
+        assertTrue(overriddenHeight > baselineHeight)
+    }
+
+    private fun expectedNormalLineHeightPx(fontSize: Int): Int {
+        val fontHeight = ctx.fontHeight(fontId = null, fontSize = fontSize).coerceAtLeast(1)
+        return (fontHeight * TextNode.NORMAL_LINE_HEIGHT_MULTIPLIER)
+            .roundToInt()
+            .coerceAtLeast(fontHeight)
+            .coerceAtLeast(1)
     }
 
 }
