@@ -64,7 +64,9 @@ object InspectorEditorRegistry {
             StyleInspectorEditorKind.NumericInput -> {
                 InspectorEditorDescriptor(
                     kind = InspectorEditorKind.NumericInput,
-                    supportsUnits = descriptor.grammarKind == StyleValueGrammarKind.LengthLike
+                    options = descriptor.enumOptions,
+                    supportsUnits = descriptor.grammarKind == StyleValueGrammarKind.LengthLike ||
+                        descriptor.grammarKind == StyleValueGrammarKind.LineHeight
                 )
             }
 
@@ -85,6 +87,8 @@ object InspectorEditorRegistry {
             StyleEditorValueType.LengthPx,
             StyleEditorValueType.OptionalLengthPx,
             StyleEditorValueType.SpacingLengthPx -> parseLengthLikeNumberUnit(rawLiteral)
+
+            StyleEditorValueType.LineHeight -> parseLineHeightNumberUnit(rawLiteral)
 
             StyleEditorValueType.IntNumber -> parseUnitlessInt(rawLiteral, allowAuto = false)
             StyleEditorValueType.OptionalIntNumber -> parseUnitlessInt(rawLiteral, allowAuto = true)
@@ -107,6 +111,19 @@ object InspectorEditorRegistry {
             StyleEditorValueType.SpacingLengthPx -> {
                 val unit = parseCssUnitToken(unitToken) ?: CssUnit.Px
                 formatNumberUnit(numberText, unit)
+            }
+
+            StyleEditorValueType.LineHeight -> {
+                val normalized = numberText.trim()
+                if (normalized.equals("normal", ignoreCase = true)) {
+                    "normal"
+                } else {
+                    val unit = parseCssUnitToken(unitToken) ?: CssUnit.Px
+                    val formatted = formatNumberUnit(numberText, unit)
+                    val parsed = parseCssLength(formatted, allowUnitlessZero = true)
+                    require(parsed.value >= 0f) { "line-height must be non-negative." }
+                    formatted
+                }
             }
 
             StyleEditorValueType.IntNumber -> parseIntLike(numberText.trim()).toString()
@@ -139,13 +156,18 @@ object InspectorEditorRegistry {
         return when (descriptor.grammarKind) {
             StyleValueGrammarKind.LengthLike -> "0px"
             StyleValueGrammarKind.UnitlessInt -> "0"
+            StyleValueGrammarKind.LineHeight -> "normal"
             else -> "0"
         }
     }
 
     fun defaultNumericUnit(property: StyleProperty): CssUnit? {
         val descriptor = StylePropertyRegistry.descriptor(property)
-        return if (descriptor.grammarKind == StyleValueGrammarKind.LengthLike) CssUnit.Px else null
+        return when (descriptor.grammarKind) {
+            StyleValueGrammarKind.LengthLike,
+            StyleValueGrammarKind.LineHeight -> CssUnit.Px
+            else -> null
+        }
     }
 
     fun parseNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
@@ -190,6 +212,23 @@ object InspectorEditorRegistry {
         if (token.isEmpty()) return null
         return runCatching {
             val parsed = parseCssLength(token, allowUnitlessZero = true)
+            InspectorNumberUnitValue(
+                numberText = stripTrailingZeros(parsed.value),
+                unit = parsed.unit,
+                isAuto = false
+            )
+        }.getOrNull()
+    }
+
+    private fun parseLineHeightNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
+        val normalized = rawLiteral.trim()
+        if (normalized.isEmpty()) return null
+        if (normalized.equals("normal", ignoreCase = true)) {
+            return InspectorNumberUnitValue(numberText = "normal", unit = null, isAuto = true)
+        }
+        return runCatching {
+            val parsed = parseCssLength(normalized, allowUnitlessZero = true)
+            require(parsed.value >= 0f) { "line-height must be non-negative." }
             InspectorNumberUnitValue(
                 numberText = stripTrailingZeros(parsed.value),
                 unit = parsed.unit,
@@ -249,4 +288,3 @@ object InspectorEditorRegistry {
         }
     }
 }
-

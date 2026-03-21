@@ -367,5 +367,35 @@ class DssParserTests {
         }
         assertTrue(error.message?.contains("Expected explicit unit") == true)
     }
-}
+
+    @Test
+    fun `parses line-height grammar values`() {
+        val data = DssParser.parse(
+            """
+            .text-a { line-height: normal; }
+            .text-b { line-height: 24px; }
+            .text-c { line-height: 1.5em; }
+            """.trimIndent(),
+            "line-height.dss"
+        )
+
+        val values = data.rules.mapNotNull { rule ->
+            (rule.declarations.get(StyleProperty.LINE_HEIGHT) as? StyleExpression.Literal)?.value
+        }
+        assertEquals(listOf("normal", "24px", "1.5em"), values)
+    }
+
+    @Test
+    fun `rejects invalid line-height literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .text { line-height: nope; }
+                """.trimIndent(),
+                "line-height-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected CSS length") == true)
+    }}
+
 

@@ -120,6 +120,16 @@ fun parsePosition(raw: String): PositionMode {
     }
 }
 
+fun parseLineHeightValue(raw: String): LineHeightValue {
+    val normalized = raw.trim().lowercase()
+    if (normalized == "normal") {
+        return LineHeightValue.Normal
+    }
+    val length = parseCssLength(raw = raw, allowUnitlessZero = true)
+    require(length.value >= 0f) { "line-height must be non-negative." }
+    return LineHeightValue.Length(length)
+}
+
 data class OverflowAxes(
     val overflowX: Overflow,
     val overflowY: Overflow
@@ -389,6 +399,7 @@ fun validateLiteralForProperty(
             )
             require(parsed.value >= 0f) { "font-size must be non-negative." }
         }
+        StyleProperty.LINE_HEIGHT -> StylePropertyRegistry.parseLineHeightLiteral(property, literal)
         StyleProperty.WIDTH -> validateLengthLiteral(literal, allowNegative = false)
         StyleProperty.HEIGHT -> validateLengthLiteral(literal, allowNegative = false)
         StyleProperty.MIN_WIDTH,
@@ -472,4 +483,3 @@ fun resolveExpressionToLiteral(
         }
     }
 }
-

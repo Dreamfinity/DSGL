@@ -909,6 +909,17 @@ class StyleScope internal constructor(private val node: DOMNode) {
         set(value) {
             setLiteral(StyleProperty.TEXT_FORMATTING, value.toCssLiteral())
         }
+    var lineHeight: LineHeightValue
+        get() = LineHeightValue.Normal
+        set(value) {
+            when (value) {
+                LineHeightValue.Normal -> setLiteral(StyleProperty.LINE_HEIGHT, "normal")
+                is LineHeightValue.Length -> {
+                    requireNonNegative(value.value, "line-height")
+                    setLiteral(StyleProperty.LINE_HEIGHT, value.value.toCssLiteral())
+                }
+            }
+        }
 
     var fontWeight: FontWeight
         get() = FontWeight.Normal
@@ -1078,6 +1089,19 @@ class StyleScope internal constructor(private val node: DOMNode) {
 
     fun fontSize(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.FONT_SIZE, variable)
+    }
+
+    fun lineHeightNormal() {
+        setLiteral(StyleProperty.LINE_HEIGHT, "normal")
+    }
+
+    fun lineHeight(value: CssLength) {
+        requireNonNegative(value, "line-height")
+        setLiteral(StyleProperty.LINE_HEIGHT, value.toCssLiteral())
+    }
+
+    fun lineHeight(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.LINE_HEIGHT, variable)
     }
 
     fun width(value: CssLength) {
@@ -1264,4 +1288,5 @@ class ButtonScope internal constructor(private val node: ButtonNode) {
         node.onClick(handler)
     }
 }
+
 

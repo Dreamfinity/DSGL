@@ -61,6 +61,31 @@ class InspectorEditorRegistryTests {
     }
 
     @Test
+    fun `line-height supports normal and length values in inspector editor`() {
+        val descriptor = InspectorEditorRegistry.describe(
+            property = StyleProperty.LINE_HEIGHT,
+            literal = "normal",
+            expression = StyleExpression.Literal("normal")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+        assertTrue(descriptor.supportsUnits)
+        assertEquals(listOf("normal"), descriptor.options)
+
+        val normalParsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.LINE_HEIGHT, "normal")
+        assertNotNull(normalParsed)
+        assertEquals("normal", normalParsed.numberText)
+        assertEquals(null, normalParsed.unit)
+
+        val lengthParsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.LINE_HEIGHT, "1.5em")
+        assertNotNull(lengthParsed)
+        assertEquals("1.5", lengthParsed.numberText)
+        assertEquals(CssUnit.Em, lengthParsed.unit)
+
+        assertEquals("normal", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.LINE_HEIGHT, "normal", "px"))
+        assertEquals("12px", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.LINE_HEIGHT, "12", "px"))
+    }
+
+    @Test
     fun `length-like numeric properties keep unit-aware grammar`() {
         val width = InspectorEditorRegistry.describe(
             property = StyleProperty.WIDTH,
@@ -91,6 +116,7 @@ class InspectorEditorRegistryTests {
             assertTrue(descriptor.supportsUnits)
         }
     }
+
     @Test
     fun `parses auto as special numeric state`() {
         val parsed = InspectorEditorRegistry.parseNumberUnit("auto")
@@ -123,4 +149,3 @@ class InspectorEditorRegistryTests {
         assertFalse(plain.showColorPreview)
     }
 }
-

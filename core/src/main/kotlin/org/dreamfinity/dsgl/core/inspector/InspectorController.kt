@@ -2951,7 +2951,8 @@ class InspectorController(
         return when (descriptor.valueType) {
             StyleEditorValueType.EnumChoice,
             StyleEditorValueType.ColorHex,
-            StyleEditorValueType.StringPreset -> descriptor.enumOptions
+            StyleEditorValueType.StringPreset,
+            StyleEditorValueType.LineHeight -> descriptor.enumOptions
 
             else -> null
         }
@@ -2982,6 +2983,18 @@ class InspectorController(
                 }.getOrElse { descriptor.minInt }
                 val next = (base + delta.toInt()).coerceAtLeast(descriptor.minInt)
                 pxLiteral(next)
+            }
+
+            StyleEditorValueType.LineHeight -> {
+                val normalized = current.trim().lowercase()
+                if (normalized == "normal") {
+                    CssLength(delta.coerceAtLeast(0f), CssUnit.Px).toCssLiteral()
+                } else {
+                    val base = runCatching { parseCssLength(current, allowUnitlessZero = true) }
+                        .getOrElse { CssLength.ZERO_PX }
+                    val next = (base.value + delta).coerceAtLeast(0f)
+                    CssLength(next, base.unit).toCssLiteral()
+                }
             }
 
             StyleEditorValueType.OptionalIntNumber -> {
@@ -3046,6 +3059,10 @@ class InspectorController(
             StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
             StyleProperty.FONT_SIZE -> style.fontSizeValue?.toCssLiteral() ?: (style.fontSize?.let(::pxLiteral)
                 ?: "auto")
+            StyleProperty.LINE_HEIGHT -> when (val lineHeightValue = style.lineHeight) {
+                is LineHeightValue.Length -> lineHeightValue.value.toCssLiteral()
+                LineHeightValue.Normal -> "normal"
+            }
 
             StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
             StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
@@ -3719,4 +3736,3 @@ class InspectorController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 }
-

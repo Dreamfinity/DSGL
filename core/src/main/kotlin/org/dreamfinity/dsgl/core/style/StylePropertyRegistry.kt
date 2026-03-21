@@ -7,6 +7,7 @@ enum class StyleEditorValueType {
     FloatNumber,
     OptionalIntNumber,
     OptionalLengthPx,
+    LineHeight,
     Spacing,
     SpacingLengthPx,
     ColorHex,
@@ -17,6 +18,7 @@ enum class StyleValueGrammarKind {
     Enum,
     UnitlessInt,
     LengthLike,
+    LineHeight,
     Other
 }
 
@@ -129,6 +131,16 @@ object StylePropertyRegistry {
             inspectorEditorKind = StyleInspectorEditorKind.FontSelect
         ),
         StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.LengthPx, numericStep = 1f, minInt = 1, isInherited = true),
+        StylePropertyDescriptor(
+            property = StyleProperty.LINE_HEIGHT,
+            valueType = StyleEditorValueType.LineHeight,
+            enumOptions = listOf("normal"),
+            numericStep = 1f,
+            minInt = 0,
+            isInherited = true,
+            grammarKind = StyleValueGrammarKind.LineHeight,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
         StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold"), isInherited = true),
         StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic"), isInherited = true),
         StylePropertyDescriptor(
@@ -189,6 +201,14 @@ object StylePropertyRegistry {
         return parseIntLike(literal)
     }
 
+    fun parseLineHeightLiteral(property: StyleProperty, literal: String): LineHeightValue {
+        val descriptor = descriptor(property)
+        require(descriptor.grammarKind == StyleValueGrammarKind.LineHeight) {
+            "Property '${property.key}' does not use line-height grammar."
+        }
+        return parseLineHeightValue(literal)
+    }
+
     private fun colorPalette(): List<String> {
         return listOf(
             "#FF1B1F24",
@@ -211,6 +231,7 @@ private fun defaultGrammarKind(valueType: StyleEditorValueType): StyleValueGramm
     return when (valueType) {
         StyleEditorValueType.EnumChoice -> StyleValueGrammarKind.Enum
         StyleEditorValueType.IntNumber -> StyleValueGrammarKind.UnitlessInt
+        StyleEditorValueType.LineHeight -> StyleValueGrammarKind.LineHeight
         StyleEditorValueType.LengthPx,
         StyleEditorValueType.OptionalLengthPx,
         StyleEditorValueType.SpacingLengthPx -> StyleValueGrammarKind.LengthLike
@@ -230,6 +251,7 @@ private fun defaultInspectorEditorKind(
         StyleEditorValueType.IntNumber,
         StyleEditorValueType.OptionalIntNumber,
         StyleEditorValueType.FloatNumber,
+        StyleEditorValueType.LineHeight,
         StyleEditorValueType.LengthPx,
         StyleEditorValueType.OptionalLengthPx,
         StyleEditorValueType.Spacing,
@@ -237,4 +259,3 @@ private fun defaultInspectorEditorKind(
         else -> StyleInspectorEditorKind.StringInput
     }
 }
-

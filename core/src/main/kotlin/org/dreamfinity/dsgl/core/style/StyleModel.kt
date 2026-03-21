@@ -99,6 +99,11 @@ enum class TextDecoration {
     UnderlineStrikethrough
 }
 
+sealed class LineHeightValue {
+    object Normal : LineHeightValue()
+    data class Length(val value: CssLength) : LineHeightValue()
+}
+
 data class UiTransform(
     val translateX: Float = 0f,
     val translateY: Float = 0f,
@@ -148,6 +153,7 @@ enum class StyleProperty(val key: String) {
     FOREGROUND_COLOR("color"),
     FONT_ID("font-id"),
     FONT_SIZE("font-size"),
+    LINE_HEIGHT("line-height"),
     FONT_WEIGHT("font-weight"),
     FONT_STYLE("font-style"),
     TEXT_DECORATION("text-decoration"),
@@ -208,6 +214,8 @@ enum class StyleProperty(val key: String) {
                     "font" to FONT_ID,
                     "fontsize" to FONT_SIZE,
                     "font-size" to FONT_SIZE,
+                    "lineheight" to LINE_HEIGHT,
+                    "line-height" to LINE_HEIGHT,
                     "fontweight" to FONT_WEIGHT,
                     "font-weight" to FONT_WEIGHT,
                     "fontstyle" to FONT_STYLE,
@@ -336,6 +344,7 @@ data class ComputedStyle(
     val fontId: String?,
     val fontSize: Int?,
     val fontSizeValue: CssLength?,
+    val lineHeight: LineHeightValue,
     val fontWeight: FontWeight,
     val fontStyle: FontStyle,
     val textDecoration: TextDecoration,
@@ -389,6 +398,7 @@ data class ComputedStyleDefaults(
     val fontId: String? = FontRegistry.DEFAULT_FONT_ID,
     val fontSize: Int? = null,
     val fontSizeValue: CssLength? = null,
+    val lineHeight: LineHeightValue = LineHeightValue.Normal,
     val fontWeight: FontWeight = FontWeight.Normal,
     val fontStyle: FontStyle = FontStyle.Normal,
     val textDecoration: TextDecoration = TextDecoration.None,
@@ -442,6 +452,7 @@ data class ComputedStyleDefaults(
             fontId = fontId,
             fontSize = fontSize,
             fontSizeValue = fontSizeValue,
+            lineHeight = lineHeight,
             fontWeight = fontWeight,
             fontStyle = fontStyle,
             textDecoration = textDecoration,
@@ -484,4 +495,3 @@ data class ComputedStyleDefaults(
         )
     }
 }
-

@@ -40,6 +40,24 @@ class StylePropertyRegistryTests {
     }
 
     @Test
+    fun `line-height uses dedicated grammar metadata`() {
+        val lineHeight = StylePropertyRegistry.descriptor(StyleProperty.LINE_HEIGHT)
+        assertEquals(StyleEditorValueType.LineHeight, lineHeight.valueType)
+        assertEquals(StyleValueGrammarKind.LineHeight, lineHeight.grammarKind)
+        assertEquals(StyleInspectorEditorKind.NumericInput, lineHeight.inspectorEditorKind)
+        assertEquals(listOf("normal"), lineHeight.enumOptions)
+
+        assertEquals(
+            LineHeightValue.Normal,
+            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "normal")
+        )
+        assertEquals(
+            LineHeightValue.Length(CssLength(24f, CssUnit.Px)),
+            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "24px")
+        )
+    }
+
+    @Test
     fun `offset properties use length-like grammar and numeric inspector editor`() {
         listOf(
             StyleProperty.LEFT,
@@ -59,9 +77,9 @@ class StylePropertyRegistryTests {
         val properties = StylePropertyRegistry.all.map { it.property }.toSet()
         assertTrue(StyleProperty.FOREGROUND_COLOR in properties)
         assertTrue(StyleProperty.FONT_SIZE in properties)
+        assertTrue(StyleProperty.LINE_HEIGHT in properties)
         assertTrue(StyleProperty.TEXT_WRAP in properties)
         assertTrue(StyleProperty.TEXT_FORMATTING in properties)
         assertTrue(StyleProperty.ALIGN in properties)
     }
 }
-
