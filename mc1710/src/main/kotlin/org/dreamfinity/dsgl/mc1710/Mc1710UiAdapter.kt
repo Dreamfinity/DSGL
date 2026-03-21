@@ -881,6 +881,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL11.glMatrixMode(GL11.GL_MODELVIEW)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()
+            GL11.glDisable(GL11.GL_ALPHA_TEST)
             try {
                 for (command in commands) {
                     when (command) {
@@ -1023,6 +1024,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     }
                 }
             } finally {
+                GL11.glEnable(GL11.GL_ALPHA_TEST)
                 GL11.glMatrixMode(GL11.GL_MODELVIEW)
                 GL11.glPopMatrix()
                 GL11.glMatrixMode(GL11.GL_PROJECTION)
