@@ -8,6 +8,7 @@ import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.host.dsglRectToGlScissor
@@ -153,6 +154,10 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
     override fun fontHeight(fontId: String?, fontSize: Int?): Int {
         return textRenderer.lineHeight(fontId, fontSize)
+    }
+
+    override fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? {
+        return textRenderer.fontLineMetrics(fontId, fontSize)
     }
 
     fun viewport(): Viewport {

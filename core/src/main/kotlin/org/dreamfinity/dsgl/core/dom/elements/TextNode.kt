@@ -84,6 +84,7 @@ class TextNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val lineHeight = resolveEffectiveLineHeight(ctx)
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
@@ -131,7 +132,7 @@ class TextNode(
                     obfuscated = span.flags.obfuscated
                 )
             }
-            out.add(drawTextCommand(line.text, baseX, lineY, color, spans))
+            out.add(drawTextCommand(line.text, baseX, lineY + lineTopLeading, color, spans))
             lineY += layout.lineHeight
         }
     }

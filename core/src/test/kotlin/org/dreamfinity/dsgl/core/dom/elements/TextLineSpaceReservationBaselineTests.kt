@@ -3,12 +3,14 @@ package org.dreamfinity.dsgl.core.dom.elements
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -29,6 +31,33 @@ class TextLineSpaceReservationBaselineTests {
         override fun fontHeight(fontId: String?, fontSize: Int?): Int {
             val size = (fontSize ?: 16).coerceAtLeast(1)
             return (size * 0.625f).roundToInt().coerceAtLeast(1)
+        }
+
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
+
+    private val nativeMetricsCtx = object : UiMeasureContext {
+        override val fontHeight: Int = 10
+
+        override fun measureText(text: String): Int = text.length * 6
+
+        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
+            val glyphWidth = ((fontSize ?: 16) * 0.5f).roundToInt().coerceAtLeast(1)
+            return text.length * glyphWidth
+        }
+
+        override fun fontHeight(fontId: String?, fontSize: Int?): Int {
+            val size = (fontSize ?: 16).coerceAtLeast(1)
+            return (size * 0.625f).roundToInt().coerceAtLeast(1)
+        }
+
+        override fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics {
+            return FontLineMetrics(
+                emSize = 1f,
+                lineHeightEm = 0.9166667f,
+                ascenderEm = 0.75f,
+                descenderEm = -0.16666667f
+            )
         }
 
         override fun paint(commands: List<RenderCommand>) = Unit
@@ -403,6 +432,119 @@ class TextLineSpaceReservationBaselineTests {
         assertTrue(state.maxScrollY > 0)
     }
 
+    @Test
+    fun `normal line-height uses native metrics when available`() {
+        val node = TextNode(TextSource.Static("native"), key = "native.metrics.normal").apply {
+            fontSize = 16
+        }
+        StyleEngine.applyStylesRecursively(node)
+
+        val measured = node.measure(nativeMetricsCtx)
+        val resolved = invokeProtectedInt(node, "resolveEffectiveLineHeight", nativeMetricsCtx)
+        val nativeExpected = expectedNativeNormalLineHeightPx(16)
+        val fallbackExpected = expectedNormalLineHeightPx(16)
+
+        assertEquals(nativeExpected, resolved)
+        assertEquals(nativeExpected, measured.height)
+        assertTrue(nativeExpected != fallbackExpected, "Native-metrics test must differ from fallback heuristic.")
+    }
+
+    @Test
+    fun `native ascender descender and line-height scale with font size`() {
+        val small = TextNode(TextSource.Static("small"), key = "native.metrics.small").apply {
+            fontSize = 16
+        }
+        val large = TextNode(TextSource.Static("large"), key = "native.metrics.large").apply {
+            fontSize = 32
+        }
+
+        val smallLine = invokeProtectedInt(small, "resolveEffectiveLineHeight", nativeMetricsCtx)
+        val largeLine = invokeProtectedInt(large, "resolveEffectiveLineHeight", nativeMetricsCtx)
+        val smallAsc = invokeProtectedFloat(small, "resolveEffectiveAscenderPx", nativeMetricsCtx)
+        val largeAsc = invokeProtectedFloat(large, "resolveEffectiveAscenderPx", nativeMetricsCtx)
+        val smallDesc = invokeProtectedFloat(small, "resolveEffectiveDescenderPx", nativeMetricsCtx)
+        val largeDesc = invokeProtectedFloat(large, "resolveEffectiveDescenderPx", nativeMetricsCtx)
+
+        assertEquals(expectedNativeNormalLineHeightPx(16), smallLine)
+        assertEquals(expectedNativeNormalLineHeightPx(32), largeLine)
+        assertTrue(largeLine > smallLine)
+        assertTrue(largeAsc > smallAsc)
+        assertTrue(largeDesc > smallDesc)
+    }
+
+    @Test
+    fun `explicit line-height adds symmetric leading for text draw origin`() {
+        val root = ContainerNode(key = "native.leading.root").apply {
+            display = Display.Block
+            width = 320
+        }
+        val node = TextNode(TextSource.Static("lead"), key = "native.leading.text").apply {
+            fontSize = 16
+            applyStyle {
+                lineHeight(24.px)
+            }
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(nativeMetricsCtx, 320, 80)
+
+        val commands = mutableListOf<RenderCommand>()
+        node.buildRenderCommands(nativeMetricsCtx, commands)
+        val draw = commands.filterIsInstance<RenderCommand.DrawText>().single()
+        val nativeLineHeight = expectedNativeNormalLineHeightPx(16)
+        val expectedTopLeading = ((24 - nativeLineHeight).coerceAtLeast(0) / 2f).roundToInt()
+        val expectedY = node.bounds.y + node.border.top + node.padding.top + expectedTopLeading
+
+        assertEquals(expectedY, draw.y)
+    }
+
+    @Test
+    fun `render line advance stays coherent with measured line-height`() {
+        val root = ContainerNode(key = "native.coherence.root").apply {
+            display = Display.Block
+            width = 320
+        }
+        val node = TextNode(TextSource.Static("a\nb\nc"), key = "native.coherence.text").apply {
+            fontSize = 16
+            applyStyle {
+                lineHeight(24.px)
+            }
+        }.applyParent(root)
+        val tree = DomTree(root)
+        tree.render(nativeMetricsCtx, 320, 160)
+
+        val commands = mutableListOf<RenderCommand>()
+        node.buildRenderCommands(nativeMetricsCtx, commands)
+        val draws = commands.filterIsInstance<RenderCommand.DrawText>()
+        val lineHeight = invokeProtectedInt(node, "resolveEffectiveLineHeight", nativeMetricsCtx)
+
+        assertEquals(3, draws.size)
+        assertEquals(lineHeight, draws[1].y - draws[0].y)
+        assertEquals(lineHeight, draws[2].y - draws[1].y)
+        assertEquals(lineHeight * 3, node.measure(nativeMetricsCtx).height)
+    }
+
+    @Test
+    fun `native metrics path keeps ordinary row reservation non-collapsed`() {
+        val root = ContainerNode(key = "native.reservation.root").apply {
+            display = Display.Block
+            width = 260
+        }
+        val row = ContainerNode(key = "native.reservation.row").apply {
+            display = Display.Block
+        }.applyParent(root)
+        TextNode(TextSource.Static("row"), key = "native.reservation.text").apply {
+            applyStyle {
+                fontSize(10.em)
+            }
+        }.applyParent(row)
+
+        val tree = DomTree(root)
+        tree.render(nativeMetricsCtx, 260, 120)
+
+        assertTrue(row.bounds.height >= expectedNativeNormalLineHeightPx(160))
+    }
+
     private fun expectedNormalLineHeightPx(fontSize: Int): Int {
         val fontHeight = ctx.fontHeight(fontId = null, fontSize = fontSize).coerceAtLeast(1)
         return (fontHeight * TextNode.NORMAL_LINE_HEIGHT_MULTIPLIER)
@@ -411,10 +553,20 @@ class TextLineSpaceReservationBaselineTests {
             .coerceAtLeast(1)
     }
 
+    private fun expectedNativeNormalLineHeightPx(fontSize: Int): Int {
+        return ceil(0.9166667f * fontSize).toInt().coerceAtLeast(1)
+    }
+
     private fun invokeProtectedInt(node: DOMNode, methodName: String, ctx: UiMeasureContext): Int {
         val method = DOMNode::class.java.getDeclaredMethod(methodName, UiMeasureContext::class.java)
         method.isAccessible = true
         return method.invoke(node, ctx) as Int
+    }
+
+    private fun invokeProtectedFloat(node: DOMNode, methodName: String, ctx: UiMeasureContext): Float {
+        val method = DOMNode::class.java.getDeclaredMethod(methodName, UiMeasureContext::class.java)
+        method.isAccessible = true
+        return method.invoke(node, ctx) as Float
     }
 
 }

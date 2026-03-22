@@ -1,6 +1,7 @@
 ﻿package org.dreamfinity.dsgl.mc1710.text
 
 import org.dreamfinity.dsgl.core.font.*
+import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.text.*
@@ -161,6 +162,18 @@ internal class MsdfTextRenderer {
 
     fun lineHeight(fontId: String?, fontSize: Int?): Int {
         return FontRegistry.lineHeight(fontId, fontSize)
+    }
+
+    fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? {
+        val font = FontRegistry.get(fontId) ?: return null
+        val metrics = font.meta.metrics
+        if (metrics.emSize <= 0f || metrics.lineHeight <= 0f) return null
+        return FontLineMetrics(
+            emSize = metrics.emSize,
+            lineHeightEm = metrics.lineHeight,
+            ascenderEm = metrics.ascender,
+            descenderEm = metrics.descender
+        )
     }
 
     fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float) {

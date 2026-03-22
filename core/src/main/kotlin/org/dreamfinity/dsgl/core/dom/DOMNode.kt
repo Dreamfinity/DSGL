@@ -6,15 +6,14 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec
-import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ParsedText
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
@@ -99,6 +98,37 @@ private data class ScrollbarResolution(
     val viewportHeight: Int
 )
 
+private data class NativeFontMetricsPx(
+    val lineHeightPx: Int,
+    val ascenderPx: Float,
+    val descenderPx: Float
+)
+
+private data class ScrollbarDragSession(
+    val axis: ScrollbarAxis,
+    val trackStartPx: Int,
+    val trackLengthPx: Int,
+    val thumbLengthPx: Int,
+    val maxThumbTravelPx: Int,
+    val maxScroll: Int,
+    val grabOffsetPx: Int,
+    val initialResolvedScroll: Int
+)
+
+private data class ResolvedLineBoxMetrics(
+    val computedLineHeightPx: Int,
+    val nativeLineHeightPx: Int,
+    val ascenderPx: Float,
+    val descenderPx: Float,
+    val topLeadingPx: Float,
+    val bottomLeadingPx: Float
+)
+
+private enum class ScrollbarAxis {
+    Horizontal,
+    Vertical
+}
+
 /**
  * Base class for all DOM nodes in the retained UI tree.
  *
@@ -107,22 +137,6 @@ private data class ScrollbarResolution(
 abstract class DOMNode(
     var key: Any? = null
 ) {
-    private enum class ScrollbarAxis {
-        Horizontal,
-        Vertical
-    }
-
-    private data class ScrollbarDragSession(
-        val axis: ScrollbarAxis,
-        val trackStartPx: Int,
-        val trackLengthPx: Int,
-        val thumbLengthPx: Int,
-        val maxThumbTravelPx: Int,
-        val maxScroll: Int,
-        val grabOffsetPx: Int,
-        val initialResolvedScroll: Int
-    )
-
     companion object {
         const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = 1.2f
 
@@ -296,7 +310,8 @@ abstract class DOMNode(
     private var appliedComputedStyle: ComputedStyle? = null
     private var marginStyleValue: LengthInsets = LengthInsets.fromInsets(margin)
     private var paddingStyleValue: LengthInsets = LengthInsets.fromInsets(padding)
-    private var borderWidthStyleValue: CssLength = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left))
+    private var borderWidthStyleValue: CssLength =
+        CssLength.px(maxOf(border.top, border.right, border.bottom, border.left))
     private var borderRadiusStyleValue: CssLength = CssLength.px(borderRadius)
     private var widthStyleValue: CssLength? = null
     private var heightStyleValue: CssLength? = null
@@ -650,9 +665,9 @@ abstract class DOMNode(
     ): LengthResolveContext {
         val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
         val inheritedFontSizePx = (
-            parent?.resolveComputedFontSizePx()
-                ?: resolveComputedFontSizePx()
-            ).toFloat()
+                parent?.resolveComputedFontSizePx()
+                    ?: resolveComputedFontSizePx()
+                ).toFloat()
         val currentFontSizePx = resolveComputedFontSizePx().toFloat()
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
@@ -988,6 +1003,7 @@ abstract class DOMNode(
             }
         }
     }
+
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (!isChildrenRenderPassEnabled()) return
@@ -1539,8 +1555,8 @@ abstract class DOMNode(
         val normalizedOpacity = opacity?.coerceIn(0f, 1f)
         val changed =
             animatedTransform != transform ||
-                animatedOpacity != normalizedOpacity ||
-                animatedColor != color
+                    animatedOpacity != normalizedOpacity ||
+                    animatedColor != color
         animatedTransform = transform
         animatedOpacity = normalizedOpacity
         animatedColor = color
@@ -1664,29 +1680,77 @@ abstract class DOMNode(
     }
 
     protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
-        val fontHeightPx = resolveFontSize(ctx)
-        val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal
-        return when (computedLineHeight) {
-            LineHeightValue.Normal -> {
-                (fontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
-                    .roundToInt()
-                    .coerceAtLeast(fontHeightPx)
-                    .coerceAtLeast(1)
+        return resolveLineBoxMetrics(ctx).computedLineHeightPx
+    }
+
+    protected fun resolveEffectiveLineTopLeading(ctx: UiMeasureContext): Int {
+        return resolveLineBoxMetrics(ctx).topLeadingPx.roundToInt().coerceAtLeast(0)
+    }
+
+    protected fun resolveEffectiveAscenderPx(ctx: UiMeasureContext): Float {
+        return resolveLineBoxMetrics(ctx).ascenderPx
+    }
+
+    protected fun resolveEffectiveDescenderPx(ctx: UiMeasureContext): Float {
+        return resolveLineBoxMetrics(ctx).descenderPx
+    }
+
+    private fun resolveLineBoxMetrics(ctx: UiMeasureContext): ResolvedLineBoxMetrics {
+        val fontSizePx = resolveComputedFontSizePx().coerceAtLeast(1)
+        val nativeMetrics = resolveNativeFontMetrics(ctx, fontSizePx)
+        val fallbackFontHeightPx = resolveFontSize(ctx).coerceAtLeast(1)
+        val fallbackNormalLineHeightPx = (fallbackFontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
+            .roundToInt()
+            .coerceAtLeast(fallbackFontHeightPx)
+            .coerceAtLeast(1)
+
+        val nativeLineHeightPx = nativeMetrics?.lineHeightPx ?: fallbackNormalLineHeightPx
+        val ascenderPx = nativeMetrics?.ascenderPx ?: (fallbackFontHeightPx * 0.8f)
+        val descenderPx = nativeMetrics?.descenderPx
+            ?: (nativeLineHeightPx - ascenderPx).coerceAtLeast(0f)
+
+        val computedLineHeight =
+            when (val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal) {
+                LineHeightValue.Normal -> nativeLineHeightPx
+                is LineHeightValue.Length -> {
+                    val currentFontSizePx = fontSizePx.toFloat()
+                    val context = LengthResolveContext(
+                        rootFontSizePx = currentFontSizePx,
+                        currentFontSizePx = currentFontSizePx,
+                        inheritedFontSizePx = currentFontSizePx
+                    )
+                    computedLineHeight.value
+                        .resolvePx(context, LengthPercentBase.CurrentFontSize)
+                        .roundToInt()
+                        .coerceAtLeast(1)
+                }
             }
 
-            is LineHeightValue.Length -> {
-                val currentFontSizePx = resolveComputedFontSizePx().toFloat()
-                val context = LengthResolveContext(
-                    rootFontSizePx = currentFontSizePx,
-                    currentFontSizePx = currentFontSizePx,
-                    inheritedFontSizePx = currentFontSizePx
-                )
-                computedLineHeight.value
-                    .resolvePx(context, LengthPercentBase.CurrentFontSize)
-                    .roundToInt()
-                    .coerceAtLeast(1)
-            }
-        }
+        val extraLeadingPx = (computedLineHeight - nativeLineHeightPx).coerceAtLeast(0).toFloat()
+        val topLeadingPx = extraLeadingPx / 2f
+        val bottomLeadingPx = extraLeadingPx - topLeadingPx
+        return ResolvedLineBoxMetrics(
+            computedLineHeightPx = computedLineHeight,
+            nativeLineHeightPx = nativeLineHeightPx,
+            ascenderPx = ascenderPx,
+            descenderPx = descenderPx,
+            topLeadingPx = topLeadingPx,
+            bottomLeadingPx = bottomLeadingPx
+        )
+    }
+
+    private fun resolveNativeFontMetrics(ctx: UiMeasureContext, fontSizePx: Int): NativeFontMetricsPx? {
+        val metrics = ctx.fontLineMetrics(fontId, fontSizePx) ?: return null
+        if (metrics.emSize <= 0f || metrics.lineHeightEm <= 0f) return null
+        val scalePx = fontSizePx / metrics.emSize
+        val lineHeightPx = kotlin.math.ceil(metrics.lineHeightEm * scalePx).toInt().coerceAtLeast(1)
+        val ascenderPx = (metrics.ascenderEm * scalePx).coerceAtLeast(0f)
+        val descenderPx = kotlin.math.abs(metrics.descenderEm * scalePx)
+        return NativeFontMetricsPx(
+            lineHeightPx = lineHeightPx,
+            ascenderPx = ascenderPx,
+            descenderPx = descenderPx
+        )
     }
 
     protected fun parseTextForFormatting(rawText: String): ParsedText {
