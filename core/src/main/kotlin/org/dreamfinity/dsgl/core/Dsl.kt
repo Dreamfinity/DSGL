@@ -842,7 +842,7 @@ class StyleScope internal constructor(private val node: DOMNode) {
         }
 
     var flexGrow: Float
-        get() = 0f
+        get() = 1.0f
         set(value) {
             setLiteral(StyleProperty.FLEX_GROW, value.coerceAtLeast(0f).toString())
         }

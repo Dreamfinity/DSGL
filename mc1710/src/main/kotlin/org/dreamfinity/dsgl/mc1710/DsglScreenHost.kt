@@ -1,17 +1,13 @@
 package org.dreamfinity.dsgl.mc1710
 
-import org.dreamfinity.dsgl.core.HotReloadBridge
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.HotReloadBridge
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
-import org.dreamfinity.dsgl.core.colorpicker.ActiveColorSamplerOwner
-import org.dreamfinity.dsgl.core.colorpicker.ActiveColorSamplerOwnershipRouter
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
-import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
-import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
+import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.debug.OverlayDebugControlHost
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
@@ -34,10 +30,10 @@ import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import java.io.File
@@ -312,9 +308,20 @@ abstract class DsglScreenHost(
         if (appOverlayRenderEnabled) {
             applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
             DndRuntime.engine.appendPlaceholderCommands(applicationOverlayCommandsBuffer)
-            DndRuntime.engine.appendOverlayCommands(tree.root, adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            DndRuntime.engine.appendOverlayCommands(
+                tree.root,
+                adapter,
+                lastWidth,
+                lastHeight,
+                applicationOverlayCommandsBuffer
+            )
             SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
-            ContextMenuRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            ContextMenuRuntime.engine.appendOverlayCommands(
+                adapter,
+                lastWidth,
+                lastHeight,
+                applicationOverlayCommandsBuffer
+            )
             ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
             appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
         }
@@ -415,8 +422,13 @@ abstract class DsglScreenHost(
     }
 
     private fun rebuildIfNeeded(): Boolean {
-        if (!HotReloadBridge.consumeHotSwap() && !needsRender && domTree != null) {
+        val hotSwapped = HotReloadBridge.consumeHotSwap()
+        if (!hotSwapped && !needsRender && domTree != null) {
             return false
+        }
+
+        if (hotSwapped) {
+            println("Hot swapped - re-building the DOM")
         }
 
         return try {

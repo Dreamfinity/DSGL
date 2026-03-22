@@ -144,6 +144,18 @@ object CapabilityChecklistCatalog {
             CapabilityId.LAYOUT_VALIDATOR
         )
 
+        DemoSection.POSITIONED_LAYOUT -> setOf(
+            CapabilityId.BUILDER_DIV,
+            CapabilityId.BUILDER_TEXT,
+            CapabilityId.BUILDER_BUTTON,
+            CapabilityId.BUILDER_INPUT,
+            CapabilityId.HOOK_MOUSE_ENTER,
+            CapabilityId.HOOK_MOUSE_LEAVE,
+            CapabilityId.HOOK_MOUSE_CLICK,
+            CapabilityId.HOOK_MOUSE_WHEEL,
+            CapabilityId.OVERLAY_BEHAVIOR
+        )
+
         DemoSection.OVERFLOW_SCROLL -> setOf(
             CapabilityId.BUILDER_DIV,
             CapabilityId.BUILDER_TEXT,
