@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -301,12 +302,119 @@ class TextLineSpaceReservationBaselineTests {
         assertEquals(30, row.bounds.height)
     }
 
+    @Test
+    fun `font-size em resolution uses inherited semantic base`() {
+        val root = ContainerNode(key = "font-size.base.root").apply {
+            display = Display.Block
+            applyStyle {
+                fontSize(20.px)
+            }
+        }
+        val text = TextNode(TextSource.Static("em"), key = "font-size.base.text").apply {
+            applyStyle {
+                fontSize(2.em)
+            }
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 320, 120)
+
+        val computedFontSize = text.appliedComputedStyleSnapshot()?.fontSize
+        assertEquals(40, computedFontSize)
+    }
+
+    @Test
+    fun `changing text font-size changes parent reserved row height in ordinary case`() {
+        fun reservedHeightFor(emValue: Float): Int {
+            val root = ContainerNode(key = "font-size.grow.root.$emValue").apply {
+                display = Display.Block
+                width = 320
+            }
+            val row = ContainerNode(key = "font-size.grow.row.$emValue").apply {
+                display = Display.Block
+                padding = org.dreamfinity.dsgl.core.dom.layout.Insets.all(1)
+                border = org.dreamfinity.dsgl.core.dom.layout.Border.all(1, 0xFF617A90.toInt())
+            }.applyParent(root)
+            TextNode(TextSource.Static("grow"), key = "font-size.grow.text.$emValue").apply {
+                applyStyle {
+                    fontSize(emValue.em)
+                }
+            }.applyParent(row)
+            val tree = DomTree(root)
+            tree.render(ctx, 320, 120)
+            return row.bounds.height
+        }
+
+        val h1 = reservedHeightFor(1f)
+        val h2 = reservedHeightFor(2f)
+        val h10 = reservedHeightFor(10f)
+        assertTrue(h2 > h1)
+        assertTrue(h10 > h2)
+    }
+
+    @Test
+    fun `demo-like flex overflow audit keeps measured text reservation and produces scroll`() {
+        val viewportHeight = 120
+        val root = ContainerNode(key = "demo.audit.root").apply {
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            width = 260
+            height = viewportHeight
+            overflowY = Overflow.Auto
+            gap = 0
+        }
+        repeat(20) { index ->
+            val row = ContainerNode(key = "demo.audit.row.$index").apply {
+                display = Display.Block
+                padding = org.dreamfinity.dsgl.core.dom.layout.Insets.all(1)
+                border = org.dreamfinity.dsgl.core.dom.layout.Border.all(1, 0xFF617A90.toInt())
+            }.applyParent(root)
+            TextNode(TextSource.Static("Hi there, #$index"), key = "demo.audit.text.$index").apply {
+                applyStyle {
+                    fontSize(10.em)
+                }
+            }.applyParent(row)
+        }
+
+        val tree = DomTree(root)
+        tree.render(ctx, 260, viewportHeight)
+
+        val firstRow = root.children.first() as ContainerNode
+        val firstText = firstRow.children.first() as TextNode
+
+        val computedFontSize = firstText.appliedComputedStyleSnapshot()?.fontSize ?: -1
+        val resolvedFontMetric = invokeProtectedInt(firstText, "resolveFontSize", ctx)
+        val resolvedLineHeight = invokeProtectedInt(firstText, "resolveEffectiveLineHeight", ctx)
+        val measuredTextHeight = firstText.measure(ctx).height
+        val measuredTextForLayoutHeight = firstText.measureForLayout(ctx, 260).height
+        val rowLineBoxFloor = invokeProtectedInt(firstRow, "resolveEffectiveLineHeight", ctx)
+        val rowMeasuredHeight = firstRow.measure(ctx).height
+        val rowRenderedHeight = firstRow.bounds.height
+        val state = root.scrollContainerState()
+
+        assertEquals(160, computedFontSize)
+        assertEquals(ctx.fontHeight(fontId = null, fontSize = computedFontSize), resolvedFontMetric)
+        assertTrue(resolvedLineHeight >= resolvedFontMetric)
+        assertEquals(resolvedLineHeight, measuredTextHeight)
+        assertTrue(measuredTextForLayoutHeight >= measuredTextHeight)
+        assertTrue(rowMeasuredHeight > rowLineBoxFloor)
+        assertTrue(rowRenderedHeight >= rowMeasuredHeight)
+        assertTrue(state.contentExtent.height > state.viewportRect.height)
+        assertTrue(state.maxScrollY > 0)
+    }
+
     private fun expectedNormalLineHeightPx(fontSize: Int): Int {
         val fontHeight = ctx.fontHeight(fontId = null, fontSize = fontSize).coerceAtLeast(1)
         return (fontHeight * TextNode.NORMAL_LINE_HEIGHT_MULTIPLIER)
             .roundToInt()
             .coerceAtLeast(fontHeight)
             .coerceAtLeast(1)
+    }
+
+    private fun invokeProtectedInt(node: DOMNode, methodName: String, ctx: UiMeasureContext): Int {
+        val method = DOMNode::class.java.getDeclaredMethod(methodName, UiMeasureContext::class.java)
+        method.isAccessible = true
+        return method.invoke(node, ctx) as Int
     }
 
 }

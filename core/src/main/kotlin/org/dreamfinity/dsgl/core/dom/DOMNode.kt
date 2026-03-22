@@ -648,12 +648,12 @@ abstract class DOMNode(
         parentContentWidth: Int?,
         parentContentHeight: Int?
     ): LengthResolveContext {
-        val rootFontSizePx = rootNode().resolveFontSize(ctx).toFloat()
+        val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
         val inheritedFontSizePx = (
-            parent?.resolveFontSize(ctx)
-                ?: resolveFontSize(ctx)
+            parent?.resolveComputedFontSizePx()
+                ?: resolveComputedFontSizePx()
             ).toFloat()
-        val currentFontSizePx = resolveFontSize(ctx).toFloat()
+        val currentFontSizePx = resolveComputedFontSizePx().toFloat()
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
             viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
@@ -850,9 +850,9 @@ abstract class DOMNode(
         ctx: UiMeasureContext,
         containerRect: Rect
     ): LengthResolveContext {
-        val rootFontSizePx = rootNode().resolveFontSize(ctx).toFloat()
-        val inheritedFontSizePx = (parent?.resolveFontSize(ctx) ?: resolveFontSize(ctx)).toFloat()
-        val currentFontSizePx = resolveFontSize(ctx).toFloat()
+        val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
+        val inheritedFontSizePx = (parent?.resolveComputedFontSizePx() ?: resolveComputedFontSizePx()).toFloat()
+        val currentFontSizePx = resolveComputedFontSizePx().toFloat()
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
             viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
@@ -1659,6 +1659,10 @@ abstract class DOMNode(
         return ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
     }
 
+    protected fun resolveComputedFontSizePx(): Int {
+        return (appliedComputedStyleSnapshot()?.fontSize ?: fontSize ?: 16).coerceAtLeast(1)
+    }
+
     protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
         val fontHeightPx = resolveFontSize(ctx)
         val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal
@@ -1671,11 +1675,7 @@ abstract class DOMNode(
             }
 
             is LineHeightValue.Length -> {
-                val currentFontSizePx = (
-                    appliedComputedStyleSnapshot()?.fontSize
-                        ?: fontSize
-                        ?: fontHeightPx
-                    ).coerceAtLeast(1).toFloat()
+                val currentFontSizePx = resolveComputedFontSizePx().toFloat()
                 val context = LengthResolveContext(
                     rootFontSizePx = currentFontSizePx,
                     currentFontSizePx = currentFontSizePx,

@@ -196,7 +196,7 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow, contentWidth: Int, c
                     border(1.px, 0xFF617A90.toInt())
                 }
             }) {
-                text("Hi there, #$it", { style { fontSize(10.em) } })
+                text("Hi there, #$it pyj", { style { fontSize(10.em) } })
             }
         }
 

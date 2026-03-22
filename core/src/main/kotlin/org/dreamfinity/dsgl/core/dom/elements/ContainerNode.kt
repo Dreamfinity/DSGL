@@ -510,6 +510,8 @@ class ContainerNode(
         }
         val gapTotal = gap * (items.size - 1).coerceAtLeast(0)
         val freeSpace = availableMain - totalOuterBaseMain - gapTotal
+        val mainAxisOverflow = if (isRow) overflowX else overflowY
+        val allowMainAxisShrink = mainAxisOverflow != Overflow.Auto && mainAxisOverflow != Overflow.Scroll
 
         val finalMain = DoubleArray(items.size) { baseMain[it] }
         if (freeSpace > 0.0 && totalGrow > 0.0) {
@@ -517,7 +519,7 @@ class ContainerNode(
                 val grow = item.child.flexGrow.coerceAtLeast(0f).toDouble()
                 finalMain[index] += freeSpace * (grow / totalGrow)
             }
-        } else if (freeSpace < 0.0 && totalShrinkWeight > 0.0) {
+        } else if (allowMainAxisShrink && freeSpace < 0.0 && totalShrinkWeight > 0.0) {
             items.forEachIndexed { index, item ->
                 val weight = (item.child.flexShrink.coerceAtLeast(0f) * baseMain[index].toFloat()).toDouble()
                 finalMain[index] += freeSpace * (weight / totalShrinkWeight)
