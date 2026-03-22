@@ -7,8 +7,8 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.host.dsglRectToGlScissor
@@ -886,7 +886,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL11.glMatrixMode(GL11.GL_MODELVIEW)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()
-            GL11.glDisable(GL11.GL_ALPHA_TEST)
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.0f)
             try {
                 for (command in commands) {
                     when (command) {
@@ -1029,7 +1029,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     }
                 }
             } finally {
-                GL11.glEnable(GL11.GL_ALPHA_TEST)
+                GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f)
                 GL11.glMatrixMode(GL11.GL_MODELVIEW)
                 GL11.glPopMatrix()
                 GL11.glMatrixMode(GL11.GL_PROJECTION)
