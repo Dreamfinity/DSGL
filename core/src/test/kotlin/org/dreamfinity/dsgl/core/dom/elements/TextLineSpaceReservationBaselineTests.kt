@@ -433,6 +433,92 @@ class TextLineSpaceReservationBaselineTests {
     }
 
     @Test
+    fun `single source of truth keeps effective font size consistent across layout measurement and render command`() {
+        val root = ContainerNode(key = "single.source.root").apply {
+            display = Display.Block
+            applyStyle { fontSize(16.px) }
+        }
+        val textNode = TextNode(TextSource.Static("sync"), key = "single.source.text").apply {
+            applyStyle { fontSize(10.em) }
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 320, 120)
+
+        val computedFontSize = textNode.appliedComputedStyleSnapshot()?.fontSize ?: -1
+        val resolvedLineHeight = invokeProtectedInt(textNode, "resolveEffectiveLineHeight", ctx)
+        val measured = textNode.measure(ctx)
+        val commands = mutableListOf<RenderCommand>()
+        textNode.buildRenderCommands(ctx, commands)
+        val draw = commands.filterIsInstance<RenderCommand.DrawText>().single()
+
+        assertEquals(160, computedFontSize)
+        assertEquals(resolvedLineHeight, measured.height)
+        assertEquals(computedFontSize, draw.fontSize)
+    }
+
+    @Test
+    fun `large font size growth increases width height and render size consistently`() {
+        data class Snapshot(val width: Int, val height: Int, val renderFontSize: Int)
+
+        fun snapshotFor(emValue: Float): Snapshot {
+            val root = ContainerNode(key = "single.source.growth.root.$emValue").apply {
+                display = Display.Block
+                applyStyle { fontSize(16.px) }
+            }
+            val textNode = TextNode(TextSource.Static("MMMM"), key = "single.source.growth.text.$emValue").apply {
+                applyStyle { fontSize(emValue.em) }
+            }.applyParent(root)
+            val tree = DomTree(root)
+            tree.render(ctx, 400, 200)
+            val measured = textNode.measure(ctx)
+            val commands = mutableListOf<RenderCommand>()
+            textNode.buildRenderCommands(ctx, commands)
+            val draw = commands.filterIsInstance<RenderCommand.DrawText>().single()
+            return Snapshot(
+                width = measured.width,
+                height = measured.height,
+                renderFontSize = draw.fontSize ?: -1
+            )
+        }
+
+        val s1 = snapshotFor(1f)
+        val s2 = snapshotFor(2f)
+        val s10 = snapshotFor(10f)
+        assertTrue(s2.width > s1.width)
+        assertTrue(s10.width > s2.width)
+        assertTrue(s2.height > s1.height)
+        assertTrue(s10.height > s2.height)
+        assertTrue(s2.renderFontSize > s1.renderFontSize)
+        assertTrue(s10.renderFontSize > s2.renderFontSize)
+    }
+
+    @Test
+    fun `no hidden clamp on authoritative text path for large computed font size`() {
+        val root = ContainerNode(key = "single.source.noclamp.root").apply {
+            display = Display.Block
+            applyStyle { fontSize(16.px) }
+        }
+        val textNode = TextNode(TextSource.Static("MMMM"), key = "single.source.noclamp.text").apply {
+            applyStyle { fontSize(20.em) }
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 640, 240)
+
+        val measuredWidth = textNode.measure(ctx).width
+        val commands = mutableListOf<RenderCommand>()
+        textNode.buildRenderCommands(ctx, commands)
+        val draw = commands.filterIsInstance<RenderCommand.DrawText>().single()
+        val expectedFontSize = 320
+        val expectedGlyphWidth = ((expectedFontSize * 0.5f).roundToInt().coerceAtLeast(1))
+
+        assertEquals(expectedFontSize, textNode.appliedComputedStyleSnapshot()?.fontSize)
+        assertEquals(expectedFontSize, draw.fontSize)
+        assertEquals(expectedGlyphWidth * 4, measuredWidth)
+    }
+
+    @Test
     fun `normal line-height uses native metrics when available`() {
         val node = TextNode(TextSource.Static("native"), key = "native.metrics.normal").apply {
             fontSize = 16

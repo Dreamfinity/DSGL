@@ -46,14 +46,15 @@ class ButtonNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveFontSize(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
         val measureRange: (Int, Int) -> Int = { start, end ->
             val safeStart = start.coerceIn(0, plainText.length)
             val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
             val extra = TextStyleMetrics.boldExtraPxForRange(
                 plainText = plainText,
                 spans = parsed.spans,
@@ -70,7 +71,7 @@ class ButtonNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
             measureRange = measureRange
         )
         val naturalContentWidth = width ?: layout.maxLineWidth
@@ -93,14 +94,16 @@ class ButtonNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        val lineHeight = resolveFontSize(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
         val measureRange: (Int, Int) -> Int = { start, end ->
             val safeStart = start.coerceIn(0, plainText.length)
             val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
             val extra = TextStyleMetrics.boldExtraPxForRange(
                 plainText = plainText,
                 spans = parsed.spans,
@@ -121,14 +124,14 @@ class ButtonNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
             measureRange = measureRange
         )
         val textBlockHeight = layout.totalHeight
         val blockY = contentY() + (contentHeight - textBlockHeight) / 2
         layout.lines.forEachIndexed { index, line ->
             val lineX = contentX() + (contentWidth - line.width) / 2
-            val lineY = blockY + index * layout.lineHeight
+            val lineY = blockY + index * layout.lineHeight + lineTopLeading
             val spans = MinecraftFormattingParser.resolveStyleSpans(
                 parsed = parsed,
                 baseColor = textColor,
@@ -147,7 +150,7 @@ class ButtonNode(
                     obfuscated = span.flags.obfuscated
                 )
             }
-            out.add(drawTextCommand(line.text, lineX, lineY, textColor, spans))
+            out.add(drawTextCommand(ctx, line.text, lineX, lineY, textColor, spans))
         }
     }
 

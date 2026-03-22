@@ -496,7 +496,7 @@ object FontRegistry {
     }
 
     fun resolveFontSize(fontSize: Int?): Int {
-        return (fontSize ?: DEFAULT_FONT_SIZE)
+        return (fontSize ?: DEFAULT_FONT_SIZE).coerceAtLeast(1)
     }
 
     fun fontIdFromTtfPath(relativeTtfPath: String): FontId {

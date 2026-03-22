@@ -265,7 +265,7 @@ class TextAreaNode(
         for (lineIndex in firstVisibleLine..lastVisibleLine) {
             val line = drawLayout.lines[lineIndex]
             val lineY = innerY - effectiveScroll + lineIndex * lastLineHeight
-            out.add(drawTextCommand(line.text, innerX, lineY, color))
+            out.add(drawTextCommand(ctx, line.text, innerX, lineY, color))
         }
 
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {

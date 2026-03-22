@@ -18,6 +18,7 @@ import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ParsedText
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
+import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
 import kotlin.math.roundToInt
 
 data class NodeStyleApplyResult(
@@ -113,15 +114,6 @@ private data class ScrollbarDragSession(
     val maxScroll: Int,
     val grabOffsetPx: Int,
     val initialResolvedScroll: Int
-)
-
-private data class ResolvedLineBoxMetrics(
-    val computedLineHeightPx: Int,
-    val nativeLineHeightPx: Int,
-    val ascenderPx: Float,
-    val descenderPx: Float,
-    val topLeadingPx: Float,
-    val bottomLeadingPx: Float
 )
 
 private enum class ScrollbarAxis {
@@ -1680,22 +1672,22 @@ abstract class DOMNode(
     }
 
     protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
-        return resolveLineBoxMetrics(ctx).computedLineHeightPx
+        return resolveTextMetrics(ctx).lineHeightPx
     }
 
     protected fun resolveEffectiveLineTopLeading(ctx: UiMeasureContext): Int {
-        return resolveLineBoxMetrics(ctx).topLeadingPx.roundToInt().coerceAtLeast(0)
+        return resolveTextMetrics(ctx).topLeadingPx.roundToInt().coerceAtLeast(0)
     }
 
     protected fun resolveEffectiveAscenderPx(ctx: UiMeasureContext): Float {
-        return resolveLineBoxMetrics(ctx).ascenderPx
+        return resolveTextMetrics(ctx).ascenderPx
     }
 
     protected fun resolveEffectiveDescenderPx(ctx: UiMeasureContext): Float {
-        return resolveLineBoxMetrics(ctx).descenderPx
+        return resolveTextMetrics(ctx).descenderPx
     }
 
-    private fun resolveLineBoxMetrics(ctx: UiMeasureContext): ResolvedLineBoxMetrics {
+    protected fun resolveTextMetrics(ctx: UiMeasureContext): ResolvedTextMetrics {
         val fontSizePx = resolveComputedFontSizePx().coerceAtLeast(1)
         val nativeMetrics = resolveNativeFontMetrics(ctx, fontSizePx)
         val fallbackFontHeightPx = resolveFontSize(ctx).coerceAtLeast(1)
@@ -1729,8 +1721,9 @@ abstract class DOMNode(
         val extraLeadingPx = (computedLineHeight - nativeLineHeightPx).coerceAtLeast(0).toFloat()
         val topLeadingPx = extraLeadingPx / 2f
         val bottomLeadingPx = extraLeadingPx - topLeadingPx
-        return ResolvedLineBoxMetrics(
-            computedLineHeightPx = computedLineHeight,
+        return ResolvedTextMetrics(
+            fontSizePx = fontSizePx,
+            lineHeightPx = computedLineHeight,
             nativeLineHeightPx = nativeLineHeightPx,
             ascenderPx = ascenderPx,
             descenderPx = descenderPx,
@@ -1770,9 +1763,10 @@ abstract class DOMNode(
     }
 
     protected fun measureText(ctx: UiMeasureContext, text: String): Int {
+        val metrics = resolveTextMetrics(ctx)
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
-        val base = ctx.measureText(plainText, fontId, fontSize)
+        val base = ctx.measureText(plainText, fontId, metrics.fontSizePx)
         val extraBold = TextStyleMetrics.boldExtraPxForRange(
             plainText = plainText,
             spans = parsed.spans,
@@ -1782,12 +1776,14 @@ abstract class DOMNode(
     }
 
     protected fun drawTextCommand(
+        ctx: UiMeasureContext,
         text: String,
         x: Int,
         y: Int,
         color: Int,
         styleSpans: List<RenderCommand.TextStyleSpan> = emptyList()
     ): RenderCommand.DrawText {
+        val metrics = resolveTextMetrics(ctx)
         val baseFlags = baseTextStyleFlags()
         return RenderCommand.DrawText(
             text = text,
@@ -1795,7 +1791,7 @@ abstract class DOMNode(
             y = y,
             color = color,
             fontId = fontId,
-            fontSize = fontSize,
+            fontSize = metrics.fontSizePx,
             textFormatting = textFormatting,
             bold = baseFlags.bold,
             italic = baseFlags.italic,

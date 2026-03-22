@@ -174,6 +174,7 @@ class SelectNode(
         out += RenderCommand.PushClip(innerX, innerY, textClipWidth, innerHeight.coerceAtLeast(1))
         if (textValue.isNotEmpty()) {
             out += drawTextCommand(
+                ctx,
                 text = textValue,
                 x = innerX,
                 y = textY,
@@ -185,6 +186,7 @@ class SelectNode(
         if (arrowGlyph.isNotEmpty()) {
             val arrowColor = if (styleDisabled) disabledTextColor else textColor
             out += drawTextCommand(
+                ctx,
                 text = arrowGlyph,
                 x = arrowX,
                 y = textY,

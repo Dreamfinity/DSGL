@@ -36,14 +36,15 @@ class TextNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveEffectiveLineHeight(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
         val measureRange: (Int, Int) -> Int = { start, end ->
             val safeStart = start.coerceIn(0, plainText.length)
             val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
             val extra = TextStyleMetrics.boldExtraPxForRange(
                 plainText = plainText,
                 spans = parsed.spans,
@@ -60,7 +61,7 @@ class TextNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
             measureRange = measureRange
         )
         val naturalContentWidth = width ?: layout.maxLineWidth
@@ -83,7 +84,8 @@ class TextNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        val lineHeight = resolveEffectiveLineHeight(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
         val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
@@ -91,7 +93,7 @@ class TextNode(
         val measureRange: (Int, Int) -> Int = { start, end ->
             val safeStart = start.coerceIn(0, plainText.length)
             val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
+            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
             val extra = TextStyleMetrics.boldExtraPxForRange(
                 plainText = plainText,
                 spans = parsed.spans,
@@ -108,7 +110,7 @@ class TextNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
             measureRange = measureRange
         )
         val baseX = contentX()
@@ -132,7 +134,7 @@ class TextNode(
                     obfuscated = span.flags.obfuscated
                 )
             }
-            out.add(drawTextCommand(line.text, baseX, lineY + lineTopLeading, color, spans))
+            out.add(drawTextCommand(ctx, line.text, baseX, lineY + lineTopLeading, color, spans))
             lineY += layout.lineHeight
         }
     }
