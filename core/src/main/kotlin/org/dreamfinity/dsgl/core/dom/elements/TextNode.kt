@@ -6,14 +6,9 @@ import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.style.LengthPercentBase
-import org.dreamfinity.dsgl.core.style.LengthResolveContext
-import org.dreamfinity.dsgl.core.style.LineHeightValue
 import org.dreamfinity.dsgl.core.style.TextWrap
-import org.dreamfinity.dsgl.core.style.resolvePx
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
-import kotlin.math.roundToInt
 
 /**
  * Static text node.
@@ -24,7 +19,7 @@ class TextNode(
     key: Any? = null
 ) : DOMNode(key) {
     companion object {
-        const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = 1.2f
+        const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = DOMNode.NORMAL_LINE_HEIGHT_MULTIPLIER
     }
 
     override val styleType: String = "text"
@@ -138,36 +133,6 @@ class TextNode(
             }
             out.add(drawTextCommand(line.text, baseX, lineY, color, spans))
             lineY += layout.lineHeight
-        }
-    }
-
-    private fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
-        val fontHeightPx = resolveFontSize(ctx)
-        val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal
-        return when (computedLineHeight) {
-            LineHeightValue.Normal -> {
-                (fontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
-                    .roundToInt()
-                    .coerceAtLeast(fontHeightPx)
-                    .coerceAtLeast(1)
-            }
-
-            is LineHeightValue.Length -> {
-                val currentFontSizePx = (
-                    appliedComputedStyleSnapshot()?.fontSize
-                        ?: fontSize
-                        ?: fontHeightPx
-                    ).coerceAtLeast(1).toFloat()
-                val context = LengthResolveContext(
-                    rootFontSizePx = currentFontSizePx,
-                    currentFontSizePx = currentFontSizePx,
-                    inheritedFontSizePx = currentFontSizePx
-                )
-                computedLineHeight.value
-                    .resolvePx(context, LengthPercentBase.CurrentFontSize)
-                    .roundToInt()
-                    .coerceAtLeast(1)
-            }
         }
     }
 

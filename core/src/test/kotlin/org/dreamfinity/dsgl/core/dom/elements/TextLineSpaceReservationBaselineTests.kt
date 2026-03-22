@@ -5,6 +5,8 @@ import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.math.roundToInt
 import kotlin.test.AfterTest
@@ -53,72 +55,86 @@ class TextLineSpaceReservationBaselineTests {
         val div = ContainerNode(key = "div.root").apply {
             display = Display.Block
             width = 320
+            applyStyle {
+                fontSize(20.px)
+            }
         }
         val span = ContainerNode(key = "span.inline").apply {
             display = Display.Inline
         }.applyParent(div)
         TextNode(TextSource.Static("row"), key = "span.text").apply {
-            fontSize = 16
+            applyStyle {
+                fontSize(12.px)
+            }
         }.applyParent(span)
 
-        val measured = div.measure(ctx)
-        div.render(ctx, 0, 0, measured.width, measured.height)
+        val tree = DomTree(div)
+        tree.render(ctx, 320, 120)
 
-        assertEquals(expectedNormalLineHeightPx(16), span.bounds.height)
-        assertEquals(expectedNormalLineHeightPx(16), div.bounds.height)
+        val expectedContainerLineHeight = expectedNormalLineHeightPx(20)
+        assertEquals(expectedContainerLineHeight, span.bounds.height)
+        assertEquals(expectedContainerLineHeight, div.measure(ctx).height)
+        assertTrue(
+            span.bounds.height > expectedNormalLineHeightPx(12),
+            "Container reserves a line box from its own computed line-height baseline, not only child text height."
+        )
     }
 
     @Test
-    fun `many text rows baseline stays tightly packed by text node normal line-height`() {
+    fun `many text rows in flex-column reserve container line-box height and stack cleanly`() {
         val rowCount = 20
-        val fontSize = 16
+        val containerFontSize = 20
+        val textFontSize = 12
         val root = ContainerNode(key = "rows.root").apply {
             display = Display.Flex
-            flexDirection = org.dreamfinity.dsgl.core.style.FlexDirection.Column
+            flexDirection = FlexDirection.Column
             width = 320
             gap = 0
         }
         repeat(rowCount) { index ->
             val row = ContainerNode(key = "row.$index").apply {
                 display = Display.Block
+                applyStyle {
+                    fontSize(containerFontSize.px)
+                }
             }.applyParent(root)
             TextNode(TextSource.Static("row $index"), key = "row.$index.text").apply {
-                this.fontSize = fontSize
+                applyStyle {
+                    fontSize(textFontSize.px)
+                }
             }.applyParent(row)
         }
 
-        val measured = root.measure(ctx)
-        root.render(ctx, 0, 0, measured.width, measured.height)
+        val tree = DomTree(root)
+        tree.render(ctx, 320, 400)
 
-        val expectedRowHeight = expectedNormalLineHeightPx(fontSize)
-        assertEquals(expectedRowHeight * rowCount, measured.height)
-        root.children.forEach { row ->
+        val expectedRowHeight = expectedNormalLineHeightPx(containerFontSize)
+        val totalReservedHeight = root.children.sumOf { it.bounds.height }
+        assertEquals(expectedRowHeight * rowCount, totalReservedHeight)
+        root.children.forEachIndexed { index, row ->
             assertEquals(expectedRowHeight, row.bounds.height)
+            assertEquals(index * expectedRowHeight, row.bounds.y)
         }
-        assertTrue(
-            measured.height < (fontSize * rowCount),
-            "Baseline is intentionally tighter than nominal font-size stacking in this model."
-        )
     }
 
     @Test
-    fun `minHeight 1em workaround characterization increases row height in current model`() {
+    fun `minHeight 1em workaround is not required for ordinary text row reservation`() {
         val root = ContainerNode(key = "root").apply {
             display = Display.Block
             width = 320
         }
-        val withoutWorkaround = ContainerNode(key = "row.without").apply {
+        val ordinaryRow = ContainerNode(key = "row.ordinary").apply {
             display = Display.Block
             applyStyle {
                 fontSize(20.px)
             }
         }
-        TextNode(TextSource.Static("row"), key = "row.without.text").apply {
+        TextNode(TextSource.Static("row"), key = "row.ordinary.text").apply {
             applyStyle {
                 fontSize(12.px)
             }
-        }.applyParent(withoutWorkaround)
-        withoutWorkaround.applyParent(root)
+        }.applyParent(ordinaryRow)
+        ordinaryRow.applyParent(root)
 
         val withWorkaround = ContainerNode(key = "row.with").apply {
             display = Display.Block
@@ -136,25 +152,50 @@ class TextLineSpaceReservationBaselineTests {
         val tree = DomTree(root)
         tree.render(ctx, 320, 120)
 
-        assertEquals(expectedNormalLineHeightPx(12), withoutWorkaround.bounds.height)
-        assertTrue(withWorkaround.bounds.height > withoutWorkaround.bounds.height)
+        val expectedOrdinaryLineBoxHeight = expectedNormalLineHeightPx(20)
+        assertEquals(expectedOrdinaryLineBoxHeight, ordinaryRow.bounds.height)
+        assertTrue(
+            ordinaryRow.bounds.height >= expectedOrdinaryLineBoxHeight,
+            "Ordinary text rows now meet line-box reservation without minHeight workaround."
+        )
+        assertTrue(
+            withWorkaround.bounds.height >= ordinaryRow.bounds.height,
+            "Workaround may still increase explicit minimums, but ordinary line-box reservation no longer depends on it."
+        )
     }
 
     @Test
-    fun `font-size scaling baseline maps to explicit normal line-height rule`() {
-        val small = TextNode(TextSource.Static("small"), key = "text.small").apply {
-            fontSize = 12
+    fun `scroll content height grows naturally from stacked text rows`() {
+        val rowCount = 30
+        val rowFontSize = 20
+        val root = ContainerNode(key = "scroll.viewport").apply {
+            display = Display.Block
+            width = 220
+            height = 80
+            overflowY = Overflow.Scroll
         }
-        val large = TextNode(TextSource.Static("large"), key = "text.large").apply {
-            fontSize = 24
+        val list = ContainerNode(key = "scroll.content").apply {
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            width = 220
+        }.applyParent(root)
+        repeat(rowCount) { index ->
+            val row = ContainerNode(key = "scroll.row.$index").apply {
+                display = Display.Block
+                applyStyle {
+                    fontSize(rowFontSize.px)
+                }
+            }.applyParent(list)
+            TextNode(TextSource.Static("item $index"), key = "scroll.row.$index.text").applyParent(row)
         }
 
-        val smallMeasured = small.measure(ctx)
-        val largeMeasured = large.measure(ctx)
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 80)
 
-        assertEquals(expectedNormalLineHeightPx(12), smallMeasured.height)
-        assertEquals(expectedNormalLineHeightPx(24), largeMeasured.height)
-        assertTrue(largeMeasured.height > smallMeasured.height)
+        val state = root.scrollContainerState()
+        val expectedTotalContentHeight = expectedNormalLineHeightPx(rowFontSize) * rowCount
+        assertTrue(state.contentExtent.height >= expectedTotalContentHeight)
+        assertTrue(state.maxScrollY > 0)
     }
 
     @Test
@@ -170,6 +211,31 @@ class TextLineSpaceReservationBaselineTests {
         val measured = node.measure(ctx)
 
         assertEquals(24, measured.height)
+    }
+
+    @Test
+    fun `explicit line-height override affects container reserved row height`() {
+        val root = ContainerNode(key = "line-height.root").apply {
+            display = Display.Block
+            width = 320
+        }
+        val row = ContainerNode(key = "line-height.row").apply {
+            display = Display.Block
+            applyStyle {
+                fontSize(20.px)
+                lineHeight(26.px)
+            }
+        }.applyParent(root)
+        TextNode(TextSource.Static("row"), key = "line-height.text").apply {
+            applyStyle {
+                fontSize(12.px)
+            }
+        }.applyParent(row)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 320, 120)
+
+        assertEquals(26, row.bounds.height)
     }
 
     @Test
@@ -212,6 +278,27 @@ class TextLineSpaceReservationBaselineTests {
 
         assertEquals(22, overriddenHeight)
         assertTrue(overriddenHeight > baselineHeight)
+    }
+
+    @Test
+    fun `non-text child container sizing remains unchanged`() {
+        val root = ContainerNode(key = "non-text.root").apply {
+            display = Display.Block
+            width = 200
+        }
+        val row = ContainerNode(key = "non-text.row").apply {
+            display = Display.Block
+            applyStyle {
+                fontSize(20.px)
+            }
+        }.applyParent(root)
+        ImageNode(url = "minecraft:textures/blocks/stone.png", imageWidth = 40, imageHeight = 30, key = "non-text.image")
+            .applyParent(row)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 200, 80)
+
+        assertEquals(30, row.bounds.height)
     }
 
     private fun expectedNormalLineHeightPx(fontSize: Int): Int {

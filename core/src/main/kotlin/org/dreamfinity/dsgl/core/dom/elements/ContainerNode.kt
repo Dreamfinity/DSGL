@@ -204,6 +204,7 @@ class ContainerNode(
         var lineWidth = 0
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         fun flushInlineLine() {
             if (!lineHasItems) return
@@ -224,7 +225,7 @@ class ContainerNode(
             )
             val outerWidth = measured.width + child.margin.horizontal
             val outerHeight = measured.height + child.margin.vertical
-            if (child.display == Display.Inline) {
+            if (isInlineFormattingChild(child)) {
                 val spacing = if (lineHasItems) gap else 0
                 val nextWidth = lineWidth + spacing + outerWidth
                 val shouldWrap = wrapWidth != null && lineHasItems && nextWidth > wrapWidth
@@ -233,7 +234,7 @@ class ContainerNode(
                 }
                 if (lineHasItems) lineWidth += gap
                 lineWidth += outerWidth
-                lineHeight = maxOf(lineHeight, outerHeight)
+                lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
                 lineHasItems = true
             } else {
                 flushInlineLine()
@@ -255,6 +256,14 @@ class ContainerNode(
         return Size(resolvedWidth.coerceAtLeast(0), totalHeight.coerceAtLeast(0))
     }
 
+    data class InlinePlacement(
+        val child: DOMNode,
+        val width: Int,
+        val height: Int,
+        val relX: Int,
+        val outerHeight: Int
+    )
+
     private fun renderBlock(ctx: UiMeasureContext, children: List<DOMNode>) {
         val cx = childContentOriginX()
         val cy = childContentOriginY()
@@ -262,14 +271,7 @@ class ContainerNode(
         val ch = viewportContentHeight()
         var cursorY = cy
         var hasRows = false
-
-        data class InlinePlacement(
-            val child: DOMNode,
-            val width: Int,
-            val height: Int,
-            val relX: Int,
-            val outerHeight: Int
-        )
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         val line = ArrayList<InlinePlacement>(8)
         var lineWidth = 0
@@ -298,7 +300,7 @@ class ContainerNode(
                 availableOuterWidth = cw,
                 availableOuterHeight = ch
             )
-            if (child.display == Display.Inline) {
+            if (isInlineFormattingChild(child)) {
                 val outerWidth = measured.width + child.margin.horizontal
                 val outerHeight = measured.height + child.margin.vertical
                 val spacing = if (line.isEmpty()) 0 else gap
@@ -317,7 +319,7 @@ class ContainerNode(
                     )
                 )
                 lineWidth = relX + outerWidth
-                lineHeight = maxOf(lineHeight, outerHeight)
+                lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             } else {
                 flushInlineLine()
                 if (hasRows) cursorY += gap
@@ -344,6 +346,7 @@ class ContainerNode(
         var lineWidth = 0
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         fun flushLine() {
             if (!lineHasItems) return
@@ -370,7 +373,7 @@ class ContainerNode(
             }
             if (lineHasItems) lineWidth += gap
             lineWidth += outerWidth
-            lineHeight = maxOf(lineHeight, outerHeight)
+            lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             lineHasItems = true
         }
         flushLine()
@@ -392,6 +395,7 @@ class ContainerNode(
         var cursorY = cy
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         children.forEach { child ->
             val measured = measureChildForLayout(
@@ -413,9 +417,13 @@ class ContainerNode(
             val childY = cursorY + child.margin.top
             renderContainedChild(ctx, child, cx, cy, cw, ch, childX, childY, measured.width, measured.height)
             cursorX += outerWidth
-            lineHeight = maxOf(lineHeight, outerHeight)
+            lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             lineHasItems = true
         }
+    }
+
+    private fun isInlineFormattingChild(child: DOMNode): Boolean {
+        return child.display == Display.Inline || child is TextNode
     }
 
     private data class FlexItem(

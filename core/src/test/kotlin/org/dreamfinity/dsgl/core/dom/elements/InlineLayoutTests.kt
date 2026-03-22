@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -38,7 +39,9 @@ class InlineLayoutTests {
         val measured = root.measure(ctx)
         root.render(ctx, 0, 0, measured.width, measured.height)
 
-        assertEquals(18, inline.bounds.height, "Inline height must include wrapped second line.")
+        val expectedLineHeight = expectedNormalLineHeightPx(ctx, 16)
+        val expectedTotalHeight = expectedLineHeight * 2 + inline.gap + inline.padding.vertical + inline.border.vertical
+        assertEquals(expectedTotalHeight, inline.bounds.height, "Inline height must include wrapped second line with line-box reservation.")
         assertEquals(2, inline.children.map { it.bounds.y }.distinct().size, "Inline items should wrap to two lines.")
         assertOuterWidthsFitInlineContent(inline)
         assertContentFitsIntoInlineBounds(inline)
@@ -382,6 +385,14 @@ class InlineLayoutTests {
             usedBottom <= contentBottom,
             "Container child content should fit: key=${container.key} used=$usedBottom contentBottom=$contentBottom"
         )
+    }
+
+    private fun expectedNormalLineHeightPx(ctx: UiMeasureContext, fontSize: Int): Int {
+        val fontHeight = ctx.fontHeight(fontId = null, fontSize = fontSize).coerceAtLeast(1)
+        return (fontHeight * TextNode.NORMAL_LINE_HEIGHT_MULTIPLIER)
+            .roundToInt()
+            .coerceAtLeast(fontHeight)
+            .coerceAtLeast(1)
     }
 
     private fun testMeasureContext(): UiMeasureContext {

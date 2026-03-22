@@ -124,6 +124,8 @@ abstract class DOMNode(
     )
 
     companion object {
+        const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = 1.2f
+
         private val includeChildrenInRenderPass: ThreadLocal<Boolean> =
             ThreadLocal.withInitial { true }
         private val inheritedChildRenderClipStack: ThreadLocal<MutableList<Rect?>> =
@@ -1655,6 +1657,36 @@ abstract class DOMNode(
 
     protected fun resolveFontSize(ctx: UiMeasureContext): Int {
         return ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
+    }
+
+    protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
+        val fontHeightPx = resolveFontSize(ctx)
+        val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal
+        return when (computedLineHeight) {
+            LineHeightValue.Normal -> {
+                (fontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
+                    .roundToInt()
+                    .coerceAtLeast(fontHeightPx)
+                    .coerceAtLeast(1)
+            }
+
+            is LineHeightValue.Length -> {
+                val currentFontSizePx = (
+                    appliedComputedStyleSnapshot()?.fontSize
+                        ?: fontSize
+                        ?: fontHeightPx
+                    ).coerceAtLeast(1).toFloat()
+                val context = LengthResolveContext(
+                    rootFontSizePx = currentFontSizePx,
+                    currentFontSizePx = currentFontSizePx,
+                    inheritedFontSizePx = currentFontSizePx
+                )
+                computedLineHeight.value
+                    .resolvePx(context, LengthPercentBase.CurrentFontSize)
+                    .roundToInt()
+                    .coerceAtLeast(1)
+            }
+        }
     }
 
     protected fun parseTextForFormatting(rawText: String): ParsedText {
