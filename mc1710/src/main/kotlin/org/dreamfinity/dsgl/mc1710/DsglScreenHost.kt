@@ -493,12 +493,12 @@ abstract class DsglScreenHost(
                 mc.dispatchKeypresses()
                 return
             }
-            if (keyCode == Keyboard.KEY_F9 && inspector.active) {
+            if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12 && inspector.active) {
                 inspector.toggleMode()
                 mc.dispatchKeypresses()
                 return
             }
-            if (keyCode == Keyboard.KEY_F10) {
+            if (keyCode == Keyboard.KEY_F12) {
                 val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
                 val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
                 systemOverlayHost.togglePanelDemo(demoAnchorX, demoAnchorY)

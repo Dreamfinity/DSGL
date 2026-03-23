@@ -850,7 +850,7 @@ abstract class DOMNode(
         )
     }
 
-    private fun fixedViewportAnchorRect(): Rect {
+    internal fun fixedViewportClipRectForPromotedParticipation(): Rect {
         val root = fixedViewportRootForPositioning()
         val state = root.scrollContainerState()
         return Rect(
@@ -859,6 +859,10 @@ abstract class DOMNode(
             width = state.viewportRect.width.coerceAtLeast(0),
             height = state.viewportRect.height.coerceAtLeast(0)
         )
+    }
+
+    private fun fixedViewportAnchorRect(): Rect {
+        return fixedViewportClipRectForPromotedParticipation()
     }
 
     private fun positioningOffsetResolveContext(
@@ -2702,6 +2706,9 @@ abstract class DOMNode(
     }
 
     private fun isPointInsideEffectiveAncestorClip(pointX: Int, pointY: Int): Boolean {
+        if (position == PositionMode.Fixed) {
+            return fixedViewportClipRectForPromotedParticipation().contains(pointX, pointY)
+        }
         val effectiveClip = effectiveAncestorOverflowClipRect() ?: return true
         return effectiveClip.contains(pointX, pointY)
     }

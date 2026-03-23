@@ -341,18 +341,18 @@ class DomTree(
         val activeOpacity = node.effectiveOpacity()
         val transformPushed = !activeTransform.isIdentity()
         val opacityPushed = activeOpacity < 0.999f
-        val promotedFixedAncestorClipRect = if (node.position == PositionMode.Fixed) {
-            node.effectiveAncestorOverflowClipRect()
+        val promotedFixedRootViewportClipRect = if (node.position == PositionMode.Fixed) {
+            node.fixedViewportClipRectForPromotedParticipation()
         } else {
             null
         }
 
-        if (promotedFixedAncestorClipRect != null) {
+        if (promotedFixedRootViewportClipRect != null) {
             chunk.prefixCommands += RenderCommand.PushClip(
-                x = promotedFixedAncestorClipRect.x,
-                y = promotedFixedAncestorClipRect.y,
-                width = promotedFixedAncestorClipRect.width.coerceAtLeast(0),
-                height = promotedFixedAncestorClipRect.height.coerceAtLeast(0)
+                x = promotedFixedRootViewportClipRect.x,
+                y = promotedFixedRootViewportClipRect.y,
+                width = promotedFixedRootViewportClipRect.width.coerceAtLeast(0),
+                height = promotedFixedRootViewportClipRect.height.coerceAtLeast(0)
             )
         }
 
@@ -394,7 +394,7 @@ class DomTree(
         if (transformPushed) {
             chunk.suffixCommands += RenderCommand.PopTransform
         }
-        if (promotedFixedAncestorClipRect != null) {
+        if (promotedFixedRootViewportClipRect != null) {
             chunk.suffixCommands += RenderCommand.PopClip
         }
     }
