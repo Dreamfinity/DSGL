@@ -29,7 +29,8 @@ enum class PositionMode {
     Static,
     Relative,
     Absolute,
-    Fixed
+    Fixed,
+    Sticky
 }
 
 enum class Overflow {

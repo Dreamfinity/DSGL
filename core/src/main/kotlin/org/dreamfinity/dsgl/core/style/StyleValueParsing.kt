@@ -116,6 +116,7 @@ fun parsePosition(raw: String): PositionMode {
         "relative" -> PositionMode.Relative
         "absolute" -> PositionMode.Absolute
         "fixed" -> PositionMode.Fixed
+        "sticky" -> PositionMode.Sticky
         else -> error("Unsupported position value '$raw'.")
     }
 }

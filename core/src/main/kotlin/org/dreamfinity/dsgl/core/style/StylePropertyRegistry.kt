@@ -47,7 +47,7 @@ object StylePropertyRegistry {
         StylePropertyDescriptor(
             property = StyleProperty.POSITION,
             valueType = StyleEditorValueType.EnumChoice,
-            enumOptions = listOf("static", "relative", "absolute", "fixed"),
+            enumOptions = listOf("static", "relative", "absolute", "fixed", "sticky"),
             grammarKind = StyleValueGrammarKind.Enum,
             inspectorEditorKind = StyleInspectorEditorKind.EnumSelect
         ),

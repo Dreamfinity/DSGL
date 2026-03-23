@@ -94,6 +94,22 @@ class PositionedLayoutModelTests {
     }
 
     @Test
+    fun `sticky remains non-positioned for ordering and containing-block semantics `() {
+        val root = ContainerNode(key = "sticky-root")
+        val stickyAncestor = ContainerNode(key = "sticky-ancestor").apply {
+            position = PositionMode.Sticky
+            zIndex = 99
+        }.applyParent(root)
+        val absoluteLeaf = ContainerNode(key = "sticky-absolute-leaf").apply {
+            position = PositionMode.Absolute
+        }.applyParent(stickyAncestor)
+
+        assertFalse(stickyAncestor.participatesInPositionedOrderingModel())
+        assertFalse(PositionedLayoutModel.matchesChildContextTrigger(stickyAncestor))
+        assertSame(root, absoluteLeaf.containingBlockForAbsolutePositioning())
+    }
+
+    @Test
     fun `fixed root viewport primitive resolves current dom root viewport`() {
         val rootA = ContainerNode(key = "fixed-root-a")
         val rootB = ContainerNode(key = "fixed-root-b")

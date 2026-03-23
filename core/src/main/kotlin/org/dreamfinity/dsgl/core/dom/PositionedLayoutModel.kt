@@ -5,6 +5,16 @@ import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleProperty
 
 internal object PositionedLayoutModel {
+    private fun isRuntimePositionedMode(mode: PositionMode): Boolean {
+        return when (mode) {
+            PositionMode.Relative,
+            PositionMode.Absolute,
+            PositionMode.Fixed -> true
+            PositionMode.Static,
+            PositionMode.Sticky -> false
+        }
+    }
+
     data class RootStackingContextId(
         val rootNode: DOMNode
     )
@@ -48,7 +58,7 @@ internal object PositionedLayoutModel {
     )
 
     fun isPositioned(node: DOMNode): Boolean {
-        return node.position != PositionMode.Static
+        return isRuntimePositionedMode(node.position)
     }
 
     private fun effectiveOrderingZIndex(node: DOMNode): Int {
@@ -80,7 +90,7 @@ internal object PositionedLayoutModel {
     }
 
     fun matchesChildContextTrigger(node: DOMNode): Boolean {
-        return node.position != PositionMode.Static && node.zIndex != 0
+        return isRuntimePositionedMode(node.position) && node.zIndex != 0
     }
 
     fun stackingContextScaffold(owner: DOMNode): StackingContext {
@@ -256,4 +266,3 @@ internal object PositionedLayoutModel {
         return orderedParticipantsForHitTesting(parent).map { it.node }
     }
 }
-

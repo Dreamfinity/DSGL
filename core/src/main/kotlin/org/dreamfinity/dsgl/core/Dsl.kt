@@ -1191,6 +1191,7 @@ class StyleScope internal constructor(private val node: DOMNode) {
         PositionMode.Relative -> "relative"
         PositionMode.Absolute -> "absolute"
         PositionMode.Fixed -> "fixed"
+        PositionMode.Sticky -> "sticky"
     }
 
     private fun Overflow.toCssLiteral(): String = when (this) {

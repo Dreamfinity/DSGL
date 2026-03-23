@@ -38,7 +38,7 @@ class InspectorEditorRegistryTests {
         )
 
         assertEquals(InspectorEditorKind.EnumSelect, position.kind)
-        assertEquals(listOf("static", "relative", "absolute", "fixed"), position.options)
+        assertEquals(listOf("static", "relative", "absolute", "fixed", "sticky"), position.options)
     }
 
     @Test

@@ -31,7 +31,9 @@ class StylePropertyRegistryTests {
         val position = StylePropertyRegistry.descriptor(StyleProperty.POSITION)
         assertEquals(StyleValueGrammarKind.Enum, position.grammarKind)
         assertEquals(StyleInspectorEditorKind.EnumSelect, position.inspectorEditorKind)
+        assertTrue("sticky" in position.enumOptions)
         assertEquals("absolute", StylePropertyRegistry.parseEnumLiteral(StyleProperty.POSITION, "Absolute"))
+        assertEquals("sticky", StylePropertyRegistry.parseEnumLiteral(StyleProperty.POSITION, "Sticky"))
 
         val zIndex = StylePropertyRegistry.descriptor(StyleProperty.Z_INDEX)
         assertEquals(StyleValueGrammarKind.UnitlessInt, zIndex.grammarKind)

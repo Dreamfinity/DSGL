@@ -312,15 +312,16 @@ class DssParserTests {
             .b { position: relative; }
             .c { position: absolute; }
             .d { position: fixed; }
+            .e { position: sticky; }
             """.trimIndent(),
             "position.dss"
         )
 
-        assertEquals(4, data.rules.size)
+        assertEquals(5, data.rules.size)
         val values = data.rules.mapNotNull { rule ->
             (rule.declarations.get(StyleProperty.POSITION) as? StyleExpression.Literal)?.value
         }
-        assertEquals(listOf("static", "relative", "absolute", "fixed"), values)
+        assertEquals(listOf("static", "relative", "absolute", "fixed", "sticky"), values)
     }
     @Test
     fun `parses offset properties through length-like grammar`() {

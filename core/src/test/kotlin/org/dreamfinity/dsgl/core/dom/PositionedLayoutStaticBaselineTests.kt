@@ -190,6 +190,35 @@ class PositionedLayoutStaticBaselineTests {
         assertEquals(baselineBounds, child.bounds)
     }
 
+    @Test
+    fun `sticky style value remains runtime-inactive`() {
+        val root = ContainerNode(key = "sticky-inactive-root")
+        val sticky = ContainerNode(key = "sticky-inactive-node").apply {
+            width = 50
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.LEFT to "60px",
+                StyleProperty.TOP to "30px"
+            )
+            zIndex = 100
+        }
+        val follower = ContainerNode(key = "sticky-inactive-follower").apply {
+            width = 30
+            height = 12
+        }
+        sticky.applyParent(root)
+        follower.applyParent(root)
+
+        renderTree(root)
+
+        assertEquals(0, sticky.bounds.x)
+        assertEquals(0, sticky.bounds.y)
+        assertEquals(sticky.bounds.y + sticky.bounds.height, follower.bounds.y)
+        assertFalse(sticky.participatesInPositionedOrderingModel())
+        assertEquals(listOf(sticky, follower), root.orderedChildrenForPaintTraversal())
+    }
+
     private fun renderTree(root: ContainerNode) {
         DomTree(root).render(ctx, 240, 160)
     }

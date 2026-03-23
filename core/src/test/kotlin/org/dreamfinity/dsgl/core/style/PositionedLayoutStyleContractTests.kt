@@ -1,11 +1,17 @@
 package org.dreamfinity.dsgl.core.style
 
+import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class PositionedLayoutStyleContractTests {
+    @Test
+    fun `position style model accepts sticky value`() {
+        assertEquals(PositionMode.Sticky, parsePosition("sticky"))
+    }
+
     @Test
     fun `position and offset properties are exposed in style key registry`() {
         assertEquals(StyleProperty.POSITION, StyleProperty.fromKeyOrNull("position"))
@@ -19,7 +25,7 @@ class PositionedLayoutStyleContractTests {
 
     @Test
     fun `position z-index and offsets parse through style validation`() {
-        listOf("static", "relative", "absolute", "fixed").forEach { value ->
+        listOf("static", "relative", "absolute", "fixed", "sticky").forEach { value ->
             validateLiteralForProperty(StyleProperty.POSITION, value)
         }
         validateLiteralForProperty(StyleProperty.Z_INDEX, "-7")
@@ -36,7 +42,8 @@ class PositionedLayoutStyleContractTests {
             "static" to PositionMode.Static,
             "relative" to PositionMode.Relative,
             "absolute" to PositionMode.Absolute,
-            "fixed" to PositionMode.Fixed
+            "fixed" to PositionMode.Fixed,
+            "sticky" to PositionMode.Sticky
         )
 
         expectations.forEach { (literal, expectedPosition) ->
@@ -59,6 +66,17 @@ class PositionedLayoutStyleContractTests {
             assertEquals(null, computed.right)
             assertEquals("0px", computed.bottom?.toCssLiteral())
         }
+    }
+
+    @Test
+    fun `dsl style scope can author sticky position literal`() {
+        val node = ContainerNode(key = "dsl-sticky")
+        StyleScope(node).apply {
+            position = PositionMode.Sticky
+        }
+
+        val literal = (node.inlineStyleDeclarations.get(StyleProperty.POSITION) as? StyleExpression.Literal)?.value
+        assertEquals("sticky", literal)
     }
 }
 
