@@ -210,8 +210,6 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow, contentWidth: Int, c
                     onMouseEnter = { window.positionedDemoLastHover = "mode-$demoMode" }
                     onMouseClick = { window.positionedDemoLastClick = "mode-$demoMode" }
                     style = {
-                        width = 100.px
-                        height = 50.px
                         position = demoMode
                         left = if (window.positionedDemoUseLeft) {
                             leftOffset.px

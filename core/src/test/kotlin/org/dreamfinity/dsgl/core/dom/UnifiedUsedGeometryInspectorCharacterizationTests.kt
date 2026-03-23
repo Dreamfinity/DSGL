@@ -18,6 +18,8 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UnifiedUsedGeometryInspectorCharacterizationTests {
@@ -59,7 +61,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
     }
 
     @Test
-    fun `render-visible absolute outside ancestor is missed by inspector picking traversal`() {
+    fun `inspector now picks render-visible absolute outside ancestor bounds`() {
         val fixture = createAbsoluteOutsideAncestorFixture()
         fixture.tree.render(ctx, width = 260, height = 140)
         val inspector = InspectorController()
@@ -68,14 +70,14 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onCursorMoved(105, 10)
 
         assertEquals(
-            fixture.root.key?.toString(),
+            fixture.child.key?.toString(),
             inspector.hoveredKey,
-            "Inspector picking currently misses visible absolute child when parent-local bounds gate recursion"
+            "Inspector picking now follows shared used geometry for absolute-outside-ancestor case"
         )
     }
 
     @Test
-    fun `render and core interaction target promoted fixed while inspector misses it`() {
+    fun `render core interaction and inspector all target promoted fixed`() {
         val fixture = createPositionedOverlapFixture()
         fixture.tree.render(ctx, width = 220, height = 140)
         val drawRects = fixture.tree.paint(ctx).filterIsInstance<RenderCommand.DrawRect>()
@@ -100,14 +102,14 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onLayoutCommitted(fixture.root, 1L)
         inspector.onCursorMoved(10, 10)
         assertEquals(
-            fixture.later.key?.toString(),
+            fixture.fixed.key?.toString(),
             inspector.hoveredKey,
-            "Inspector currently uses a different pick path and misses the topmost promoted fixed node"
+            "Inspector now resolves the same topmost promoted fixed node as render/core interaction"
         )
     }
 
     @Test
-    fun `inspector picking ordering diverges from positioned hit ordering in same overlap`() {
+    fun `inspector picking ordering now matches positioned hit ordering in overlap`() {
         val fixture = createPositionedOverlapFixture()
         fixture.tree.render(ctx, width = 220, height = 140)
 
@@ -123,14 +125,14 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onCursorMoved(10, 10)
 
         assertEquals(
-            fixture.later.key?.toString(),
+            fixture.fixed.key?.toString(),
             inspector.hoveredKey,
-            "Inspector still traverses raw reverse child recursion for hover/picking in this"
+            "Inspector now uses shared ordering for overlap picking"
         )
     }
 
     @Test
-    fun `render interaction and inspector divergence summary stays explicit`() {
+    fun `render interaction and inspector are aligned for positioned repros`() {
         val absoluteFixture = createAbsoluteOutsideAncestorFixture()
         absoluteFixture.tree.render(ctx, width = 260, height = 140)
 
@@ -147,9 +149,9 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         assertEquals(fixedFixture.fixed.key, fixedHover, "Core hover sees promoted fixed in overlap case")
         assertEquals(absoluteFixture.child.key, absoluteHover, "Core hover reaches absolute child outside ancestor bounds")
         assertEquals(
-            fixedFixture.later.key?.toString(),
+            fixedFixture.fixed.key?.toString(),
             inspector.hoveredKey,
-            "Inspector diverges from core positioned ordering in overlap case"
+            "Inspector now matches core positioned ordering in overlap case"
         )
         var absoluteClicks = 0
         absoluteFixture.child.onClick { absoluteClicks += 1 }
@@ -158,10 +160,18 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
             "Core click reaches absolute-outside-ancestor case after shared used-geometry migration"
         )
         assertEquals(1, absoluteClicks)
+
+        inspector.onLayoutCommitted(absoluteFixture.root, 22L)
+        inspector.onCursorMoved(105, 10)
+        assertEquals(
+            absoluteFixture.child.key?.toString(),
+            inspector.hoveredKey,
+            "Inspector now matches core/app-host geometry for absolute-outside-ancestor case"
+        )
     }
 
     @Test
-    fun `core click and hover preserve fixed and non-fixed clip semantics`() {
+    fun `core and inspector preserve fixed and non-fixed clip semantics`() {
         val root = ContainerNode(key = "clip-root", stackLayout = true)
         val overflowParent = ContainerNode(key = "clip-parent").apply {
             width = 80
@@ -206,6 +216,75 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val absoluteHover = collectHoverChain(root, 145, 95).lastOrNull()?.key
         assertEquals(null, fixedHover, "Hover respects fixed root viewport clip outside root bounds")
         assertEquals(root.key, absoluteHover, "Hover respects non-fixed ancestor overflow clip")
+
+        val inspector = InspectorController().also { it.toggle() }
+        inspector.onLayoutCommitted(root, 31L)
+        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+        inspector.onCursorMoved(185, 25)
+        assertEquals(fixed.key?.toString(), inspector.hoveredKey, "Inspector picks fixed inside root viewport")
+        inspector.onCursorMoved(145, 95)
+        assertEquals(root.key?.toString(), inspector.hoveredKey, "Inspector keeps non-fixed ancestor overflow clipping")
+        inspector.onCursorMoved(225, 28)
+        assertNull(inspector.hoveredKey, "Inspector keeps fixed root viewport clipping outside viewport")
+    }
+
+    @Test
+    fun `inspector highlight uses shared used geometry and clipping`() {
+        val root = ContainerNode(key = "highlight-root", stackLayout = true).apply {
+            width = 200
+            height = 120
+        }
+        val overflowParent = ContainerNode(key = "highlight-parent").apply {
+            width = 80
+            height = 40
+            overflowY = org.dreamfinity.dsgl.core.style.Overflow.Hidden
+            inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
+        }.applyParent(root)
+        val fixed = ButtonNode("fixed", key = "highlight-fixed").apply {
+            width = 40
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "fixed",
+                StyleProperty.LEFT to "180px",
+                StyleProperty.TOP to "20px"
+            )
+        }.applyParent(overflowParent)
+        val absolute = ButtonNode("absolute", key = "highlight-absolute").apply {
+            width = 40
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "absolute",
+                StyleProperty.LEFT to "140px",
+                StyleProperty.TOP to "90px"
+            )
+        }.applyParent(overflowParent)
+
+        val tree = DomTree(root)
+        tree.render(ctx, width = 200, height = 120)
+        val inspector = InspectorController().also { it.toggle() }
+        inspector.onLayoutCommitted(root, 41L)
+        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+
+        inspector.onCursorMoved(185, 25)
+        inspector.buildDomSnapshot(800, 600)
+        val fixedHighlight = inspector.debugHoveredHighlight()
+        assertNotNull(fixedHighlight)
+        val fixedUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixed)
+        assertEquals(
+            fixedUsedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            fixedHighlight.borderRect
+        )
+
+        inspector.onCursorMoved(145, 95)
+        inspector.buildDomSnapshot(800, 600)
+        val clippedHighlight = inspector.debugHoveredHighlight()
+        assertNotNull(clippedHighlight)
+        val rootUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(root)
+        assertEquals(
+            rootUsedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            clippedHighlight.borderRect,
+            "Non-fixed clipped case highlights resolved fallback target with shared used geometry"
+        )
     }
 
     private data class PositionedOverlapFixture(

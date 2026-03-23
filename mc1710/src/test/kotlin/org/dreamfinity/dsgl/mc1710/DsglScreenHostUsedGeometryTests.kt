@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.collectHoverChain
+import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -54,6 +55,25 @@ class DsglScreenHostUsedGeometryTests {
 
         assertSame(fixture.fixed, pointerDownTarget)
         assertSame(coreHover, pointerDownTarget)
+    }
+
+    @Test
+    fun `core app-host and inspector agree on positioned overlap target`() {
+        val fixture = createPositionedOverlapFixture()
+        fixture.tree.render(ctx, width = 220, height = 140)
+        val host = createHostWithTree(fixture.tree)
+        val inspector = InspectorController().also { it.toggle() }
+        inspector.onLayoutCommitted(fixture.root, 1L)
+
+        refreshHoverTarget(host, 10, 10)
+        inspector.onCursorMoved(10, 10)
+
+        val coreHover = collectHoverChain(fixture.root, 10, 10).lastOrNull()
+        val hostHover = hoverTarget(host)
+        val inspectorHoverKey = inspector.hoveredKey
+
+        assertSame(coreHover, hostHover)
+        assertEquals(coreHover?.key?.toString(), inspectorHoverKey)
     }
 
     @Test

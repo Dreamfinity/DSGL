@@ -7,14 +7,15 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
-import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -961,7 +962,7 @@ class InspectorController(
         viewportHeight: Int
     ) {
         nativeSelectedHighlight = selected?.let { node ->
-            val boxes = computeBoxes(node)
+            val boxes = computeHighlightBoxes(node)
             InspectorHighlightSnapshot(
                 marginRect = boxes.margin,
                 borderRect = boxes.border,
@@ -973,7 +974,7 @@ class InspectorController(
         if (hoverPickEnabled) {
             val hovered = hoveredNode
             nativeHoveredHighlight = hovered?.let { node ->
-                val boxes = computeBoxes(node)
+                val boxes = computeHighlightBoxes(node)
                 InspectorHighlightSnapshot(
                     marginRect = boxes.margin,
                     borderRect = boxes.border,
@@ -1758,11 +1759,19 @@ class InspectorController(
             return
         }
         hoveredPath = collectHoverChain(currentRoot, mouseX, mouseY)
-        hoveredNode = hoveredPath.lastOrNull()
+        hoveredNode = resolveInspectorHoverCandidate(hoveredPath)
         lastHoverMouseX = mouseX
         lastHoverMouseY = mouseY
         lastHoverLayoutVersion = layoutVersion
         hoverDirty = false
+    }
+
+    private fun resolveInspectorHoverCandidate(path: List<DOMNode>): DOMNode? {
+        return path.lastOrNull { node -> shouldInspectorPickNode(node) }
+    }
+
+    private fun shouldInspectorPickNode(node: DOMNode): Boolean {
+        return node.display != Display.None
     }
 
     private fun appendHighlightCommands(
@@ -1771,7 +1780,7 @@ class InspectorController(
         selected: Boolean,
         out: MutableList<RenderCommand>
     ) {
-        val boxes = computeBoxes(node)
+        val boxes = computeHighlightBoxes(node)
         if (selected) {
             addFill(out, boxes.margin, 0x22F3B33D)
             addFill(out, boxes.padding, 0x2226A69A)
@@ -3295,35 +3304,6 @@ class InspectorController(
         return false
     }
 
-    private fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
-        val out = ArrayList<DOMNode>(8)
-        collectHoverChain(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
-        return out
-    }
-
-    private fun collectHoverChain(
-        node: DOMNode,
-        mouseX: Int,
-        mouseY: Int,
-        parentTransform: AffineTransform2D,
-        out: MutableList<DOMNode>
-    ): Boolean {
-        if (node.styleDisabled) return false
-        if (!node.isHitTestVisible()) return false
-        val world = parentTransform.times(node.localTransformMatrix())
-        val inverse = world.inverseOrNull() ?: return false
-        val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
-        if (!node.bounds.contains(local.first, local.second)) return false
-        out += node
-        for (index in node.children.lastIndex downTo 0) {
-            val child = node.children[index]
-            if (collectHoverChain(child, mouseX, mouseY, world, out)) {
-                return true
-            }
-        }
-        return true
-    }
-
     private fun startMinimizedMoveDrag(mouseX: Int, mouseY: Int) {
         dragMode = DragMode.MinimizedMove
         dragStartMouseX = mouseX
@@ -3712,6 +3692,57 @@ class InspectorController(
             content = contentRect,
             parentContent = parentContent
         )
+    }
+
+    private fun computeHighlightBoxes(node: DOMNode): NodeBoxes {
+        val geometry = UsedInteractionGeometryResolver.resolveNodeGeometry(node)
+        val usedClip = geometry.usedClipRect
+        val borderRect = clipRectToUsedClip(geometry.usedBorderRect, usedClip)
+        val marginRect = clipRectToUsedClip(
+            Rect(
+                x = geometry.usedBorderRect.x - node.margin.left,
+                y = geometry.usedBorderRect.y - node.margin.top,
+                width = (geometry.usedBorderRect.width + node.margin.horizontal).coerceAtLeast(0),
+                height = (geometry.usedBorderRect.height + node.margin.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val paddingRect = clipRectToUsedClip(
+            Rect(
+                x = geometry.usedBorderRect.x + node.border.left,
+                y = geometry.usedBorderRect.y + node.border.top,
+                width = (geometry.usedBorderRect.width - node.border.horizontal).coerceAtLeast(0),
+                height = (geometry.usedBorderRect.height - node.border.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val contentRect = clipRectToUsedClip(
+            Rect(
+                x = paddingRect.x + node.padding.left,
+                y = paddingRect.y + node.padding.top,
+                width = (paddingRect.width - node.padding.horizontal).coerceAtLeast(0),
+                height = (paddingRect.height - node.padding.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val parentContent = node.parent?.let { parent ->
+            clipRectToUsedClip(contentRect(parent), usedClip)
+        }
+        return NodeBoxes(
+            margin = marginRect,
+            border = borderRect,
+            padding = paddingRect,
+            content = contentRect,
+            parentContent = parentContent
+        )
+    }
+
+    private fun clipRectToUsedClip(rect: Rect, clip: Rect?): Rect {
+        if (rect.width <= 0 || rect.height <= 0) {
+            return Rect(0, 0, 0, 0)
+        }
+        if (clip == null) return rect
+        return rect.intersection(clip) ?: Rect(0, 0, 0, 0)
     }
 
     private fun contentRect(node: DOMNode): Rect {
