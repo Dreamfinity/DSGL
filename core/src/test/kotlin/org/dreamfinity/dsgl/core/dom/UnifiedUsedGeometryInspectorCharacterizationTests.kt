@@ -287,6 +287,73 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         )
     }
 
+    @Test
+    fun `relative positioned node highlight uses final rendered position`() {
+        val root = ContainerNode(key = "relative-root")
+        val relative = ButtonNode("relative", key = "relative-target").apply {
+            width = 60
+            height = 24
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "relative",
+                StyleProperty.LEFT to "40px",
+                StyleProperty.TOP to "18px"
+            )
+        }.applyParent(root)
+        val sibling = ButtonNode("sibling", key = "relative-sibling").apply {
+            width = 70
+            height = 24
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, width = 260, height = 140)
+        val inspector = InspectorController().also { it.toggle() }
+        inspector.onLayoutCommitted(root, 51L)
+        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+
+        val usedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(relative)
+        val pickPointX = usedGeometry.usedBorderRect.x + 4
+        val pickPointY = usedGeometry.usedBorderRect.y + 4
+        inspector.onCursorMoved(pickPointX, pickPointY)
+        inspector.buildDomSnapshot(800, 600)
+
+        assertEquals(relative.key?.toString(), inspector.hoveredKey)
+        val highlight = inspector.debugHoveredHighlight()
+        assertNotNull(highlight)
+        assertEquals(
+            usedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            highlight.borderRect,
+            "Relative highlight must use final rendered geometry, not original layout slot"
+        )
+
+        // Ensure we did not accidentally break neighboring static hit/highlight behavior.
+        val siblingGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(sibling)
+        inspector.onCursorMoved(siblingGeometry.usedBorderRect.x + 2, siblingGeometry.usedBorderRect.y + 2)
+        inspector.buildDomSnapshot(800, 600)
+        assertEquals(sibling.key?.toString(), inspector.hoveredKey)
+    }
+
+    @Test
+    fun `inspector pick and highlight stay consistent for positioned overlap`() {
+        val fixture = createPositionedOverlapFixture()
+        fixture.tree.render(ctx, width = 220, height = 140)
+        val inspector = InspectorController().also { it.toggle() }
+        inspector.onLayoutCommitted(fixture.root, 61L)
+        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+
+        inspector.onCursorMoved(10, 10)
+        inspector.buildDomSnapshot(800, 600)
+
+        assertEquals(fixture.fixed.key?.toString(), inspector.hoveredKey)
+        val highlight = inspector.debugHoveredHighlight()
+        assertNotNull(highlight)
+        val fixedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.fixed)
+        assertEquals(
+            fixedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            highlight.borderRect,
+            "Inspector highlight must match picked node final used geometry in overlap cases"
+        )
+    }
+
     private data class PositionedOverlapFixture(
         val tree: DomTree,
         val root: ContainerNode,

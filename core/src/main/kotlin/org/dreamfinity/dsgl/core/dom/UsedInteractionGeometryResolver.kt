@@ -52,12 +52,13 @@ internal object UsedInteractionGeometryResolver {
 
     fun resolveNodeGeometry(node: DOMNode): UsedInteractionNodeGeometry {
         val usedClipRect = resolveNodeSelfInputClipRect(node)
+        val usedBorderRect = resolveUsedBorderRect(node)
         val visibleBorderRect = when (usedClipRect) {
-            null -> node.bounds
-            else -> node.bounds.intersection(usedClipRect)
+            null -> usedBorderRect
+            else -> usedBorderRect.intersection(usedClipRect)
         }
         return UsedInteractionNodeGeometry(
-            usedBorderRect = node.bounds,
+            usedBorderRect = usedBorderRect,
             usedClipRect = usedClipRect,
             visibleBorderRect = visibleBorderRect
         )
@@ -93,5 +94,25 @@ internal object UsedInteractionGeometryResolver {
             parentClipRect = currentNode.inputClipRectForChildren(selfClipRect)
         }
         return selfClipRect
+    }
+
+    private fun resolveUsedBorderRect(node: DOMNode): Rect {
+        val world = node.worldTransformMatrix()
+        val bounds = node.bounds
+        val topLeft = world.transform(bounds.x.toFloat(), bounds.y.toFloat())
+        val topRight = world.transform((bounds.x + bounds.width).toFloat(), bounds.y.toFloat())
+        val bottomLeft = world.transform(bounds.x.toFloat(), (bounds.y + bounds.height).toFloat())
+        val bottomRight = world.transform((bounds.x + bounds.width).toFloat(), (bounds.y + bounds.height).toFloat())
+
+        val minX = minOf(topLeft.first, topRight.first, bottomLeft.first, bottomRight.first)
+        val maxX = maxOf(topLeft.first, topRight.first, bottomLeft.first, bottomRight.first)
+        val minY = minOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
+        val maxY = maxOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
+
+        val x = kotlin.math.floor(minX.toDouble()).toInt()
+        val y = kotlin.math.floor(minY.toDouble()).toInt()
+        val width = kotlin.math.ceil((maxX - minX).toDouble()).toInt().coerceAtLeast(0)
+        val height = kotlin.math.ceil((maxY - minY).toDouble()).toInt().coerceAtLeast(0)
+        return Rect(x, y, width, height)
     }
 }
