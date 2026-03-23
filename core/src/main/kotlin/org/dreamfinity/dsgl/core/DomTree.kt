@@ -13,6 +13,7 @@ import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
+import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.util.Collections
@@ -340,6 +341,20 @@ class DomTree(
         val activeOpacity = node.effectiveOpacity()
         val transformPushed = !activeTransform.isIdentity()
         val opacityPushed = activeOpacity < 0.999f
+        val promotedFixedAncestorClipRect = if (node.position == PositionMode.Fixed) {
+            node.effectiveAncestorOverflowClipRect()
+        } else {
+            null
+        }
+
+        if (promotedFixedAncestorClipRect != null) {
+            chunk.prefixCommands += RenderCommand.PushClip(
+                x = promotedFixedAncestorClipRect.x,
+                y = promotedFixedAncestorClipRect.y,
+                width = promotedFixedAncestorClipRect.width.coerceAtLeast(0),
+                height = promotedFixedAncestorClipRect.height.coerceAtLeast(0)
+            )
+        }
 
         if (transformPushed) {
             val ox = node.bounds.x + node.bounds.width * node.transformOrigin.originX
@@ -378,6 +393,9 @@ class DomTree(
         }
         if (transformPushed) {
             chunk.suffixCommands += RenderCommand.PopTransform
+        }
+        if (promotedFixedAncestorClipRect != null) {
+            chunk.suffixCommands += RenderCommand.PopClip
         }
     }
 

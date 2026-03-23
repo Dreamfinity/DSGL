@@ -2702,15 +2702,25 @@ abstract class DOMNode(
     }
 
     private fun isPointInsideEffectiveAncestorClip(pointX: Int, pointY: Int): Boolean {
+        val effectiveClip = effectiveAncestorOverflowClipRect() ?: return true
+        return effectiveClip.contains(pointX, pointY)
+    }
+
+    internal fun effectiveAncestorOverflowClipRect(): Rect? {
         var current: DOMNode? = parent
+        var effectiveRect: Rect? = null
         while (current != null) {
             val clipRect = current.overflowViewportRect()
-            if (clipRect != null && !clipRect.contains(pointX, pointY)) {
-                return false
+            if (clipRect != null) {
+                effectiveRect = if (effectiveRect == null) {
+                    clipRect
+                } else {
+                    effectiveRect.intersection(clipRect) ?: return Rect(0, 0, 0, 0)
+                }
             }
             current = current.parent
         }
-        return true
+        return effectiveRect
     }
 
     open fun inspectorScrollOffset(): Pair<Int, Int>? {

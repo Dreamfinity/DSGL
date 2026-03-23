@@ -12,11 +12,13 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class PositionedLayoutFixedStackingCharacterizationTests {
@@ -62,7 +64,7 @@ class PositionedLayoutFixedStackingCharacterizationTests {
     }
 
     @Test
-    fun `nested fixed high z-index still paints below later root sibling content in current model`() {
+    fun `nested fixed high z-index now paints above later root sibling content`() {
         val fixedColor = 0x00_55_AA_11
         val laterColor = 0x00_AA_33_55
 
@@ -109,13 +111,13 @@ class PositionedLayoutFixedStackingCharacterizationTests {
         assertTrue(fixedPaintIndex >= 0, "Expected fixed draw rect in paint command stream")
         assertTrue(laterPaintIndex >= 0, "Expected later sibling draw rect in paint command stream")
         assertTrue(
-            fixedPaintIndex < laterPaintIndex,
-            "Current parent-local traversal paints later root sibling subtree after nested fixed subtree"
+            fixedPaintIndex > laterPaintIndex,
+            "Fixed should participate in root paint ordering and paint above lower-priority later sibling content"
         )
     }
 
     @Test
-    fun `nested fixed high z-index still loses hit to later root sibling subtree in current model`() {
+    fun `nested fixed high z-index now wins hit over later root sibling subtree`() {
         val root = ContainerNode(key = "fixed-hit-root", stackLayout = true)
         val earlySubtree = ContainerNode(key = "fixed-hit-early").apply {
             width = 120
@@ -155,16 +157,17 @@ class PositionedLayoutFixedStackingCharacterizationTests {
 
         assertTrue(fixed.containsGlobalPoint(10, 10))
         assertTrue(dispatchClick(root, MouseClickEvent(10, 10, MouseButton.LEFT)))
-        assertEquals(0, fixedClicks)
-        assertEquals(1, laterClicks)
+        assertEquals(1, fixedClicks)
+        assertEquals(0, laterClicks)
     }
 
     @Test
-    fun `current positioned ordering remains parent-local for nested fixed descendants`() {
+    fun `fixed is promoted into root ordering while logical parent ownership remains unchanged`() {
         val root = ContainerNode(key = "fixed-local-root", stackLayout = true)
         val earlySubtree = ContainerNode(key = "fixed-local-early").applyParent(root)
         val laterSubtree = ContainerNode(key = "fixed-local-later").applyParent(root)
         val nestedFixed = ContainerNode(key = "fixed-local-nested").apply {
+            position = PositionMode.Fixed
             zIndex = 9_999
             inlineStyleDeclarations = styleDeclarations(
                 StyleProperty.POSITION to "fixed",
@@ -173,17 +176,20 @@ class PositionedLayoutFixedStackingCharacterizationTests {
             )
         }.applyParent(earlySubtree)
 
-        assertEquals(listOf(earlySubtree, laterSubtree), root.orderedChildrenForPaintTraversal())
-        assertEquals(listOf(laterSubtree, earlySubtree), root.orderedChildrenForHitTestingTraversal())
-        assertEquals(listOf(nestedFixed), earlySubtree.orderedChildrenForPaintTraversal())
+        assertSame(earlySubtree, nestedFixed.parent)
+        assertEquals(listOf(earlySubtree, laterSubtree, nestedFixed), root.orderedChildrenForPaintTraversal())
+        assertEquals(listOf(nestedFixed, laterSubtree, earlySubtree), root.orderedChildrenForHitTestingTraversal())
+        assertTrue(earlySubtree.orderedChildrenForPaintTraversal().isEmpty())
+        assertTrue(earlySubtree.orderedChildrenForHitTestingTraversal().isEmpty())
     }
 
     @Test
-    fun `paint and hit traversals are symmetric in current parent-local ordering model`() {
+    fun `paint and hit traversals are symmetric with fixed root participation`() {
         val root = ContainerNode(key = "fixed-sym-root", stackLayout = true)
         val earlySubtree = ContainerNode(key = "fixed-sym-early").applyParent(root)
         val laterSubtree = ContainerNode(key = "fixed-sym-later").applyParent(root)
-        ContainerNode(key = "fixed-sym-nested").apply {
+        val fixed = ContainerNode(key = "fixed-sym-nested").apply {
+            position = PositionMode.Fixed
             zIndex = 9_999
             inlineStyleDeclarations = styleDeclarations(
                 StyleProperty.POSITION to "fixed",
@@ -191,6 +197,7 @@ class PositionedLayoutFixedStackingCharacterizationTests {
                 StyleProperty.TOP to "6px"
             )
         }.applyParent(earlySubtree)
+        val nonFixedNested = ContainerNode(key = "fixed-sym-nested-normal").applyParent(earlySubtree)
 
         val rootPaint = root.orderedChildrenForPaintTraversal()
         val rootHit = root.orderedChildrenForHitTestingTraversal()
@@ -199,6 +206,21 @@ class PositionedLayoutFixedStackingCharacterizationTests {
 
         assertEquals(rootPaint.reversed(), rootHit)
         assertEquals(earlyPaint.reversed(), earlyHit)
+        assertEquals(listOf(earlySubtree, laterSubtree, fixed), rootPaint)
+        assertEquals(listOf(nonFixedNested), earlyPaint)
+    }
+
+    @Test
+    fun `non-fixed parent-local ordering remains unchanged`() {
+        val root = ContainerNode(key = "fixed-nonfixed-root", stackLayout = true)
+        val earlySubtree = ContainerNode(key = "fixed-nonfixed-early").applyParent(root)
+        val laterSubtree = ContainerNode(key = "fixed-nonfixed-later").applyParent(root)
+        val earlyA = ContainerNode(key = "fixed-nonfixed-a").applyParent(earlySubtree)
+        val earlyB = ContainerNode(key = "fixed-nonfixed-b").applyParent(earlySubtree)
+
+        assertEquals(listOf(earlySubtree, laterSubtree), root.orderedChildrenForPaintTraversal())
+        assertEquals(listOf(earlyA, earlyB), earlySubtree.orderedChildrenForPaintTraversal())
+        assertEquals(listOf(earlyB, earlyA), earlySubtree.orderedChildrenForHitTestingTraversal())
     }
 
     private fun renderTree(root: ContainerNode, width: Int, height: Int) {

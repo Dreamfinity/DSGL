@@ -65,12 +65,13 @@ class StackingContextScaffoldingTests {
         }.applyParent(owner)
 
         val context = owner.stackingContextScaffoldForTraversalOwner()
+        val rootContext = root.stackingContextScaffoldForTraversalOwner()
         val rootId = owner.rootStackingContextIdentityForPositioning()
 
         assertEquals(rootId, context.id)
         assertSame(owner, context.ownerNode)
         assertSame(root, context.rootNode)
-        assertEquals(2, context.participants.size)
+        assertEquals(1, context.participants.size)
 
         val normalParticipant = context.participants.firstOrNull { it.node === normalChild }
         assertNotNull(normalParticipant)
@@ -78,7 +79,7 @@ class StackingContextScaffoldingTests {
         assertFalse(normalParticipant.createsChildContextHint)
         assertNull(normalParticipant.rootContextPromotionTarget)
 
-        val fixedParticipant = context.participants.firstOrNull { it.node === fixedChild }
+        val fixedParticipant = rootContext.participants.firstOrNull { it.node === fixedChild }
         assertNotNull(fixedParticipant)
         assertEquals(PositionedLayoutModel.StackingParticipantKind.ChildContext, fixedParticipant.kind)
         assertTrue(fixedParticipant.createsChildContextHint)
@@ -86,11 +87,12 @@ class StackingContextScaffoldingTests {
     }
 
     @Test
-    fun `paint traversal behavior remains parent-local after scaffolding`() {
+    fun `root paint traversal includes promoted fixed participants`() {
         val root = ContainerNode(key = "stacking-paint-root", stackLayout = true)
         val early = ContainerNode(key = "stacking-paint-early").applyParent(root)
         val later = ContainerNode(key = "stacking-paint-later").applyParent(root)
-        ContainerNode(key = "stacking-paint-fixed").apply {
+        val fixed = ContainerNode(key = "stacking-paint-fixed").apply {
+            position = PositionMode.Fixed
             inlineStyleDeclarations = styleDeclarations(
                 StyleProperty.POSITION to "fixed",
                 StyleProperty.LEFT to "4px",
@@ -99,13 +101,14 @@ class StackingContextScaffoldingTests {
             zIndex = 9999
         }.applyParent(early)
 
-        assertEquals(listOf(early, later), root.orderedChildrenForPaintTraversal())
+        assertEquals(listOf(early, later, fixed), root.orderedChildrenForPaintTraversal())
+        assertTrue(early.orderedChildrenForPaintTraversal().isEmpty())
         val scaffold = root.stackingContextScaffoldForTraversalOwner()
-        assertEquals(listOf(early, later), scaffold.participants.map { it.node })
+        assertEquals(listOf(early, later, fixed), scaffold.participants.map { it.node })
     }
 
     @Test
-    fun `hit traversal behavior remains parent-local after scaffolding`() {
+    fun `hit traversal uses promoted fixed participants first when topmost`() {
         val root = ContainerNode(key = "stacking-hit-root", stackLayout = true)
         val earlySubtree = ContainerNode(key = "stacking-hit-early").applyParent(root)
         val laterSubtree = ContainerNode(key = "stacking-hit-later").applyParent(root)
@@ -113,7 +116,7 @@ class StackingContextScaffoldingTests {
         var fixedClicks = 0
         var laterClicks = 0
 
-        ButtonNode("fixed", key = "stacking-hit-fixed").apply {
+        val fixedNode = ButtonNode("fixed", key = "stacking-hit-fixed").apply {
             width = 72
             height = 24
             zIndex = 9999
@@ -131,21 +134,21 @@ class StackingContextScaffoldingTests {
         }.applyParent(laterSubtree)
 
         renderTree(root, width = 220, height = 140)
-        assertEquals(listOf(laterSubtree, earlySubtree), root.orderedChildrenForHitTestingTraversal())
+        assertEquals(listOf(fixedNode, laterSubtree, earlySubtree), root.orderedChildrenForHitTestingTraversal())
 
         assertTrue(dispatchClick(root, MouseClickEvent(10, 10, MouseButton.LEFT)))
-        assertEquals(0, fixedClicks)
-        assertEquals(1, laterClicks)
+        assertEquals(1, fixedClicks)
+        assertEquals(0, laterClicks)
     }
 
     @Test
-    fun `phase 1 nested fixed characterization remains unchanged after scaffolding`() {
-        val root = ContainerNode(key = "stacking-phase1-root", stackLayout = true)
-        val earlySubtree = ContainerNode(key = "stacking-phase1-early").apply {
+    fun `nested fixed behavior is root ordered and still root anchored`() {
+        val root = ContainerNode(key = "stacking-phase-root", stackLayout = true)
+        val earlySubtree = ContainerNode(key = "stacking-phase-early").apply {
             width = 120
             height = 60
         }
-        val laterSubtree = ContainerNode(key = "stacking-phase1-later").apply {
+        val laterSubtree = ContainerNode(key = "stacking-phase-later").apply {
             width = 120
             height = 60
         }
@@ -153,7 +156,7 @@ class StackingContextScaffoldingTests {
         var fixedClicks = 0
         var laterClicks = 0
 
-        val fixed = ButtonNode("fixed", key = "stacking-phase1-fixed").apply {
+        val fixed = ButtonNode("fixed", key = "stacking-phase-fixed").apply {
             width = 72
             height = 24
             zIndex = 9999
@@ -164,7 +167,7 @@ class StackingContextScaffoldingTests {
             )
             onClick { fixedClicks += 1 }
         }
-        val later = ButtonNode("later", key = "stacking-phase1-later-node").apply {
+        val later = ButtonNode("later", key = "stacking-phase-later-node").apply {
             width = 72
             height = 24
             onClick { laterClicks += 1 }
@@ -179,8 +182,8 @@ class StackingContextScaffoldingTests {
         assertEquals(8, fixed.bounds.x)
         assertEquals(8, fixed.bounds.y)
         assertTrue(dispatchClick(root, MouseClickEvent(10, 10, MouseButton.LEFT)))
-        assertEquals(0, fixedClicks)
-        assertEquals(1, laterClicks)
+        assertEquals(1, fixedClicks)
+        assertEquals(0, laterClicks)
     }
 
     private fun renderTree(root: ContainerNode, width: Int, height: Int) {

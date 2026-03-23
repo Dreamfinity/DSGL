@@ -82,22 +82,10 @@ internal object PositionedLayoutModel {
     fun stackingContextScaffold(owner: DOMNode): StackingContext {
         val root = rootStackingScope(owner)
         val contextId = RootStackingContextId(rootNode = root)
-        val participants = owner.children.withIndex().map { indexed ->
-            val child = indexed.value
-            val createsChildContextHint = createsChildStackingContextHint(child)
-            StackingParticipant(
-                node = child,
-                logicalParent = owner,
-                sourceDomOrder = indexed.index,
-                priority = orderingPriority(child, indexed.index),
-                kind = if (createsChildContextHint) {
-                    StackingParticipantKind.ChildContext
-                } else {
-                    StackingParticipantKind.LocalNode
-                },
-                createsChildContextHint = createsChildContextHint,
-                rootContextPromotionTarget = if (child.position == PositionMode.Fixed) contextId else null
-            )
+        val participants = if (owner.parent == null) {
+            rootContextParticipants(owner, contextId)
+        } else {
+            localContextParticipants(owner)
         }
         return StackingContext(
             id = contextId,
@@ -120,6 +108,94 @@ internal object PositionedLayoutModel {
 
     fun fixedViewportRoot(node: DOMNode): DOMNode {
         return rootStackingScope(node)
+    }
+
+    private fun localContextParticipants(owner: DOMNode): List<StackingParticipant> {
+        return owner.children.withIndex()
+            .filter { indexed -> indexed.value.position != PositionMode.Fixed }
+            .map { indexed ->
+                val child = indexed.value
+                val createsChildContextHint = createsChildStackingContextHint(child)
+                StackingParticipant(
+                    node = child,
+                    logicalParent = owner,
+                    sourceDomOrder = indexed.index,
+                    priority = orderingPriority(child, indexed.index),
+                    kind = if (createsChildContextHint) {
+                        StackingParticipantKind.ChildContext
+                    } else {
+                        StackingParticipantKind.LocalNode
+                    },
+                    createsChildContextHint = createsChildContextHint,
+                    rootContextPromotionTarget = null
+                )
+            }
+    }
+
+    private fun rootContextParticipants(root: DOMNode, contextId: RootStackingContextId): List<StackingParticipant> {
+        val globalDomOrder = buildGlobalDomOrderMap(root)
+        val localParticipants = root.children.withIndex()
+            .filter { indexed -> indexed.value.position != PositionMode.Fixed }
+            .map { indexed ->
+                val child = indexed.value
+                val domOrder = globalDomOrder[child] ?: indexed.index
+                val createsChildContextHint = createsChildStackingContextHint(child)
+                StackingParticipant(
+                    node = child,
+                    logicalParent = root,
+                    sourceDomOrder = domOrder,
+                    priority = orderingPriority(child, domOrder),
+                    kind = if (createsChildContextHint) {
+                        StackingParticipantKind.ChildContext
+                    } else {
+                        StackingParticipantKind.LocalNode
+                    },
+                    createsChildContextHint = createsChildContextHint,
+                    rootContextPromotionTarget = null
+                )
+            }
+        val promotedFixedParticipants = collectPromotedFixedNodes(root)
+            .map { fixed ->
+                val domOrder = globalDomOrder[fixed] ?: Int.MAX_VALUE
+                StackingParticipant(
+                    node = fixed,
+                    logicalParent = fixed.parent ?: root,
+                    sourceDomOrder = domOrder,
+                    priority = orderingPriority(fixed, domOrder),
+                    kind = StackingParticipantKind.ChildContext,
+                    createsChildContextHint = true,
+                    rootContextPromotionTarget = contextId
+                )
+            }
+        return localParticipants + promotedFixedParticipants
+    }
+
+    private fun collectPromotedFixedNodes(root: DOMNode): List<DOMNode> {
+        val out = ArrayList<DOMNode>()
+        fun visit(node: DOMNode) {
+            node.children.forEach { child ->
+                if (child.position == PositionMode.Fixed) {
+                    out += child
+                }
+                visit(child)
+            }
+        }
+        visit(root)
+        return out
+    }
+
+    private fun buildGlobalDomOrderMap(root: DOMNode): Map<DOMNode, Int> {
+        val order = LinkedHashMap<DOMNode, Int>()
+        var cursor = 0
+        fun visit(node: DOMNode) {
+            node.children.forEach { child ->
+                order[child] = cursor
+                cursor += 1
+                visit(child)
+            }
+        }
+        visit(root)
+        return order
     }
 
     private fun createsChildStackingContextHint(node: DOMNode): Boolean {
@@ -146,22 +222,19 @@ internal object PositionedLayoutModel {
     }
 
     fun orderedChildrenForPaint(parent: DOMNode): List<DOMNode> {
-        val children = parent.children
-        if (children.size <= 1) return children
-        var hasPositioned = false
-        children.forEach { child ->
-            if (isPositioned(child)) {
-                hasPositioned = true
-                return@forEach
-            }
+        val participants = stackingContextScaffold(parent).participants
+        if (participants.size <= 1) {
+            return participants.map { it.node }
         }
+        val hasPositioned = participants.any { isPositioned(it.node) }
         if (!hasPositioned) {
-            return children
+            return participants
+                .sortedBy { it.priority.domOrder }
+                .map { it.node }
         }
 
-        return children
-            .withIndex()
-            .map { indexed -> ChildEntry(indexed.value, orderingPriority(indexed.value, indexed.index)) }
+        return participants
+            .map { participant -> ChildEntry(participant.node, participant.priority) }
             .sortedWith(
                 compareBy(
                     { it.priority.positionedBucket },
