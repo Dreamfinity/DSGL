@@ -17,7 +17,6 @@ import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
 import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
-import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
@@ -291,7 +290,7 @@ abstract class DsglScreenHost(
             clearHoverChainStates()
             hoverTarget = null
         } else {
-            updateHoverLocal(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
+            updateHover(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
             hoverTarget = hoverChain.lastOrNull()
             if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
                 releaseDragCapture()
@@ -611,7 +610,7 @@ abstract class DsglScreenHost(
             lastMouseEvent = net.minecraft.client.Minecraft.getSystemTime()
             mapButton(mouseButton)?.let { mappedButton ->
                 val event = MouseDownEvent(mouseX, mouseY, mappedButton)
-                event.target = resolveForcedPointerTarget() ?: hoverTarget
+                event.target = resolvePointerDownTarget()
                 EventBus.post(event)
                 DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
                 if (mappedButton == MouseButton.LEFT) {
@@ -626,7 +625,7 @@ abstract class DsglScreenHost(
                 }
             }
         } else if (mouseButton != -1 && eventButton == mouseButton) {
-            val releaseTarget = dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
+            val releaseTarget = resolvePointerUpTarget()
             val hadDragCapture = dragCaptureTarget != null
             eventButton = -1
             mapButton(mouseButton)?.let { mappedButton ->
@@ -637,7 +636,7 @@ abstract class DsglScreenHost(
                 val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
                 if (!hadDragCapture && !dndConsumed) {
                     val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
-                    clickEvent.target = hoverTarget
+                    clickEvent.target = resolveClickTarget()
                     EventBus.post(clickEvent)
                 }
             }
@@ -1151,8 +1150,20 @@ abstract class DsglScreenHost(
                 return
             }
         }
-        val chain = collectHoverChainLocal(tree.root, mouseX, mouseY)
+        val chain = collectHoverChain(tree.root, mouseX, mouseY)
         hoverTarget = chain.lastOrNull()
+    }
+
+    private fun resolvePointerDownTarget(): DOMNode? {
+        return resolveForcedPointerTarget() ?: hoverTarget
+    }
+
+    private fun resolvePointerUpTarget(): DOMNode? {
+        return dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
+    }
+
+    private fun resolveClickTarget(): DOMNode? {
+        return hoverTarget
     }
 
     private fun resolveWheelTarget(): DOMNode? {
@@ -1191,108 +1202,6 @@ abstract class DsglScreenHost(
             node.setHoveredState(false)
         }
         hoverChain.clear()
-    }
-
-    private fun collectHoverChainLocal(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
-        val out = ArrayList<DOMNode>(8)
-        collectHoverChainLocal(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
-        return out
-    }
-
-    private fun collectHoverChainLocal(
-        root: DOMNode,
-        mouseX: Int,
-        mouseY: Int,
-        parentTransform: AffineTransform2D,
-        out: MutableList<DOMNode>
-    ): Boolean {
-        if (root.styleDisabled) return false
-        if (!root.isHitTestVisible()) return false
-        val worldTransform = parentTransform.times(root.localTransformMatrix())
-        val inverse = worldTransform.inverseOrNull() ?: return false
-        val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
-        if (!root.bounds.contains(local.first, local.second)) return false
-        out.add(root)
-        for (i in root.children.size - 1 downTo 0) {
-            val child = root.children[i]
-            if (collectHoverChainLocal(child, mouseX, mouseY, worldTransform, out)) return true
-        }
-        return true
-    }
-
-    private fun updateHoverLocal(
-        root: DOMNode,
-        prevHoverChain: MutableList<DOMNode>,
-        mouseX: Int,
-        mouseY: Int,
-        mouseDX: Int,
-        mouseDY: Int
-    ) {
-        val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
-        collectHoverChainLocal(root, mouseX, mouseY, AffineTransform2D.IDENTITY, currHoverChain)
-        val minSize = minOf(prevHoverChain.size, currHoverChain.size)
-        var commonPrefixLen = 0
-        while (
-            commonPrefixLen < minSize &&
-            isSameHoverNodeLocal(prevHoverChain[commonPrefixLen], currHoverChain[commonPrefixLen])
-        ) {
-            commonPrefixLen++
-        }
-        for (i in prevHoverChain.size - 1 downTo commonPrefixLen) {
-            prevHoverChain[i].setHoveredState(false)
-            postMouseLeaveEventLocal(prevHoverChain[i], mouseX, mouseY)
-        }
-        for (i in commonPrefixLen until currHoverChain.size) {
-            currHoverChain[i].setHoveredState(true)
-            postMouseEnterEventLocal(currHoverChain[i], mouseX, mouseY)
-        }
-        for (i in 0 until commonPrefixLen) {
-            currHoverChain[i].setHoveredState(true)
-        }
-        if (mouseDX != 0 || mouseDY != 0) {
-            for (i in 0 until currHoverChain.size) {
-                postMouseOverEventLocal(currHoverChain[i], mouseX, mouseY)
-            }
-        }
-        prevHoverChain.clear()
-        prevHoverChain.addAll(currHoverChain)
-    }
-
-    private fun isSameHoverNodeLocal(prev: DOMNode, curr: DOMNode): Boolean {
-        if (prev === curr) return true
-        val prevKey = prev.key
-        val currKey = curr.key
-        if (prevKey != null || currKey != null) {
-            return prevKey != null &&
-                    currKey != null &&
-                    prevKey == currKey &&
-                    prev.javaClass == curr.javaClass
-        }
-        if (prev.parent == null && curr.parent == null) {
-            return prev.javaClass == curr.javaClass
-        }
-        return false
-    }
-
-    private fun postMouseEnterEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
-        val event = MouseEnterEvent(mouseX, mouseY)
-        event.target = target
-        EventBus.post(event)
-        target.onmouseenter?.invoke(event)
-    }
-
-    private fun postMouseLeaveEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
-        val event = MouseLeaveEvent(mouseX, mouseY)
-        event.target = target
-        EventBus.post(event)
-        target.onmouseleave?.invoke(event)
-    }
-
-    private fun postMouseOverEventLocal(target: DOMNode, mouseX: Int, mouseY: Int) {
-        val event = MouseOverEvent(mouseX, mouseY)
-        event.target = target
-        EventBus.post(event)
-        target.onmouseover?.invoke(event)
     }
 
     private fun logInspectorInput(message: String) {
