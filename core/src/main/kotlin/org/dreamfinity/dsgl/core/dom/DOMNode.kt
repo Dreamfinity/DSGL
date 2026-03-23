@@ -693,6 +693,14 @@ abstract class DOMNode(
         return PositionedLayoutModel.sharesRootStackingScope(this, other)
     }
 
+    internal fun rootStackingContextIdentityForPositioning(): PositionedLayoutModel.RootStackingContextId {
+        return PositionedLayoutModel.rootStackingContextId(this)
+    }
+
+    internal fun stackingContextScaffoldForTraversalOwner(): PositionedLayoutModel.StackingContext {
+        return PositionedLayoutModel.stackingContextScaffold(this)
+    }
+
     internal fun containingBlockForAbsolutePositioning(): DOMNode {
         return PositionedLayoutModel.containingBlockForAbsolute(this)
     }

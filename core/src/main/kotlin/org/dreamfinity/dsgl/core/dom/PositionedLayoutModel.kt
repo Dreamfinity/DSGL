@@ -5,6 +5,32 @@ import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleProperty
 
 internal object PositionedLayoutModel {
+    data class RootStackingContextId(
+        val rootNode: DOMNode
+    )
+
+    enum class StackingParticipantKind {
+        LocalNode,
+        ChildContext
+    }
+
+    data class StackingParticipant(
+        val node: DOMNode,
+        val logicalParent: DOMNode,
+        val sourceDomOrder: Int,
+        val priority: OrderingPriority,
+        val kind: StackingParticipantKind,
+        val createsChildContextHint: Boolean,
+        val rootContextPromotionTarget: RootStackingContextId?
+    )
+
+    data class StackingContext(
+        val id: RootStackingContextId,
+        val ownerNode: DOMNode,
+        val rootNode: DOMNode,
+        val participants: List<StackingParticipant>
+    )
+
     data class OffsetPrecedenceResolution(
         val sourceProperty: StyleProperty?,
         val value: CssLength?
@@ -49,6 +75,38 @@ internal object PositionedLayoutModel {
         return rootStackingScope(first) === rootStackingScope(second)
     }
 
+    fun rootStackingContextId(node: DOMNode): RootStackingContextId {
+        return RootStackingContextId(rootNode = rootStackingScope(node))
+    }
+
+    fun stackingContextScaffold(owner: DOMNode): StackingContext {
+        val root = rootStackingScope(owner)
+        val contextId = RootStackingContextId(rootNode = root)
+        val participants = owner.children.withIndex().map { indexed ->
+            val child = indexed.value
+            val createsChildContextHint = createsChildStackingContextHint(child)
+            StackingParticipant(
+                node = child,
+                logicalParent = owner,
+                sourceDomOrder = indexed.index,
+                priority = orderingPriority(child, indexed.index),
+                kind = if (createsChildContextHint) {
+                    StackingParticipantKind.ChildContext
+                } else {
+                    StackingParticipantKind.LocalNode
+                },
+                createsChildContextHint = createsChildContextHint,
+                rootContextPromotionTarget = if (child.position == PositionMode.Fixed) contextId else null
+            )
+        }
+        return StackingContext(
+            id = contextId,
+            ownerNode = owner,
+            rootNode = root,
+            participants = participants
+        )
+    }
+
     fun containingBlockForAbsolute(node: DOMNode): DOMNode {
         var current = node.parent
         while (current != null) {
@@ -62,6 +120,13 @@ internal object PositionedLayoutModel {
 
     fun fixedViewportRoot(node: DOMNode): DOMNode {
         return rootStackingScope(node)
+    }
+
+    private fun createsChildStackingContextHint(node: DOMNode): Boolean {
+        if (node.parent == null) return true
+        if (node.position == PositionMode.Fixed) return true
+        if (isPositioned(node) && node.zIndex != 0) return true
+        return false
     }
 
     fun resolveHorizontalOffset(left: CssLength?, right: CssLength?): OffsetPrecedenceResolution {
