@@ -709,6 +709,25 @@ abstract class DOMNode(
         return PositionedLayoutModel.fixedViewportRoot(this)
     }
 
+    internal fun stickyReferenceScrollContainerVertical(): DOMNode {
+        return StickyLayoutModel.nearestStickyScrollContainerVertical(this)
+    }
+
+    internal fun stickyContainingBlockForPositioning(): DOMNode {
+        return StickyLayoutModel.stickyContainingBlock(this)
+    }
+
+    internal fun stickyVerticalInsetResolutionContract(): StickyLayoutModel.StickyInsetResolution {
+        return StickyLayoutModel.resolveVerticalInsets(
+            top = topStyleValue,
+            bottom = bottomStyleValue
+        )
+    }
+
+    internal fun stickyPositionedGeometryIntegrationPoint(): StickyLayoutModel.PositionedGeometryIntegrationPoint {
+        return StickyLayoutModel.positionedGeometryIntegrationPoint()
+    }
+
     internal fun isRemovedFromNormalFlowForPositioning(): Boolean {
         return position == PositionMode.Absolute || position == PositionMode.Fixed
     }
