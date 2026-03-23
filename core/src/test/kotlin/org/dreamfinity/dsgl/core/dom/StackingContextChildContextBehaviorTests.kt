@@ -229,7 +229,7 @@ class StackingContextChildContextBehaviorTests {
     }
 
     @Test
-    fun `fixed root participation remains authoritative when fixed matches phase 4 trigger`() {
+    fun `fixed root participation remains authoritative when fixed matches trigger`() {
         val root = ContainerNode(key = "fixed-root", stackLayout = true)
         val contextA = ContainerNode(key = "fixed-context-a").apply {
             position = PositionMode.Relative

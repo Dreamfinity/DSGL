@@ -34,7 +34,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
     }
 
     @Test
-    fun `render-visible absolute outside ancestor is missed by current core interaction traversal`() {
+    fun `core click and hover reach render-visible absolute outside ancestor bounds`() {
         val fixture = createAbsoluteOutsideAncestorFixture()
         fixture.tree.render(ctx, width = 260, height = 140)
         val drawRects = fixture.tree.paint(ctx).filterIsInstance<RenderCommand.DrawRect>()
@@ -43,15 +43,18 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
             "Render draws absolute child at its final positioned rect outside ancestor bounds"
         )
 
-        assertFalse(
+        var childClicks = 0
+        fixture.child.onClick { childClicks += 1 }
+        assertTrue(
             dispatchClick(fixture.root, MouseClickEvent(105, 10, MouseButton.LEFT)),
-            "Current click traversal misses visible absolute child because ancestor bounds gate recursion"
+            "Core click now reaches visible absolute child outside ancestor-local bounds"
         )
+        assertEquals(1, childClicks)
         val hoverChain = collectHoverChain(fixture.root, 105, 10)
         assertEquals(
-            fixture.root.key,
+            fixture.child.key,
             hoverChain.lastOrNull()?.key,
-            "Current hover traversal also misses absolute child and stops at ancestor-gated chain"
+            "Core hover now resolves the same visible absolute target"
         )
     }
 
@@ -142,16 +145,67 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val absoluteHover = collectHoverChain(absoluteFixture.root, 105, 10).lastOrNull()?.key
 
         assertEquals(fixedFixture.fixed.key, fixedHover, "Core hover sees promoted fixed in overlap case")
-        assertEquals(absoluteFixture.root.key, absoluteHover, "Core hover misses absolute child outside ancestor bounds")
+        assertEquals(absoluteFixture.child.key, absoluteHover, "Core hover reaches absolute child outside ancestor bounds")
         assertEquals(
             fixedFixture.later.key?.toString(),
             inspector.hoveredKey,
             "Inspector diverges from core positioned ordering in overlap case"
         )
-        assertFalse(
+        var absoluteClicks = 0
+        absoluteFixture.child.onClick { absoluteClicks += 1 }
+        assertTrue(
             dispatchClick(absoluteFixture.root, MouseClickEvent(105, 10, MouseButton.LEFT)),
-            "Click traversal divergence for absolute-outside-ancestor case remains characterized"
+            "Core click reaches absolute-outside-ancestor case after shared used-geometry migration"
         )
+        assertEquals(1, absoluteClicks)
+    }
+
+    @Test
+    fun `core click and hover preserve fixed and non-fixed clip semantics`() {
+        val root = ContainerNode(key = "clip-root", stackLayout = true)
+        val overflowParent = ContainerNode(key = "clip-parent").apply {
+            width = 80
+            height = 40
+            overflowY = org.dreamfinity.dsgl.core.style.Overflow.Hidden
+            inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
+        }.applyParent(root)
+        val fixed = ButtonNode("fixed", key = "clip-fixed").apply {
+            width = 40
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "fixed",
+                StyleProperty.LEFT to "180px",
+                StyleProperty.TOP to "20px"
+            )
+        }.applyParent(overflowParent)
+        val absolute = ButtonNode("absolute", key = "clip-absolute").apply {
+            width = 40
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "absolute",
+                StyleProperty.LEFT to "140px",
+                StyleProperty.TOP to "90px"
+            )
+        }.applyParent(overflowParent)
+
+        val tree = DomTree(root)
+        tree.render(ctx, width = 200, height = 120)
+
+        var fixedClicks = 0
+        var absoluteClicks = 0
+        fixed.onClick { fixedClicks += 1 }
+        absolute.onClick { absoluteClicks += 1 }
+
+        assertFalse(dispatchClick(root, MouseClickEvent(225, 28, MouseButton.LEFT)))
+        assertEquals(0, fixedClicks, "Fixed remains clipped by root viewport in core interaction")
+
+        assertFalse(dispatchClick(root, MouseClickEvent(145, 95, MouseButton.LEFT)))
+        assertEquals(0, absoluteClicks, "Non-fixed still obeys ancestor overflow clipping in core interaction")
+
+        val fixedHover = collectHoverChain(root, 225, 28).lastOrNull()?.key
+        val absoluteHover = collectHoverChain(root, 145, 95).lastOrNull()?.key
+        assertEquals(null, fixedHover, "Hover respects fixed root viewport clip outside root bounds")
+        assertEquals(root.key, absoluteHover, "Hover respects non-fixed ancestor overflow clip")
     }
 
     private data class PositionedOverlapFixture(

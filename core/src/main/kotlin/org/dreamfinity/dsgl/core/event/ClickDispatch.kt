@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 
@@ -25,29 +26,32 @@ internal fun dispatchClickInternal(
     if (!element.isHitTestVisible()) {
         return false
     }
-    if (!element.isPointInsideInputClip(event.mouseX, event.mouseY, parentInputClipRect)) {
-        return false
-    }
+    val projection = UsedInteractionGeometryResolver.projectNodeAtPoint(
+        node = element,
+        mouseX = event.mouseX,
+        mouseY = event.mouseY,
+        parentTransform = parentTransform,
+        parentInputClipRect = parentInputClipRect
+    ) ?: return false
 
-    val worldTransform = parentTransform.times(element.localTransformMatrix())
-    val inverse = worldTransform.inverseOrNull() ?: return false
-    val local = inverse.transform(event.mouseX.toFloat(), event.mouseY.toFloat())
-    if (!element.bounds.contains(local.first, local.second)) {
-        return false
-    }
-
-    val childInputClipRect = element.inputClipRectForChildren(parentInputClipRect)
-    element.orderedChildrenForHitTestingTraversal().forEach { child ->
-        if (
-            dispatchClickInternal(
-                element = child,
-                event = event,
-                parentTransform = worldTransform,
-                parentInputClipRect = childInputClipRect
-            )
-        ) {
-            return true
+    val childInputClipRect = projection.childInputClipRect
+    if (projection.canTraverseChildren) {
+        UsedInteractionGeometryResolver.orderedChildrenForHitTraversal(element).forEach { child ->
+            if (
+                dispatchClickInternal(
+                    element = child,
+                    event = event,
+                    parentTransform = projection.worldTransform,
+                    parentInputClipRect = childInputClipRect
+                )
+            ) {
+                return true
+            }
         }
+    }
+
+    if (!projection.selfContainsPoint) {
+        return false
     }
 
     return element.handleClick(event)

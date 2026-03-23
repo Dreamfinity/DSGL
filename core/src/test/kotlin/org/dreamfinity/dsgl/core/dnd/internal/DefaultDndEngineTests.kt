@@ -1,6 +1,8 @@
 package org.dreamfinity.dsgl.core.dnd.internal
 
+import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,5 +72,39 @@ class DefaultDndEngineTests {
         )
 
         assertNull(selected)
+    }
+
+    @Test
+    fun `hover chain remains coherent for dnd candidate selection after core hover migration`() {
+        val root = ContainerNode(key = "dnd-root")
+        val parent = ContainerNode(key = "dnd-parent").apply {
+            width = 120
+            height = 60
+            droppable = true
+        }.applyParent(root)
+        val child = ContainerNode(key = "dnd-child").apply {
+            width = 34
+            height = 16
+            droppable = true
+        }.applyParent(parent)
+
+        root.render(
+            ctx = object : org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext {
+                override val fontHeight: Int = 9
+                override fun measureText(text: String): Int = text.length * 6
+                override fun paint(commands: List<RenderCommand>) = Unit
+            },
+            x = 0,
+            y = 0,
+            width = 260,
+            height = 140
+        )
+
+        val chain = collectHoverChain(root, 10, 10)
+        val candidates = chain.filter { it.droppable }
+        val selected = DefaultDndEngine.selectDropTargetCandidate(candidates, previousTarget = null)
+
+        assertSame(child, selected)
+        assertEquals(listOf(root, parent, child), chain)
     }
 }
