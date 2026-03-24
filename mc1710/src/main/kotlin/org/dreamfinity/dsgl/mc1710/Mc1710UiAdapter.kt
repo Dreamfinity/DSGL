@@ -148,6 +148,15 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return textRenderer.measureText(text, fontId, fontSize)
     }
+    override fun measureTextRange(
+        text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        fontId: String?,
+        fontSize: Int?
+    ): Int {
+        return textRenderer.measureTextRange(text, startIndex, endIndexExclusive, fontId, fontSize)
+    }
 
     override val fontHeight: Int
         get() = textRenderer.lineHeight(FontRegistry.DEFAULT_FONT_ID, null)

@@ -160,6 +160,24 @@ internal class MsdfTextRenderer {
         return FontRegistry.measureText(text, fontId, fontSize)
     }
 
+    fun measureTextRange(
+        text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        fontId: String?,
+        fontSize: Int?
+    ): Int {
+        val shaped = FontRegistry.shapeTextRange(
+            text = text,
+            startIndex = startIndex,
+            endIndexExclusive = endIndexExclusive,
+            fontId = fontId,
+            fontSize = fontSize,
+            formattingMode = "plain"
+        )
+        return shaped.width.toInt().coerceAtLeast(0)
+    }
+
     fun lineHeight(fontId: String?, fontSize: Int?): Int {
         return FontRegistry.lineHeight(fontId, fontSize)
     }

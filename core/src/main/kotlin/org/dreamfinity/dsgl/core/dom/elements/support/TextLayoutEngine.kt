@@ -36,7 +36,9 @@ object TextLayoutEngine {
         val maxWidth: Int?,
         val wrap: TextWrap,
         val fontHeight: Int,
-        val fontFingerprint: Int
+        val fontFingerprint: Int,
+        val usesRangeMeasurement: Boolean,
+        val rangeMeasureCacheKey: Any?
     )
 
     data class HotPathStats(
@@ -81,12 +83,13 @@ object TextLayoutEngine {
         wrap: TextWrap,
         fontHeight: Int,
         measureText: (String) -> Int,
-        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)? = null
+        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)? = null,
+        measureRangeCacheKey: Any? = null
     ): Layout {
         layoutCalls.incrementAndGet()
         val resolvedHeight = fontHeight.coerceAtLeast(1)
         val constrainedWidth = maxWidth?.coerceAtLeast(0)
-        if (measureRange != null) {
+        if (measureRange != null && measureRangeCacheKey == null) {
             cacheBypassedForRangeMeasure.incrementAndGet()
             val lines = buildLines(text, constrainedWidth, wrap, measureText, measureRange)
             val maxLineWidth = lines.maxOfOrNull { it.width } ?: 0
@@ -98,8 +101,20 @@ object TextLayoutEngine {
                 lineHeight = resolvedHeight
             )
         }
-        val fingerprint = measureText("M") * 31 + measureText("i")
-        val key = CacheKey(text, constrainedWidth, wrap, resolvedHeight, fingerprint)
+        val fingerprint = if (measureRange != null) {
+            measureRangeCacheKey.hashCode()
+        } else {
+            measureText("M") * 31 + measureText("i")
+        }
+        val key = CacheKey(
+            text = text,
+            maxWidth = constrainedWidth,
+            wrap = wrap,
+            fontHeight = resolvedHeight,
+            fontFingerprint = fingerprint,
+            usesRangeMeasurement = measureRange != null,
+            rangeMeasureCacheKey = measureRangeCacheKey
+        )
         synchronized(cache) {
             cache[key]?.let {
                 cacheHits.incrementAndGet()

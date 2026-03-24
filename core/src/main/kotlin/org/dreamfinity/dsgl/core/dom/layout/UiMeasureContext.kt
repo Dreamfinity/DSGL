@@ -30,6 +30,23 @@ interface UiMeasureContext {
     /** Measures text width for a specific font/style combination. */
     fun measureText(text: String, fontId: String?, fontSize: Int?): Int = measureText(text)
 
+    /**
+     * Measures a [startIndex, endIndexExclusive) range width inside [text] for a specific font/style combination.
+     * Default implementation keeps compatibility by delegating through substring-based measurement.
+     */
+    fun measureTextRange(
+        text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        fontId: String?,
+        fontSize: Int?
+    ): Int {
+        val safeStart = startIndex.coerceIn(0, text.length)
+        val safeEnd = endIndexExclusive.coerceIn(safeStart, text.length)
+        if (safeEnd <= safeStart) return 0
+        return measureText(text.substring(safeStart, safeEnd), fontId, fontSize)
+    }
+
     /** Executes render commands on the host. */
     fun paint(commands: List<RenderCommand>)
 }

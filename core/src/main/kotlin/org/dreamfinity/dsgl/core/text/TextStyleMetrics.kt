@@ -1,11 +1,25 @@
 package org.dreamfinity.dsgl.core.text
 
-import org.dreamfinity.dsgl.core.font.forEachCodepointIndexed
-
 const val BOLD_ADVANCE_EXTRA_PX: Int = 1
 
 object TextStyleMetrics {
     fun boldExtraPxForRange(
+        plainText: String,
+        spans: List<ParsedTextSpan>,
+        baseFlags: TextStyleFlags,
+        rangeStart: Int = 0,
+        rangeEnd: Int = plainText.length
+    ): Int {
+        return boldExtraPxForRangeInText(
+            plainText = plainText,
+            spans = spans,
+            baseFlags = baseFlags,
+            rangeStart = rangeStart,
+            rangeEnd = rangeEnd
+        )
+    }
+
+    fun boldExtraPxForRangeInText(
         plainText: String,
         spans: List<ParsedTextSpan>,
         baseFlags: TextStyleFlags,
@@ -19,9 +33,9 @@ object TextStyleMetrics {
 
         var spanIndex = 0
         var extra = 0
-        val slice = plainText.substring(safeStart, safeEnd)
-        forEachCodepointIndexed(slice) { codepoint, startIndex, _ ->
-            val absoluteIndex = safeStart + startIndex
+        var absoluteIndex = safeStart
+        while (absoluteIndex < safeEnd) {
+            val codepoint = Character.codePointAt(plainText, absoluteIndex)
             while (spanIndex < spans.size && absoluteIndex >= spans[spanIndex].end) {
                 spanIndex += 1
             }
@@ -35,6 +49,7 @@ object TextStyleMetrics {
             if (bold && !isWhitespaceCodepoint(codepoint)) {
                 extra += BOLD_ADVANCE_EXTRA_PX
             }
+            absoluteIndex += Character.charCount(codepoint).coerceAtLeast(1)
         }
         return extra
     }

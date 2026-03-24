@@ -2,13 +2,13 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.MeasuredTextRangeWidthSource
 import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
 /**
  * Static text node.
@@ -41,19 +41,14 @@ class TextNode(
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
-        val measureRange: (Int, Int) -> Int = { start, end ->
-            val safeStart = start.coerceIn(0, plainText.length)
-            val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
-            val extra = TextStyleMetrics.boldExtraPxForRange(
-                plainText = plainText,
-                spans = parsed.spans,
-                baseFlags = baseFlags,
-                rangeStart = safeStart,
-                rangeEnd = safeEnd
-            )
-            baseWidth + extra
-        }
+        val measuredRanges = MeasuredTextRangeWidthSource(
+            plainText = plainText,
+            fontId = fontId,
+            fontSizePx = textMetrics.fontSizePx,
+            baseFlags = baseFlags,
+            spans = parsed.spans,
+            ctx = ctx
+        )
         val contentLimit = resolvedContentLimit(availableOuterWidth)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentLimit else null
         val layout = TextLayoutEngine.layout(
@@ -62,7 +57,8 @@ class TextNode(
             wrap = textWrap,
             fontHeight = lineHeight,
             measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
-            measureRange = measureRange
+            measureRange = measuredRanges::measureRange,
+            measureRangeCacheKey = measuredRanges.cacheKey
         )
         val naturalContentWidth = width ?: layout.maxLineWidth
         val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
@@ -90,19 +86,14 @@ class TextNode(
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
-        val measureRange: (Int, Int) -> Int = { start, end ->
-            val safeStart = start.coerceIn(0, plainText.length)
-            val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, textMetrics.fontSizePx)
-            val extra = TextStyleMetrics.boldExtraPxForRange(
-                plainText = plainText,
-                spans = parsed.spans,
-                baseFlags = baseFlags,
-                rangeStart = safeStart,
-                rangeEnd = safeEnd
-            )
-            baseWidth + extra
-        }
+        val measuredRanges = MeasuredTextRangeWidthSource(
+            plainText = plainText,
+            fontId = fontId,
+            fontSizePx = textMetrics.fontSizePx,
+            baseFlags = baseFlags,
+            spans = parsed.spans,
+            ctx = ctx
+        )
         addBorderCommands(out)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentWidth() else null
         val layout = TextLayoutEngine.layout(
@@ -111,7 +102,8 @@ class TextNode(
             wrap = textWrap,
             fontHeight = lineHeight,
             measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
-            measureRange = measureRange
+            measureRange = measuredRanges::measureRange,
+            measureRangeCacheKey = measuredRanges.cacheKey
         )
         val baseX = contentX()
         var lineY = contentY()
