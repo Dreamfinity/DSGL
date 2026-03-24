@@ -128,9 +128,78 @@ class TextPerformanceHotPathCharacterizationTests {
         assertEquals(0, layoutStats.cacheBypassedForRangeMeasure)
         assertTrue(layoutStats.cacheHits > 0)
         assertTrue(layoutStats.rangeMeasureCalls > 0)
+        assertTrue(layoutStats.rangeMeasureCalls > layoutStats.plainMeasureCalls)
         assertTrue(layoutStats.findMaxFittingCalls > 0)
-        assertTrue(layoutStats.substringSliceCalls > 0)
+        assertEquals(0, layoutStats.temporarySegmentSubstringCalls)
+        assertTrue(layoutStats.finalLineTextSubstringCalls > 0)
+        assertEquals(
+            layoutStats.finalLineTextSubstringCalls +
+                    layoutStats.probeMeasureSubstringCalls +
+                    layoutStats.temporarySegmentSubstringCalls,
+            layoutStats.substringSliceCalls
+        )
         assertTrue(fontStats.shapeTextRangeCalls > 0)
+    }
+
+    @Test
+    fun `wrapped button path uses range measurement without fallback substring measurement`() {
+        val root = ContainerNode(key = "button.wrap.root").apply {
+            display = Display.Block
+            width = 220
+            height = 120
+        }
+        ButtonNode(
+            text = "Button wrapping should use authoritative range measurement over substring-based fallback.",
+            key = "button.wrap.hotpath"
+        ).apply {
+            width = 140
+            fontId = FontRegistry.FONT_MINECRAFT
+            fontSize = 16
+            textWrap = TextWrap.Wrap
+        }.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 120)
+        tree.paint(ctx)
+
+        val layoutStats = TextLayoutEngine.hotPathStats()
+        assertTrue(layoutStats.layoutCalls > 0)
+        assertEquals(0, layoutStats.cacheBypassedForRangeMeasure)
+        assertTrue(layoutStats.rangeMeasureCalls > 0)
+        assertTrue(layoutStats.rangeMeasureCalls > layoutStats.plainMeasureCalls)
+        assertEquals(0, layoutStats.temporarySegmentSubstringCalls)
+        assertTrue(layoutStats.finalLineTextSubstringCalls > 0)
+    }
+
+    @Test
+    fun `wrapped optimized path limits substring materialization to final line output boundary`() {
+        val text = "Final materialization boundary should keep hot internal probes on index ranges."
+        val source = MeasuredTextRangeWidthSource(
+            plainText = text,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSizePx = 16,
+            baseFlags = baseTextFlags(),
+            spans = emptyList(),
+            ctx = ctx
+        )
+        TextLayoutEngine.layout(
+            text = text,
+            maxWidth = 90,
+            wrap = TextWrap.Wrap,
+            fontHeight = FontRegistry.lineHeight(FontRegistry.FONT_MINECRAFT, 16),
+            measureText = { value -> ctx.measureText(value, FontRegistry.FONT_MINECRAFT, 16) },
+            measureRange = source::measureRange,
+            measureRangeCacheKey = source.cacheKey
+        )
+
+        val stats = TextLayoutEngine.hotPathStats()
+        assertEquals(0, stats.temporarySegmentSubstringCalls)
+        assertEquals(0, stats.probeMeasureSubstringCalls)
+        assertTrue(stats.finalLineTextSubstringCalls > 0)
+        assertEquals(
+            stats.finalLineTextSubstringCalls + stats.probeMeasureSubstringCalls + stats.temporarySegmentSubstringCalls,
+            stats.substringSliceCalls
+        )
     }
 
     @Test
@@ -159,6 +228,7 @@ class TextPerformanceHotPathCharacterizationTests {
         assertTrue(cachedStats.cacheMisses > 0)
         assertTrue(cachedStats.cacheHits > 0)
         assertEquals(0, cachedStats.cacheBypassedForRangeMeasure)
+        assertTrue(cachedStats.probeMeasureSubstringCalls > 0)
 
         TextLayoutEngine.clearCache()
         TextLayoutEngine.resetHotPathStats()
@@ -189,6 +259,7 @@ class TextPerformanceHotPathCharacterizationTests {
         assertEquals(2, rangeStats.cacheBypassedForRangeMeasure)
         assertEquals(0, rangeStats.cacheHits)
         assertTrue(rangeStats.rangeMeasureCalls > 0)
+        assertEquals(0, rangeStats.probeMeasureSubstringCalls)
 
         TextLayoutEngine.clearCache()
         TextLayoutEngine.resetHotPathStats()
@@ -222,6 +293,8 @@ class TextPerformanceHotPathCharacterizationTests {
         assertEquals(0, keyedStats.cacheBypassedForRangeMeasure)
         assertTrue(keyedStats.cacheMisses > 0)
         assertTrue(keyedStats.cacheHits > 0)
+        assertEquals(0, keyedStats.temporarySegmentSubstringCalls)
+        assertEquals(0, keyedStats.probeMeasureSubstringCalls)
     }
 
     @Test
@@ -286,9 +359,12 @@ class TextPerformanceHotPathCharacterizationTests {
         val legacyStats = runLegacyTwoPassLayout(text = text, width = 120, fontSize = 16)
         val optimizedStats = runOptimizedTwoPassLayout(text = text, width = 120, fontSize = 16)
 
+        assertTrue(legacyStats.rangeSubstringCalls > 0)
+        assertEquals(0, optimizedStats.rangeSubstringCalls)
         assertTrue(optimizedStats.layoutStats.rangeMeasureCalls < legacyStats.layoutStats.rangeMeasureCalls)
-        assertTrue(optimizedStats.layoutStats.substringSliceCalls < legacyStats.layoutStats.substringSliceCalls)
         assertTrue(optimizedStats.fontStats.shapeTextRangeCalls < legacyStats.fontStats.shapeTextRangeCalls)
+        assertEquals(0, optimizedStats.layoutStats.temporarySegmentSubstringCalls)
+        assertEquals(0, optimizedStats.layoutStats.probeMeasureSubstringCalls)
     }
 
     @Test
@@ -386,7 +462,8 @@ class TextPerformanceHotPathCharacterizationTests {
 
     private data class ProfileSnapshot(
         val layoutStats: TextLayoutEngine.HotPathStats,
-        val fontStats: FontRegistry.TextHotPathStats
+        val fontStats: FontRegistry.TextHotPathStats,
+        val rangeSubstringCalls: Long
     )
 
     private fun runLegacyTwoPassLayout(text: String, width: Int, fontSize: Int): ProfileSnapshot {
@@ -395,6 +472,7 @@ class TextPerformanceHotPathCharacterizationTests {
         FontRegistry.resetTextHotPathStats()
         TextLayoutEngine.clearCache()
         TextLayoutEngine.resetHotPathStats()
+        var rangeSubstringCalls = 0L
 
         val measureText: (String) -> Int = { value ->
             ctx.measureText(value, FontRegistry.FONT_MINECRAFT, fontSize)
@@ -402,6 +480,7 @@ class TextPerformanceHotPathCharacterizationTests {
         val measureRange: (Int, Int) -> Int = { start, end ->
             val safeStart = start.coerceIn(0, text.length)
             val safeEnd = end.coerceIn(safeStart, text.length)
+            rangeSubstringCalls += 1L
             ctx.measureText(text.substring(safeStart, safeEnd), FontRegistry.FONT_MINECRAFT, fontSize)
         }
         repeat(2) {
@@ -416,7 +495,8 @@ class TextPerformanceHotPathCharacterizationTests {
         }
         return ProfileSnapshot(
             layoutStats = TextLayoutEngine.hotPathStats(),
-            fontStats = FontRegistry.textHotPathStats()
+            fontStats = FontRegistry.textHotPathStats(),
+            rangeSubstringCalls = rangeSubstringCalls
         )
     }
 
@@ -451,7 +531,8 @@ class TextPerformanceHotPathCharacterizationTests {
         }
         return ProfileSnapshot(
             layoutStats = TextLayoutEngine.hotPathStats(),
-            fontStats = FontRegistry.textHotPathStats()
+            fontStats = FontRegistry.textHotPathStats(),
+            rangeSubstringCalls = 0L
         )
     }
 

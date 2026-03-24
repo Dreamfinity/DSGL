@@ -29,6 +29,7 @@ internal class MeasuredTextRangeWidthSource(
     )
 
     private val rangeWidthCache: MutableMap<Long, Int> = HashMap()
+    private val hasBoldContribution: Boolean = baseFlags.bold || spans.any { it.flags.bold }
 
     val cacheKey: CacheKey = CacheKey(
         backendFingerprint = backendFingerprint(ctx, fontId, fontSizePx),
@@ -57,14 +58,18 @@ internal class MeasuredTextRangeWidthSource(
                 fontId = fontId,
                 fontSize = fontSizePx
             )
-            val boldExtra = TextStyleMetrics.boldExtraPxForRangeInText(
-                plainText = plainText,
-                spans = spans,
-                baseFlags = baseFlags,
-                rangeStart = safeStart,
-                rangeEnd = safeEnd
-            )
-            baseWidth + boldExtra
+            if (!hasBoldContribution) {
+                baseWidth
+            } else {
+                val boldExtra = TextStyleMetrics.boldExtraPxForRangeInText(
+                    plainText = plainText,
+                    spans = spans,
+                    baseFlags = baseFlags,
+                    rangeStart = safeStart,
+                    rangeEnd = safeEnd
+                )
+                baseWidth + boldExtra
+            }
         }
     }
 

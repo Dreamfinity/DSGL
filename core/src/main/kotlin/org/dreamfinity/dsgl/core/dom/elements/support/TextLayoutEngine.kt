@@ -51,6 +51,9 @@ object TextLayoutEngine {
         val findMaxFittingCalls: Long,
         val rangeMeasureCalls: Long,
         val plainMeasureCalls: Long,
+        val temporarySegmentSubstringCalls: Long,
+        val probeMeasureSubstringCalls: Long,
+        val finalLineTextSubstringCalls: Long,
         val substringSliceCalls: Long
     )
 
@@ -69,6 +72,9 @@ object TextLayoutEngine {
     private val findMaxFittingCalls = AtomicLong(0L)
     private val rangeMeasureCalls = AtomicLong(0L)
     private val plainMeasureCalls = AtomicLong(0L)
+    private val temporarySegmentSubstringCalls = AtomicLong(0L)
+    private val probeMeasureSubstringCalls = AtomicLong(0L)
+    private val finalLineTextSubstringCalls = AtomicLong(0L)
     private val substringSliceCalls = AtomicLong(0L)
 
     fun clearCache() {
@@ -146,6 +152,9 @@ object TextLayoutEngine {
             findMaxFittingCalls = findMaxFittingCalls.get(),
             rangeMeasureCalls = rangeMeasureCalls.get(),
             plainMeasureCalls = plainMeasureCalls.get(),
+            temporarySegmentSubstringCalls = temporarySegmentSubstringCalls.get(),
+            probeMeasureSubstringCalls = probeMeasureSubstringCalls.get(),
+            finalLineTextSubstringCalls = finalLineTextSubstringCalls.get(),
             substringSliceCalls = substringSliceCalls.get()
         )
     }
@@ -160,6 +169,9 @@ object TextLayoutEngine {
         findMaxFittingCalls.set(0L)
         rangeMeasureCalls.set(0L)
         plainMeasureCalls.set(0L)
+        temporarySegmentSubstringCalls.set(0L)
+        probeMeasureSubstringCalls.set(0L)
+        finalLineTextSubstringCalls.set(0L)
         substringSliceCalls.set(0L)
     }
 
@@ -179,24 +191,31 @@ object TextLayoutEngine {
         var logicalStart = 0
         while (logicalStart <= text.length) {
             val newlineIndex = text.indexOf('\n', logicalStart).let { if (it >= 0) it else text.length }
-            substringSliceCalls.incrementAndGet()
-            val segment = text.substring(logicalStart, newlineIndex)
             if (wrap == TextWrap.NoWrap || maxWidth == null || maxWidth <= 0) {
+                val lineText = materializeLineText(text, logicalStart, newlineIndex)
                 lines.add(
                     Line(
-                        text = segment,
+                        text = lineText,
                         startIndex = logicalStart,
                         endIndexExclusive = newlineIndex,
                         width = measureWidth(
                             measureRange = measureRange,
                             startIndex = logicalStart,
                             endIndexExclusive = newlineIndex,
-                            fallbackMeasure = { measureText(segment) }
+                            fallbackMeasure = { measureText(lineText) }
                         )
                     )
                 )
             } else {
-                appendWrappedSegment(lines, segment, logicalStart, maxWidth, measureText, measureRange)
+                appendWrappedSegment(
+                    out = lines,
+                    text = text,
+                    segmentStart = logicalStart,
+                    segmentEndExclusive = newlineIndex,
+                    maxWidth = maxWidth,
+                    measureText = measureText,
+                    measureRange = measureRange
+                )
             }
 
             if (newlineIndex == text.length) {
@@ -218,77 +237,78 @@ object TextLayoutEngine {
 
     private fun appendWrappedSegment(
         out: MutableList<Line>,
-        segment: String,
-        globalStart: Int,
+        text: String,
+        segmentStart: Int,
+        segmentEndExclusive: Int,
         maxWidth: Int,
         measureText: (String) -> Int,
         measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?
     ) {
         appendWrappedSegmentCalls.incrementAndGet()
-        if (segment.isEmpty()) {
-            out.add(Line(text = "", startIndex = globalStart, endIndexExclusive = globalStart, width = 0))
+        if (segmentStart >= segmentEndExclusive) {
+            out.add(Line(text = "", startIndex = segmentStart, endIndexExclusive = segmentStart, width = 0))
             return
         }
 
-        var localStart = 0
-        while (localStart < segment.length) {
-            var localEndExclusive = findMaxFittingEnd(
-                segment = segment,
-                start = localStart,
+        var lineStart = segmentStart
+        while (lineStart < segmentEndExclusive) {
+            var lineEndExclusive = findMaxFittingEnd(
+                text = text,
+                start = lineStart,
+                segmentEndExclusive = segmentEndExclusive,
                 maxWidth = maxWidth,
-                globalStart = globalStart,
                 measureText = measureText,
                 measureRange = measureRange
             )
-            if (localEndExclusive <= localStart) {
-                localEndExclusive = (localStart + 1).coerceAtMost(segment.length)
-            } else if (localEndExclusive < segment.length) {
-                val wrapOpportunity = lastWhitespaceBreak(segment, localStart, localEndExclusive)
-                if (wrapOpportunity != null && wrapOpportunity > localStart) {
-                    localEndExclusive = wrapOpportunity
+            if (lineEndExclusive <= lineStart) {
+                lineEndExclusive = (lineStart + 1).coerceAtMost(segmentEndExclusive)
+            } else if (lineEndExclusive < segmentEndExclusive) {
+                val wrapOpportunity = lastWhitespaceBreak(text, lineStart, lineEndExclusive)
+                if (wrapOpportunity != null && wrapOpportunity > lineStart) {
+                    lineEndExclusive = wrapOpportunity
                 }
             }
 
-            substringSliceCalls.incrementAndGet()
-            val lineText = segment.substring(localStart, localEndExclusive)
+            val lineText = materializeLineText(text, lineStart, lineEndExclusive)
             out.add(
                 Line(
                     text = lineText,
-                    startIndex = globalStart + localStart,
-                    endIndexExclusive = globalStart + localEndExclusive,
+                    startIndex = lineStart,
+                    endIndexExclusive = lineEndExclusive,
                     width = measureWidth(
                         measureRange = measureRange,
-                        startIndex = globalStart + localStart,
-                        endIndexExclusive = globalStart + localEndExclusive,
+                        startIndex = lineStart,
+                        endIndexExclusive = lineEndExclusive,
                         fallbackMeasure = { measureText(lineText) }
                     )
                 )
             )
-            localStart = localEndExclusive
+            lineStart = lineEndExclusive
         }
     }
 
     private fun findMaxFittingEnd(
-        segment: String,
+        text: String,
         start: Int,
+        segmentEndExclusive: Int,
         maxWidth: Int,
-        globalStart: Int,
         measureText: (String) -> Int,
         measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?
     ): Int {
         findMaxFittingCalls.incrementAndGet()
-        var low = (start + 1).coerceAtMost(segment.length)
-        var high = segment.length
+        var low = (start + 1).coerceAtMost(segmentEndExclusive)
+        var high = segmentEndExclusive
         var best = start
         while (low <= high) {
             val mid = (low + high) ushr 1
             val width = measureWidth(
                 measureRange = measureRange,
-                startIndex = globalStart + start,
-                endIndexExclusive = globalStart + mid,
+                startIndex = start,
+                endIndexExclusive = mid,
                 fallbackMeasure = {
+                    probeMeasureSubstringCalls.incrementAndGet()
                     substringSliceCalls.incrementAndGet()
-                    measureText(segment.substring(start, mid))
+                    measureText(text.substring(start, mid))
                 }
             )
             if (width <= maxWidth) {
@@ -316,15 +336,21 @@ object TextLayoutEngine {
         }
     }
 
-    private fun lastWhitespaceBreak(segment: String, start: Int, endExclusive: Int): Int? {
+    private fun lastWhitespaceBreak(text: String, start: Int, endExclusive: Int): Int? {
         var index = endExclusive
         while (index > start + 1) {
-            val ch = segment[index - 1]
+            val ch = text[index - 1]
             if (ch.isWhitespace()) {
                 return index
             }
             index--
         }
         return null
+    }
+
+    private fun materializeLineText(text: String, startIndex: Int, endIndexExclusive: Int): String {
+        finalLineTextSubstringCalls.incrementAndGet()
+        substringSliceCalls.incrementAndGet()
+        return text.substring(startIndex, endIndexExclusive)
     }
 }
