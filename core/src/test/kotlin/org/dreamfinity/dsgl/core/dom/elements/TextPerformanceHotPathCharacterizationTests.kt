@@ -87,6 +87,63 @@ class TextPerformanceHotPathCharacterizationTests {
     }
 
     @Test
+    fun `font probing cache reduces underlying expensive probing work on repeated shaping`() {
+        val primary = FontRegistry.get(FontRegistry.FONT_MINECRAFT)?.awtBaseFont
+        val fallback = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)?.awtBaseFont
+        val fallbackOnlyCodepoint = findFallbackOnlyCodepoint(primary, fallback)
+        val fallbackOnlyChar = String(Character.toChars(fallbackOnlyCodepoint))
+        val missingChar = String(Character.toChars(0x10FFFF))
+        val text = "CacheProbe-${fallbackOnlyChar}-${missingChar}-X"
+
+        FontRegistry.shapeText(text, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "cache-probe-first")
+        val first = FontRegistry.textHotPathStats()
+        assertTrue(first.requiresReplacementGlyphEvaluations > 0)
+        assertTrue(first.canDisplayAwtCalls > 0)
+        assertTrue(first.glyphIndexVectorBuildCalls > 0)
+
+        FontRegistry.resetTextHotPathStats()
+        FontRegistry.shapeText(text, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "cache-probe-second")
+        val second = FontRegistry.textHotPathStats()
+        assertTrue(second.requiresReplacementGlyphCalls > 0)
+        assertTrue(second.requiresReplacementGlyphCacheHits > 0)
+        assertTrue(second.requiresReplacementGlyphEvaluations < first.requiresReplacementGlyphEvaluations)
+        assertTrue(second.canDisplayCalls <= first.canDisplayCalls)
+        assertTrue(second.glyphIndexForCodepointCalls <= first.glyphIndexForCodepointCalls)
+        assertTrue(second.canDisplayAwtCalls < first.canDisplayAwtCalls)
+        assertTrue(second.glyphIndexVectorBuildCalls < first.glyphIndexVectorBuildCalls)
+    }
+
+    @Test
+    fun `font probing cache key boundaries respect font and codepoint identity`() {
+        FontRegistry.shapeText("A", FontRegistry.FONT_MINECRAFT, 16, formattingMode = "boundary-seed")
+
+        FontRegistry.resetTextHotPathStats()
+        FontRegistry.shapeText("A", FontRegistry.FONT_MINECRAFT, 16, formattingMode = "boundary-same")
+        val sameFontSameCodepoint = FontRegistry.textHotPathStats()
+        assertTrue(sameFontSameCodepoint.requiresReplacementGlyphCacheHits > 0)
+        assertEquals(0, sameFontSameCodepoint.canDisplayAwtCalls)
+        assertEquals(0, sameFontSameCodepoint.glyphIndexVectorBuildCalls)
+
+        FontRegistry.resetTextHotPathStats()
+        FontRegistry.shapeText("B", FontRegistry.FONT_MINECRAFT, 16, formattingMode = "boundary-diff-codepoint")
+        val sameFontDifferentCodepoint = FontRegistry.textHotPathStats()
+        assertTrue(sameFontDifferentCodepoint.requiresReplacementGlyphCacheMisses > 0)
+        assertTrue(sameFontDifferentCodepoint.canDisplayCacheMisses > 0)
+        assertTrue(sameFontDifferentCodepoint.glyphIndexCacheMisses > 0)
+        assertTrue(sameFontDifferentCodepoint.canDisplayAwtCalls > 0)
+        assertTrue(sameFontDifferentCodepoint.glyphIndexVectorBuildCalls > 0)
+
+        FontRegistry.resetTextHotPathStats()
+        FontRegistry.shapeText("A", FontRegistry.FONT_UBUNTU, 16, formattingMode = "boundary-diff-font")
+        val differentFontSameCodepoint = FontRegistry.textHotPathStats()
+        assertTrue(differentFontSameCodepoint.requiresReplacementGlyphCacheMisses > 0)
+        assertTrue(differentFontSameCodepoint.canDisplayCacheMisses > 0)
+        assertTrue(differentFontSameCodepoint.glyphIndexCacheMisses > 0)
+        assertTrue(differentFontSameCodepoint.canDisplayAwtCalls > 0)
+        assertTrue(differentFontSameCodepoint.glyphIndexVectorBuildCalls > 0)
+    }
+
+    @Test
     fun `wrapped text semantics remain unchanged between legacy and optimized range-width paths`() {
         val text = "Wrapping semantics should remain stable across optimized range-width source changes."
         val legacy = legacyWrappedLayout(text = text, width = 120, fontSize = 16)
@@ -429,6 +486,28 @@ class TextPerformanceHotPathCharacterizationTests {
     }
 
     @Test
+    fun `wrapped layout follow-through uses probing cache without changing line results`() {
+        val text = "Wrapped probing follow-through should keep the same line results while reducing repeated expensive probing."
+        val firstLayout = wrappedLayoutForProbing(text = text, width = 120, fontSize = 16, cacheSalt = "first")
+        val first = FontRegistry.textHotPathStats()
+        assertTrue(first.canDisplayAwtCalls > 0)
+        assertTrue(first.glyphIndexVectorBuildCalls > 0)
+        assertTrue(first.requiresReplacementGlyphEvaluations > 0)
+
+        FontRegistry.resetTextHotPathStats()
+        val secondLayout = wrappedLayoutForProbing(text = text, width = 120, fontSize = 16, cacheSalt = "second")
+        val second = FontRegistry.textHotPathStats()
+        assertEquals(firstLayout.lines.map { it.text }, secondLayout.lines.map { it.text })
+        assertEquals(firstLayout.lines.map { it.startIndex to it.endIndexExclusive }, secondLayout.lines.map { it.startIndex to it.endIndexExclusive })
+        assertEquals(firstLayout.lines.map { it.width }, secondLayout.lines.map { it.width })
+        assertEquals(firstLayout.maxLineWidth, secondLayout.maxLineWidth)
+        assertEquals(firstLayout.totalHeight, secondLayout.totalHeight)
+        assertTrue(second.canDisplayAwtCalls < first.canDisplayAwtCalls)
+        assertTrue(second.glyphIndexVectorBuildCalls < first.glyphIndexVectorBuildCalls)
+        assertTrue(second.requiresReplacementGlyphEvaluations < first.requiresReplacementGlyphEvaluations)
+    }
+
+    @Test
     fun `interaction and inspector picking remain aligned for wrapped text node`() {
         val root = ContainerNode(key = "interaction-root").apply {
             display = Display.Block
@@ -568,6 +647,32 @@ class TextPerformanceHotPathCharacterizationTests {
             measureText = { value -> ctx.measureText(value, FontRegistry.FONT_MINECRAFT, fontSize) },
             measureRange = source::measureRange,
             measureRangeCacheKey = source.cacheKey
+        )
+    }
+
+    private fun wrappedLayoutForProbing(
+        text: String,
+        width: Int,
+        fontSize: Int,
+        cacheSalt: String
+    ): TextLayoutEngine.Layout {
+        TextLayoutEngine.clearCache()
+        val source = MeasuredTextRangeWidthSource(
+            plainText = text,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSizePx = fontSize,
+            baseFlags = baseTextFlags(),
+            spans = emptyList(),
+            ctx = ctx
+        )
+        return TextLayoutEngine.layout(
+            text = text,
+            maxWidth = width,
+            wrap = TextWrap.Wrap,
+            fontHeight = FontRegistry.lineHeight(FontRegistry.FONT_MINECRAFT, fontSize),
+            measureText = { value -> ctx.measureText(value, FontRegistry.FONT_MINECRAFT, fontSize) },
+            measureRange = source::measureRange,
+            measureRangeCacheKey = source.cacheKey to cacheSalt
         )
     }
 
