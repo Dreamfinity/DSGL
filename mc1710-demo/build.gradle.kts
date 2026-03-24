@@ -161,4 +161,6 @@ tasks.named("publishToMavenLocal") {
 
 dependencies {
     implementation(project(":mc1710"))
+    testImplementation(kotlin("test-junit"))
+    testImplementation(kotlin("test"))
 }

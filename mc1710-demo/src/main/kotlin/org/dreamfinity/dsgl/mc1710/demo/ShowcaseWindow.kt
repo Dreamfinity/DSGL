@@ -282,6 +282,8 @@ class ShowcaseWindow : DsglWindow() {
     internal var positionedDemoMixedStaticClicks by state(0)
     internal var positionedDemoMixedPositionedClicks by state(0)
     internal var positionedDemoScrollClicks by state(0)
+    internal var positionedDemoStickyTopClicks by state(0)
+    internal var positionedDemoStickyCombinedClicks by state(0)
     internal var textEditingSingleValue by state("Edit this line")
     internal var textEditingPasswordValue by state("secret42")
     internal var textEditingAreaValue by state(
@@ -2600,4 +2602,5 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
+
 

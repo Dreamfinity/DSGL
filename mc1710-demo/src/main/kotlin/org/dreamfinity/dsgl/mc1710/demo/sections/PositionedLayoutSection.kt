@@ -11,7 +11,8 @@ private val POSITION_MODE_OPTIONS = listOf(
     PositionMode.Static,
     PositionMode.Relative,
     PositionMode.Absolute,
-    PositionMode.Fixed
+    PositionMode.Fixed,
+    PositionMode.Sticky
 )
 
 private const val OFFSET_MIN = -72
@@ -62,6 +63,8 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow, contentWidth: Int, c
         window.positionedDemoMixedStaticClicks = 0
         window.positionedDemoMixedPositionedClicks = 0
         window.positionedDemoScrollClicks = 0
+        window.positionedDemoStickyTopClicks = 0
+        window.positionedDemoStickyCombinedClicks = 0
     }
 
     div({
@@ -89,6 +92,9 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow, contentWidth: Int, c
                 padding = 5.px
                 border(1.px, 0xFF617A90.toInt())
                 backgroundColor = 0xFF2A3541.toInt()
+                position = PositionMode.Sticky
+                top = 0.px
+                zIndex = 999
             }
         }) {
             div({
@@ -513,6 +519,389 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow, contentWidth: Int, c
             text("fixed -> root viewport")
         }
 
+        div({
+            key = "positioned.sticky.surface"
+            style = {
+                border(1.px, 0xFF6A7D8F.toInt())
+                padding = 5.px
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                gap = 3.px
+            }
+        }) {
+            text("H. Sticky: in-flow slot + visual stick with per-axis nearest scroll container and direct-parent clamp.")
+            text(
+                "Inspector target key: positioned.sticky.xy.target",
+                { style = { color = DEMO_MUTED } }
+            )
+
+            div({
+                key = "positioned.sticky.vertical.group"
+                style = {
+                    border(1.px, 0xFF6C8096.toInt())
+                    padding = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    gap = 2.px
+                }
+            }) {
+                text("Vertical sticky basics: top=0, bottom=0, top+bottom => top wins")
+                div({
+                    style = {
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                        gap = 3.px
+                    }
+                }) {
+                    div({
+                        style = {
+                            width = 50.percent
+                            border(1.px, 0xFF6A7E90.toInt())
+                            padding = 3.px
+                        }
+                    }) {
+                        text("top=0 (interactive)")
+                        div({
+                            key = "positioned.sticky.vertical.top.scroller"
+                            style = {
+                                overflowY = Overflow.Auto
+                                border(1.px, 0xFF8097AB.toInt())
+                                maxHeight = 7.em
+                                display = Display.Flex
+                                flexDirection = FlexDirection.Column
+                                gap = 1.px
+                                padding = 2.px
+                            }
+                        }) {
+                            button("sticky top action", {
+                                key = "positioned.sticky.vertical.top.target"
+                                onMouseEnter = { window.positionedDemoLastHover = "sticky-top" }
+                                onMouseClick = {
+                                    window.positionedDemoStickyTopClicks += 1
+                                    window.positionedDemoLastClick = "sticky-top"
+                                }
+                                style = {
+                                    position = PositionMode.Sticky
+                                    top = 0.px
+                                    zIndex = 6
+                                }
+                            })
+                            repeat(14) { line ->
+                                text("top sticky line ${line + 1}")
+                            }
+                        }
+                    }
+                    div({
+                        style = {
+                            width = 50.percent
+                            border(1.px, 0xFF6A7E90.toInt())
+                            padding = 3.px
+                        }
+                    }) {
+                        text("bottom=0")
+                        div({
+                            key = "positioned.sticky.vertical.bottom.scroller"
+                            style = {
+                                overflowY = Overflow.Auto
+                                border(1.px, 0xFF8097AB.toInt())
+                                maxHeight = 7.em
+                                display = Display.Flex
+                                flexDirection = FlexDirection.Column
+                                gap = 1.px
+                                padding = 2.px
+                            }
+                        }) {
+                            repeat(12) { line ->
+                                text("bottom sticky line ${line + 1}")
+                            }
+                            div({
+                                key = "positioned.sticky.vertical.bottom.target"
+                                style = {
+                                    position = PositionMode.Sticky
+                                    bottom = 0.px
+                                    zIndex = 5
+                                    padding = 3.px
+                                    border(1.px, 0xFF9FC2DF.toInt())
+                                    backgroundColor = 0xCC446181.toInt()
+                                }
+                            }) {
+                                text("sticky bottom block")
+                            }
+                            repeat(8) { line ->
+                                text("tail line ${line + 1}")
+                            }
+                        }
+                    }
+                }
+                div({
+                    key = "positioned.sticky.vertical.precedence.scroller"
+                    style = {
+                        overflowY = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        maxHeight = 6.em
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Column
+                        gap = 1.px
+                        padding = 2.px
+                    }
+                }) {
+                    div({
+                        key = "positioned.sticky.vertical.precedence.target"
+                        style = {
+                            position = PositionMode.Sticky
+                            top = 6.px
+                            bottom = 0.px
+                            zIndex = 5
+                            padding = 3.px
+                            border(1.px, 0xFF9FC2DF.toInt())
+                            backgroundColor = 0xCC3F5871.toInt()
+                        }
+                    }) { text("top+bottom set -> top wins (top=6)") }
+                    repeat(10) { line -> text("precedence line ${line + 1}") }
+                }
+                text(
+                    "sticky top clicks=${window.positionedDemoStickyTopClicks}",
+                    { style = { color = DEMO_MUTED } }
+                )
+            }
+
+            div({
+                key = "positioned.sticky.horizontal.group"
+                style = {
+                    border(1.px, 0xFF6C8096.toInt())
+                    padding = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    gap = 2.px
+                }
+            }) {
+                text("Horizontal sticky basics: left=0, right=0, left+right => left wins")
+                div({
+                    key = "positioned.sticky.horizontal.left.scroller"
+                    style = {
+                        overflowX = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                        gap = 2.px
+                        padding = 2.px
+                    }
+                }) {
+                    div({
+                        key = "positioned.sticky.horizontal.left.target"
+                        style = {
+                            position = PositionMode.Sticky
+                            left = 0.px
+                            zIndex = 5
+                            padding = 3.px
+                            border(1.px, 0xFF9FC2DF.toInt())
+                            backgroundColor = 0xCC3F617B.toInt()
+                        }
+                    }) { text("left=0") }
+                    repeat(16) { idx ->
+                        text("left track ${idx + 1}")
+                    }
+                }
+                div({
+                    key = "positioned.sticky.horizontal.right.scroller"
+                    style = {
+                        overflowX = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                        gap = 2.px
+                        padding = 2.px
+                    }
+                }) {
+                    repeat(10) { idx ->
+                        text("right track ${idx + 1}")
+                    }
+                    div({
+                        key = "positioned.sticky.horizontal.right.target"
+                        style = {
+                            position = PositionMode.Sticky
+                            right = 0.px
+                            zIndex = 5
+                            padding = 3.px
+                            border(1.px, 0xFF9FC2DF.toInt())
+                            backgroundColor = 0xCC45637F.toInt()
+                        }
+                    }) { text("right=0") }
+                    repeat(10) { idx ->
+                        text("tail ${idx + 1}")
+                    }
+                }
+                div({
+                    key = "positioned.sticky.horizontal.precedence.scroller"
+                    style = {
+                        overflowX = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                        gap = 2.px
+                        padding = 2.px
+                    }
+                }) {
+                    div({
+                        key = "positioned.sticky.horizontal.precedence.target"
+                        style = {
+                            position = PositionMode.Sticky
+                            left = 8.px
+                            right = 0.px
+                            zIndex = 5
+                            padding = 3.px
+                            border(1.px, 0xFF9FC2DF.toInt())
+                            backgroundColor = 0xCC415A74.toInt()
+                        }
+                    }) { text("left+right set -> left wins (left=8)") }
+                    repeat(14) { idx ->
+                        text("precedence ${idx + 1}")
+                    }
+                }
+            }
+
+            div({
+                key = "positioned.sticky.xy.group"
+                style = {
+                    border(1.px, 0xFF6C8096.toInt())
+                    padding = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    gap = 2.px
+                }
+            }) {
+                text("Combined-axis sticky: left=0 + top=0 (render/interaction/Inspector target)")
+                div({
+                    key = "positioned.sticky.xy.scroller"
+                    style = {
+                        overflowX = Overflow.Auto
+                        overflowY = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        maxHeight = 7.em
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Column
+                        gap = 2.px
+                        padding = 2.px
+                    }
+                }) {
+                    button("sticky x+y target", {
+                        key = "positioned.sticky.xy.target"
+                        onMouseEnter = { window.positionedDemoLastHover = "sticky-xy" }
+                        onMouseClick = {
+                            window.positionedDemoStickyCombinedClicks += 1
+                            window.positionedDemoLastClick = "sticky-xy"
+                        }
+                        style = {
+                            position = PositionMode.Sticky
+                            left = 0.px
+                            top = 0.px
+                            zIndex = 7
+                        }
+                    })
+                    repeat(16) { line ->
+                        text("xy sticky line ${line + 1} ....................................................")
+                    }
+                }
+                text(
+                    "sticky x+y clicks=${window.positionedDemoStickyCombinedClicks}",
+                    { style = { color = DEMO_MUTED } }
+                )
+            }
+
+            div({
+                key = "positioned.sticky.inactive.group"
+                style = {
+                    border(1.px, 0xFF6C8096.toInt())
+                    padding = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    gap = 2.px
+                }
+            }) {
+                text("Inactive comparison: position=sticky with no insets stays inactive on both axes.")
+                div({
+                    key = "positioned.sticky.inactive.scroller"
+                    style = {
+                        overflowX = Overflow.Auto
+                        overflowY = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        maxHeight = 6.em
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Column
+                        gap = 1.px
+                        padding = 2.px
+                    }
+                }) {
+                    div({
+                        key = "positioned.sticky.inactive.target"
+                        style = {
+                            position = PositionMode.Sticky
+                            padding = 3.px
+                            border(1.px, 0xFF9FC2DF.toInt())
+                            backgroundColor = 0xCC455F78.toInt()
+                        }
+                    }) { text("sticky without insets") }
+                    repeat(12) { line ->
+                        text("inactive line ${line + 1} .............................")
+                    }
+                }
+            }
+
+            div({
+                key = "positioned.sticky.clamp.group"
+                style = {
+                    border(1.px, 0xFF6C8096.toInt())
+                    padding = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    gap = 2.px
+                }
+            }) {
+                text("Containment clamp: sticky movement is clamped by direct parent containing block.")
+                div({
+                    key = "positioned.sticky.clamp.scroller"
+                    style = {
+                        overflowY = Overflow.Auto
+                        border(1.px, 0xFF8097AB.toInt())
+                        maxHeight = 7.em
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Column
+                        gap = 2.px
+                        padding = 2.px
+                    }
+                }) {
+                    repeat(6) { idx -> text("outer line ${idx + 1}") }
+                    div({
+                        key = "positioned.sticky.clamp.parent"
+                        style = {
+                            border(1.px, 0xFF8FA5B9.toInt())
+                            backgroundColor = 0xFF2F3D4C.toInt()
+                            maxHeight = 6.em
+                            overflowY = Overflow.Auto
+                            display = Display.Flex
+                            flexDirection = FlexDirection.Column
+                            gap = 1.px
+                            padding = 2.px
+                        }
+                    }) {
+                        div({
+                            key = "positioned.sticky.clamp.target"
+                            style = {
+                                position = PositionMode.Sticky
+                                top = 0.px
+                                zIndex = 6
+                                padding = 3.px
+                                border(1.px, 0xFF9FC2DF.toInt())
+                                backgroundColor = 0xCC3F5A74.toInt()
+                            }
+                        }) { text("clamped sticky top") }
+                        repeat(14) { idx -> text("inner clamp line ${idx + 1}") }
+                    }
+                    repeat(8) { idx -> text("outer tail ${idx + 1}") }
+                }
+            }
+        }
+
         text("E/G. z-index + hit-testing: topmost visible positioned node should win input.")
         div({
             key = "positioned.z.overlap"
@@ -775,4 +1164,5 @@ private fun UiScope.positionedTieCard(
         text("$label z=$zIndex")
     }
 }
+
 
