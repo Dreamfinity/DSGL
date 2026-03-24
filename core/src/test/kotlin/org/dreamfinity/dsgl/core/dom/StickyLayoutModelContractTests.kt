@@ -11,6 +11,31 @@ import kotlin.test.assertTrue
 
 class StickyLayoutModelContractTests {
     @Test
+    fun `sticky scroll-container rule chooses nearest horizontal scroll-container ancestor`() {
+        val root = ContainerNode(key = "sticky-root-x")
+        val farScroll = ContainerNode(key = "sticky-scroll-far-x").apply {
+            overflowX = Overflow.Auto
+        }.applyParent(root)
+        val nearScroll = ContainerNode(key = "sticky-scroll-near-x").apply {
+            overflowX = Overflow.Hidden
+        }.applyParent(farScroll)
+        val parent = ContainerNode(key = "sticky-parent-x").applyParent(nearScroll)
+        val node = ContainerNode(key = "sticky-node-x").applyParent(parent)
+
+        assertSame(nearScroll, node.stickyReferenceScrollContainerHorizontal())
+    }
+
+    @Test
+    fun `sticky scroll-container rule falls back to root when no horizontal scroll-container ancestor exists`() {
+        val root = ContainerNode(key = "sticky-root-fallback-x")
+        val a = ContainerNode(key = "sticky-a-x").applyParent(root)
+        val b = ContainerNode(key = "sticky-b-x").applyParent(a)
+        val node = ContainerNode(key = "sticky-node-x").applyParent(b)
+
+        assertSame(root, node.stickyReferenceScrollContainerHorizontal())
+    }
+
+    @Test
     fun `sticky scroll-container rule chooses nearest vertical scroll-container ancestor`() {
         val root = ContainerNode(key = "sticky-root")
         val farScroll = ContainerNode(key = "sticky-scroll-far").apply {
@@ -79,14 +104,43 @@ class StickyLayoutModelContractTests {
     }
 
     @Test
-    fun `sticky integration point is explicit for future used-geometry activation`() {
+    fun `sticky horizontal inset rule is explicit and deterministic`() {
+        val left = CssLength.px(11)
+        val right = CssLength.px(6)
+
+        val leftOnly = StickyLayoutModel.resolveHorizontalInsets(left = left, right = null)
+        assertEquals(StickyLayoutModel.StickyHorizontalInsetAxisMode.Left, leftOnly.mode)
+        assertEquals(StyleProperty.LEFT, leftOnly.sourceProperty)
+        assertEquals(left, leftOnly.value)
+        assertTrue(leftOnly.active)
+
+        val rightOnly = StickyLayoutModel.resolveHorizontalInsets(left = null, right = right)
+        assertEquals(StickyLayoutModel.StickyHorizontalInsetAxisMode.Right, rightOnly.mode)
+        assertEquals(StyleProperty.RIGHT, rightOnly.sourceProperty)
+        assertEquals(right, rightOnly.value)
+        assertTrue(rightOnly.active)
+
+        val both = StickyLayoutModel.resolveHorizontalInsets(left = left, right = right)
+        assertEquals(StickyLayoutModel.StickyHorizontalInsetAxisMode.Left, both.mode)
+        assertEquals(StyleProperty.LEFT, both.sourceProperty)
+        assertEquals(left, both.value)
+        assertTrue(both.active)
+
+        val none = StickyLayoutModel.resolveHorizontalInsets(left = null, right = null)
+        assertEquals(StickyLayoutModel.StickyHorizontalInsetAxisMode.Inactive, none.mode)
+        assertEquals(null, none.sourceProperty)
+        assertEquals(null, none.value)
+        assertEquals(false, none.active)
+    }
+
+    @Test
+    fun `sticky integration point is explicit for shared used-geometry activation`() {
         val root = ContainerNode(key = "sticky-integration-root")
         val node = ContainerNode(key = "sticky-integration-node").applyParent(root)
 
         assertEquals(
-            StickyLayoutModel.PositionedGeometryIntegrationPoint.ContainerRenderContainedChild,
+            StickyLayoutModel.PositionedGeometryIntegrationPoint.SharedUsedGeometryTransform,
             node.stickyPositionedGeometryIntegrationPoint()
         )
     }
 }
-

@@ -632,6 +632,65 @@ abstract class DOMNode(
         }
     }
 
+    private fun resolveStickyVisualOffsetsPx(): Pair<Int, Int> {
+        if (position != PositionMode.Sticky) return 0 to 0
+        val offsetX = resolveStickyHorizontalVisualOffsetXPx()
+        val offsetY = resolveStickyVerticalVisualOffsetYPx()
+        return offsetX to offsetY
+    }
+
+    private fun resolveStickyHorizontalVisualOffsetXPx(): Int {
+        val insetResolution = stickyHorizontalInsetResolutionContract()
+        if (!insetResolution.active) return 0
+
+        val referenceScrollContainer = stickyReferenceScrollContainerHorizontal()
+        val viewportRect = referenceScrollContainer.scrollContainerState().viewportRect
+        val containingBlockRect = stickyContainingBlockForPositioningRect()
+        val offsetContext = positioningOffsetResolveContext(viewportRect)
+        val insetLength = insetResolution.value ?: return 0
+        val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerWidth).roundToInt()
+
+        return StickyLayoutModel.resolveHorizontalVisualOffsetPx(
+            baseX = bounds.x,
+            nodeWidth = bounds.width.coerceAtLeast(0),
+            viewportRect = viewportRect,
+            containingBlockRect = containingBlockRect,
+            insetResolution = insetResolution,
+            insetPx = insetPx
+        )
+    }
+
+    private fun resolveStickyVerticalVisualOffsetYPx(): Int {
+        val insetResolution = stickyVerticalInsetResolutionContract()
+        if (!insetResolution.active) return 0
+
+        val referenceScrollContainer = stickyReferenceScrollContainerVertical()
+        val viewportRect = referenceScrollContainer.scrollContainerState().viewportRect
+        val containingBlockRect = stickyContainingBlockForPositioningRect()
+        val offsetContext = positioningOffsetResolveContext(viewportRect)
+        val insetLength = insetResolution.value ?: return 0
+        val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerHeight).roundToInt()
+
+        return StickyLayoutModel.resolveVerticalVisualOffsetPx(
+            baseY = bounds.y,
+            nodeHeight = bounds.height.coerceAtLeast(0),
+            viewportRect = viewportRect,
+            containingBlockRect = containingBlockRect,
+            insetResolution = insetResolution,
+            insetPx = insetPx
+        )
+    }
+
+    private fun stickyContainingBlockForPositioningRect(): Rect {
+        val containing = stickyContainingBlockForPositioning()
+        return Rect(
+            x = containing.bounds.x,
+            y = containing.bounds.y,
+            width = containing.bounds.width.coerceAtLeast(0),
+            height = containing.bounds.height.coerceAtLeast(0)
+        )
+    }
+
     internal fun resolveFlexBasisForAxis(
         ctx: UiMeasureContext,
         parentContentWidth: Int?,
@@ -713,8 +772,19 @@ abstract class DOMNode(
         return StickyLayoutModel.nearestStickyScrollContainerVertical(this)
     }
 
+    internal fun stickyReferenceScrollContainerHorizontal(): DOMNode {
+        return StickyLayoutModel.nearestStickyScrollContainerHorizontal(this)
+    }
+
     internal fun stickyContainingBlockForPositioning(): DOMNode {
         return StickyLayoutModel.stickyContainingBlock(this)
+    }
+
+    internal fun stickyHorizontalInsetResolutionContract(): StickyLayoutModel.StickyHorizontalInsetResolution {
+        return StickyLayoutModel.resolveHorizontalInsets(
+            left = leftStyleValue,
+            right = rightStyleValue
+        )
     }
 
     internal fun stickyVerticalInsetResolutionContract(): StickyLayoutModel.StickyInsetResolution {
@@ -885,9 +955,13 @@ abstract class DOMNode(
     }
 
     private fun positioningOffsetResolveContext(
-        ctx: UiMeasureContext,
+        @Suppress("UNUSED_PARAMETER") ctx: UiMeasureContext,
         containerRect: Rect
     ): LengthResolveContext {
+        return positioningOffsetResolveContext(containerRect)
+    }
+
+    private fun positioningOffsetResolveContext(containerRect: Rect): LengthResolveContext {
         val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
         val inheritedFontSizePx = (parent?.resolveComputedFontSizePx() ?: resolveComputedFontSizePx()).toFloat()
         val currentFontSizePx = resolveComputedFontSizePx().toFloat()
@@ -1618,15 +1692,15 @@ abstract class DOMNode(
 
     fun effectiveTransform(): UiTransform {
         val base = animatedTransform ?: transform
-        if (position != PositionMode.Relative) {
-            return base
-        }
-        if (relativeVisualOffsetXPx == 0 && relativeVisualOffsetYPx == 0) {
+        val relativeOffsetX = if (position == PositionMode.Relative) relativeVisualOffsetXPx else 0
+        val relativeOffsetY = if (position == PositionMode.Relative) relativeVisualOffsetYPx else 0
+        val (stickyOffsetX, stickyOffsetY) = resolveStickyVisualOffsetsPx()
+        if (relativeOffsetX == 0 && relativeOffsetY == 0 && stickyOffsetX == 0 && stickyOffsetY == 0) {
             return base
         }
         return base.copy(
-            translateX = base.translateX + relativeVisualOffsetXPx.toFloat(),
-            translateY = base.translateY + relativeVisualOffsetYPx.toFloat()
+            translateX = base.translateX + relativeOffsetX.toFloat() + stickyOffsetX.toFloat(),
+            translateY = base.translateY + relativeOffsetY.toFloat() + stickyOffsetY.toFloat()
         )
     }
 
