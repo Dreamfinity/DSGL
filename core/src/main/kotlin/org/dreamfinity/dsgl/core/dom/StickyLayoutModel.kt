@@ -39,26 +39,50 @@ internal object StickyLayoutModel {
             get() = mode != StickyHorizontalInsetAxisMode.Inactive && sourceProperty != null && value != null
     }
 
-    fun nearestStickyScrollContainerHorizontal(node: DOMNode): DOMNode {
+    data class StickyReferenceScrollContainers(
+        val horizontal: DOMNode,
+        val vertical: DOMNode
+    )
+
+    fun nearestStickyScrollContainers(
+        node: DOMNode,
+        resolveHorizontal: Boolean = true,
+        resolveVertical: Boolean = true
+    ): StickyReferenceScrollContainers {
+        val root = PositionedLayoutModel.rootStackingScope(node)
+        var horizontal: DOMNode? = if (resolveHorizontal) null else root
+        var vertical: DOMNode? = if (resolveVertical) null else root
         var current = node.parent
-        while (current != null) {
-            if (current.scrollContainerState().axisX.scrollContainer) {
-                return current
+        while (current != null && (horizontal == null || vertical == null)) {
+            val state = current.scrollContainerState()
+            if (horizontal == null && state.axisX.scrollContainer) {
+                horizontal = current
+            }
+            if (vertical == null && state.axisY.scrollContainer) {
+                vertical = current
             }
             current = current.parent
         }
-        return PositionedLayoutModel.rootStackingScope(node)
+        return StickyReferenceScrollContainers(
+            horizontal = horizontal ?: root,
+            vertical = vertical ?: root
+        )
+    }
+
+    fun nearestStickyScrollContainerHorizontal(node: DOMNode): DOMNode {
+        return nearestStickyScrollContainers(
+            node = node,
+            resolveHorizontal = true,
+            resolveVertical = false
+        ).horizontal
     }
 
     fun nearestStickyScrollContainerVertical(node: DOMNode): DOMNode {
-        var current = node.parent
-        while (current != null) {
-            if (current.scrollContainerState().axisY.scrollContainer) {
-                return current
-            }
-            current = current.parent
-        }
-        return PositionedLayoutModel.rootStackingScope(node)
+        return nearestStickyScrollContainers(
+            node = node,
+            resolveHorizontal = false,
+            resolveVertical = true
+        ).vertical
     }
 
     fun stickyContainingBlock(node: DOMNode): DOMNode {

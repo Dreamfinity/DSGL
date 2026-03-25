@@ -53,6 +53,7 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.stickyResolutionCalls)
         assertEquals(1L, counters.stickyHorizontalResolutionCalls)
         assertEquals(1L, counters.stickyVerticalResolutionCalls)
+        assertTrue(counters.scrollContainerStateCalls <= 15L)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
         assertTrue(counters.chunkRebuildNanos > 0L)
@@ -182,7 +183,7 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.stickyVisualInvalidatedNodes)
         assertEquals(1L, counters.stickyResolutionCalls)
         assertEquals(1L, counters.stickyVerticalResolutionCalls)
-        assertTrue(counters.scrollContainerStateCalls > 0L)
+        assertTrue(counters.scrollContainerStateCalls < 25L)
         assertEquals(0L, counters.measureChildForLayoutCalls)
     }
 
