@@ -685,15 +685,16 @@ abstract class DOMNode(
         if (!insetResolution.active) return 0
 
         val referenceScrollContainer = stickyReferenceScrollContainerHorizontal()
-        val viewportRect = referenceScrollContainer.scrollContainerState().viewportRect
+        val viewportRect = stickyReferenceViewportRect(referenceScrollContainer)
         val containingBlockRect = stickyContainingBlockForPositioningRect()
+        val baseRect = visualBoundsWithPendingScrollTranslation(this)
         val offsetContext = positioningOffsetResolveContext(viewportRect)
         val insetLength = insetResolution.value ?: return 0
         val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerWidth).roundToInt()
 
         return StickyLayoutModel.resolveHorizontalVisualOffsetPx(
-            baseX = bounds.x,
-            nodeWidth = bounds.width.coerceAtLeast(0),
+            baseX = baseRect.x,
+            nodeWidth = baseRect.width.coerceAtLeast(0),
             viewportRect = viewportRect,
             containingBlockRect = containingBlockRect,
             insetResolution = insetResolution,
@@ -707,15 +708,16 @@ abstract class DOMNode(
         if (!insetResolution.active) return 0
 
         val referenceScrollContainer = stickyReferenceScrollContainerVertical()
-        val viewportRect = referenceScrollContainer.scrollContainerState().viewportRect
+        val viewportRect = stickyReferenceViewportRect(referenceScrollContainer)
         val containingBlockRect = stickyContainingBlockForPositioningRect()
+        val baseRect = visualBoundsWithPendingScrollTranslation(this)
         val offsetContext = positioningOffsetResolveContext(viewportRect)
         val insetLength = insetResolution.value ?: return 0
         val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerHeight).roundToInt()
 
         return StickyLayoutModel.resolveVerticalVisualOffsetPx(
-            baseY = bounds.y,
-            nodeHeight = bounds.height.coerceAtLeast(0),
+            baseY = baseRect.y,
+            nodeHeight = baseRect.height.coerceAtLeast(0),
             viewportRect = viewportRect,
             containingBlockRect = containingBlockRect,
             insetResolution = insetResolution,
@@ -723,14 +725,61 @@ abstract class DOMNode(
         )
     }
 
+    private fun stickyReferenceViewportRect(referenceScrollContainer: DOMNode): Rect {
+        val viewportRect = referenceScrollContainer.scrollContainerState().viewportRect
+        val adjustedBounds = visualBoundsWithPendingScrollTranslation(referenceScrollContainer)
+        val shiftX = adjustedBounds.x - referenceScrollContainer.bounds.x
+        val shiftY = adjustedBounds.y - referenceScrollContainer.bounds.y
+        if (shiftX == 0 && shiftY == 0) return viewportRect
+        return Rect(
+            x = viewportRect.x + shiftX,
+            y = viewportRect.y + shiftY,
+            width = viewportRect.width,
+            height = viewportRect.height
+        )
+    }
+
     private fun stickyContainingBlockForPositioningRect(): Rect {
         val containing = stickyContainingBlockForPositioning()
+        val adjustedBounds = visualBoundsWithPendingScrollTranslation(containing)
         return Rect(
-            x = containing.bounds.x,
-            y = containing.bounds.y,
-            width = containing.bounds.width.coerceAtLeast(0),
-            height = containing.bounds.height.coerceAtLeast(0)
+            x = adjustedBounds.x,
+            y = adjustedBounds.y,
+            width = adjustedBounds.width.coerceAtLeast(0),
+            height = adjustedBounds.height.coerceAtLeast(0)
         )
+    }
+
+    private fun visualBoundsWithPendingScrollTranslation(node: DOMNode): Rect {
+        val pendingDelta = pendingAncestorScrollVisualDelta(node)
+        if (pendingDelta.first == 0 && pendingDelta.second == 0) {
+            return node.bounds
+        }
+        return Rect(
+            x = node.bounds.x - pendingDelta.first,
+            y = node.bounds.y - pendingDelta.second,
+            width = node.bounds.width,
+            height = node.bounds.height
+        )
+    }
+
+    private fun pendingAncestorScrollVisualDelta(node: DOMNode): Pair<Int, Int> {
+        var deltaX = 0
+        var deltaY = 0
+        var current = node.parent
+        while (current != null) {
+            val draggingScrollbarThumb = current.activeScrollbarDragAxis != null
+            if (draggingScrollbarThumb) {
+                if (current.overflowX != Overflow.Visible) {
+                    deltaX += current.scrollOffsetResolvedX - current.contentLayoutScrollX
+                }
+                if (current.overflowY != Overflow.Visible) {
+                    deltaY += current.scrollOffsetResolvedY - current.contentLayoutScrollY
+                }
+            }
+            current = current.parent
+        }
+        return deltaX to deltaY
     }
 
     internal fun resolveFlexBasisForAxis(
@@ -1090,6 +1139,7 @@ abstract class DOMNode(
         val layoutContentY = scrollState.viewportRect.y - layoutScrollY
         val availableOuterWidth = scrollState.viewportRect.width
         val availableOuterHeight = scrollState.viewportRect.height
+        setContentLayoutScroll(layoutScrollX, layoutScrollY)
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
             child.resolveLayoutStyleValues(
@@ -1102,7 +1152,6 @@ abstract class DOMNode(
             val childY = layoutContentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
         }
-        setContentLayoutScroll(layoutScrollX, layoutScrollY)
         scrollContainerState()
     }
 

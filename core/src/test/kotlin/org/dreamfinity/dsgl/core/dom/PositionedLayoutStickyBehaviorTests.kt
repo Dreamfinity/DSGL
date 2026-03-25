@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -336,14 +337,7 @@ class PositionedLayoutStickyBehaviorTests {
         tree.render(ctx, 200, 100)
 
         root.setScrollOffsets(0, 60)
-        sticky.render(
-            ctx = ctx,
-            x = sticky.bounds.x,
-            y = sticky.bounds.y - 60,
-            width = sticky.bounds.width,
-            height = sticky.bounds.height
-        )
-
+        tree.paint(ctx)
         assertEquals(0, visibleRect(sticky).y)
     }
 
@@ -377,6 +371,113 @@ class PositionedLayoutStickyBehaviorTests {
         val rect = visibleRect(sticky)
         assertTrue(dispatchClick(root, MouseClickEvent(rect.x + 4, rect.y + 4, MouseButton.LEFT)))
         assertEquals(1, clicks)
+    }
+
+    @Test
+    fun `sticky top remains correct during scrollbar thumb drag`() {
+        val root = ContainerNode(key = "sticky-drag-root").apply {
+            width = 120
+            height = 90
+            overflowY = Overflow.Auto
+        }
+        val topSpacer = ContainerNode(key = "sticky-drag-spacer").apply {
+            width = 120
+            height = 40
+        }
+        val sticky = ContainerNode(key = "sticky-drag-node").apply {
+            width = 120
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+        }
+        val filler = ContainerNode(key = "sticky-drag-filler").apply {
+            width = 120
+            height = 320
+        }
+        topSpacer.applyParent(root)
+        sticky.applyParent(root)
+        filler.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 120)
+        tree.paint(ctx)
+
+        val router = LayerDomInputRouter { root }
+        val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+        assertTrue(router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+
+        repeat(8) { step ->
+            val nextY = startY + (step + 1) * 7
+            assertTrue(router.handleMouseMove(dragX, nextY))
+            tree.paint(ctx)
+
+            val state = root.scrollContainerState()
+            val expectedBaseY = topSpacer.height!! - state.scrollY
+            val expectedVisibleY = maxOf(expectedBaseY, 0)
+            val stickyVisible = visibleRect(sticky)
+            assertEquals(expectedVisibleY, stickyVisible.y)
+            assertEquals(expectedBaseY, sticky.bounds.y)
+        }
+
+        assertTrue(router.handleMouseUp(dragX, startY + 56, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `sticky drag stays correct when transform is read before paint`() {
+        val root = ContainerNode(key = "sticky-drag-transform-read-root").apply {
+            width = 120
+            height = 90
+            overflowY = Overflow.Auto
+        }
+        val topSpacer = ContainerNode(key = "sticky-drag-transform-read-spacer").apply {
+            width = 120
+            height = 40
+        }
+        val sticky = ContainerNode(key = "sticky-drag-transform-read-node").apply {
+            width = 120
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+        }
+        val filler = ContainerNode(key = "sticky-drag-transform-read-filler").apply {
+            width = 120
+            height = 320
+        }
+        topSpacer.applyParent(root)
+        sticky.applyParent(root)
+        filler.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 120)
+        tree.paint(ctx)
+
+        val router = LayerDomInputRouter { root }
+        val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+        assertTrue(router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+
+        repeat(8) { step ->
+            val nextY = startY + (step + 1) * 7
+            assertTrue(router.handleMouseMove(dragX, nextY))
+            sticky.effectiveTransform()
+            tree.paint(ctx)
+
+            val state = root.scrollContainerState()
+            val expectedBaseY = topSpacer.height!! - state.scrollY
+            val expectedVisibleY = maxOf(expectedBaseY, 0)
+            val stickyVisible = visibleRect(sticky)
+            assertEquals(expectedVisibleY, stickyVisible.y)
+            assertEquals(expectedBaseY, sticky.bounds.y)
+        }
+
+        assertTrue(router.handleMouseUp(dragX, startY + 56, MouseButton.LEFT))
     }
 
     @Test
