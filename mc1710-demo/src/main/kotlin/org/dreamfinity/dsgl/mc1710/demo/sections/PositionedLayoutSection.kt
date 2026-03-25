@@ -413,11 +413,11 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 { style = { color = DEMO_MUTED } }
             )
 
-//            stickyVerticalGroup(window)
-//            stickyHorizontalGroup()
-//            stickyXYGroup(window)
-//            stickyNoInsets()
-//            stickyClamp()
+            stickyVerticalGroup(window)
+            stickyHorizontalGroup()
+            stickyXYGroup(window)
+            stickyNoInsets()
+            stickyClamp()
         }
 
         text("E/G. z-index + hit-testing: topmost visible positioned node should win input.")

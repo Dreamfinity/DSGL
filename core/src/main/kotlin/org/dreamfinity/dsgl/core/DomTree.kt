@@ -98,9 +98,6 @@ class DomTree(
                 commandsDirty = true
             }
             val scrollInvalidation = root.consumeScrollInvalidationRecursively()
-            if (scrollInvalidation.visualDirty) {
-                commandsDirty = true
-            }
             val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
             val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
                 val styleStartNanos = System.nanoTime()
@@ -117,6 +114,19 @@ class DomTree(
                     cacheHits = 0,
                     recomputedNodes = 0
                 )
+            }
+            val canUseGuardedScrollVisualFastPath =
+                laidOut &&
+                    lastWidth > 0 &&
+                    lastHeight > 0 &&
+                    !styleReport.layoutDirty &&
+                    !styleReport.visualDirty &&
+                    scrollInvalidation.visualDirty &&
+                    !scrollInvalidation.layoutDirty
+
+            if (canUseGuardedScrollVisualFastPath) {
+                commandsDirty = true
+                ScrollPerformanceCounters.incrementGuardedScrollVisualFastPathRuns()
             }
             if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
                 val layoutStartNanos = System.nanoTime()

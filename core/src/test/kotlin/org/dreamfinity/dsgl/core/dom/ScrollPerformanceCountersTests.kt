@@ -41,6 +41,7 @@ class ScrollPerformanceCountersTests {
         val counters = ScrollPerformanceCounters.snapshot()
         println("ScrollPerformanceCounters baseline (scroll-only frame): $counters")
         assertTrue(counters.paintCalls >= 1)
+        assertEquals(0L, counters.guardedScrollVisualFastPathRuns)
         assertTrue(counters.fullRerenderLayoutRuns >= 1)
         assertTrue(counters.measureChildForLayoutCalls > 0)
         assertTrue(counters.scrollContainerStateCalls > 0)
@@ -61,9 +62,33 @@ class ScrollPerformanceCountersTests {
         fixture.tree.paint(ctx)
 
         val counters = ScrollPerformanceCounters.snapshot()
+        assertEquals(0L, counters.guardedScrollVisualFastPathRuns)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
+    }
+
+    @Test
+    fun `guarded scroll visual fast path skips full rerender for visual-only scroll invalidation`() {
+        val fixture = createScrollStickyFixture()
+        val baseline = fixture.viewport.captureScrollSessionSnapshot()
+        val visualOnlySnapshot = baseline.copy(
+            displayedY = baseline.displayedY + 0.4,
+            resolvedY = baseline.resolvedY
+        )
+        fixture.viewport.restoreScrollSessionSnapshot(visualOnlySnapshot)
+
+        ScrollPerformanceCounters.resetForTests()
+        fixture.tree.paint(ctx)
+
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters visual-only fast-path frame: $counters")
+        assertTrue(counters.paintCalls >= 1)
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.fullRerenderLayoutRuns)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertTrue(counters.chunkTraversalCalls > 0)
+        assertTrue(counters.chunkRebuildCalls > 0)
     }
 
     private fun createScrollStickyFixture(): ScrollStickyFixture {

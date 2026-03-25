@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 data class ScrollPerformanceSnapshot(
     val paintCalls: Long,
+    val guardedScrollVisualFastPathRuns: Long,
     val fullRerenderLayoutRuns: Long,
     val measureChildForLayoutCalls: Long,
     val scrollContainerStateCalls: Long,
@@ -20,6 +21,7 @@ data class ScrollPerformanceSnapshot(
 
 object ScrollPerformanceCounters {
     private val paintCalls = AtomicLong(0L)
+    private val guardedScrollVisualFastPathRuns = AtomicLong(0L)
     private val fullRerenderLayoutRuns = AtomicLong(0L)
     private val measureChildForLayoutCalls = AtomicLong(0L)
     private val scrollContainerStateCalls = AtomicLong(0L)
@@ -45,6 +47,10 @@ object ScrollPerformanceCounters {
     internal fun recordFullRerenderLayoutDuration(durationNanos: Long) {
         fullRerenderLayoutRuns.incrementAndGet()
         fullRerenderLayoutNanos.addAndGet(durationNanos.coerceAtLeast(0L))
+    }
+
+    internal fun incrementGuardedScrollVisualFastPathRuns() {
+        guardedScrollVisualFastPathRuns.incrementAndGet()
     }
 
     internal fun incrementMeasureChildForLayoutCalls() {
@@ -82,6 +88,7 @@ object ScrollPerformanceCounters {
     fun snapshot(): ScrollPerformanceSnapshot {
         return ScrollPerformanceSnapshot(
             paintCalls = paintCalls.get(),
+            guardedScrollVisualFastPathRuns = guardedScrollVisualFastPathRuns.get(),
             fullRerenderLayoutRuns = fullRerenderLayoutRuns.get(),
             measureChildForLayoutCalls = measureChildForLayoutCalls.get(),
             scrollContainerStateCalls = scrollContainerStateCalls.get(),
@@ -99,6 +106,7 @@ object ScrollPerformanceCounters {
 
     fun resetForTests() {
         paintCalls.set(0L)
+        guardedScrollVisualFastPathRuns.set(0L)
         fullRerenderLayoutRuns.set(0L)
         measureChildForLayoutCalls.set(0L)
         scrollContainerStateCalls.set(0L)
