@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
-import org.dreamfinity.dsgl.core.debug.ScrollPerformanceSnapshot
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -31,7 +30,7 @@ class ScrollPerformanceCountersTests {
     }
 
     @Test
-    fun `scroll-only paint exposes current expensive path counters`() {
+    fun `ordinary scroll mutation uses guarded visual fast path without layout measurement`() {
         val fixture = createScrollStickyFixture()
         ScrollPerformanceCounters.resetForTests()
 
@@ -39,17 +38,18 @@ class ScrollPerformanceCountersTests {
         fixture.tree.paint(ctx)
 
         val counters = ScrollPerformanceCounters.snapshot()
-        println("ScrollPerformanceCounters baseline (scroll-only frame): $counters")
+        println("ScrollPerformanceCounters ordinary scroll frame: $counters")
         assertTrue(counters.paintCalls >= 1)
-        assertEquals(0L, counters.guardedScrollVisualFastPathRuns)
-        assertTrue(counters.fullRerenderLayoutRuns >= 1)
-        assertTrue(counters.measureChildForLayoutCalls > 0)
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.fullRerenderLayoutRuns)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
+        assertTrue(counters.scrollVisualGeometryTranslatedNodes > 0L)
         assertTrue(counters.scrollContainerStateCalls > 0)
         assertTrue(counters.stickyResolutionCalls > 0)
         assertTrue(counters.stickyVerticalResolutionCalls > 0)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
-        assertTrue(counters.fullRerenderLayoutNanos > 0L)
         assertTrue(counters.chunkRebuildNanos > 0L)
         assertTrue(counters.paintTotalNanos > 0L)
     }
@@ -63,6 +63,8 @@ class ScrollPerformanceCountersTests {
 
         val counters = ScrollPerformanceCounters.snapshot()
         assertEquals(0L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.scrollVisualGeometryRefreshRuns)
+        assertEquals(0L, counters.scrollVisualGeometryTranslatedNodes)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
@@ -85,10 +87,33 @@ class ScrollPerformanceCountersTests {
         println("ScrollPerformanceCounters visual-only fast-path frame: $counters")
         assertTrue(counters.paintCalls >= 1)
         assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
+    }
+
+    @Test
+    fun `layout-dirty scroll invalidation still falls back to full rerender`() {
+        val fixture = createScrollStickyFixture()
+        val baseline = fixture.viewport.captureScrollSessionSnapshot()
+        val layoutDirtySnapshot = baseline.copy(
+            targetY = baseline.targetY + 48,
+            displayedY = baseline.displayedY + 48.0,
+            resolvedY = baseline.resolvedY + 48
+        )
+        fixture.viewport.restoreScrollSessionSnapshot(layoutDirtySnapshot)
+
+        ScrollPerformanceCounters.resetForTests()
+        fixture.tree.paint(ctx)
+
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters layout-dirty fallback frame: $counters")
+        assertTrue(counters.paintCalls >= 1)
+        assertEquals(0L, counters.guardedScrollVisualFastPathRuns)
+        assertTrue(counters.fullRerenderLayoutRuns >= 1)
+        assertTrue(counters.measureChildForLayoutCalls > 0)
     }
 
     private fun createScrollStickyFixture(): ScrollStickyFixture {

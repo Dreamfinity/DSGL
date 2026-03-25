@@ -9,13 +9,13 @@ import org.dreamfinity.dsgl.core.style.Overflow
 
 class ScrollInvalidationSemanticsTests {
     @Test
-    fun `scroll offset updates mark layout visual and interaction dirty`() {
+    fun `scroll offset updates mark visual and interaction dirty without layout`() {
         val viewport = createScrollableViewport()
 
         viewport.setScrollOffsets(0, 48)
         val invalidation = viewport.consumeScrollInvalidationRecursively()
 
-        assertTrue(invalidation.layoutDirty)
+        assertFalse(invalidation.layoutDirty)
         assertTrue(invalidation.visualDirty)
         assertTrue(invalidation.interactionDirty)
         assertTrue(invalidation.anyDirty)
@@ -53,17 +53,23 @@ class ScrollInvalidationSemanticsTests {
         viewport.setScrollOffsets(0, 32)
         val rootInvalidation = root.consumeScrollInvalidationRecursively()
 
-        assertTrue(rootInvalidation.layoutDirty)
+        assertFalse(rootInvalidation.layoutDirty)
         assertTrue(rootInvalidation.visualDirty)
         assertTrue(rootInvalidation.interactionDirty)
         assertFalse(viewport.consumeScrollInvalidationRecursively().anyDirty)
     }
 
     @Test
-    fun `legacy layout-dirty consumer remains compatible`() {
+    fun `layout-dirty snapshot restore keeps legacy layout-dirty consumer compatible`() {
         val viewport = createScrollableViewport()
+        val baseline = viewport.captureScrollSessionSnapshot()
+        val layoutDirty = baseline.copy(
+            targetY = baseline.targetY + 28,
+            displayedY = baseline.displayedY + 28.0,
+            resolvedY = baseline.resolvedY + 28
+        )
+        viewport.restoreScrollSessionSnapshot(layoutDirty)
 
-        viewport.setScrollOffsets(0, 40)
         assertTrue(viewport.consumeScrollLayoutDirtyRecursively())
 
         val afterLegacyConsume = viewport.consumeScrollInvalidationRecursively()

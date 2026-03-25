@@ -119,16 +119,24 @@ class DomTree(
                 laidOut &&
                     lastWidth > 0 &&
                     lastHeight > 0 &&
+                    styleScope != StyleApplicationScope.SystemOverlay &&
                     !styleReport.layoutDirty &&
                     !styleReport.visualDirty &&
                     scrollInvalidation.visualDirty &&
                     !scrollInvalidation.layoutDirty
 
             if (canUseGuardedScrollVisualFastPath) {
+                val translatedNodes = root.applyScrollVisualGeometryRecursively()
                 commandsDirty = true
                 ScrollPerformanceCounters.incrementGuardedScrollVisualFastPathRuns()
+                ScrollPerformanceCounters.recordScrollVisualGeometryRefresh(translatedNodes)
             }
-            if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
+            val requiresSystemOverlayScrollLayoutFallback =
+                styleScope == StyleApplicationScope.SystemOverlay && scrollInvalidation.visualDirty
+            if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresSystemOverlayScrollLayoutFallback) &&
+                lastWidth > 0 &&
+                lastHeight > 0
+            ) {
                 val layoutStartNanos = System.nanoTime()
                 root.resolveLayoutStyleValues(
                     ctx = ctx,
