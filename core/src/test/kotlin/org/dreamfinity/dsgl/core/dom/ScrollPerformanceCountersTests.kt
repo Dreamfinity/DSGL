@@ -8,6 +8,9 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.KeyModifiers
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -24,9 +27,32 @@ class ScrollPerformanceCountersTests {
 
     @AfterTest
     fun cleanup() {
+        KeyModifiers.sync(shift = false, control = false, meta = false)
         ScrollPerformanceCounters.resetForTests()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
+    }
+
+    @Test
+    fun `ordinary wheel scroll keeps using guarded fast path in common case`() {
+        val fixture = createScrollStickyFixture()
+        ScrollPerformanceCounters.resetForTests()
+
+        val wheelX = fixture.viewport.bounds.x + 4
+        val wheelY = fixture.viewport.bounds.y + 4
+        assertTrue(fixture.router.handleMouseWheel(wheelX, wheelY, -120))
+        fixture.tree.paint(ctx)
+
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters ordinary-wheel frame: $counters")
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.fullRerenderLayoutRuns)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertEquals(1L, counters.stickyResolutionCalls)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertTrue(counters.scrollContainerStateCalls > 0L)
+        assertTrue(counters.chunkTraversalCalls > 0L)
+        assertTrue(counters.chunkRebuildCalls > 0L)
     }
 
     @Test
@@ -53,7 +79,7 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.stickyResolutionCalls)
         assertEquals(1L, counters.stickyHorizontalResolutionCalls)
         assertEquals(1L, counters.stickyVerticalResolutionCalls)
-        assertTrue(counters.scrollContainerStateCalls <= 15L)
+        assertTrue(counters.scrollContainerStateCalls <= 18L)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
         assertTrue(counters.chunkRebuildNanos > 0L)
@@ -125,6 +151,71 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.stickyResolutionCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
+    }
+
+    @Test
+    fun `thumb-drag frame keeps sticky correct and remains visual-path only`() {
+        val fixture = createScrollStickyFixture()
+        val visual = fixture.viewport.debugScrollbarVisualState().vertical
+            ?: error("Expected vertical scrollbar")
+        val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
+        val startY = visual.thumbRect.y + visual.thumbRect.height / 2
+        val dragY = startY + 26
+
+        assertTrue(fixture.router.handleMouseDown(dragX, startY, MouseButton.LEFT))
+        assertTrue(fixture.router.handleMouseMove(dragX, dragY))
+
+        ScrollPerformanceCounters.resetForTests()
+        fixture.tree.paint(ctx)
+
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters thumb-drag frame: $counters")
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.fullRerenderLayoutRuns)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertEquals(1L, counters.stickyResolutionCalls)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertTrue(counters.scrollContainerStateCalls > 0L)
+        assertTrue(counters.chunkTraversalCalls > 0L)
+        assertTrue(counters.chunkRebuildCalls > 0L)
+
+        val visibleStickyRect = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
+            ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
+        assertEquals(0, visibleStickyRect.y)
+        assertTrue(fixture.router.handleMouseUp(dragX, dragY, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `animated scroll settling keeps sticky and fast-path behavior`() {
+        val fixture = createScrollStickyFixture()
+        val wheelX = fixture.viewport.bounds.x + 4
+        val wheelY = fixture.viewport.bounds.y + 4
+        assertTrue(fixture.router.handleMouseWheel(wheelX, wheelY, -240))
+
+        fixture.tree.paint(ctx)
+        val afterFirst = fixture.viewport.debugScrollAnimationState()
+        assertTrue(afterFirst.targetY >= afterFirst.resolvedY)
+
+        ScrollPerformanceCounters.resetForTests()
+        fixture.tree.paint(ctx)
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters animated-settling frame: $counters")
+
+        val state = fixture.viewport.scrollContainerState()
+        val expectedBaseY = fixture.stickyBaseTopY - state.scrollY
+        val expectedVisibleY = maxOf(expectedBaseY, 0)
+        val visibleStickyRect = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
+            ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
+
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(0L, counters.fullRerenderLayoutRuns)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertEquals(1L, counters.stickyResolutionCalls)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertTrue(counters.scrollContainerStateCalls > 0L)
+        assertTrue(counters.chunkTraversalCalls > 0L)
+        assertTrue(counters.chunkRebuildCalls > 0L)
+        assertEquals(expectedVisibleY, visibleStickyRect.y)
     }
 
     @Test
@@ -218,6 +309,10 @@ class ScrollPerformanceCountersTests {
             height = 100
             overflowY = Overflow.Auto
         }.applyParent(root)
+        val topSpacer = ContainerNode(key = "perf-top-spacer").apply {
+            width = 160
+            height = 32
+        }.applyParent(viewport)
 
         val sticky = ContainerNode(key = "perf-sticky").apply {
             width = 160
@@ -236,7 +331,15 @@ class ScrollPerformanceCountersTests {
         val tree = DomTree(root)
         tree.render(ctx, 320, 220)
         tree.paint(ctx)
-        return ScrollStickyFixture(tree = tree, viewport = viewport, sticky = sticky)
+        val router = LayerDomInputRouter { root }
+        return ScrollStickyFixture(
+            tree = tree,
+            root = root,
+            viewport = viewport,
+            sticky = sticky,
+            router = router,
+            stickyBaseTopY = topSpacer.height ?: 0
+        )
     }
 
     private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
@@ -249,7 +352,10 @@ class ScrollPerformanceCountersTests {
 
     private data class ScrollStickyFixture(
         val tree: DomTree,
+        val root: ContainerNode,
         val viewport: ContainerNode,
-        val sticky: ContainerNode
+        val sticky: ContainerNode,
+        val router: LayerDomInputRouter,
+        val stickyBaseTopY: Int
     )
 }

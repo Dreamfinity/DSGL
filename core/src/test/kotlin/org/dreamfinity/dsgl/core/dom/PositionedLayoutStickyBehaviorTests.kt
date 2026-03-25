@@ -660,6 +660,126 @@ class PositionedLayoutStickyBehaviorTests {
     }
 
     @Test
+    fun `nested scroll containers preserve sticky correctness on inner local scroll updates`() {
+        val root = ContainerNode(key = "sticky-nested-root")
+        val outer = ContainerNode(key = "sticky-nested-outer").apply {
+            width = 220
+            height = 180
+            overflowY = Overflow.Auto
+        }.applyParent(root)
+        val outerSpacer = ContainerNode(key = "sticky-nested-outer-spacer").apply {
+            width = 200
+            height = 48
+        }.applyParent(outer)
+        val inner = ContainerNode(key = "sticky-nested-inner").apply {
+            width = 200
+            height = 110
+            overflowY = Overflow.Auto
+        }.applyParent(outer)
+        val innerSpacer = ContainerNode(key = "sticky-nested-inner-spacer").apply {
+            width = 200
+            height = 28
+        }.applyParent(inner)
+        val sticky = ContainerNode(key = "sticky-nested-node").apply {
+            width = 200
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+        }.applyParent(inner)
+        val innerFiller = ContainerNode(key = "sticky-nested-inner-filler").apply {
+            width = 200
+            height = 260
+        }.applyParent(inner)
+        val outerFiller = ContainerNode(key = "sticky-nested-outer-filler").apply {
+            width = 200
+            height = 220
+        }.applyParent(outer)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 320, 260)
+        tree.paint(ctx)
+
+        inner.setScrollOffsets(0, 60)
+        tree.paint(ctx)
+
+        val innerState = inner.scrollContainerState()
+        val outerState = outer.scrollContainerState()
+        val expectedBaseY = innerState.viewportRect.y + (innerSpacer.height ?: 0) - innerState.scrollY
+        val expectedVisibleY = maxOf(expectedBaseY, innerState.viewportRect.y)
+        val stickyVisible = visibleRect(sticky)
+
+        assertEquals(0, outerState.scrollY)
+        assertEquals(expectedVisibleY, stickyVisible.y)
+        assertEquals(expectedBaseY, sticky.bounds.y)
+    }
+
+    @Test
+    fun `fixed subtree and sticky remain correct during local scroll updates`() {
+        val root = ContainerNode(key = "sticky-fixed-root").apply {
+            width = 220
+            height = 140
+            overflowY = Overflow.Auto
+        }
+        var stickyClicks = 0
+        var fixedClicks = 0
+        val spacer = ContainerNode(key = "sticky-fixed-spacer").apply {
+            width = 200
+            height = 36
+        }
+        val sticky = ButtonNode("sticky", key = "sticky-fixed-sticky").apply {
+            width = 120
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+            onClick { stickyClicks += 1 }
+        }
+        val fixed = ButtonNode("fixed", key = "sticky-fixed-fixed").apply {
+            width = 80
+            height = 18
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "fixed",
+                StyleProperty.LEFT to "8px",
+                StyleProperty.TOP to "6px"
+            )
+            onClick { fixedClicks += 1 }
+        }
+        val filler = ContainerNode(key = "sticky-fixed-filler").apply {
+            width = 200
+            height = 300
+        }
+        spacer.applyParent(root)
+        sticky.applyParent(root)
+        fixed.applyParent(root)
+        filler.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 260, 180)
+        tree.paint(ctx)
+
+        val fixedBefore = usedRect(fixed)
+        root.setScrollOffsets(0, 70)
+        tree.paint(ctx)
+
+        val rootState = root.scrollContainerState()
+        val stickyExpectedBaseY = rootState.viewportRect.y + (spacer.height ?: 0) - rootState.scrollY
+        val stickyExpectedVisibleY = maxOf(stickyExpectedBaseY, rootState.viewportRect.y)
+        val stickyRect = visibleRect(sticky)
+        val fixedAfter = usedRect(fixed)
+
+        assertEquals(fixedBefore, fixedAfter)
+        assertEquals(stickyExpectedVisibleY, stickyRect.y)
+        assertEquals(stickyExpectedBaseY, sticky.bounds.y)
+        assertTrue(dispatchClick(root, MouseClickEvent(stickyRect.x + 4, stickyRect.y + 4, MouseButton.LEFT)))
+        assertTrue(dispatchClick(root, MouseClickEvent(fixedAfter.x + 4, fixedAfter.y + 4, MouseButton.LEFT)))
+        assertEquals(1, stickyClicks)
+        assertEquals(1, fixedClicks)
+    }
+
+    @Test
     fun `non-sticky positioned modes remain unchanged with sticky enabled`() {
         val root = ContainerNode(key = "sticky-regression-root").apply {
             overflowY = Overflow.Scroll
@@ -739,6 +859,10 @@ class PositionedLayoutStickyBehaviorTests {
     }
 
     private fun usedRect(node: ContainerNode): Rect {
+        return UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
+    }
+
+    private fun usedRect(node: ButtonNode): Rect {
         return UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
     }
 
