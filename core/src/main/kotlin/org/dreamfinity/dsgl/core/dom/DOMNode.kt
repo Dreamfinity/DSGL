@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
@@ -633,6 +634,7 @@ abstract class DOMNode(
     }
 
     private fun resolveStickyVisualOffsetsPx(): Pair<Int, Int> {
+        ScrollPerformanceCounters.incrementStickyResolutionCalls()
         if (position != PositionMode.Sticky) return 0 to 0
         val offsetX = resolveStickyHorizontalVisualOffsetXPx()
         val offsetY = resolveStickyVerticalVisualOffsetYPx()
@@ -640,6 +642,7 @@ abstract class DOMNode(
     }
 
     private fun resolveStickyHorizontalVisualOffsetXPx(): Int {
+        ScrollPerformanceCounters.incrementStickyHorizontalResolutionCalls()
         val insetResolution = stickyHorizontalInsetResolutionContract()
         if (!insetResolution.active) return 0
 
@@ -661,6 +664,7 @@ abstract class DOMNode(
     }
 
     private fun resolveStickyVerticalVisualOffsetYPx(): Int {
+        ScrollPerformanceCounters.incrementStickyVerticalResolutionCalls()
         val insetResolution = stickyVerticalInsetResolutionContract()
         if (!insetResolution.active) return 0
 
@@ -2267,6 +2271,7 @@ abstract class DOMNode(
     }
 
     fun scrollContainerState(): ScrollContainerState {
+        ScrollPerformanceCounters.incrementScrollContainerStateCalls()
         val baseViewportRect = Rect(
             x = contentX(),
             y = contentY(),

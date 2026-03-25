@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.debug.LayoutViolation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
@@ -88,46 +89,57 @@ class DomTree(
 
     /** Builds render commands for the current layout. */
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
-        frames += 1
-        StyleEngine.setViewportSize(lastWidth, lastHeight)
-        val scrollDtSeconds = nextScrollAnimationDtSeconds()
-        if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
-            commandsDirty = true
-        }
-        val scrollLayoutDirty = root.consumeScrollLayoutDirtyRecursively()
-        val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
-        val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
-            StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
-                lastStyleReport = it
-                lastStyleRevision = styleRevision
+        val paintStartNanos = System.nanoTime()
+        try {
+            frames += 1
+            StyleEngine.setViewportSize(lastWidth, lastHeight)
+            val scrollDtSeconds = nextScrollAnimationDtSeconds()
+            if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
+                commandsDirty = true
             }
-        } else {
-            StyleEngine.StyleApplyReport(
-                layoutDirty = false,
-                visualDirty = false,
-                visitedNodes = 0,
-                cacheHits = 0,
-                recomputedNodes = 0
-            )
+            val scrollLayoutDirty = root.consumeScrollLayoutDirtyRecursively()
+            val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
+            val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
+                val styleStartNanos = System.nanoTime()
+                StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
+                    lastStyleReport = it
+                    lastStyleRevision = styleRevision
+                    ScrollPerformanceCounters.recordStyleApplyDuration(System.nanoTime() - styleStartNanos)
+                }
+            } else {
+                StyleEngine.StyleApplyReport(
+                    layoutDirty = false,
+                    visualDirty = false,
+                    visitedNodes = 0,
+                    cacheHits = 0,
+                    recomputedNodes = 0
+                )
+            }
+            if ((!laidOut || styleReport.layoutDirty || scrollLayoutDirty) && lastWidth > 0 && lastHeight > 0) {
+                val layoutStartNanos = System.nanoTime()
+                root.resolveLayoutStyleValues(
+                    ctx = ctx,
+                    parentContentWidth = lastWidth,
+                    parentContentHeight = lastHeight
+                )
+                root.render(ctx, 0, 0, lastWidth, lastHeight)
+                validateLayout(ctx)
+                refManager.commit(root)
+                laidOut = true
+                commandsDirty = true
+                ScrollPerformanceCounters.recordFullRerenderLayoutDuration(System.nanoTime() - layoutStartNanos)
+            } else if (styleReport.visualDirty) {
+                commandsDirty = true
+            }
+            val chunkStartNanos = System.nanoTime()
+            if (rebuildPaintCommands(ctx)) {
+                commandRebuilds += 1
+            }
+            ScrollPerformanceCounters.recordChunkRebuildDuration(System.nanoTime() - chunkStartNanos)
+            return paintBuffer
+        } finally {
+            ScrollPerformanceCounters.recordPaintCall(System.nanoTime() - paintStartNanos)
         }
-        if ((!laidOut || styleReport.layoutDirty || scrollLayoutDirty) && lastWidth > 0 && lastHeight > 0) {
-            root.resolveLayoutStyleValues(
-                ctx = ctx,
-                parentContentWidth = lastWidth,
-                parentContentHeight = lastHeight
-            )
-            root.render(ctx, 0, 0, lastWidth, lastHeight)
-            validateLayout(ctx)
-            refManager.commit(root)
-            laidOut = true
-            commandsDirty = true
-        } else if (styleReport.visualDirty) {
-            commandsDirty = true
-        }
-        if (rebuildPaintCommands(ctx)) {
-            commandRebuilds += 1
-        }
-        return paintBuffer
     }
 
     /**
@@ -270,6 +282,7 @@ class DomTree(
     }
 
     private fun rebuildChunkRecursive(node: DOMNode, ctx: UiMeasureContext, nowMs: Long): RenderCommandChunk {
+        ScrollPerformanceCounters.incrementChunkTraversalCalls()
         chunkNodesVisitedLastFrame += 1
         val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
         val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
@@ -313,6 +326,7 @@ class DomTree(
             chunk.lastNodeSignature == Long.MIN_VALUE
 
         if (rebuildSelf) {
+            ScrollPerformanceCounters.incrementChunkRebuildCalls()
             chunkTreeChangedThisFrame = true
             chunkNodesRebuiltLastFrame += 1
             rebuildChunkCommands(node, chunk, ctx, nodeHidden)

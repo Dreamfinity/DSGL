@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -870,6 +871,7 @@ class ContainerNode(
         availableOuterWidth: Int?,
         availableOuterHeight: Int? = null
     ): Size {
+        ScrollPerformanceCounters.incrementMeasureChildForLayoutCalls()
         child.resolveLayoutStyleValues(
             ctx = ctx,
             parentContentWidth = availableOuterWidth,
