@@ -68,6 +68,23 @@ data class ScrollSessionSnapshot(
     val dragSession: ScrollbarDragSessionDebugState?
 )
 
+data class ScrollInvalidationState(
+    val layoutDirty: Boolean,
+    val visualDirty: Boolean,
+    val interactionDirty: Boolean
+) {
+    companion object {
+        val CLEAN = ScrollInvalidationState(
+            layoutDirty = false,
+            visualDirty = false,
+            interactionDirty = false
+        )
+    }
+
+    val anyDirty: Boolean
+        get() = layoutDirty || visualDirty || interactionDirty
+}
+
 data class ScrollbarDragSessionDebugState(
     val verticalAxis: Boolean,
     val trackStartPx: Int,
@@ -332,6 +349,8 @@ abstract class DOMNode(
     private var scrollOffsetResolvedX: Int = 0
     private var scrollOffsetResolvedY: Int = 0
     private var scrollLayoutDirty: Boolean = false
+    private var scrollVisualDirty: Boolean = false
+    private var scrollInteractionDirty: Boolean = false
     private var contentLayoutScrollX: Int = 0
     private var contentLayoutScrollY: Int = 0
     private var activeScrollbarDragAxis: ScrollbarAxis? = null
@@ -1973,15 +1992,31 @@ abstract class DOMNode(
         return changed
     }
 
-    internal fun consumeScrollLayoutDirtyRecursively(): Boolean {
-        var dirty = scrollLayoutDirty
+    internal fun consumeScrollInvalidationRecursively(): ScrollInvalidationState {
+        var layoutDirty = scrollLayoutDirty
+        var visualDirty = scrollVisualDirty
+        var interactionDirty = scrollInteractionDirty
         scrollLayoutDirty = false
+        scrollVisualDirty = false
+        scrollInteractionDirty = false
         children.forEach { child ->
-            if (child.consumeScrollLayoutDirtyRecursively()) {
-                dirty = true
-            }
+            val childInvalidation = child.consumeScrollInvalidationRecursively()
+            layoutDirty = layoutDirty || childInvalidation.layoutDirty
+            visualDirty = visualDirty || childInvalidation.visualDirty
+            interactionDirty = interactionDirty || childInvalidation.interactionDirty
         }
-        return dirty
+        if (!layoutDirty && !visualDirty && !interactionDirty) {
+            return ScrollInvalidationState.CLEAN
+        }
+        return ScrollInvalidationState(
+            layoutDirty = layoutDirty,
+            visualDirty = visualDirty,
+            interactionDirty = interactionDirty
+        )
+    }
+
+    internal fun consumeScrollLayoutDirtyRecursively(): Boolean {
+        return consumeScrollInvalidationRecursively().layoutDirty
     }
 
     internal fun debugScrollAnimationState(): ScrollAnimationDebugState {
@@ -2011,6 +2046,7 @@ abstract class DOMNode(
     internal fun restoreScrollSessionSnapshot(snapshot: ScrollSessionSnapshot?) {
         if (snapshot == null) return
         var changed = false
+        var layoutChanged = false
 
         val nextTargetX = snapshot.targetX.coerceAtLeast(0)
         val nextTargetY = snapshot.targetY.coerceAtLeast(0)
@@ -2037,13 +2073,13 @@ abstract class DOMNode(
         }
         if (scrollOffsetResolvedX != nextResolvedX) {
             scrollOffsetResolvedX = nextResolvedX
-            scrollLayoutDirty = true
             changed = true
+            layoutChanged = true
         }
         if (scrollOffsetResolvedY != nextResolvedY) {
             scrollOffsetResolvedY = nextResolvedY
-            scrollLayoutDirty = true
             changed = true
+            layoutChanged = true
         }
         if (contentLayoutScrollX != nextResolvedX) {
             contentLayoutScrollX = nextResolvedX
@@ -2081,7 +2117,28 @@ abstract class DOMNode(
         }
 
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
+        }
+    }
+
+    private fun markScrollInvalidation(
+        layoutDirty: Boolean,
+        visualDirty: Boolean,
+        interactionDirty: Boolean
+    ) {
+        if (layoutDirty) {
+            scrollLayoutDirty = true
+        }
+        if (visualDirty) {
+            scrollVisualDirty = true
+        }
+        if (interactionDirty) {
+            scrollInteractionDirty = true
         }
     }
 
@@ -2089,6 +2146,7 @@ abstract class DOMNode(
         val normalizedX = scrollX.coerceAtLeast(0)
         val normalizedY = scrollY.coerceAtLeast(0)
         var changed = false
+        var layoutChanged = false
         if (scrollOffsetTargetX != normalizedX) {
             scrollOffsetTargetX = normalizedX
             changed = true
@@ -2109,10 +2167,15 @@ abstract class DOMNode(
                 changed = true
             }
             if (changed) {
-                scrollLayoutDirty = true
+                layoutChanged = true
             }
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
     }
@@ -2150,6 +2213,7 @@ abstract class DOMNode(
         if (isScrollbarAxisActivelyDragged(vertical)) {
             val clamped = resolvedScrollAxis(vertical).coerceIn(0, maxScroll)
             var changed = false
+            var layoutChanged = false
             val directDisplayed = clamped.toDouble()
             if (displayedScrollAxis(vertical) != directDisplayed) {
                 setDisplayedScrollAxis(vertical, directDisplayed)
@@ -2157,7 +2221,7 @@ abstract class DOMNode(
             }
             if (resolvedScrollAxis(vertical) != clamped) {
                 setResolvedScrollAxis(vertical, clamped)
-                scrollLayoutDirty = true
+                layoutChanged = true
                 markRenderCommandsDirty()
                 changed = true
             }
@@ -2166,12 +2230,20 @@ abstract class DOMNode(
                 markRenderCommandsDirty()
                 changed = true
             }
+            if (changed) {
+                markScrollInvalidation(
+                    layoutDirty = layoutChanged,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
+            }
             return changed
         }
 
         val currentDisplayed = displayedScrollAxis(vertical).coerceIn(0.0, maxScroll.toDouble())
         val normalizedDisplayed = if (currentDisplayed.isFinite()) currentDisplayed else 0.0
         var changed = false
+        var layoutChanged = false
         if (normalizedDisplayed != displayedScrollAxis(vertical)) {
             setDisplayedScrollAxis(vertical, normalizedDisplayed)
             changed = true
@@ -2198,15 +2270,23 @@ abstract class DOMNode(
         val resolved = nextDisplayed.roundToInt().coerceIn(0, maxScroll)
         if (resolved != resolvedScrollAxis(vertical)) {
             setResolvedScrollAxis(vertical, resolved)
-            scrollLayoutDirty = true
+            layoutChanged = true
             markRenderCommandsDirty()
             changed = true
+        }
+        if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
         }
         return changed
     }
 
     private fun normalizeScrollAxisForNonScrollable(vertical: Boolean): Boolean {
         var changed = false
+        var layoutChanged = false
         if (targetScrollAxis(vertical) != 0) {
             setTargetScrollAxis(vertical, 0)
             changed = true
@@ -2217,10 +2297,15 @@ abstract class DOMNode(
         }
         if (resolvedScrollAxis(vertical) != 0) {
             setResolvedScrollAxis(vertical, 0)
-            scrollLayoutDirty = true
+            layoutChanged = true
             changed = true
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
         return changed
@@ -2319,6 +2404,7 @@ abstract class DOMNode(
         }
         if (axisX.scrollContainer) {
             var axisChanged = false
+            var axisLayoutChanged = false
             val axisDragged = isScrollbarAxisActivelyDragged(vertical = false)
             val clampedDisplayedX = scrollOffsetDisplayedX.coerceIn(0.0, maxScrollX.toDouble())
             if (axisDragged && scrollOffsetDisplayedX != clampedDisplayedX) {
@@ -2335,10 +2421,15 @@ abstract class DOMNode(
             val resolvedX = clampedDisplayedX.roundToInt().coerceIn(0, maxScrollX)
             if (resolvedX != scrollOffsetResolvedX) {
                 scrollOffsetResolvedX = resolvedX
-                scrollLayoutDirty = true
+                axisLayoutChanged = true
                 axisChanged = true
             }
             if (axisChanged) {
+                markScrollInvalidation(
+                    layoutDirty = axisLayoutChanged,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
                 markRenderCommandsDirty()
             }
         } else {
@@ -2346,6 +2437,7 @@ abstract class DOMNode(
         }
         if (axisY.scrollContainer) {
             var axisChanged = false
+            var axisLayoutChanged = false
             val axisDragged = isScrollbarAxisActivelyDragged(vertical = true)
             val clampedDisplayedY = scrollOffsetDisplayedY.coerceIn(0.0, maxScrollY.toDouble())
             if (axisDragged && scrollOffsetDisplayedY != clampedDisplayedY) {
@@ -2362,10 +2454,15 @@ abstract class DOMNode(
             val resolvedY = clampedDisplayedY.roundToInt().coerceIn(0, maxScrollY)
             if (resolvedY != scrollOffsetResolvedY) {
                 scrollOffsetResolvedY = resolvedY
-                scrollLayoutDirty = true
+                axisLayoutChanged = true
                 axisChanged = true
             }
             if (axisChanged) {
+                markScrollInvalidation(
+                    layoutDirty = axisLayoutChanged,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
                 markRenderCommandsDirty()
             }
         } else {
@@ -2719,6 +2816,7 @@ abstract class DOMNode(
         val clampedX = resolvedX.toDouble()
         val clampedY = resolvedY.toDouble()
         var changed = false
+        var layoutChanged = false
         if (scrollOffsetDisplayedX != clampedX) {
             scrollOffsetDisplayedX = clampedX
             changed = true
@@ -2729,12 +2827,12 @@ abstract class DOMNode(
         }
         if (scrollOffsetResolvedX != resolvedX) {
             scrollOffsetResolvedX = resolvedX
-            scrollLayoutDirty = true
+            layoutChanged = true
             changed = true
         }
         if (scrollOffsetResolvedY != resolvedY) {
             scrollOffsetResolvedY = resolvedY
-            scrollLayoutDirty = true
+            layoutChanged = true
             changed = true
         }
         if (scrollOffsetTargetX != resolvedX) {
@@ -2746,6 +2844,11 @@ abstract class DOMNode(
             changed = true
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
     }

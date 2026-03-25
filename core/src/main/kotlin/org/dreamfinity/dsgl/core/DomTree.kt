@@ -97,7 +97,10 @@ class DomTree(
             if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
                 commandsDirty = true
             }
-            val scrollLayoutDirty = root.consumeScrollLayoutDirtyRecursively()
+            val scrollInvalidation = root.consumeScrollInvalidationRecursively()
+            if (scrollInvalidation.visualDirty) {
+                commandsDirty = true
+            }
             val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
             val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
                 val styleStartNanos = System.nanoTime()
@@ -115,7 +118,7 @@ class DomTree(
                     recomputedNodes = 0
                 )
             }
-            if ((!laidOut || styleReport.layoutDirty || scrollLayoutDirty) && lastWidth > 0 && lastHeight > 0) {
+            if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty) && lastWidth > 0 && lastHeight > 0) {
                 val layoutStartNanos = System.nanoTime()
                 root.resolveLayoutStyleValues(
                     ctx = ctx,
@@ -128,7 +131,7 @@ class DomTree(
                 laidOut = true
                 commandsDirty = true
                 ScrollPerformanceCounters.recordFullRerenderLayoutDuration(System.nanoTime() - layoutStartNanos)
-            } else if (styleReport.visualDirty) {
+            } else if (styleReport.visualDirty || scrollInvalidation.visualDirty) {
                 commandsDirty = true
             }
             val chunkStartNanos = System.nanoTime()
