@@ -44,14 +44,39 @@ class ScrollPerformanceCountersTests {
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
         assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
+        assertEquals(1L, counters.stickyVisualRefreshRuns)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
         assertTrue(counters.scrollVisualGeometryTranslatedNodes > 0L)
         assertTrue(counters.scrollContainerStateCalls > 0)
-        assertTrue(counters.stickyResolutionCalls > 0)
-        assertTrue(counters.stickyVerticalResolutionCalls > 0)
+        assertEquals(1L, counters.stickyResolutionCalls)
+        assertEquals(1L, counters.stickyHorizontalResolutionCalls)
+        assertEquals(1L, counters.stickyVerticalResolutionCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
         assertTrue(counters.chunkRebuildNanos > 0L)
         assertTrue(counters.paintTotalNanos > 0L)
+    }
+
+    @Test
+    fun `sticky effectiveTransform reads do not repeatedly resolve sticky offsets after refresh`() {
+        val fixture = createScrollStickyFixture()
+        ScrollPerformanceCounters.resetForTests()
+
+        fixture.viewport.setScrollOffsets(0, 64)
+        fixture.tree.paint(ctx)
+        val afterPaint = ScrollPerformanceCounters.snapshot()
+        assertEquals(1L, afterPaint.stickyResolutionCalls)
+        assertEquals(1L, afterPaint.stickyHorizontalResolutionCalls)
+        assertEquals(1L, afterPaint.stickyVerticalResolutionCalls)
+
+        repeat(24) {
+            fixture.sticky.effectiveTransform()
+        }
+        val afterRepeatedReads = ScrollPerformanceCounters.snapshot()
+        assertEquals(afterPaint.stickyResolutionCalls, afterRepeatedReads.stickyResolutionCalls)
+        assertEquals(afterPaint.stickyHorizontalResolutionCalls, afterRepeatedReads.stickyHorizontalResolutionCalls)
+        assertEquals(afterPaint.stickyVerticalResolutionCalls, afterRepeatedReads.stickyVerticalResolutionCalls)
+        assertEquals(afterPaint.scrollContainerStateCalls, afterRepeatedReads.scrollContainerStateCalls)
     }
 
     @Test
@@ -88,8 +113,11 @@ class ScrollPerformanceCountersTests {
         assertTrue(counters.paintCalls >= 1)
         assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
         assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
+        assertEquals(1L, counters.stickyVisualRefreshRuns)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertEquals(1L, counters.stickyResolutionCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
     }
@@ -124,7 +152,7 @@ class ScrollPerformanceCountersTests {
             overflowY = Overflow.Auto
         }.applyParent(root)
 
-        ContainerNode(key = "perf-sticky").apply {
+        val sticky = ContainerNode(key = "perf-sticky").apply {
             width = 160
             height = 24
             inlineStyleDeclarations = styleDeclarations(
@@ -141,7 +169,7 @@ class ScrollPerformanceCountersTests {
         val tree = DomTree(root)
         tree.render(ctx, 320, 220)
         tree.paint(ctx)
-        return ScrollStickyFixture(tree = tree, viewport = viewport)
+        return ScrollStickyFixture(tree = tree, viewport = viewport, sticky = sticky)
     }
 
     private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
@@ -154,6 +182,7 @@ class ScrollPerformanceCountersTests {
 
     private data class ScrollStickyFixture(
         val tree: DomTree,
-        val viewport: ContainerNode
+        val viewport: ContainerNode,
+        val sticky: ContainerNode
     )
 }

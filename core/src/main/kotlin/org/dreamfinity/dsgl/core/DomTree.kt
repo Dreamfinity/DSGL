@@ -124,12 +124,18 @@ class DomTree(
                     !styleReport.visualDirty &&
                     scrollInvalidation.visualDirty &&
                     !scrollInvalidation.layoutDirty
+            val stickyLayoutInvalidated = styleReport.layoutDirty || scrollInvalidation.layoutDirty
+            if (stickyLayoutInvalidated) {
+                root.invalidateStickyVisualOffsetsRecursively()
+            }
 
             if (canUseGuardedScrollVisualFastPath) {
                 val translatedNodes = root.applyScrollVisualGeometryRecursively()
+                val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
                 commandsDirty = true
                 ScrollPerformanceCounters.incrementGuardedScrollVisualFastPathRuns()
                 ScrollPerformanceCounters.recordScrollVisualGeometryRefresh(translatedNodes)
+                ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
             }
             val requiresSystemOverlayScrollLayoutFallback =
                 styleScope == StyleApplicationScope.SystemOverlay && scrollInvalidation.visualDirty
@@ -144,12 +150,18 @@ class DomTree(
                     parentContentHeight = lastHeight
                 )
                 root.render(ctx, 0, 0, lastWidth, lastHeight)
+                val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
                 validateLayout(ctx)
                 refManager.commit(root)
                 laidOut = true
                 commandsDirty = true
                 ScrollPerformanceCounters.recordFullRerenderLayoutDuration(System.nanoTime() - layoutStartNanos)
+                ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
             } else if (styleReport.visualDirty || scrollInvalidation.visualDirty) {
+                if (!canUseGuardedScrollVisualFastPath) {
+                    val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
+                    ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
+                }
                 commandsDirty = true
             }
             val chunkStartNanos = System.nanoTime()

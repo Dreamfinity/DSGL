@@ -335,6 +335,9 @@ abstract class DOMNode(
     private var bottomStyleValue: CssLength? = null
     private var relativeVisualOffsetXPx: Int = 0
     private var relativeVisualOffsetYPx: Int = 0
+    private var stickyVisualOffsetXPx: Int = 0
+    private var stickyVisualOffsetYPx: Int = 0
+    private var stickyVisualOffsetsDirty: Boolean = true
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -653,11 +656,27 @@ abstract class DOMNode(
     }
 
     private fun resolveStickyVisualOffsetsPx(): Pair<Int, Int> {
-        ScrollPerformanceCounters.incrementStickyResolutionCalls()
         if (position != PositionMode.Sticky) return 0 to 0
+        ScrollPerformanceCounters.incrementStickyResolutionCalls()
         val offsetX = resolveStickyHorizontalVisualOffsetXPx()
         val offsetY = resolveStickyVerticalVisualOffsetYPx()
         return offsetX to offsetY
+    }
+
+    private fun ensureStickyVisualOffsetsResolved() {
+        if (position != PositionMode.Sticky) {
+            stickyVisualOffsetsDirty = false
+            return
+        }
+        if (!stickyVisualOffsetsDirty) return
+        val (resolvedX, resolvedY) = resolveStickyVisualOffsetsPx()
+        val changed = stickyVisualOffsetXPx != resolvedX || stickyVisualOffsetYPx != resolvedY
+        stickyVisualOffsetXPx = resolvedX
+        stickyVisualOffsetYPx = resolvedY
+        stickyVisualOffsetsDirty = false
+        if (changed) {
+            markRenderCommandsDirty()
+        }
     }
 
     private fun resolveStickyHorizontalVisualOffsetXPx(): Int {
@@ -1717,7 +1736,16 @@ abstract class DOMNode(
         val base = animatedTransform ?: transform
         val relativeOffsetX = if (position == PositionMode.Relative) relativeVisualOffsetXPx else 0
         val relativeOffsetY = if (position == PositionMode.Relative) relativeVisualOffsetYPx else 0
-        val (stickyOffsetX, stickyOffsetY) = resolveStickyVisualOffsetsPx()
+        val stickyOffsetX: Int
+        val stickyOffsetY: Int
+        if (position == PositionMode.Sticky) {
+            ensureStickyVisualOffsetsResolved()
+            stickyOffsetX = stickyVisualOffsetXPx
+            stickyOffsetY = stickyVisualOffsetYPx
+        } else {
+            stickyOffsetX = 0
+            stickyOffsetY = 0
+        }
         if (relativeOffsetX == 0 && relativeOffsetY == 0 && stickyOffsetX == 0 && stickyOffsetY == 0) {
             return base
         }
@@ -2019,19 +2047,48 @@ abstract class DOMNode(
         return consumeScrollInvalidationRecursively().layoutDirty
     }
 
+    internal fun invalidateStickyVisualOffsetsRecursively() {
+        stickyVisualOffsetsDirty = true
+        children.forEach { child ->
+            child.invalidateStickyVisualOffsetsRecursively()
+        }
+    }
+
+    internal fun refreshStickyVisualOffsetsRecursively(): Int {
+        var resolvedStickyNodes = 0
+        if (position == PositionMode.Sticky) {
+            ensureStickyVisualOffsetsResolved()
+            resolvedStickyNodes += 1
+        } else {
+            stickyVisualOffsetsDirty = false
+            if (stickyVisualOffsetXPx != 0 || stickyVisualOffsetYPx != 0) {
+                stickyVisualOffsetXPx = 0
+                stickyVisualOffsetYPx = 0
+                markRenderCommandsDirty()
+            }
+        }
+        children.forEach { child ->
+            resolvedStickyNodes += child.refreshStickyVisualOffsetsRecursively()
+        }
+        return resolvedStickyNodes
+    }
+
     internal fun applyScrollVisualGeometryRecursively(): Int {
         var translatedNodes = 0
-        val scrollState = scrollContainerState()
-        val deltaScrollX = scrollState.scrollX - contentLayoutScrollX
-        val deltaScrollY = scrollState.scrollY - contentLayoutScrollY
-        if (deltaScrollX != 0 || deltaScrollY != 0) {
-            val shiftX = -deltaScrollX
-            val shiftY = -deltaScrollY
-            children.forEach { child ->
-                translatedNodes += child.translateSubtreeBoundsForScroll(shiftX, shiftY)
+        val isScrollContainerCandidate = overflowX != Overflow.Visible || overflowY != Overflow.Visible
+        if (isScrollContainerCandidate) {
+            val scrollState = scrollContainerState()
+            val deltaScrollX = scrollState.scrollX - contentLayoutScrollX
+            val deltaScrollY = scrollState.scrollY - contentLayoutScrollY
+            if (deltaScrollX != 0 || deltaScrollY != 0) {
+                val shiftX = -deltaScrollX
+                val shiftY = -deltaScrollY
+                children.forEach { child ->
+                    translatedNodes += child.translateSubtreeBoundsForScroll(shiftX, shiftY)
+                }
+                setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
+                markRenderCommandsDirty()
             }
-            setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
-            markRenderCommandsDirty()
         }
         children.forEach { child ->
             translatedNodes += child.applyScrollVisualGeometryRecursively()
@@ -2178,6 +2235,7 @@ abstract class DOMNode(
         }
         if (visualDirty) {
             scrollVisualDirty = true
+            invalidateStickyVisualOffsetsRecursively()
         }
         if (interactionDirty) {
             scrollInteractionDirty = true

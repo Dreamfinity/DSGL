@@ -7,6 +7,8 @@ data class ScrollPerformanceSnapshot(
     val guardedScrollVisualFastPathRuns: Long,
     val scrollVisualGeometryRefreshRuns: Long,
     val scrollVisualGeometryTranslatedNodes: Long,
+    val stickyVisualRefreshRuns: Long,
+    val stickyVisualRefreshResolvedNodes: Long,
     val fullRerenderLayoutRuns: Long,
     val measureChildForLayoutCalls: Long,
     val scrollContainerStateCalls: Long,
@@ -26,6 +28,8 @@ object ScrollPerformanceCounters {
     private val guardedScrollVisualFastPathRuns = AtomicLong(0L)
     private val scrollVisualGeometryRefreshRuns = AtomicLong(0L)
     private val scrollVisualGeometryTranslatedNodes = AtomicLong(0L)
+    private val stickyVisualRefreshRuns = AtomicLong(0L)
+    private val stickyVisualRefreshResolvedNodes = AtomicLong(0L)
     private val fullRerenderLayoutRuns = AtomicLong(0L)
     private val measureChildForLayoutCalls = AtomicLong(0L)
     private val scrollContainerStateCalls = AtomicLong(0L)
@@ -60,6 +64,11 @@ object ScrollPerformanceCounters {
     internal fun recordScrollVisualGeometryRefresh(translatedNodes: Int) {
         scrollVisualGeometryRefreshRuns.incrementAndGet()
         scrollVisualGeometryTranslatedNodes.addAndGet(translatedNodes.coerceAtLeast(0).toLong())
+    }
+
+    internal fun recordStickyVisualRefresh(resolvedStickyNodes: Int) {
+        stickyVisualRefreshRuns.incrementAndGet()
+        stickyVisualRefreshResolvedNodes.addAndGet(resolvedStickyNodes.coerceAtLeast(0).toLong())
     }
 
     internal fun incrementMeasureChildForLayoutCalls() {
@@ -100,6 +109,8 @@ object ScrollPerformanceCounters {
             guardedScrollVisualFastPathRuns = guardedScrollVisualFastPathRuns.get(),
             scrollVisualGeometryRefreshRuns = scrollVisualGeometryRefreshRuns.get(),
             scrollVisualGeometryTranslatedNodes = scrollVisualGeometryTranslatedNodes.get(),
+            stickyVisualRefreshRuns = stickyVisualRefreshRuns.get(),
+            stickyVisualRefreshResolvedNodes = stickyVisualRefreshResolvedNodes.get(),
             fullRerenderLayoutRuns = fullRerenderLayoutRuns.get(),
             measureChildForLayoutCalls = measureChildForLayoutCalls.get(),
             scrollContainerStateCalls = scrollContainerStateCalls.get(),
@@ -120,6 +131,8 @@ object ScrollPerformanceCounters {
         guardedScrollVisualFastPathRuns.set(0L)
         scrollVisualGeometryRefreshRuns.set(0L)
         scrollVisualGeometryTranslatedNodes.set(0L)
+        stickyVisualRefreshRuns.set(0L)
+        stickyVisualRefreshResolvedNodes.set(0L)
         fullRerenderLayoutRuns.set(0L)
         measureChildForLayoutCalls.set(0L)
         scrollContainerStateCalls.set(0L)
