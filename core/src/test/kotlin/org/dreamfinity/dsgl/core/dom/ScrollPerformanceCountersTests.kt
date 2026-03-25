@@ -46,6 +46,8 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
         assertEquals(1L, counters.stickyVisualRefreshRuns)
         assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertTrue(counters.stickyVisualInvalidateRuns > 0L)
+        assertEquals(1L, counters.stickyVisualInvalidatedNodes)
         assertTrue(counters.scrollVisualGeometryTranslatedNodes > 0L)
         assertTrue(counters.scrollContainerStateCalls > 0)
         assertEquals(1L, counters.stickyResolutionCalls)
@@ -115,11 +117,73 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.scrollVisualGeometryRefreshRuns)
         assertEquals(1L, counters.stickyVisualRefreshRuns)
         assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertTrue(counters.stickyVisualInvalidateRuns > 0L)
+        assertTrue(counters.stickyVisualInvalidatedNodes in 0L..1L)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
         assertEquals(0L, counters.measureChildForLayoutCalls)
         assertEquals(1L, counters.stickyResolutionCalls)
         assertTrue(counters.chunkTraversalCalls > 0)
         assertTrue(counters.chunkRebuildCalls > 0)
+    }
+
+    @Test
+    fun `local scroll invalidation refreshes only sticky nodes in affected subtree`() {
+        val root = ContainerNode(key = "perf-narrow-root")
+        val leftViewport = ContainerNode(key = "perf-narrow-left").apply {
+            width = 160
+            height = 90
+            overflowY = Overflow.Auto
+        }.applyParent(root)
+        val rightViewport = ContainerNode(key = "perf-narrow-right").apply {
+            width = 160
+            height = 90
+            overflowY = Overflow.Auto
+        }.applyParent(root)
+
+        ContainerNode(key = "perf-narrow-left-sticky").apply {
+            width = 140
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+        }.applyParent(leftViewport)
+        ContainerNode(key = "perf-narrow-left-filler").apply {
+            width = 140
+            height = 320
+        }.applyParent(leftViewport)
+
+        ContainerNode(key = "perf-narrow-right-sticky").apply {
+            width = 140
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px"
+            )
+        }.applyParent(rightViewport)
+        ContainerNode(key = "perf-narrow-right-filler").apply {
+            width = 140
+            height = 320
+        }.applyParent(rightViewport)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 420, 220)
+        tree.paint(ctx)
+
+        ScrollPerformanceCounters.resetForTests()
+        leftViewport.setScrollOffsets(0, 64)
+        tree.paint(ctx)
+
+        val counters = ScrollPerformanceCounters.snapshot()
+        println("ScrollPerformanceCounters local-subtree frame: $counters")
+        assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
+        assertEquals(1L, counters.stickyVisualRefreshRuns)
+        assertEquals(1L, counters.stickyVisualRefreshResolvedNodes)
+        assertEquals(1L, counters.stickyVisualInvalidatedNodes)
+        assertEquals(1L, counters.stickyResolutionCalls)
+        assertEquals(1L, counters.stickyVerticalResolutionCalls)
+        assertTrue(counters.scrollContainerStateCalls > 0L)
+        assertEquals(0L, counters.measureChildForLayoutCalls)
     }
 
     @Test

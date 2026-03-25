@@ -338,6 +338,7 @@ abstract class DOMNode(
     private var stickyVisualOffsetXPx: Int = 0
     private var stickyVisualOffsetYPx: Int = 0
     private var stickyVisualOffsetsDirty: Boolean = true
+     private var stickyVisualRefreshSubtreeDirty: Boolean = true
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -2097,17 +2098,43 @@ abstract class DOMNode(
     }
 
     internal fun invalidateStickyVisualOffsetsRecursively() {
-        stickyVisualOffsetsDirty = true
+        ScrollPerformanceCounters.incrementStickyVisualInvalidateRuns()
+        markStickyVisualRefreshPathDirtyUpwards()
+        invalidateStickyVisualOffsetsSubtree()
+    }
+
+    private fun markStickyVisualRefreshPathDirtyUpwards() {
+        var current: DOMNode? = this
+        while (current != null) {
+            if (current.stickyVisualRefreshSubtreeDirty) {
+                break
+            }
+            current.stickyVisualRefreshSubtreeDirty = true
+            current = current.parent
+        }
+    }
+
+    private fun invalidateStickyVisualOffsetsSubtree() {
+        stickyVisualRefreshSubtreeDirty = true
+        if (position == PositionMode.Sticky && !stickyVisualOffsetsDirty) {
+            stickyVisualOffsetsDirty = true
+            ScrollPerformanceCounters.incrementStickyVisualInvalidatedNodes()
+        }
         children.forEach { child ->
-            child.invalidateStickyVisualOffsetsRecursively()
+            child.invalidateStickyVisualOffsetsSubtree()
         }
     }
 
     internal fun refreshStickyVisualOffsetsRecursively(): Int {
+        if (!stickyVisualRefreshSubtreeDirty) {
+            return 0
+        }
         var resolvedStickyNodes = 0
         if (position == PositionMode.Sticky) {
-            ensureStickyVisualOffsetsResolved()
-            resolvedStickyNodes += 1
+            if (stickyVisualOffsetsDirty) {
+                ensureStickyVisualOffsetsResolved()
+                resolvedStickyNodes += 1
+            }
         } else {
             stickyVisualOffsetsDirty = false
             if (stickyVisualOffsetXPx != 0 || stickyVisualOffsetYPx != 0) {
@@ -2117,8 +2144,11 @@ abstract class DOMNode(
             }
         }
         children.forEach { child ->
-            resolvedStickyNodes += child.refreshStickyVisualOffsetsRecursively()
+            if (child.stickyVisualRefreshSubtreeDirty) {
+                resolvedStickyNodes += child.refreshStickyVisualOffsetsRecursively()
+            }
         }
+        stickyVisualRefreshSubtreeDirty = false
         return resolvedStickyNodes
     }
 
