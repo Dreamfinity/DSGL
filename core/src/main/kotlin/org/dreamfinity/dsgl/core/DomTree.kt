@@ -353,8 +353,7 @@ class DomTree(
         }
 
         val nodeSignature = node.renderCommandsSignature(nowMs)
-        val rebuildSelf = commandsDirty ||
-            chunk.lastNodeSignature != nodeSignature ||
+        val rebuildSelf = chunk.lastNodeSignature != nodeSignature ||
             chunk.lastChildrenSignature != childSignature ||
             chunk.lastNodeSignature == Long.MIN_VALUE
 

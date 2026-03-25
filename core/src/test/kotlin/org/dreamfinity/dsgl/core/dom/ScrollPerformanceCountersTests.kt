@@ -185,6 +185,8 @@ class ScrollPerformanceCountersTests {
         assertEquals(1L, counters.stickyVerticalResolutionCalls)
         assertTrue(counters.scrollContainerStateCalls < 25L)
         assertEquals(0L, counters.measureChildForLayoutCalls)
+        assertTrue(counters.chunkTraversalCalls > 0L)
+        assertTrue(counters.chunkRebuildCalls in 1L..6L)
     }
 
     @Test
