@@ -38,6 +38,8 @@ import org.lwjgl.input.Mouse
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Collections
+import java.util.IdentityHashMap
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
@@ -80,7 +82,8 @@ abstract class DsglScreenHost(
     private var dragCaptureFocusKey: Any? = null
     private var inspectorPointerCaptured: Boolean = false
     private var layoutRevision: Long = 0L
-    private val pendingCleanupRoots: MutableList<DOMNode> = ArrayList()
+    private val pendingCleanupRoots: MutableSet<DOMNode> =
+        Collections.newSetFromMap(IdentityHashMap<DOMNode, Boolean>())
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val stagingCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val applicationOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
@@ -169,6 +172,7 @@ abstract class DsglScreenHost(
             ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
         }
         lastFrameNanos = nowNanos
+        OverlayLayerDebugState.updateFrameTiming(dtSeconds)
         window.tick(dtSeconds.toFloat(), partialTicks)
         val animationVisualsChanged = StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
         if (animationVisualsChanged) {
@@ -442,6 +446,7 @@ abstract class DsglScreenHost(
                 val reconcile = currentTree.reconcileWith(nextTree)
                 if (reconcile.detachedRoots.isNotEmpty()) {
                     pendingCleanupRoots.addAll(reconcile.detachedRoots)
+                    flushPendingCleanup()
                 }
                 domTree = currentTree
             }
@@ -1035,13 +1040,35 @@ abstract class DsglScreenHost(
 
     private fun flushPendingCleanup() {
         if (pendingCleanupRoots.isEmpty()) return
-        val it = pendingCleanupRoots.iterator()
-        while (it.hasNext()) {
-            val root = it.next()
+        val detachedRoots = pendingCleanupRoots.toList()
+        pendingCleanupRoots.clear()
+        detachedRoots.forEach { root ->
             EventBus.run { root.clearListenersDeep() }
-            it.remove()
         }
     }
+
+    internal fun debugPendingCleanupCount(): Int = pendingCleanupRoots.size
+
+    internal fun debugBindTreeForTests(tree: DomTree, needsLayout: Boolean = false) {
+        domTree = tree
+        this.needsLayout = needsLayout
+    }
+
+    internal fun debugRefreshHoverTargetForTests(mouseX: Int, mouseY: Int) {
+        refreshHoverTarget(mouseX, mouseY)
+    }
+
+    internal fun debugHoverTargetForTests(): DOMNode? = hoverTarget
+
+    internal fun debugResolvePointerDownTargetForTests(): DOMNode? = resolvePointerDownTarget()
+
+    internal fun debugResolveClickTargetForTests(): DOMNode? = resolveClickTarget()
+
+    internal fun debugSetNeedsRenderForTests(value: Boolean) {
+        needsRender = value
+    }
+
+    internal fun debugRebuildIfNeededForTests(): Boolean = rebuildIfNeeded()
 
     private fun setDragCapture(target: DOMNode) {
         dragCaptureTarget = target

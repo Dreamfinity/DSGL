@@ -8,10 +8,20 @@ data class OverlayLayerDebugSnapshot(
     val applicationOverlayInputEnabled: Boolean,
     val systemOverlayRenderEnabled: Boolean,
     val systemOverlayTintEnabled: Boolean,
-    val systemOverlayInputEnabled: Boolean
+    val systemOverlayInputEnabled: Boolean,
+    val frameFps: Int,
+    val frameTimeMs: Float,
+    val frameFpsWindow: Int,
+    val frameTimeWindowMs: Float
 )
 
 object OverlayLayerDebugState {
+    private const val FRAME_TIMING_WINDOW_SIZE: Int = 60
+    private val frameTimeWindowSeconds: DoubleArray = DoubleArray(FRAME_TIMING_WINDOW_SIZE)
+    private var frameTimeWindowWriteIndex: Int = 0
+    private var frameTimeWindowCount: Int = 0
+    private var frameTimeWindowSumSeconds: Double = 0.0
+
     @Volatile
     var applicationOverlayRenderEnabled: Boolean = true
     @Volatile
@@ -28,6 +38,18 @@ object OverlayLayerDebugState {
 
     @Volatile
     var systemOverlayInputEnabled: Boolean = true
+
+    @Volatile
+    var frameFps: Int = 0
+
+    @Volatile
+    var frameTimeMs: Float = 0f
+
+    @Volatile
+    var frameFpsWindow: Int = 0
+
+    @Volatile
+    var frameTimeWindowMs: Float = 0f
 
     val controlsEnabled: Boolean
         get() {
@@ -68,6 +90,38 @@ object OverlayLayerDebugState {
         systemOverlayRenderEnabled = true
         systemOverlayTintEnabled = false
         systemOverlayInputEnabled = true
+        frameFps = 0
+        frameTimeMs = 0f
+        frameFpsWindow = 0
+        frameTimeWindowMs = 0f
+        frameTimeWindowWriteIndex = 0
+        frameTimeWindowCount = 0
+        frameTimeWindowSumSeconds = 0.0
+        java.util.Arrays.fill(frameTimeWindowSeconds, 0.0)
+    }
+
+    @Synchronized
+    fun updateFrameTiming(dtSeconds: Double) {
+        val safeDt = dtSeconds.coerceAtLeast(1.0 / 1000.0)
+        frameTimeMs = (safeDt * 1000.0).toFloat()
+        frameFps = kotlin.math.round(1.0 / safeDt).toInt().coerceAtLeast(0)
+
+        if (frameTimeWindowCount == FRAME_TIMING_WINDOW_SIZE) {
+            frameTimeWindowSumSeconds -= frameTimeWindowSeconds[frameTimeWindowWriteIndex]
+        } else {
+            frameTimeWindowCount += 1
+        }
+        frameTimeWindowSeconds[frameTimeWindowWriteIndex] = safeDt
+        frameTimeWindowSumSeconds += safeDt
+        frameTimeWindowWriteIndex = (frameTimeWindowWriteIndex + 1) % FRAME_TIMING_WINDOW_SIZE
+
+        val averageDt = if (frameTimeWindowCount > 0) {
+            frameTimeWindowSumSeconds / frameTimeWindowCount.toDouble()
+        } else {
+            safeDt
+        }
+        frameTimeWindowMs = (averageDt * 1000.0).toFloat()
+        frameFpsWindow = kotlin.math.round(1.0 / averageDt).toInt().coerceAtLeast(0)
     }
 
     fun snapshot(): OverlayLayerDebugSnapshot {
@@ -78,6 +132,10 @@ object OverlayLayerDebugState {
             systemOverlayRenderEnabled = systemOverlayRenderEnabled,
             systemOverlayTintEnabled = systemOverlayTintEnabled,
             systemOverlayInputEnabled = systemOverlayInputEnabled,
+            frameFps = frameFps,
+            frameTimeMs = frameTimeMs,
+            frameFpsWindow = frameFpsWindow,
+            frameTimeWindowMs = frameTimeWindowMs
         )
     }
 

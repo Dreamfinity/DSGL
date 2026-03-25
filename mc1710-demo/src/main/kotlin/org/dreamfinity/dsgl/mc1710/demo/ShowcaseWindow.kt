@@ -496,9 +496,7 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.POSITIONED_LAYOUT -> positionedLayoutSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    this@ShowcaseWindow
                                 )
 
                                 DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(

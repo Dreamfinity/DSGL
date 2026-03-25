@@ -58,12 +58,12 @@ object EventBus {
         clearListeners()
     }
 
-    internal data class DebugListenerSnapshot(
+    data class DebugListenerSnapshot(
         val registeredNodes: Int,
         val registeredCallbacks: Int
     )
 
-    internal fun debugListenerSnapshot(): DebugListenerSnapshot {
+    fun debugListenerSnapshot(): DebugListenerSnapshot {
         val nodes: MutableSet<DOMNode> = Collections.newSetFromMap(IdentityHashMap())
         var callbacks = 0
         listeners.values.forEach { byNode ->

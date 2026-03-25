@@ -137,6 +137,12 @@ class TextNode(
         color = value
     }
 
+    fun setText(value: String) {
+        if (text == value) return
+        text = value
+        markRenderCommandsDirty()
+    }
+
     internal fun syncSourceFrom(template: TextNode) {
         textSource = template.textSource
         text = textSource.resolve()

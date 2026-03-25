@@ -81,6 +81,46 @@ class OverlayDebugControlHostTests {
     }
 
     @Test
+    fun `debug panel status shows fps and frame time`() {
+        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
+        OverlayLayerDebugState.updateFrameTiming(0.025)
+        val host = OverlayDebugControlHost()
+
+        host.render(960, 540)
+        host.paint(ctx)
+        val commands = host.paint(ctx)
+        val drawTexts = commands
+            .filterIsInstance<RenderCommand.DrawText>()
+        val statusTexts = drawTexts
+            .filter { it.sourceKey == "dsgl-overlay-debug-status" }
+            .map { it.text }
+        val statusTextValue = assertNotNull(
+            statusTexts.lastOrNull { it.isNotBlank() } ?: statusTexts.lastOrNull(),
+            "draw texts: ${drawTexts.joinToString { "${it.sourceKey}:${it.text}" }}"
+        )
+        val expectedFps = OverlayLayerDebugState.frameFps
+        val expectedFrameMs = String.format(java.util.Locale.US, "%.1f", OverlayLayerDebugState.frameTimeMs)
+        val expectedWindowFps = OverlayLayerDebugState.frameFpsWindow
+        val expectedWindowFrameMs = String.format(java.util.Locale.US, "%.1f", OverlayLayerDebugState.frameTimeWindowMs)
+        assertTrue(statusTextValue.contains("FPS:$expectedFps"), "statusText='$statusTextValue'")
+        assertTrue(statusTextValue.contains("(${expectedFrameMs}ms)"), "statusText='$statusTextValue'")
+        assertTrue(statusTextValue.contains("AvgFPS:$expectedWindowFps"), "statusText='$statusTextValue'")
+        assertTrue(statusTextValue.contains("(${expectedWindowFrameMs}ms)"), "statusText='$statusTextValue'")
+    }
+
+    @Test
+    fun `sliding window fps smooths immediate fps`() {
+        OverlayLayerDebugState.updateFrameTiming(0.010)
+        OverlayLayerDebugState.updateFrameTiming(0.030)
+        val snapshot = OverlayLayerDebugState.snapshot()
+
+        assertEquals(33, snapshot.frameFps)
+        assertEquals(30.0f, snapshot.frameTimeMs)
+        assertEquals(50, snapshot.frameFpsWindow)
+        assertEquals(20.0f, snapshot.frameTimeWindowMs)
+    }
+
+    @Test
     fun `controls visibility obeys debug-only toggle`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(false)
         val host = OverlayDebugControlHost()
@@ -110,7 +150,11 @@ class OverlayDebugControlHostTests {
                 applicationOverlayInputEnabled = false,
                 systemOverlayRenderEnabled = false,
                 systemOverlayTintEnabled = false,
-                systemOverlayInputEnabled = false
+                systemOverlayInputEnabled = false,
+                frameFps = 0,
+                frameTimeMs = 0f,
+                frameFpsWindow = 0,
+                frameTimeWindowMs = 0f
             ),
             OverlayLayerDebugState.snapshot()
         )

@@ -2,10 +2,12 @@ package org.dreamfinity.dsgl.mc1710
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -14,6 +16,7 @@ import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -98,95 +101,73 @@ class DsglScreenHostUsedGeometryTests {
         )
     }
 
+    @Test
+    fun `rebuild churn drains detached cleanup and keeps listener registrations bounded`() {
+        val window = object : DsglWindow() {
+            private var generation: Int = 0
+
+            override fun render(): DomTree {
+                generation += 1
+                val root = ContainerNode(key = "rebuild-root-$generation")
+                ButtonNode(text = "btn-$generation", key = "btn-$generation").apply {
+                    onMouseClick = {}
+                }.applyParent(root)
+                return DomTree(root)
+            }
+        }
+        val host = object : DsglScreenHost(window) {}
+        host.window = window
+        host.debugSetNeedsRenderForTests(true)
+        host.debugRebuildIfNeededForTests()
+        val baseline = debugEventBusSnapshot()
+
+        repeat(80) {
+            host.debugSetNeedsRenderForTests(true)
+            host.debugRebuildIfNeededForTests()
+            assertEquals(
+                "detached cleanup queue must be drained in the same rebuild cycle",
+                0,
+                host.debugPendingCleanupCount()
+            )
+        }
+
+        val after = debugEventBusSnapshot()
+        val nodeDelta = after.registeredNodes - baseline.registeredNodes
+        val callbackDelta = after.registeredCallbacks - baseline.registeredCallbacks
+        assertTrue(
+            "listener node registrations grew unexpectedly: baseline=$baseline after=$after",
+            nodeDelta <= 2
+        )
+        assertTrue(
+            "listener callback registrations grew unexpectedly: baseline=$baseline after=$after",
+            callbackDelta <= 24
+        )
+    }
+
     private fun createHostWithTree(tree: DomTree): DsglScreenHost {
         val host = object : DsglScreenHost(object : DsglWindow() {
             override fun render(): DomTree {
                 return tree
             }
         }) {}
-        setPrivateField(host, "domTree", tree)
-        setPrivateField(host, "needsLayout", false)
+        host.debugBindTreeForTests(tree, needsLayout = false)
         return host
     }
 
     private fun refreshHoverTarget(host: DsglScreenHost, mouseX: Int, mouseY: Int) {
-        invokePrivate(
-            target = host,
-            methodName = "refreshHoverTarget",
-            parameterTypes = arrayOf(Int::class.javaPrimitiveType!!, Int::class.javaPrimitiveType!!),
-            args = arrayOf(mouseX, mouseY)
-        )
+        host.debugRefreshHoverTargetForTests(mouseX, mouseY)
     }
 
-    private fun hoverTarget(host: DsglScreenHost): org.dreamfinity.dsgl.core.dom.DOMNode? {
-        return getPrivateField(host, "hoverTarget") as? org.dreamfinity.dsgl.core.dom.DOMNode
+    private fun hoverTarget(host: DsglScreenHost): DOMNode? {
+        return host.debugHoverTargetForTests()
     }
 
-    private fun resolvePointerDownTarget(host: DsglScreenHost): org.dreamfinity.dsgl.core.dom.DOMNode? {
-        return invokePrivate(
-            target = host,
-            methodName = "resolvePointerDownTarget",
-            parameterTypes = emptyArray(),
-            args = emptyArray()
-        ) as? org.dreamfinity.dsgl.core.dom.DOMNode
+    private fun resolvePointerDownTarget(host: DsglScreenHost): DOMNode? {
+        return host.debugResolvePointerDownTargetForTests()
     }
 
-    private fun resolveClickTarget(host: DsglScreenHost): org.dreamfinity.dsgl.core.dom.DOMNode? {
-        return invokePrivate(
-            target = host,
-            methodName = "resolveClickTarget",
-            parameterTypes = emptyArray(),
-            args = emptyArray()
-        ) as? org.dreamfinity.dsgl.core.dom.DOMNode
-    }
-
-    private fun getPrivateField(target: Any, fieldName: String): Any? {
-        val field = findField(target.javaClass, fieldName)
-        field.isAccessible = true
-        return field.get(target)
-    }
-
-    private fun setPrivateField(target: Any, fieldName: String, value: Any?) {
-        val field = findField(target.javaClass, fieldName)
-        field.isAccessible = true
-        field.set(target, value)
-    }
-
-    private fun invokePrivate(
-        target: Any,
-        methodName: String,
-        parameterTypes: Array<Class<*>>,
-        args: Array<Any?>
-    ): Any? {
-        val method = findMethod(target.javaClass, methodName, parameterTypes)
-        method.isAccessible = true
-        return method.invoke(target, *args)
-    }
-
-    private fun findField(clazz: Class<*>, fieldName: String): java.lang.reflect.Field {
-        var current: Class<*>? = clazz
-        while (current != null) {
-            val field = current.declaredFields.firstOrNull { it.name == fieldName }
-            if (field != null) return field
-            current = current.superclass
-        }
-        error("Field '$fieldName' not found on ${clazz.name}")
-    }
-
-    private fun findMethod(
-        clazz: Class<*>,
-        methodName: String,
-        parameterTypes: Array<Class<*>>
-    ): java.lang.reflect.Method {
-        var current: Class<*>? = clazz
-        while (current != null) {
-            val method = current.declaredMethods.firstOrNull {
-                it.name == methodName && it.parameterTypes.contentEquals(parameterTypes)
-            }
-            if (method != null) return method
-            current = current.superclass
-        }
-        error("Method '$methodName' not found on ${clazz.name}")
+    private fun resolveClickTarget(host: DsglScreenHost): DOMNode? {
+        return host.debugResolveClickTargetForTests()
     }
 
     private data class AbsoluteOutsideAncestorFixture(
@@ -289,5 +270,18 @@ class DsglScreenHostUsedGeometryTests {
                 set(property, StyleExpression.Literal(literal))
             }
         }
+    }
+
+    private data class EventBusListenerSnapshot(
+        val registeredNodes: Int,
+        val registeredCallbacks: Int
+    )
+
+    private fun debugEventBusSnapshot(): EventBusListenerSnapshot {
+        val snapshot = EventBus.debugListenerSnapshot()
+        return EventBusListenerSnapshot(
+            registeredNodes = snapshot.registeredNodes,
+            registeredCallbacks = snapshot.registeredCallbacks
+        )
     }
 }
