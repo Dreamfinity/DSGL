@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -252,12 +253,14 @@ class SelectNode(
     }
 
     private fun openRequest(): SelectOpenRequest {
+        val geometry = UsedInteractionGeometryResolver.resolveNodeGeometry(this)
+        val anchorRect = geometry.visibleBorderRect ?: geometry.usedBorderRect
         return SelectOpenRequest(
             owner = ownerToken,
             modelToken = model.token,
             entries = model.entries,
             selectedId = selectedOptionId(),
-            anchorRect = bounds,
+            anchorRect = anchorRect,
             closeOnSelect = closeOnSelect,
             onSelect = { selected -> applySelection(selected) },
             onClose = { setOpenState(false) },

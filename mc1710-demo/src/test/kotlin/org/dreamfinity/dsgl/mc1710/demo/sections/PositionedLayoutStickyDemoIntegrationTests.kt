@@ -18,6 +18,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class PositionedLayoutStickyDemoIntegrationTests {
     private val width = 1024
@@ -84,11 +85,25 @@ class PositionedLayoutStickyDemoIntegrationTests {
         val fixture = renderFixture()
         scrollMainSectionToSticky(fixture)
 
+        val topScroller = requireContainer(fixture.tree.root, "positioned.sticky.vertical.top.scroller")
         val topTarget = requireNode(fixture.tree.root, "positioned.sticky.vertical.top.target")
         val xyTarget = requireNode(fixture.tree.root, "positioned.sticky.xy.target")
+        val topRect = transformedRect(topTarget)
+        val topViewport = topScroller.scrollContainerState().viewportRect
+        assertTrue(
+            intersects(topRect, topViewport),
+            "Sticky top target must remain visible in its scroller viewport; targetRect=$topRect viewport=$topViewport"
+        )
 
-        val topPoint = findPointInsideTarget(fixture.tree.root, topTarget, transformedRect(topTarget))
-        assertNotNull(topPoint, "Expected a hover-resolvable point inside sticky top target")
+        val topPoint = findPointInsideTarget(fixture.tree.root, topTarget, topRect)
+        val topCenterX = topRect.x + topRect.width / 2
+        val topCenterY = topRect.y + topRect.height / 2
+        val topCenterWinner = hoverWinnerKey(fixture.tree.root, topCenterX, topCenterY)
+        assertNotNull(
+            topPoint,
+            "Expected a hover-resolvable point inside sticky top target. " +
+                "targetRect=$topRect viewport=$topViewport centerWinner=$topCenterWinner"
+        )
         assertEquals(topTarget, collectHoverChain(fixture.tree.root, topPoint.first, topPoint.second).lastOrNull())
 
         val xyPoint = findPointInsideTarget(fixture.tree.root, xyTarget, transformedRect(xyTarget))
@@ -144,9 +159,12 @@ class PositionedLayoutStickyDemoIntegrationTests {
     private fun scrollMainSectionToSticky(fixture: Fixture) {
         val sectionScroller = requireContainer(fixture.tree.root, "section.positionedLayout")
         val stickySurface = requireNode(fixture.tree.root, "positioned.sticky.surface")
+        val controls = findByKey(fixture.tree.root, "positioned.controls")
         val viewport = sectionScroller.scrollContainerState().viewportRect
         val stickyRect = transformedRect(stickySurface)
-        val targetScrollY = (stickyRect.y - viewport.y).coerceAtLeast(0)
+        val controlsHeight = controls?.let { transformedRect(it).height } ?: 0
+        val desiredStickySurfaceTopY = viewport.y + controlsHeight + 8
+        val targetScrollY = (stickyRect.y - desiredStickySurfaceTopY).coerceAtLeast(0)
         sectionScroller.setScrollOffsets(0, targetScrollY)
         fixture.tree.render(ctx, width, height)
     }
@@ -209,6 +227,16 @@ class PositionedLayoutStickyDemoIntegrationTests {
         } else {
             null
         }
+    }
+
+    private fun hoverWinnerKey(root: DOMNode, x: Int, y: Int): String? {
+        return collectHoverChain(root, x, y).lastOrNull()?.key?.toString()
+    }
+
+    private fun intersects(a: Rect, b: Rect): Boolean {
+        val noOverlapX = a.x + a.width <= b.x || b.x + b.width <= a.x
+        val noOverlapY = a.y + a.height <= b.y || b.y + b.height <= a.y
+        return !noOverlapX && !noOverlapY
     }
 
     private fun inspectorHoveredBorderRect(inspector: InspectorController): Rect? {

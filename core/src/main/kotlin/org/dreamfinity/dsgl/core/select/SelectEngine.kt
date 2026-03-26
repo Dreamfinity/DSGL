@@ -168,6 +168,12 @@ class SelectEngine(
         return current.panelRect
     }
 
+    fun debugAnchorRect(owner: Any): Rect? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        return current.anchorRect
+    }
+
     fun onFrame(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
