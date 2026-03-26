@@ -651,6 +651,57 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.DISPLAY, value.toCssLiteral())
         }
 
+    var position: PositionMode
+        get() = PositionMode.Static
+        set(value) {
+            setLiteral(StyleProperty.POSITION, value.toCssLiteral())
+        }
+
+    var left: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.LEFT, "auto")
+            } else {
+                setLiteral(StyleProperty.LEFT, value.toCssLiteral())
+            }
+        }
+
+    var top: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.TOP, "auto")
+            } else {
+                setLiteral(StyleProperty.TOP, value.toCssLiteral())
+            }
+        }
+
+    var right: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.RIGHT, "auto")
+            } else {
+                setLiteral(StyleProperty.RIGHT, value.toCssLiteral())
+            }
+        }
+
+    var bottom: CssLength?
+        get() = null
+        set(value) {
+            if (value == null) {
+                setLiteral(StyleProperty.BOTTOM, "auto")
+            } else {
+                setLiteral(StyleProperty.BOTTOM, value.toCssLiteral())
+            }
+        }
+
+    var zIndex: Int
+        get() = 0
+        set(value) {
+            setLiteral(StyleProperty.Z_INDEX, value.toString())
+        }
 
     var overflow: Overflow
         get() = Overflow.Visible
@@ -791,7 +842,7 @@ class StyleScope internal constructor(private val node: DOMNode) {
         }
 
     var flexGrow: Float
-        get() = 0f
+        get() = 1.0f
         set(value) {
             setLiteral(StyleProperty.FLEX_GROW, value.coerceAtLeast(0f).toString())
         }
@@ -857,6 +908,17 @@ class StyleScope internal constructor(private val node: DOMNode) {
         get() = TextFormatting.None
         set(value) {
             setLiteral(StyleProperty.TEXT_FORMATTING, value.toCssLiteral())
+        }
+    var lineHeight: LineHeightValue
+        get() = LineHeightValue.Normal
+        set(value) {
+            when (value) {
+                LineHeightValue.Normal -> setLiteral(StyleProperty.LINE_HEIGHT, "normal")
+                is LineHeightValue.Length -> {
+                    requireNonNegative(value.value, "line-height")
+                    setLiteral(StyleProperty.LINE_HEIGHT, value.value.toCssLiteral())
+                }
+            }
         }
 
     var fontWeight: FontWeight
@@ -1029,6 +1091,19 @@ class StyleScope internal constructor(private val node: DOMNode) {
         setExpression(StyleProperty.FONT_SIZE, variable)
     }
 
+    fun lineHeightNormal() {
+        setLiteral(StyleProperty.LINE_HEIGHT, "normal")
+    }
+
+    fun lineHeight(value: CssLength) {
+        requireNonNegative(value, "line-height")
+        setLiteral(StyleProperty.LINE_HEIGHT, value.toCssLiteral())
+    }
+
+    fun lineHeight(variable: StyleExpression.VariableRef) {
+        setExpression(StyleProperty.LINE_HEIGHT, variable)
+    }
+
     fun width(value: CssLength) {
         requireNonNegative(value, "width")
         setLiteral(StyleProperty.WIDTH, value.toCssLiteral())
@@ -1111,6 +1186,13 @@ class StyleScope internal constructor(private val node: DOMNode) {
         Display.Grid -> "grid"
     }
 
+    private fun PositionMode.toCssLiteral(): String = when (this) {
+        PositionMode.Static -> "static"
+        PositionMode.Relative -> "relative"
+        PositionMode.Absolute -> "absolute"
+        PositionMode.Fixed -> "fixed"
+        PositionMode.Sticky -> "sticky"
+    }
 
     private fun Overflow.toCssLiteral(): String = when (this) {
         Overflow.Visible -> "visible"
@@ -1207,4 +1289,5 @@ class ButtonScope internal constructor(private val node: ButtonNode) {
         node.onClick(handler)
     }
 }
+
 

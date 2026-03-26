@@ -7,10 +7,26 @@ enum class StyleEditorValueType {
     FloatNumber,
     OptionalIntNumber,
     OptionalLengthPx,
+    LineHeight,
     Spacing,
     SpacingLengthPx,
     ColorHex,
     StringPreset
+}
+
+enum class StyleValueGrammarKind {
+    Enum,
+    UnitlessInt,
+    LengthLike,
+    LineHeight,
+    Other
+}
+
+enum class StyleInspectorEditorKind {
+    EnumSelect,
+    FontSelect,
+    NumericInput,
+    StringInput
 }
 
 data class StylePropertyDescriptor(
@@ -20,12 +36,57 @@ data class StylePropertyDescriptor(
     val numericStep: Float = 1f,
     val minInt: Int = 0,
     val minFloat: Float = 0f,
-    val isInherited: Boolean = false
+    val isInherited: Boolean = false,
+    val grammarKind: StyleValueGrammarKind = defaultGrammarKind(valueType),
+    val inspectorEditorKind: StyleInspectorEditorKind = defaultInspectorEditorKind(property, valueType)
 )
 
 object StylePropertyRegistry {
     val all: List<StylePropertyDescriptor> = listOf(
         StylePropertyDescriptor(StyleProperty.DISPLAY, StyleEditorValueType.EnumChoice, enumOptions = listOf("block", "inline", "none", "flex", "grid")),
+        StylePropertyDescriptor(
+            property = StyleProperty.POSITION,
+            valueType = StyleEditorValueType.EnumChoice,
+            enumOptions = listOf("static", "relative", "absolute", "fixed", "sticky"),
+            grammarKind = StyleValueGrammarKind.Enum,
+            inspectorEditorKind = StyleInspectorEditorKind.EnumSelect
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.LEFT,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.TOP,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.RIGHT,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.BOTTOM,
+            valueType = StyleEditorValueType.OptionalLengthPx,
+            numericStep = 1f,
+            grammarKind = StyleValueGrammarKind.LengthLike,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
+        StylePropertyDescriptor(
+            property = StyleProperty.Z_INDEX,
+            valueType = StyleEditorValueType.IntNumber,
+            numericStep = 1f,
+            minInt = Int.MIN_VALUE,
+            grammarKind = StyleValueGrammarKind.UnitlessInt,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
         StylePropertyDescriptor(StyleProperty.WIDTH, StyleEditorValueType.LengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.HEIGHT, StyleEditorValueType.LengthPx, numericStep = 4f),
         StylePropertyDescriptor(StyleProperty.MIN_WIDTH, StyleEditorValueType.OptionalLengthPx, numericStep = 4f),
@@ -66,9 +127,20 @@ object StylePropertyRegistry {
             StyleProperty.FONT_ID,
             StyleEditorValueType.StringPreset,
             enumOptions = listOf("minecraft", "ubuntu", "JetBrains Mono"),
-            isInherited = true
+            isInherited = true,
+            inspectorEditorKind = StyleInspectorEditorKind.FontSelect
         ),
         StylePropertyDescriptor(StyleProperty.FONT_SIZE, StyleEditorValueType.LengthPx, numericStep = 1f, minInt = 1, isInherited = true),
+        StylePropertyDescriptor(
+            property = StyleProperty.LINE_HEIGHT,
+            valueType = StyleEditorValueType.LineHeight,
+            enumOptions = listOf("normal"),
+            numericStep = 1f,
+            minInt = 0,
+            isInherited = true,
+            grammarKind = StyleValueGrammarKind.LineHeight,
+            inspectorEditorKind = StyleInspectorEditorKind.NumericInput
+        ),
         StylePropertyDescriptor(StyleProperty.FONT_WEIGHT, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "bold"), isInherited = true),
         StylePropertyDescriptor(StyleProperty.FONT_STYLE, StyleEditorValueType.EnumChoice, enumOptions = listOf("normal", "italic"), isInherited = true),
         StylePropertyDescriptor(
@@ -110,6 +182,33 @@ object StylePropertyRegistry {
 
     fun isInherited(property: StyleProperty): Boolean = descriptor(property).isInherited
 
+    fun parseEnumLiteral(property: StyleProperty, literal: String): String {
+        val descriptor = descriptor(property)
+        require(descriptor.grammarKind == StyleValueGrammarKind.Enum) {
+            "Property '${property.key}' does not use enum grammar."
+        }
+        val normalized = literal.trim().lowercase()
+        val matched = descriptor.enumOptions.firstOrNull { it.equals(normalized, ignoreCase = true) }
+            ?: error("Unsupported value '$literal' for '${property.key}'.")
+        return matched
+    }
+
+    fun parseUnitlessIntLiteral(property: StyleProperty, literal: String): Int {
+        val descriptor = descriptor(property)
+        require(descriptor.grammarKind == StyleValueGrammarKind.UnitlessInt) {
+            "Property '${property.key}' does not use unitless-int grammar."
+        }
+        return parseIntLike(literal)
+    }
+
+    fun parseLineHeightLiteral(property: StyleProperty, literal: String): LineHeightValue {
+        val descriptor = descriptor(property)
+        require(descriptor.grammarKind == StyleValueGrammarKind.LineHeight) {
+            "Property '${property.key}' does not use line-height grammar."
+        }
+        return parseLineHeightValue(literal)
+    }
+
     private fun colorPalette(): List<String> {
         return listOf(
             "#FF1B1F24",
@@ -128,3 +227,35 @@ object StylePropertyRegistry {
     }
 }
 
+private fun defaultGrammarKind(valueType: StyleEditorValueType): StyleValueGrammarKind {
+    return when (valueType) {
+        StyleEditorValueType.EnumChoice -> StyleValueGrammarKind.Enum
+        StyleEditorValueType.IntNumber -> StyleValueGrammarKind.UnitlessInt
+        StyleEditorValueType.LineHeight -> StyleValueGrammarKind.LineHeight
+        StyleEditorValueType.LengthPx,
+        StyleEditorValueType.OptionalLengthPx,
+        StyleEditorValueType.SpacingLengthPx -> StyleValueGrammarKind.LengthLike
+        else -> StyleValueGrammarKind.Other
+    }
+}
+
+private fun defaultInspectorEditorKind(
+    property: StyleProperty,
+    valueType: StyleEditorValueType
+): StyleInspectorEditorKind {
+    if (property == StyleProperty.FONT_ID) {
+        return StyleInspectorEditorKind.FontSelect
+    }
+    return when (valueType) {
+        StyleEditorValueType.EnumChoice -> StyleInspectorEditorKind.EnumSelect
+        StyleEditorValueType.IntNumber,
+        StyleEditorValueType.OptionalIntNumber,
+        StyleEditorValueType.FloatNumber,
+        StyleEditorValueType.LineHeight,
+        StyleEditorValueType.LengthPx,
+        StyleEditorValueType.OptionalLengthPx,
+        StyleEditorValueType.Spacing,
+        StyleEditorValueType.SpacingLengthPx -> StyleInspectorEditorKind.NumericInput
+        else -> StyleInspectorEditorKind.StringInput
+    }
+}

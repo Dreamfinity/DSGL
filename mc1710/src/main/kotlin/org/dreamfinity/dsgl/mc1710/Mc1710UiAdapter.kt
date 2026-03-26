@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
+import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.host.Viewport
@@ -147,12 +148,25 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return textRenderer.measureText(text, fontId, fontSize)
     }
+    override fun measureTextRange(
+        text: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        fontId: String?,
+        fontSize: Int?
+    ): Int {
+        return textRenderer.measureTextRange(text, startIndex, endIndexExclusive, fontId, fontSize)
+    }
 
     override val fontHeight: Int
         get() = textRenderer.lineHeight(FontRegistry.DEFAULT_FONT_ID, null)
 
     override fun fontHeight(fontId: String?, fontSize: Int?): Int {
         return textRenderer.lineHeight(fontId, fontSize)
+    }
+
+    override fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? {
+        return textRenderer.fontLineMetrics(fontId, fontSize)
     }
 
     fun viewport(): Viewport {
@@ -868,6 +882,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         paintsCount++
         opacityStack.clear()
         opacityMultiplier = 1f
+        val transformStack = RenderCommandTransformStack()
+        transformStack.reset()
         val viewport = viewport()
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
         try {
@@ -881,6 +897,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL11.glMatrixMode(GL11.GL_MODELVIEW)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.0f)
             try {
                 for (command in commands) {
                     when (command) {
@@ -985,12 +1002,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                         }
 
                         is RenderCommand.PushClip -> {
+                            val transformedClip = transformStack.resolveClipRect(
+                                x = command.x,
+                                y = command.y,
+                                width = command.width,
+                                height = command.height
+                            )
                             pushClip(
                                 viewport = viewport,
-                                guiX = command.x,
-                                guiY = command.y,
-                                guiWidth = command.width,
-                                guiHeight = command.height
+                                guiX = transformedClip.x,
+                                guiY = transformedClip.y,
+                                guiWidth = transformedClip.width,
+                                guiHeight = transformedClip.height
                             )
                         }
 
@@ -999,6 +1022,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                         }
 
                         is RenderCommand.PushTransform -> {
+                            transformStack.push(command)
                             GL11.glPushMatrix()
                             GL11.glTranslatef(command.originX, command.originY, 0f)
                             GL11.glTranslatef(command.translateX, command.translateY, 0f)
@@ -1008,6 +1032,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                         }
 
                         is RenderCommand.PopTransform -> {
+                            transformStack.pop()
                             GL11.glPopMatrix()
                         }
 
@@ -1023,6 +1048,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     }
                 }
             } finally {
+                GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f)
                 GL11.glMatrixMode(GL11.GL_MODELVIEW)
                 GL11.glPopMatrix()
                 GL11.glMatrixMode(GL11.GL_PROJECTION)
@@ -1031,6 +1057,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             }
         } finally {
             ScissorContext.clear()
+            transformStack.reset()
             opacityStack.clear()
             opacityMultiplier = 1f
             GL11.glPopAttrib()

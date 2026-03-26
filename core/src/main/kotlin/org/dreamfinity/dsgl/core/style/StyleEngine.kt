@@ -916,6 +916,7 @@ object StyleEngine {
             StyleProperty.FOREGROUND_COLOR -> current.copy(foregroundColor = parent.foregroundColor)
             StyleProperty.FONT_ID -> current.copy(fontId = parent.fontId)
             StyleProperty.FONT_SIZE -> current.copy(fontSize = parent.fontSize, fontSizeValue = parent.fontSizeValue)
+            StyleProperty.LINE_HEIGHT -> current.copy(lineHeight = parent.lineHeight)
             StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parent.fontWeight)
             StyleProperty.FONT_STYLE -> current.copy(fontStyle = parent.fontStyle)
             else -> current
@@ -930,6 +931,7 @@ object StyleEngine {
         result = 31 * result + parentComputed.foregroundColor
         result = 31 * result + (parentComputed.fontId?.hashCode() ?: 0)
         result = 31 * result + (parentComputed.fontSize ?: 0)
+        result = 31 * result + parentComputed.lineHeight.hashCode()
         result = 31 * result + parentComputed.fontWeight.hashCode()
         result = 31 * result + parentComputed.fontStyle.hashCode()
         return result
@@ -980,6 +982,9 @@ object StyleEngine {
                     fontSizeValue = fontSizeValue
                 )
             }
+            StyleProperty.LINE_HEIGHT -> current.copy(
+                lineHeight = StylePropertyRegistry.parseLineHeightLiteral(property, literal)
+            )
             StyleProperty.FONT_WEIGHT -> current.copy(fontWeight = parseFontWeight(literal))
             StyleProperty.FONT_STYLE -> current.copy(fontStyle = parseFontStyle(literal))
             StyleProperty.TEXT_DECORATION -> current.copy(textDecoration = parseTextDecoration(literal))
@@ -1004,6 +1009,12 @@ object StyleEngine {
             )
             StyleProperty.ALIGN -> current.copy(align = parseAlign(literal))
             StyleProperty.DISPLAY -> current.copy(display = parseDisplay(literal))
+            StyleProperty.POSITION -> current.copy(position = parsePosition(literal))
+            StyleProperty.LEFT -> current.copy(left = parseOptionalCssLength(literal))
+            StyleProperty.TOP -> current.copy(top = parseOptionalCssLength(literal))
+            StyleProperty.RIGHT -> current.copy(right = parseOptionalCssLength(literal))
+            StyleProperty.BOTTOM -> current.copy(bottom = parseOptionalCssLength(literal))
+            StyleProperty.Z_INDEX -> current.copy(zIndex = parseIntLike(literal))
             StyleProperty.OVERFLOW -> {
                 val overflowAxes = parseOverflowShorthand(literal)
                 current.copy(
@@ -1180,4 +1191,3 @@ object StyleEngine {
         return expanded
     }
 }
-

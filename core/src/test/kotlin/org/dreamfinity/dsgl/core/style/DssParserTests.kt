@@ -276,6 +276,86 @@ class DssParserTests {
         assertEquals("dsgl-root", data.rules.single().selector.typeName)
     }
 
+
+    @Test
+    fun `parses z-index as unitless integer`() {
+        val data = DssParser.parse(
+            """
+            .panel { z-index: 5; }
+            """.trimIndent(),
+            "z-index.dss"
+        )
+
+        val expression = data.rules.single().declarations.get(StyleProperty.Z_INDEX)
+        val literal = assertIs<StyleExpression.Literal>(expression)
+        assertEquals("5", literal.value)
+    }
+
+    @Test
+    fun `rejects unitized z-index literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .panel { z-index: 5px; }
+                """.trimIndent(),
+                "z-index-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected number") == true)
+    }
+
+    @Test
+    fun `parses position enum values`() {
+        val data = DssParser.parse(
+            """
+            .a { position: static; }
+            .b { position: relative; }
+            .c { position: absolute; }
+            .d { position: fixed; }
+            .e { position: sticky; }
+            """.trimIndent(),
+            "position.dss"
+        )
+
+        assertEquals(5, data.rules.size)
+        val values = data.rules.mapNotNull { rule ->
+            (rule.declarations.get(StyleProperty.POSITION) as? StyleExpression.Literal)?.value
+        }
+        assertEquals(listOf("static", "relative", "absolute", "fixed", "sticky"), values)
+    }
+    @Test
+    fun `parses offset properties through length-like grammar`() {
+        val data = DssParser.parse(
+            """
+            .panel {
+              left: 10px;
+              top: 1.5em;
+              right: auto;
+              bottom: 0;
+            }
+            """.trimIndent(),
+            "offsets.dss"
+        )
+
+        val declarations = data.rules.single().declarations
+        assertEquals("10px", (declarations.get(StyleProperty.LEFT) as? StyleExpression.Literal)?.value)
+        assertEquals("1.5em", (declarations.get(StyleProperty.TOP) as? StyleExpression.Literal)?.value)
+        assertEquals("auto", (declarations.get(StyleProperty.RIGHT) as? StyleExpression.Literal)?.value)
+        assertEquals("0", (declarations.get(StyleProperty.BOTTOM) as? StyleExpression.Literal)?.value)
+    }
+
+    @Test
+    fun `rejects invalid offset literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .panel { left: nope; }
+                """.trimIndent(),
+                "offsets-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected CSS length") == true)
+    }
     @Test
     fun `unitless non-zero length literal is rejected`() {
         val error = assertFailsWith<DssParseException> {
@@ -288,4 +368,35 @@ class DssParserTests {
         }
         assertTrue(error.message?.contains("Expected explicit unit") == true)
     }
-}
+
+    @Test
+    fun `parses line-height grammar values`() {
+        val data = DssParser.parse(
+            """
+            .text-a { line-height: normal; }
+            .text-b { line-height: 24px; }
+            .text-c { line-height: 1.5em; }
+            """.trimIndent(),
+            "line-height.dss"
+        )
+
+        val values = data.rules.mapNotNull { rule ->
+            (rule.declarations.get(StyleProperty.LINE_HEIGHT) as? StyleExpression.Literal)?.value
+        }
+        assertEquals(listOf("normal", "24px", "1.5em"), values)
+    }
+
+    @Test
+    fun `rejects invalid line-height literal`() {
+        val error = assertFailsWith<DssParseException> {
+            DssParser.parse(
+                """
+                .text { line-height: nope; }
+                """.trimIndent(),
+                "line-height-bad.dss"
+            )
+        }
+        assertTrue(error.message?.contains("Expected CSS length") == true)
+    }}
+
+

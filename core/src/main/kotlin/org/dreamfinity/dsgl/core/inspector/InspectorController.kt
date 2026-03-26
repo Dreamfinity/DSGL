@@ -7,14 +7,15 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
-import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -961,7 +962,7 @@ class InspectorController(
         viewportHeight: Int
     ) {
         nativeSelectedHighlight = selected?.let { node ->
-            val boxes = computeBoxes(node)
+            val boxes = computeHighlightBoxes(node)
             InspectorHighlightSnapshot(
                 marginRect = boxes.margin,
                 borderRect = boxes.border,
@@ -973,7 +974,7 @@ class InspectorController(
         if (hoverPickEnabled) {
             val hovered = hoveredNode
             nativeHoveredHighlight = hovered?.let { node ->
-                val boxes = computeBoxes(node)
+                val boxes = computeHighlightBoxes(node)
                 InspectorHighlightSnapshot(
                     marginRect = boxes.margin,
                     borderRect = boxes.border,
@@ -1107,9 +1108,9 @@ class InspectorController(
 
                 InspectorEditorKind.NumericInput -> {
                     val step = StylePropertyRegistry.descriptor(property).numericStep
-                    val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                    val parsed = InspectorEditorRegistry.parseNumericLiteral(property, effectiveValue)
                     val numericValue = parsed?.numberText ?: "0"
-                    val unit = parsed?.unit ?: CssUnit.Px
+                    val unit = parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                     val buttonWidth = 34
                     val unitWidth = if (editor.supportsUnits) 68 else 0
                     val inputWidth =
@@ -1150,7 +1151,7 @@ class InspectorController(
                         inputRect = inputRect,
                         incrementRect = incRect,
                         unitRect = unitRect,
-                        unitValue = unit.token,
+                        unitValue = if (editor.supportsUnits) unit?.token else null,
                         unitOpen = openUnitSelectProperty == property,
                         controlOpen = false
                     )
@@ -1626,8 +1627,7 @@ class InspectorController(
             return true
         }
         return runCatching {
-            val unit = parseCssUnitToken(unitToken ?: "px")
-            val formatted = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+            val formatted = InspectorEditorRegistry.formatNumericLiteral(property, numberText, unitToken)
             StyleEngine.setInspectorOverrideLiteral(selected, property, formatted).getOrThrow()
             cachedStyle = null
             styleEditorError = null
@@ -1759,11 +1759,19 @@ class InspectorController(
             return
         }
         hoveredPath = collectHoverChain(currentRoot, mouseX, mouseY)
-        hoveredNode = hoveredPath.lastOrNull()
+        hoveredNode = resolveInspectorHoverCandidate(hoveredPath)
         lastHoverMouseX = mouseX
         lastHoverMouseY = mouseY
         lastHoverLayoutVersion = layoutVersion
         hoverDirty = false
+    }
+
+    private fun resolveInspectorHoverCandidate(path: List<DOMNode>): DOMNode? {
+        return path.lastOrNull { node -> shouldInspectorPickNode(node) }
+    }
+
+    private fun shouldInspectorPickNode(node: DOMNode): Boolean {
+        return node.display != Display.None
     }
 
     private fun appendHighlightCommands(
@@ -1772,7 +1780,7 @@ class InspectorController(
         selected: Boolean,
         out: MutableList<RenderCommand>
     ) {
-        val boxes = computeBoxes(node)
+        val boxes = computeHighlightBoxes(node)
         if (selected) {
             addFill(out, boxes.margin, 0x22F3B33D)
             addFill(out, boxes.padding, 0x2226A69A)
@@ -2397,16 +2405,16 @@ class InspectorController(
 
             InspectorEditorKind.NumericInput -> {
                 val step = StylePropertyRegistry.descriptor(property).numericStep
-                val parsed = InspectorEditorRegistry.parseNumberUnit(effectiveValue)
+                val parsed = InspectorEditorRegistry.parseNumericLiteral(property, effectiveValue)
                 val numericValue = if (activeEditProperty == property && activeEditIsNumeric) {
                     activeEditBuffer
                 } else {
                     parsed?.numberText ?: "0"
                 }
                 val unit = if (activeEditProperty == property && activeEditIsNumeric) {
-                    activeEditUnit ?: parsed?.unit ?: CssUnit.Px
+                    activeEditUnit ?: parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                 } else {
-                    parsed?.unit ?: CssUnit.Px
+                    parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property)
                 }
                 val buttonWidth = 34
                 val unitWidth = if (editor.supportsUnits) 68 else 0
@@ -2443,7 +2451,7 @@ class InspectorController(
                     val unitRect = Rect(incRect.x + incRect.width + 4, contentRect.y, unitWidth, contentRect.height)
                     drawValueSelector(
                         bounds = unitRect,
-                        value = unit.token,
+                        value = unit?.token ?: "px",
                         isOpen = openUnitSelectProperty == property,
                         hovered = unitRect.contains(mouseX, mouseY),
                         out = out
@@ -2773,11 +2781,14 @@ class InspectorController(
                 }
 
                 EditOperation.SelectUnitOption -> {
-                    val unit = parseCssUnitToken(payload ?: error("Missing unit payload."))
                     val current = literalForEdit(selected, property)
-                    val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                    val parsed = InspectorEditorRegistry.parseNumericLiteral(property, current)
                     val numberText = parsed?.numberText ?: "0"
-                    val nextLiteral = InspectorEditorRegistry.formatNumberUnit(numberText, unit)
+                    val nextLiteral = InspectorEditorRegistry.formatNumericLiteral(
+                        property = property,
+                        numberText = numberText,
+                        unitToken = payload
+                    )
                     StyleEngine.setInspectorOverrideLiteral(selected, property, nextLiteral).getOrThrow()
                     openUnitSelectProperty = null
                     openUnitSelectScrollIndex = 0
@@ -2799,11 +2810,11 @@ class InspectorController(
                 expression = StyleEngine.inspectorOverrideFor(selected, property)
             )
             if (descriptor.kind == InspectorEditorKind.NumericInput) {
-                val parsed = InspectorEditorRegistry.parseNumberUnit(current)
+                val parsed = InspectorEditorRegistry.parseNumericLiteral(property, current)
                 editSession.begin(
                     property = property,
                     initialBuffer = parsed?.numberText ?: "0",
-                    initialUnit = parsed?.unit ?: CssUnit.Px,
+                    initialUnit = parsed?.unit ?: InspectorEditorRegistry.defaultNumericUnit(property),
                     isNumeric = true
                 )
             } else {
@@ -2922,12 +2933,16 @@ class InspectorController(
         val property = activeEditProperty ?: return
         runCatching {
             val literal = if (activeEditIsNumeric) {
-                InspectorEditorRegistry.formatNumberUnit(activeEditBuffer, activeEditUnit ?: CssUnit.Px)
+                InspectorEditorRegistry.formatNumericLiteral(
+                    property = property,
+                    numberText = activeEditBuffer,
+                    unitToken = activeEditUnit?.token
+                )
             } else {
                 activeEditBuffer.trim()
             }
             val normalized = if (literal.isEmpty()) {
-                if (activeEditIsNumeric) "0px" else ""
+                if (activeEditIsNumeric) InspectorEditorRegistry.defaultNumericLiteral(property) else ""
             } else {
                 literal
             }
@@ -2940,24 +2955,13 @@ class InspectorController(
         editSession.clearActiveEdit()
     }
 
-    private fun parseCssUnitToken(raw: String): CssUnit {
-        return when (raw.trim().lowercase()) {
-            "px" -> CssUnit.Px
-            "em" -> CssUnit.Em
-            "rem" -> CssUnit.Rem
-            "vw" -> CssUnit.Vw
-            "vh" -> CssUnit.Vh
-            "%" -> CssUnit.Percent
-            else -> error("Unsupported unit '$raw'.")
-        }
-    }
-
     private fun enumOptions(property: StyleProperty): List<String>? {
         val descriptor = StylePropertyRegistry.descriptor(property)
         return when (descriptor.valueType) {
             StyleEditorValueType.EnumChoice,
             StyleEditorValueType.ColorHex,
-            StyleEditorValueType.StringPreset -> descriptor.enumOptions
+            StyleEditorValueType.StringPreset,
+            StyleEditorValueType.LineHeight -> descriptor.enumOptions
 
             else -> null
         }
@@ -2988,6 +2992,18 @@ class InspectorController(
                 }.getOrElse { descriptor.minInt }
                 val next = (base + delta.toInt()).coerceAtLeast(descriptor.minInt)
                 pxLiteral(next)
+            }
+
+            StyleEditorValueType.LineHeight -> {
+                val normalized = current.trim().lowercase()
+                if (normalized == "normal") {
+                    CssLength(delta.coerceAtLeast(0f), CssUnit.Px).toCssLiteral()
+                } else {
+                    val base = runCatching { parseCssLength(current, allowUnitlessZero = true) }
+                        .getOrElse { CssLength.ZERO_PX }
+                    val next = (base.value + delta).coerceAtLeast(0f)
+                    CssLength(next, base.unit).toCssLiteral()
+                }
             }
 
             StyleEditorValueType.OptionalIntNumber -> {
@@ -3052,6 +3068,10 @@ class InspectorController(
             StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
             StyleProperty.FONT_SIZE -> style.fontSizeValue?.toCssLiteral() ?: (style.fontSize?.let(::pxLiteral)
                 ?: "auto")
+            StyleProperty.LINE_HEIGHT -> when (val lineHeightValue = style.lineHeight) {
+                is LineHeightValue.Length -> lineHeightValue.value.toCssLiteral()
+                LineHeightValue.Normal -> "normal"
+            }
 
             StyleProperty.FONT_WEIGHT -> style.fontWeight.name.lowercase()
             StyleProperty.FONT_STYLE -> style.fontStyle.name.lowercase()
@@ -3071,6 +3091,12 @@ class InspectorController(
             StyleProperty.MAX_HEIGHT -> style.maxHeight?.toCssLiteral() ?: "auto"
             StyleProperty.ALIGN -> style.align.name.lowercase()
             StyleProperty.DISPLAY -> style.display.name.lowercase()
+            StyleProperty.POSITION -> style.position.name.lowercase()
+            StyleProperty.LEFT -> style.left?.toCssLiteral() ?: "auto"
+            StyleProperty.TOP -> style.top?.toCssLiteral() ?: "auto"
+            StyleProperty.RIGHT -> style.right?.toCssLiteral() ?: "auto"
+            StyleProperty.BOTTOM -> style.bottom?.toCssLiteral() ?: "auto"
+            StyleProperty.Z_INDEX -> style.zIndex.toString()
             StyleProperty.OVERFLOW -> if (style.overflowX == style.overflowY) {
                 style.overflowX.name.lowercase()
             } else {
@@ -3276,35 +3302,6 @@ class InspectorController(
         }
         path.removeAt(path.lastIndex)
         return false
-    }
-
-    private fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
-        val out = ArrayList<DOMNode>(8)
-        collectHoverChain(root, mouseX, mouseY, AffineTransform2D.IDENTITY, out)
-        return out
-    }
-
-    private fun collectHoverChain(
-        node: DOMNode,
-        mouseX: Int,
-        mouseY: Int,
-        parentTransform: AffineTransform2D,
-        out: MutableList<DOMNode>
-    ): Boolean {
-        if (node.styleDisabled) return false
-        if (!node.isHitTestVisible()) return false
-        val world = parentTransform.times(node.localTransformMatrix())
-        val inverse = world.inverseOrNull() ?: return false
-        val local = inverse.transform(mouseX.toFloat(), mouseY.toFloat())
-        if (!node.bounds.contains(local.first, local.second)) return false
-        out += node
-        for (index in node.children.lastIndex downTo 0) {
-            val child = node.children[index]
-            if (collectHoverChain(child, mouseX, mouseY, world, out)) {
-                return true
-            }
-        }
-        return true
     }
 
     private fun startMinimizedMoveDrag(mouseX: Int, mouseY: Int) {
@@ -3695,6 +3692,57 @@ class InspectorController(
             content = contentRect,
             parentContent = parentContent
         )
+    }
+
+    private fun computeHighlightBoxes(node: DOMNode): NodeBoxes {
+        val geometry = UsedInteractionGeometryResolver.resolveNodeGeometry(node)
+        val usedClip = geometry.usedClipRect
+        val borderRect = clipRectToUsedClip(geometry.usedBorderRect, usedClip)
+        val marginRect = clipRectToUsedClip(
+            Rect(
+                x = geometry.usedBorderRect.x - node.margin.left,
+                y = geometry.usedBorderRect.y - node.margin.top,
+                width = (geometry.usedBorderRect.width + node.margin.horizontal).coerceAtLeast(0),
+                height = (geometry.usedBorderRect.height + node.margin.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val paddingRect = clipRectToUsedClip(
+            Rect(
+                x = geometry.usedBorderRect.x + node.border.left,
+                y = geometry.usedBorderRect.y + node.border.top,
+                width = (geometry.usedBorderRect.width - node.border.horizontal).coerceAtLeast(0),
+                height = (geometry.usedBorderRect.height - node.border.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val contentRect = clipRectToUsedClip(
+            Rect(
+                x = paddingRect.x + node.padding.left,
+                y = paddingRect.y + node.padding.top,
+                width = (paddingRect.width - node.padding.horizontal).coerceAtLeast(0),
+                height = (paddingRect.height - node.padding.vertical).coerceAtLeast(0)
+            ),
+            usedClip
+        )
+        val parentContent = node.parent?.let { parent ->
+            clipRectToUsedClip(contentRect(parent), usedClip)
+        }
+        return NodeBoxes(
+            margin = marginRect,
+            border = borderRect,
+            padding = paddingRect,
+            content = contentRect,
+            parentContent = parentContent
+        )
+    }
+
+    private fun clipRectToUsedClip(rect: Rect, clip: Rect?): Rect {
+        if (rect.width <= 0 || rect.height <= 0) {
+            return Rect(0, 0, 0, 0)
+        }
+        if (clip == null) return rect
+        return rect.intersection(clip) ?: Rect(0, 0, 0, 0)
     }
 
     private fun contentRect(node: DOMNode): Rect {

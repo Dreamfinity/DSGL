@@ -7,12 +7,14 @@ import org.dreamfinity.dsgl.core.dom.debug.LayoutViolation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
+import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.util.Collections
@@ -87,46 +89,90 @@ class DomTree(
 
     /** Builds render commands for the current layout. */
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
-        frames += 1
-        StyleEngine.setViewportSize(lastWidth, lastHeight)
-        val scrollDtSeconds = nextScrollAnimationDtSeconds()
-        if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
-            commandsDirty = true
-        }
-        val scrollLayoutDirty = root.consumeScrollLayoutDirtyRecursively()
-        val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
-        val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
-            StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
-                lastStyleReport = it
-                lastStyleRevision = styleRevision
+        val paintStartNanos = System.nanoTime()
+        try {
+            frames += 1
+            StyleEngine.setViewportSize(lastWidth, lastHeight)
+            val scrollDtSeconds = nextScrollAnimationDtSeconds()
+            if (root.advanceScrollAnimationsRecursively(scrollDtSeconds)) {
+                commandsDirty = true
             }
-        } else {
-            StyleEngine.StyleApplyReport(
-                layoutDirty = false,
-                visualDirty = false,
-                visitedNodes = 0,
-                cacheHits = 0,
-                recomputedNodes = 0
-            )
+            val scrollInvalidation = root.consumeScrollInvalidationRecursively()
+            val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
+            val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
+                val styleStartNanos = System.nanoTime()
+                StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
+                    lastStyleReport = it
+                    lastStyleRevision = styleRevision
+                    ScrollPerformanceCounters.recordStyleApplyDuration(System.nanoTime() - styleStartNanos)
+                }
+            } else {
+                StyleEngine.StyleApplyReport(
+                    layoutDirty = false,
+                    visualDirty = false,
+                    visitedNodes = 0,
+                    cacheHits = 0,
+                    recomputedNodes = 0
+                )
+            }
+            val canUseGuardedScrollVisualFastPath =
+                laidOut &&
+                    lastWidth > 0 &&
+                    lastHeight > 0 &&
+                    styleScope != StyleApplicationScope.SystemOverlay &&
+                    !styleReport.layoutDirty &&
+                    !styleReport.visualDirty &&
+                    scrollInvalidation.visualDirty &&
+                    !scrollInvalidation.layoutDirty
+            val stickyLayoutInvalidated = styleReport.layoutDirty || scrollInvalidation.layoutDirty
+            if (stickyLayoutInvalidated) {
+                root.invalidateStickyVisualOffsetsRecursively()
+            }
+
+            if (canUseGuardedScrollVisualFastPath) {
+                val translatedNodes = root.applyScrollVisualGeometryRecursively()
+                val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
+                commandsDirty = true
+                ScrollPerformanceCounters.incrementGuardedScrollVisualFastPathRuns()
+                ScrollPerformanceCounters.recordScrollVisualGeometryRefresh(translatedNodes)
+                ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
+            }
+            val requiresSystemOverlayScrollLayoutFallback =
+                styleScope == StyleApplicationScope.SystemOverlay && scrollInvalidation.visualDirty
+            if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresSystemOverlayScrollLayoutFallback) &&
+                lastWidth > 0 &&
+                lastHeight > 0
+            ) {
+                val layoutStartNanos = System.nanoTime()
+                root.resolveLayoutStyleValues(
+                    ctx = ctx,
+                    parentContentWidth = lastWidth,
+                    parentContentHeight = lastHeight
+                )
+                root.render(ctx, 0, 0, lastWidth, lastHeight)
+                val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
+                validateLayout(ctx)
+                refManager.commit(root)
+                laidOut = true
+                commandsDirty = true
+                ScrollPerformanceCounters.recordFullRerenderLayoutDuration(System.nanoTime() - layoutStartNanos)
+                ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
+            } else if (styleReport.visualDirty || scrollInvalidation.visualDirty) {
+                if (!canUseGuardedScrollVisualFastPath) {
+                    val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
+                    ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
+                }
+                commandsDirty = true
+            }
+            val chunkStartNanos = System.nanoTime()
+            if (rebuildPaintCommands(ctx)) {
+                commandRebuilds += 1
+            }
+            ScrollPerformanceCounters.recordChunkRebuildDuration(System.nanoTime() - chunkStartNanos)
+            return paintBuffer
+        } finally {
+            ScrollPerformanceCounters.recordPaintCall(System.nanoTime() - paintStartNanos)
         }
-        if ((!laidOut || styleReport.layoutDirty || scrollLayoutDirty) && lastWidth > 0 && lastHeight > 0) {
-            root.resolveLayoutStyleValues(
-                ctx = ctx,
-                parentContentWidth = lastWidth,
-                parentContentHeight = lastHeight
-            )
-            root.render(ctx, 0, 0, lastWidth, lastHeight)
-            validateLayout(ctx)
-            refManager.commit(root)
-            laidOut = true
-            commandsDirty = true
-        } else if (styleReport.visualDirty) {
-            commandsDirty = true
-        }
-        if (rebuildPaintCommands(ctx)) {
-            commandRebuilds += 1
-        }
-        return paintBuffer
     }
 
     /**
@@ -269,6 +315,7 @@ class DomTree(
     }
 
     private fun rebuildChunkRecursive(node: DOMNode, ctx: UiMeasureContext, nowMs: Long): RenderCommandChunk {
+        ScrollPerformanceCounters.incrementChunkTraversalCalls()
         chunkNodesVisitedLastFrame += 1
         val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
         val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
@@ -281,7 +328,7 @@ class DomTree(
             0L
         } else {
             var signature = 1L
-            val expectedChildren = node.children
+            val expectedChildren = node.orderedChildrenForPaintTraversal()
             var childrenChanged = chunk.children.size != expectedChildren.size
             if (childrenChanged) {
                 chunk.children.clear()
@@ -306,12 +353,12 @@ class DomTree(
         }
 
         val nodeSignature = node.renderCommandsSignature(nowMs)
-        val rebuildSelf = commandsDirty ||
-            chunk.lastNodeSignature != nodeSignature ||
+        val rebuildSelf = chunk.lastNodeSignature != nodeSignature ||
             chunk.lastChildrenSignature != childSignature ||
             chunk.lastNodeSignature == Long.MIN_VALUE
 
         if (rebuildSelf) {
+            ScrollPerformanceCounters.incrementChunkRebuildCalls()
             chunkTreeChangedThisFrame = true
             chunkNodesRebuiltLastFrame += 1
             rebuildChunkCommands(node, chunk, ctx, nodeHidden)
@@ -340,6 +387,20 @@ class DomTree(
         val activeOpacity = node.effectiveOpacity()
         val transformPushed = !activeTransform.isIdentity()
         val opacityPushed = activeOpacity < 0.999f
+        val promotedFixedRootViewportClipRect = if (node.position == PositionMode.Fixed) {
+            node.fixedViewportClipRectForPromotedParticipation()
+        } else {
+            null
+        }
+
+        if (promotedFixedRootViewportClipRect != null) {
+            chunk.prefixCommands += RenderCommand.PushClip(
+                x = promotedFixedRootViewportClipRect.x,
+                y = promotedFixedRootViewportClipRect.y,
+                width = promotedFixedRootViewportClipRect.width.coerceAtLeast(0),
+                height = promotedFixedRootViewportClipRect.height.coerceAtLeast(0)
+            )
+        }
 
         if (transformPushed) {
             val ox = node.bounds.x + node.bounds.width * node.transformOrigin.originX
@@ -378,6 +439,9 @@ class DomTree(
         }
         if (transformPushed) {
             chunk.suffixCommands += RenderCommand.PopTransform
+        }
+        if (promotedFixedRootViewportClipRect != null) {
+            chunk.suffixCommands += RenderCommand.PopClip
         }
     }
 
@@ -433,3 +497,4 @@ class DomTree(
         }
     }
 }
+

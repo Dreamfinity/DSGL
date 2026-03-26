@@ -111,24 +111,24 @@ class InspectorDropdownCorrectiveTests {
     @Test
     fun `text edit migration remains intact after dropdown corrective fix`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val input = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        val input = findVisibleInputNode(fixture, "width")
         val (focusX, focusY) = focusInputByClick(fixture, input)
         syncAndRender(fixture, focusX, focusY)
 
-        var focusedInput = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        var focusedInput = findVisibleInputNode(fixture, "width")
         val nearEndX = (focusedInput.bounds.x + focusedInput.bounds.width - 3).coerceAtLeast(focusedInput.bounds.x + 1)
         val centerY = focusedInput.bounds.y + (focusedInput.bounds.height / 2).coerceAtLeast(1)
         fixture.host.handleMouseDown(nearEndX, centerY, MouseButton.LEFT)
         fixture.host.handleMouseUp(nearEndX, centerY, MouseButton.LEFT)
         syncAndRender(fixture, nearEndX, centerY)
 
-        focusedInput = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        focusedInput = findVisibleInputNode(fixture, "width")
         FocusManager.requestFocus(focusedInput)
         val before = focusedInput.text
         assertTrue(fixture.host.handleKeyDown(0, '7'))
         syncAndRender(fixture, nearEndX, centerY)
 
-        val refreshed = findVisibleInputNode(fixture, "dsgl-system-inspector-editor-numeric-input-")
+        val refreshed = findVisibleInputNode(fixture, "width")
         assertTrue(refreshed.text.contains('7') || refreshed.text != before)
     }
 
@@ -327,19 +327,19 @@ class InspectorDropdownCorrectiveTests {
         return center to y
     }
 
-    private fun findVisibleInputNode(fixture: Fixture, keyPrefix: String): TextInputNode {
+    private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
         val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
             ?: error("inspector entry missing")
         val contentRect = fixture.inspector.debugContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "").startsWith(keyPrefix) }
+            .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
 
         return candidates.firstOrNull { node ->
             val probeX = node.bounds.x + 2
             val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
             contentRect.contains(probeX, probeY)
-        } ?: candidates.firstOrNull() ?: error("expected inspector input for prefix '$keyPrefix'")
+        } ?: candidates.firstOrNull() ?: error("expected inspector input for property '$propertyKey'")
     }
 
     private fun inspectedRoot(withManyChildren: Boolean): ContainerNode {

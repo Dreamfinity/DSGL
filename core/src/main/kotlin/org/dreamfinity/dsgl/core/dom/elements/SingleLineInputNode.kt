@@ -240,7 +240,7 @@ open class SingleLineInputNode(
 
         if (drawText.isNotEmpty()) {
             val color = if (showPlaceholder) placeholderColor else textColor
-            out.add(drawTextCommand(drawText, innerX, textY, color))
+            out.add(drawTextCommand(ctx, drawText, innerX, textY, color))
         }
 
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {

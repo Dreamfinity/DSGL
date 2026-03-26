@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -43,12 +44,13 @@ class ContainerNode(
         if (display == Display.None) {
             return Size(0, 0)
         }
-        val visibleChildren = layoutChildren()
+        val visibleChildren = visibleChildren()
+        val inFlowChildren = inFlowChildren(visibleChildren)
         val resolvedWrapWidth = resolvedContentLimit(constrainedContentWidth)
         val boundedExplicitWidth = width?.let { explicit ->
             resolvedWrapWidth?.let { minOf(explicit, it) } ?: explicit
         }
-        if (visibleChildren.isEmpty()) {
+        if (inFlowChildren.isEmpty()) {
             val contentWidth = boundedExplicitWidth ?: 0
             val contentHeight = height ?: 0
             return Size(
@@ -58,11 +60,11 @@ class ContainerNode(
         }
 
         val contentSize = when {
-            stackLayout -> measureStack(ctx, visibleChildren)
-            display == Display.Flex -> measureFlex(ctx, visibleChildren, resolvedWrapWidth)
-            display == Display.Grid -> measureGrid(ctx, visibleChildren, resolvedWrapWidth)
-            display == Display.Inline -> measureInline(ctx, visibleChildren, resolvedWrapWidth)
-            else -> measureBlock(ctx, visibleChildren, resolvedWrapWidth)
+            stackLayout -> measureStack(ctx, inFlowChildren)
+            display == Display.Flex -> measureFlex(ctx, inFlowChildren, resolvedWrapWidth)
+            display == Display.Grid -> measureGrid(ctx, inFlowChildren, resolvedWrapWidth)
+            display == Display.Inline -> measureInline(ctx, inFlowChildren, resolvedWrapWidth)
+            else -> measureBlock(ctx, inFlowChildren, resolvedWrapWidth)
         }
         val contentWidth = when {
             boundedExplicitWidth != null -> boundedExplicitWidth
@@ -85,15 +87,22 @@ class ContainerNode(
         bounds = Rect(x, y, width, height)
         val scrollState = scrollContainerState()
         setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
-        val visibleChildren = layoutChildren()
+        val visibleChildren = visibleChildren()
         if (visibleChildren.isEmpty()) return
+        val inFlowChildren = inFlowChildren(visibleChildren)
+        val outOfFlowChildren = outOfFlowChildren(visibleChildren)
 
-        when {
-            stackLayout -> renderStack(ctx, visibleChildren)
-            display == Display.Flex -> renderFlex(ctx, visibleChildren)
-            display == Display.Grid -> renderGrid(ctx, visibleChildren)
-            display == Display.Inline -> renderInline(ctx, visibleChildren)
-            else -> renderBlock(ctx, visibleChildren)
+        if (inFlowChildren.isNotEmpty()) {
+            when {
+                stackLayout -> renderStack(ctx, inFlowChildren)
+                display == Display.Flex -> renderFlex(ctx, inFlowChildren)
+                display == Display.Grid -> renderGrid(ctx, inFlowChildren)
+                display == Display.Inline -> renderInline(ctx, inFlowChildren)
+                else -> renderBlock(ctx, inFlowChildren)
+            }
+        }
+        if (outOfFlowChildren.isNotEmpty()) {
+            renderOutOfFlowChildren(ctx, outOfFlowChildren)
         }
     }
 
@@ -112,8 +121,45 @@ class ContainerNode(
         backgroundColor = value
     }
 
-    private fun layoutChildren(): List<DOMNode> {
+    private fun visibleChildren(): List<DOMNode> {
         return children.filter { it.display != Display.None }
+    }
+
+    private fun inFlowChildren(children: List<DOMNode>): List<DOMNode> {
+        return children.filter { !it.isRemovedFromNormalFlowForPositioning() }
+    }
+
+    private fun outOfFlowChildren(children: List<DOMNode>): List<DOMNode> {
+        return children.filter { it.isRemovedFromNormalFlowForPositioning() }
+    }
+
+    private fun renderOutOfFlowChildren(ctx: UiMeasureContext, children: List<DOMNode>) {
+        val cx = childContentOriginX()
+        val cy = childContentOriginY()
+        val cw = viewportContentWidth()
+        val ch = viewportContentHeight()
+        children.forEach { child ->
+            val measured = measureChildForLayout(
+                ctx = ctx,
+                child = child,
+                availableOuterWidth = cw,
+                availableOuterHeight = ch
+            )
+            val childX = cx + child.margin.left
+            val childY = cy + child.margin.top
+            renderContainedChild(
+                ctx = ctx,
+                child = child,
+                parentContentX = cx,
+                parentContentY = cy,
+                parentContentWidth = cw,
+                parentContentHeight = ch,
+                desiredX = childX,
+                desiredY = childY,
+                desiredWidth = measured.width,
+                desiredHeight = measured.height
+            )
+        }
     }
 
     private fun measureStack(ctx: UiMeasureContext, children: List<DOMNode>): Size {
@@ -159,6 +205,7 @@ class ContainerNode(
         var lineWidth = 0
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         fun flushInlineLine() {
             if (!lineHasItems) return
@@ -179,7 +226,7 @@ class ContainerNode(
             )
             val outerWidth = measured.width + child.margin.horizontal
             val outerHeight = measured.height + child.margin.vertical
-            if (child.display == Display.Inline) {
+            if (isInlineFormattingChild(child)) {
                 val spacing = if (lineHasItems) gap else 0
                 val nextWidth = lineWidth + spacing + outerWidth
                 val shouldWrap = wrapWidth != null && lineHasItems && nextWidth > wrapWidth
@@ -188,7 +235,7 @@ class ContainerNode(
                 }
                 if (lineHasItems) lineWidth += gap
                 lineWidth += outerWidth
-                lineHeight = maxOf(lineHeight, outerHeight)
+                lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
                 lineHasItems = true
             } else {
                 flushInlineLine()
@@ -210,6 +257,14 @@ class ContainerNode(
         return Size(resolvedWidth.coerceAtLeast(0), totalHeight.coerceAtLeast(0))
     }
 
+    data class InlinePlacement(
+        val child: DOMNode,
+        val width: Int,
+        val height: Int,
+        val relX: Int,
+        val outerHeight: Int
+    )
+
     private fun renderBlock(ctx: UiMeasureContext, children: List<DOMNode>) {
         val cx = childContentOriginX()
         val cy = childContentOriginY()
@@ -217,14 +272,7 @@ class ContainerNode(
         val ch = viewportContentHeight()
         var cursorY = cy
         var hasRows = false
-
-        data class InlinePlacement(
-            val child: DOMNode,
-            val width: Int,
-            val height: Int,
-            val relX: Int,
-            val outerHeight: Int
-        )
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         val line = ArrayList<InlinePlacement>(8)
         var lineWidth = 0
@@ -253,7 +301,7 @@ class ContainerNode(
                 availableOuterWidth = cw,
                 availableOuterHeight = ch
             )
-            if (child.display == Display.Inline) {
+            if (isInlineFormattingChild(child)) {
                 val outerWidth = measured.width + child.margin.horizontal
                 val outerHeight = measured.height + child.margin.vertical
                 val spacing = if (line.isEmpty()) 0 else gap
@@ -272,7 +320,7 @@ class ContainerNode(
                     )
                 )
                 lineWidth = relX + outerWidth
-                lineHeight = maxOf(lineHeight, outerHeight)
+                lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             } else {
                 flushInlineLine()
                 if (hasRows) cursorY += gap
@@ -299,6 +347,7 @@ class ContainerNode(
         var lineWidth = 0
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         fun flushLine() {
             if (!lineHasItems) return
@@ -325,7 +374,7 @@ class ContainerNode(
             }
             if (lineHasItems) lineWidth += gap
             lineWidth += outerWidth
-            lineHeight = maxOf(lineHeight, outerHeight)
+            lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             lineHasItems = true
         }
         flushLine()
@@ -347,6 +396,7 @@ class ContainerNode(
         var cursorY = cy
         var lineHeight = 0
         var lineHasItems = false
+        val inlineLineBoxHeight = resolveEffectiveLineHeight(ctx)
 
         children.forEach { child ->
             val measured = measureChildForLayout(
@@ -368,9 +418,13 @@ class ContainerNode(
             val childY = cursorY + child.margin.top
             renderContainedChild(ctx, child, cx, cy, cw, ch, childX, childY, measured.width, measured.height)
             cursorX += outerWidth
-            lineHeight = maxOf(lineHeight, outerHeight)
+            lineHeight = maxOf(lineHeight, outerHeight, inlineLineBoxHeight)
             lineHasItems = true
         }
+    }
+
+    private fun isInlineFormattingChild(child: DOMNode): Boolean {
+        return child.display == Display.Inline || child is TextNode
     }
 
     private data class FlexItem(
@@ -457,6 +511,8 @@ class ContainerNode(
         }
         val gapTotal = gap * (items.size - 1).coerceAtLeast(0)
         val freeSpace = availableMain - totalOuterBaseMain - gapTotal
+        val mainAxisOverflow = if (isRow) overflowX else overflowY
+        val allowMainAxisShrink = mainAxisOverflow != Overflow.Auto && mainAxisOverflow != Overflow.Scroll
 
         val finalMain = DoubleArray(items.size) { baseMain[it] }
         if (freeSpace > 0.0 && totalGrow > 0.0) {
@@ -464,7 +520,7 @@ class ContainerNode(
                 val grow = item.child.flexGrow.coerceAtLeast(0f).toDouble()
                 finalMain[index] += freeSpace * (grow / totalGrow)
             }
-        } else if (freeSpace < 0.0 && totalShrinkWeight > 0.0) {
+        } else if (allowMainAxisShrink && freeSpace < 0.0 && totalShrinkWeight > 0.0) {
             items.forEachIndexed { index, item ->
                 val weight = (item.child.flexShrink.coerceAtLeast(0f) * baseMain[index].toFloat()).toDouble()
                 finalMain[index] += freeSpace * (weight / totalShrinkWeight)
@@ -815,6 +871,7 @@ class ContainerNode(
         availableOuterWidth: Int?,
         availableOuterHeight: Int? = null
     ): Size {
+        ScrollPerformanceCounters.incrementMeasureChildForLayoutCalls()
         child.resolveLayoutStyleValues(
             ctx = ctx,
             parentContentWidth = availableOuterWidth,
@@ -883,12 +940,36 @@ class ContainerNode(
         desiredWidth: Int,
         desiredHeight: Int
     ) {
+        val positionedRect = when (child.position) {
+            PositionMode.Absolute -> child.resolveAbsoluteLayoutRect(
+                ctx = ctx,
+                desiredX = desiredX,
+                desiredY = desiredY,
+                desiredWidth = desiredWidth,
+                desiredHeight = desiredHeight
+            )
+
+            PositionMode.Fixed -> child.resolveFixedLayoutRect(
+                ctx = ctx,
+                desiredX = desiredX,
+                desiredY = desiredY,
+                desiredWidth = desiredWidth,
+                desiredHeight = desiredHeight
+            )
+
+            else -> Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
         child.render(
             ctx = ctx,
-            x = desiredX,
-            y = desiredY,
-            width = desiredWidth.coerceAtLeast(0),
-            height = desiredHeight.coerceAtLeast(0)
+            x = positionedRect.x,
+            y = positionedRect.y,
+            width = positionedRect.width.coerceAtLeast(0),
+            height = positionedRect.height.coerceAtLeast(0)
         )
     }
 }

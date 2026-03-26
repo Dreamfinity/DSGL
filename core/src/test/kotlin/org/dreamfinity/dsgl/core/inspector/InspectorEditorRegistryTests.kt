@@ -30,12 +30,91 @@ class InspectorEditorRegistryTests {
     }
 
     @Test
-    fun `parses numeric literal into number and unit`() {
-        val parsed = InspectorEditorRegistry.parseNumberUnit("12.5vh")
+    fun `position is exposed as enum select with explicit options`() {
+        val position = InspectorEditorRegistry.describe(
+            property = StyleProperty.POSITION,
+            literal = "relative",
+            expression = StyleExpression.Literal("relative")
+        )
+
+        assertEquals(InspectorEditorKind.EnumSelect, position.kind)
+        assertEquals(listOf("static", "relative", "absolute", "fixed", "sticky"), position.options)
+    }
+
+    @Test
+    fun `z-index uses unitless numeric grammar in inspector`() {
+        val descriptor = InspectorEditorRegistry.describe(
+            property = StyleProperty.Z_INDEX,
+            literal = "5",
+            expression = StyleExpression.Literal("5")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+        assertFalse(descriptor.supportsUnits)
+
+        val parsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.Z_INDEX, "5")
+        assertNotNull(parsed)
+        assertEquals("5", parsed.numberText)
+        assertEquals(null, parsed.unit)
+        assertFalse(parsed.isAuto)
+
+        assertEquals("7", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.Z_INDEX, "7", "px"))
+    }
+
+    @Test
+    fun `line-height supports normal and length values in inspector editor`() {
+        val descriptor = InspectorEditorRegistry.describe(
+            property = StyleProperty.LINE_HEIGHT,
+            literal = "normal",
+            expression = StyleExpression.Literal("normal")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+        assertTrue(descriptor.supportsUnits)
+        assertEquals(listOf("normal"), descriptor.options)
+
+        val normalParsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.LINE_HEIGHT, "normal")
+        assertNotNull(normalParsed)
+        assertEquals("normal", normalParsed.numberText)
+        assertEquals(null, normalParsed.unit)
+
+        val lengthParsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.LINE_HEIGHT, "1.5em")
+        assertNotNull(lengthParsed)
+        assertEquals("1.5", lengthParsed.numberText)
+        assertEquals(CssUnit.Em, lengthParsed.unit)
+
+        assertEquals("normal", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.LINE_HEIGHT, "normal", "px"))
+        assertEquals("12px", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.LINE_HEIGHT, "12", "px"))
+    }
+
+    @Test
+    fun `length-like numeric properties keep unit-aware grammar`() {
+        val width = InspectorEditorRegistry.describe(
+            property = StyleProperty.WIDTH,
+            literal = "12px",
+            expression = StyleExpression.Literal("12px")
+        )
+        assertEquals(InspectorEditorKind.NumericInput, width.kind)
+        assertTrue(width.supportsUnits)
+
+        val parsed = InspectorEditorRegistry.parseNumericLiteral(StyleProperty.WIDTH, "12.5vh")
         assertNotNull(parsed)
         assertEquals("12.5", parsed.numberText)
         assertEquals(CssUnit.Vh, parsed.unit)
-        assertFalse(parsed.isAuto)
+
+        assertEquals("18em", InspectorEditorRegistry.formatNumericLiteral(StyleProperty.WIDTH, "18", "em"))
+    }
+
+
+    @Test
+    fun `offset properties expose unit-aware numeric editor`() {
+        listOf(StyleProperty.LEFT, StyleProperty.TOP, StyleProperty.RIGHT, StyleProperty.BOTTOM).forEach { property ->
+            val descriptor = InspectorEditorRegistry.describe(
+                property = property,
+                literal = "auto",
+                expression = StyleExpression.Literal("auto")
+            )
+            assertEquals(InspectorEditorKind.NumericInput, descriptor.kind)
+            assertTrue(descriptor.supportsUnits)
+        }
     }
 
     @Test

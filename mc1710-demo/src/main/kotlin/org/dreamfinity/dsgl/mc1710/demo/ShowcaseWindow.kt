@@ -23,6 +23,7 @@ import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.ui
@@ -260,6 +261,29 @@ class ShowcaseWindow : DsglWindow() {
     internal var overflowDemoContentHeight by state(126L)
     internal var overflowDemoVisibleClicks by state(0)
     internal var overflowDemoEdgeClicks by state(0)
+    internal var positionedDemoModeIndex by state(1L)
+    internal var positionedDemoUseLeft by state(true)
+    internal var positionedDemoUseTop by state(true)
+    internal var positionedDemoLeft by state(24L)
+    internal var positionedDemoTop by state(14L)
+    internal var positionedDemoRight by state(26L)
+    internal var positionedDemoBottom by state(18L)
+    internal var positionedDemoZBlue by state(1L)
+    internal var positionedDemoZGreen by state(4L)
+    internal var positionedDemoZRed by state(2L)
+    internal var positionedDemoTieSwap by state(false)
+    internal var positionedDemoLastHover by state("none")
+    internal var positionedDemoLastClick by state("none")
+    internal var positionedDemoBlueClicks by state(0)
+    internal var positionedDemoGreenClicks by state(0)
+    internal var positionedDemoRedClicks by state(0)
+    internal var positionedDemoTieFirstClicks by state(0)
+    internal var positionedDemoTieSecondClicks by state(0)
+    internal var positionedDemoMixedStaticClicks by state(0)
+    internal var positionedDemoMixedPositionedClicks by state(0)
+    internal var positionedDemoScrollClicks by state(0)
+    internal var positionedDemoStickyTopClicks by state(0)
+    internal var positionedDemoStickyCombinedClicks by state(0)
     internal var textEditingSingleValue by state("Edit this line")
     internal var textEditingPasswordValue by state("secret42")
     internal var textEditingAreaValue by state(
@@ -404,6 +428,7 @@ class ShowcaseWindow : DsglWindow() {
                             gap = 4.px
                             display = Display.Flex
                             flexDirection = FlexDirection.Row
+                            justifyContent = JustifyContent.SpaceBetween
                         }
                     }) {
                         div({
@@ -435,6 +460,7 @@ class ShowcaseWindow : DsglWindow() {
                             key = "showcase.content"
                             style = {
                                 display = Display.Flex
+                                flexGrow = 2.0f
                                 flexDirection = FlexDirection.Column
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
@@ -467,6 +493,10 @@ class ShowcaseWindow : DsglWindow() {
                                     this@ShowcaseWindow,
                                     contentWidth - 10,
                                     bodyHeight - 30
+                                )
+
+                                DemoSection.POSITIONED_LAYOUT -> positionedLayoutSection(
+                                    this@ShowcaseWindow
                                 )
 
                                 DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(
@@ -587,6 +617,7 @@ class ShowcaseWindow : DsglWindow() {
                                 gap = 4.px
                                 display = Display.Flex
                                 flexDirection = FlexDirection.Column
+                                width = 15.vw
                             }
                         }) {
                             renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
@@ -2569,4 +2600,5 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
+
 

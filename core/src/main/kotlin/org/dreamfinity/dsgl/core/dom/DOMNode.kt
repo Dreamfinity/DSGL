@@ -6,19 +6,20 @@ import org.dreamfinity.dsgl.core.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec
-import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ParsedText
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
+import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
 import kotlin.math.roundToInt
 
 data class NodeStyleApplyResult(
@@ -67,6 +68,23 @@ data class ScrollSessionSnapshot(
     val dragSession: ScrollbarDragSessionDebugState?
 )
 
+data class ScrollInvalidationState(
+    val layoutDirty: Boolean,
+    val visualDirty: Boolean,
+    val interactionDirty: Boolean
+) {
+    companion object {
+        val CLEAN = ScrollInvalidationState(
+            layoutDirty = false,
+            visualDirty = false,
+            interactionDirty = false
+        )
+    }
+
+    val anyDirty: Boolean
+        get() = layoutDirty || visualDirty || interactionDirty
+}
+
 data class ScrollbarDragSessionDebugState(
     val verticalAxis: Boolean,
     val trackStartPx: Int,
@@ -99,6 +117,28 @@ private data class ScrollbarResolution(
     val viewportHeight: Int
 )
 
+private data class NativeFontMetricsPx(
+    val lineHeightPx: Int,
+    val ascenderPx: Float,
+    val descenderPx: Float
+)
+
+private data class ScrollbarDragSession(
+    val axis: ScrollbarAxis,
+    val trackStartPx: Int,
+    val trackLengthPx: Int,
+    val thumbLengthPx: Int,
+    val maxThumbTravelPx: Int,
+    val maxScroll: Int,
+    val grabOffsetPx: Int,
+    val initialResolvedScroll: Int
+)
+
+private enum class ScrollbarAxis {
+    Horizontal,
+    Vertical
+}
+
 /**
  * Base class for all DOM nodes in the retained UI tree.
  *
@@ -107,23 +147,9 @@ private data class ScrollbarResolution(
 abstract class DOMNode(
     var key: Any? = null
 ) {
-    private enum class ScrollbarAxis {
-        Horizontal,
-        Vertical
-    }
-
-    private data class ScrollbarDragSession(
-        val axis: ScrollbarAxis,
-        val trackStartPx: Int,
-        val trackLengthPx: Int,
-        val thumbLengthPx: Int,
-        val maxThumbTravelPx: Int,
-        val maxScroll: Int,
-        val grabOffsetPx: Int,
-        val initialResolvedScroll: Int
-    )
-
     companion object {
+        const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = 1.2f
+
         private val includeChildrenInRenderPass: ThreadLocal<Boolean> =
             ThreadLocal.withInitial { true }
         private val inheritedChildRenderClipStack: ThreadLocal<MutableList<Rect?>> =
@@ -183,6 +209,18 @@ abstract class DOMNode(
                     FocusManager.clearFocus()
                 }
             }
+        }
+    var position: PositionMode = PositionMode.Static
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
+        }
+    var zIndex: Int = 0
+        set(value) {
+            if (field == value) return
+            field = value
+            markRenderCommandsDirty()
         }
     var overflow: Overflow = Overflow.Visible
         set(value) {
@@ -282,7 +320,8 @@ abstract class DOMNode(
     private var appliedComputedStyle: ComputedStyle? = null
     private var marginStyleValue: LengthInsets = LengthInsets.fromInsets(margin)
     private var paddingStyleValue: LengthInsets = LengthInsets.fromInsets(padding)
-    private var borderWidthStyleValue: CssLength = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left))
+    private var borderWidthStyleValue: CssLength =
+        CssLength.px(maxOf(border.top, border.right, border.bottom, border.left))
     private var borderRadiusStyleValue: CssLength = CssLength.px(borderRadius)
     private var widthStyleValue: CssLength? = null
     private var heightStyleValue: CssLength? = null
@@ -290,6 +329,16 @@ abstract class DOMNode(
     private var minHeightStyleValue: CssLength? = null
     private var maxWidthStyleValue: CssLength? = null
     private var maxHeightStyleValue: CssLength? = null
+    private var leftStyleValue: CssLength? = null
+    private var topStyleValue: CssLength? = null
+    private var rightStyleValue: CssLength? = null
+    private var bottomStyleValue: CssLength? = null
+    private var relativeVisualOffsetXPx: Int = 0
+    private var relativeVisualOffsetYPx: Int = 0
+    private var stickyVisualOffsetXPx: Int = 0
+    private var stickyVisualOffsetYPx: Int = 0
+    private var stickyVisualOffsetsDirty: Boolean = true
+     private var stickyVisualRefreshSubtreeDirty: Boolean = true
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -304,6 +353,8 @@ abstract class DOMNode(
     private var scrollOffsetResolvedX: Int = 0
     private var scrollOffsetResolvedY: Int = 0
     private var scrollLayoutDirty: Boolean = false
+    private var scrollVisualDirty: Boolean = false
+    private var scrollInteractionDirty: Boolean = false
     private var contentLayoutScrollX: Int = 0
     private var contentLayoutScrollY: Int = 0
     private var activeScrollbarDragAxis: ScrollbarAxis? = null
@@ -571,6 +622,178 @@ abstract class DOMNode(
             ?.resolvePx(context, LengthPercentBase.ContainerWidth)
             ?.roundToInt()
             ?.coerceAtLeast(0)
+
+        val resolvedRelativeOffsetX = resolveRelativeVisualOffsetXPx(context)
+        val resolvedRelativeOffsetY = resolveRelativeVisualOffsetYPx(context)
+        if (relativeVisualOffsetXPx != resolvedRelativeOffsetX || relativeVisualOffsetYPx != resolvedRelativeOffsetY) {
+            relativeVisualOffsetXPx = resolvedRelativeOffsetX
+            relativeVisualOffsetYPx = resolvedRelativeOffsetY
+            markRenderCommandsDirty()
+        }
+    }
+
+    private fun resolveRelativeVisualOffsetXPx(context: LengthResolveContext): Int {
+        if (position != PositionMode.Relative) return 0
+        val resolution = PositionedLayoutModel.resolveHorizontalOffset(left = leftStyleValue, right = rightStyleValue)
+        val value = resolution.value ?: return 0
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.LEFT -> magnitude
+            StyleProperty.RIGHT -> -magnitude
+            else -> 0
+        }
+    }
+
+    private fun resolveRelativeVisualOffsetYPx(context: LengthResolveContext): Int {
+        if (position != PositionMode.Relative) return 0
+        val resolution = PositionedLayoutModel.resolveVerticalOffset(top = topStyleValue, bottom = bottomStyleValue)
+        val value = resolution.value ?: return 0
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.TOP -> magnitude
+            StyleProperty.BOTTOM -> -magnitude
+            else -> 0
+        }
+    }
+
+    private fun resolveStickyVisualOffsetsPx(): Pair<Int, Int> {
+        if (position != PositionMode.Sticky) return 0 to 0
+        ScrollPerformanceCounters.incrementStickyResolutionCalls()
+        ScrollPerformanceCounters.incrementStickyHorizontalResolutionCalls()
+        ScrollPerformanceCounters.incrementStickyVerticalResolutionCalls()
+
+        val horizontalInset = stickyHorizontalInsetResolutionContract()
+        val verticalInset = stickyVerticalInsetResolutionContract()
+        val horizontalActive = horizontalInset.active
+        val verticalActive = verticalInset.active
+        if (!horizontalActive && !verticalActive) return 0 to 0
+
+        val references = StickyLayoutModel.nearestStickyScrollContainers(
+            node = this,
+            resolveHorizontal = horizontalActive,
+            resolveVertical = verticalActive
+        )
+        val containingBlockRect = stickyContainingBlockForPositioningRect()
+        val baseRect = visualBoundsWithPendingScrollTranslation(this)
+        val referenceStates = HashMap<DOMNode, ScrollContainerState>(2)
+        fun viewportRect(reference: DOMNode): Rect {
+            val state = referenceStates.getOrPut(reference) {
+                reference.scrollContainerState()
+            }
+            return stickyReferenceViewportRect(reference, state)
+        }
+
+        val offsetX = if (horizontalActive) {
+            val viewportRect = viewportRect(references.horizontal)
+            val offsetContext = positioningOffsetResolveContext(viewportRect)
+            val insetLength = horizontalInset.value
+                ?: error("Sticky horizontal inset must be present when horizontal sticky axis is active")
+            val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerWidth).roundToInt()
+            StickyLayoutModel.resolveHorizontalVisualOffsetPx(
+                baseX = baseRect.x,
+                nodeWidth = baseRect.width.coerceAtLeast(0),
+                viewportRect = viewportRect,
+                containingBlockRect = containingBlockRect,
+                insetResolution = horizontalInset,
+                insetPx = insetPx
+            )
+        } else {
+            0
+        }
+        val offsetY = if (verticalActive) {
+            val viewportRect = viewportRect(references.vertical)
+            val offsetContext = positioningOffsetResolveContext(viewportRect)
+            val insetLength = verticalInset.value
+                ?: error("Sticky vertical inset must be present when vertical sticky axis is active")
+            val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerHeight).roundToInt()
+            StickyLayoutModel.resolveVerticalVisualOffsetPx(
+                baseY = baseRect.y,
+                nodeHeight = baseRect.height.coerceAtLeast(0),
+                viewportRect = viewportRect,
+                containingBlockRect = containingBlockRect,
+                insetResolution = verticalInset,
+                insetPx = insetPx
+            )
+        } else {
+            0
+        }
+        return offsetX to offsetY
+    }
+
+    private fun ensureStickyVisualOffsetsResolved() {
+        if (position != PositionMode.Sticky) {
+            stickyVisualOffsetsDirty = false
+            return
+        }
+        if (!stickyVisualOffsetsDirty) return
+        val (resolvedX, resolvedY) = resolveStickyVisualOffsetsPx()
+        val changed = stickyVisualOffsetXPx != resolvedX || stickyVisualOffsetYPx != resolvedY
+        stickyVisualOffsetXPx = resolvedX
+        stickyVisualOffsetYPx = resolvedY
+        stickyVisualOffsetsDirty = false
+        if (changed) {
+            markRenderCommandsDirty()
+        }
+    }
+
+    private fun stickyReferenceViewportRect(
+        referenceScrollContainer: DOMNode,
+        referenceState: ScrollContainerState? = null
+    ): Rect {
+        val viewportRect = (referenceState ?: referenceScrollContainer.scrollContainerState()).viewportRect
+        val adjustedBounds = visualBoundsWithPendingScrollTranslation(referenceScrollContainer)
+        val shiftX = adjustedBounds.x - referenceScrollContainer.bounds.x
+        val shiftY = adjustedBounds.y - referenceScrollContainer.bounds.y
+        if (shiftX == 0 && shiftY == 0) return viewportRect
+        return Rect(
+            x = viewportRect.x + shiftX,
+            y = viewportRect.y + shiftY,
+            width = viewportRect.width,
+            height = viewportRect.height
+        )
+    }
+
+    private fun stickyContainingBlockForPositioningRect(): Rect {
+        val containing = stickyContainingBlockForPositioning()
+        val adjustedBounds = visualBoundsWithPendingScrollTranslation(containing)
+        return Rect(
+            x = adjustedBounds.x,
+            y = adjustedBounds.y,
+            width = adjustedBounds.width.coerceAtLeast(0),
+            height = adjustedBounds.height.coerceAtLeast(0)
+        )
+    }
+
+    private fun visualBoundsWithPendingScrollTranslation(node: DOMNode): Rect {
+        val pendingDelta = pendingAncestorScrollVisualDelta(node)
+        if (pendingDelta.first == 0 && pendingDelta.second == 0) {
+            return node.bounds
+        }
+        return Rect(
+            x = node.bounds.x - pendingDelta.first,
+            y = node.bounds.y - pendingDelta.second,
+            width = node.bounds.width,
+            height = node.bounds.height
+        )
+    }
+
+    private fun pendingAncestorScrollVisualDelta(node: DOMNode): Pair<Int, Int> {
+        var deltaX = 0
+        var deltaY = 0
+        var current = node.parent
+        while (current != null) {
+            val draggingScrollbarThumb = current.activeScrollbarDragAxis != null
+            if (draggingScrollbarThumb) {
+                if (current.overflowX != Overflow.Visible) {
+                    deltaX += current.scrollOffsetResolvedX - current.contentLayoutScrollX
+                }
+                if (current.overflowY != Overflow.Visible) {
+                    deltaY += current.scrollOffsetResolvedY - current.contentLayoutScrollY
+                }
+            }
+            current = current.parent
+        }
+        return deltaX to deltaY
     }
 
     internal fun resolveFlexBasisForAxis(
@@ -596,12 +819,12 @@ abstract class DOMNode(
         parentContentWidth: Int?,
         parentContentHeight: Int?
     ): LengthResolveContext {
-        val rootFontSizePx = rootNode().resolveFontSize(ctx).toFloat()
+        val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
         val inheritedFontSizePx = (
-            parent?.resolveFontSize(ctx)
-                ?: resolveFontSize(ctx)
-            ).toFloat()
-        val currentFontSizePx = resolveFontSize(ctx).toFloat()
+                parent?.resolveComputedFontSizePx()
+                    ?: resolveComputedFontSizePx()
+                ).toFloat()
+        val currentFontSizePx = resolveComputedFontSizePx().toFloat()
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
             viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
@@ -619,6 +842,153 @@ abstract class DOMNode(
             current = current.parent!!
         }
         return current
+    }
+
+
+    internal fun participatesInPositionedOrderingModel(): Boolean {
+        return PositionedLayoutModel.isPositioned(this)
+    }
+
+    internal fun rootStackingScopeForPositioning(): DOMNode {
+        return PositionedLayoutModel.rootStackingScope(this)
+    }
+
+    internal fun sharesRootStackingScopeForPositioning(other: DOMNode): Boolean {
+        return PositionedLayoutModel.sharesRootStackingScope(this, other)
+    }
+
+    internal fun rootStackingContextIdentityForPositioning(): PositionedLayoutModel.RootStackingContextId {
+        return PositionedLayoutModel.rootStackingContextId(this)
+    }
+
+    internal fun stackingContextScaffoldForTraversalOwner(): PositionedLayoutModel.StackingContext {
+        return PositionedLayoutModel.stackingContextScaffold(this)
+    }
+
+    internal fun containingBlockForAbsolutePositioning(): DOMNode {
+        return PositionedLayoutModel.containingBlockForAbsolute(this)
+    }
+
+    internal fun fixedViewportRootForPositioning(): DOMNode {
+        return PositionedLayoutModel.fixedViewportRoot(this)
+    }
+
+    internal fun stickyReferenceScrollContainerVertical(): DOMNode {
+        return StickyLayoutModel.nearestStickyScrollContainerVertical(this)
+    }
+
+    internal fun stickyReferenceScrollContainerHorizontal(): DOMNode {
+        return StickyLayoutModel.nearestStickyScrollContainerHorizontal(this)
+    }
+
+    internal fun stickyContainingBlockForPositioning(): DOMNode {
+        return StickyLayoutModel.stickyContainingBlock(this)
+    }
+
+    internal fun stickyHorizontalInsetResolutionContract(): StickyLayoutModel.StickyHorizontalInsetResolution {
+        return StickyLayoutModel.resolveHorizontalInsets(
+            left = leftStyleValue,
+            right = rightStyleValue
+        )
+    }
+
+    internal fun stickyVerticalInsetResolutionContract(): StickyLayoutModel.StickyInsetResolution {
+        return StickyLayoutModel.resolveVerticalInsets(
+            top = topStyleValue,
+            bottom = bottomStyleValue
+        )
+    }
+
+    internal fun stickyPositionedGeometryIntegrationPoint(): StickyLayoutModel.PositionedGeometryIntegrationPoint {
+        return StickyLayoutModel.positionedGeometryIntegrationPoint()
+    }
+
+    internal fun isRemovedFromNormalFlowForPositioning(): Boolean {
+        return position == PositionMode.Absolute || position == PositionMode.Fixed
+    }
+
+    internal fun resolveAbsoluteLayoutRect(
+        ctx: UiMeasureContext,
+        desiredX: Int,
+        desiredY: Int,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ): Rect {
+        if (position != PositionMode.Absolute) {
+            return Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
+
+        val containingBlockRect = absoluteContainingBlockRect()
+        val offsetContext = positioningOffsetResolveContext(ctx, containingBlockRect)
+        val resolvedX = resolvePositionedX(
+            context = offsetContext,
+            containerRect = containingBlockRect,
+            desiredX = desiredX,
+            desiredWidth = desiredWidth
+        )
+        val resolvedY = resolvePositionedY(
+            context = offsetContext,
+            containerRect = containingBlockRect,
+            desiredY = desiredY,
+            desiredHeight = desiredHeight
+        )
+        return Rect(
+            x = resolvedX,
+            y = resolvedY,
+            width = desiredWidth.coerceAtLeast(0),
+            height = desiredHeight.coerceAtLeast(0)
+        )
+    }
+
+    internal fun resolveFixedLayoutRect(
+        ctx: UiMeasureContext,
+        desiredX: Int,
+        desiredY: Int,
+        desiredWidth: Int,
+        desiredHeight: Int
+    ): Rect {
+        if (position != PositionMode.Fixed) {
+            return Rect(
+                x = desiredX,
+                y = desiredY,
+                width = desiredWidth.coerceAtLeast(0),
+                height = desiredHeight.coerceAtLeast(0)
+            )
+        }
+
+        val viewportRect = fixedViewportAnchorRect()
+        val offsetContext = positioningOffsetResolveContext(ctx, viewportRect)
+        val resolvedX = resolvePositionedX(
+            context = offsetContext,
+            containerRect = viewportRect,
+            desiredX = desiredX,
+            desiredWidth = desiredWidth
+        )
+        val resolvedY = resolvePositionedY(
+            context = offsetContext,
+            containerRect = viewportRect,
+            desiredY = desiredY,
+            desiredHeight = desiredHeight
+        )
+        return Rect(
+            x = resolvedX,
+            y = resolvedY,
+            width = desiredWidth.coerceAtLeast(0),
+            height = desiredHeight.coerceAtLeast(0)
+        )
+    }
+
+    internal fun orderedChildrenForPaintTraversal(): List<DOMNode> {
+        return PositionedLayoutModel.orderedChildrenForPaint(this)
+    }
+
+    internal fun orderedChildrenForHitTestingTraversal(): List<DOMNode> {
+        return PositionedLayoutModel.orderedChildrenForHitTesting(this)
     }
 
     internal fun clampMeasuredOuterSize(size: Size): Size {
@@ -663,6 +1033,86 @@ abstract class DOMNode(
         return result
     }
 
+    private fun absoluteContainingBlockRect(): Rect {
+        val containing = containingBlockForAbsolutePositioning()
+        val state = containing.scrollContainerState()
+        return Rect(
+            x = state.viewportRect.x - state.scrollX,
+            y = state.viewportRect.y - state.scrollY,
+            width = state.viewportRect.width.coerceAtLeast(0),
+            height = state.viewportRect.height.coerceAtLeast(0)
+        )
+    }
+
+    internal fun fixedViewportClipRectForPromotedParticipation(): Rect {
+        val root = fixedViewportRootForPositioning()
+        val state = root.scrollContainerState()
+        return Rect(
+            x = state.viewportRect.x,
+            y = state.viewportRect.y,
+            width = state.viewportRect.width.coerceAtLeast(0),
+            height = state.viewportRect.height.coerceAtLeast(0)
+        )
+    }
+
+    private fun fixedViewportAnchorRect(): Rect {
+        return fixedViewportClipRectForPromotedParticipation()
+    }
+
+    private fun positioningOffsetResolveContext(
+        @Suppress("UNUSED_PARAMETER") ctx: UiMeasureContext,
+        containerRect: Rect
+    ): LengthResolveContext {
+        return positioningOffsetResolveContext(containerRect)
+    }
+
+    private fun positioningOffsetResolveContext(containerRect: Rect): LengthResolveContext {
+        val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
+        val inheritedFontSizePx = (parent?.resolveComputedFontSizePx() ?: resolveComputedFontSizePx()).toFloat()
+        val currentFontSizePx = resolveComputedFontSizePx().toFloat()
+        return LengthResolveContext(
+            viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
+            viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
+            containingBlockWidthPx = containerRect.width.coerceAtLeast(0).toFloat(),
+            containingBlockHeightPx = containerRect.height.coerceAtLeast(0).toFloat(),
+            rootFontSizePx = rootFontSizePx,
+            currentFontSizePx = currentFontSizePx,
+            inheritedFontSizePx = inheritedFontSizePx
+        )
+    }
+
+    private fun resolvePositionedX(
+        context: LengthResolveContext,
+        containerRect: Rect,
+        desiredX: Int,
+        desiredWidth: Int
+    ): Int {
+        val resolution = PositionedLayoutModel.resolveHorizontalOffset(left = leftStyleValue, right = rightStyleValue)
+        val value = resolution.value ?: return desiredX
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.LEFT -> containerRect.x + magnitude
+            StyleProperty.RIGHT -> containerRect.x + containerRect.width - desiredWidth - magnitude
+            else -> desiredX
+        }
+    }
+
+    private fun resolvePositionedY(
+        context: LengthResolveContext,
+        containerRect: Rect,
+        desiredY: Int,
+        desiredHeight: Int
+    ): Int {
+        val resolution = PositionedLayoutModel.resolveVerticalOffset(top = topStyleValue, bottom = bottomStyleValue)
+        val value = resolution.value ?: return desiredY
+        val magnitude = value.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt()
+        return when (resolution.sourceProperty) {
+            StyleProperty.TOP -> containerRect.y + magnitude
+            StyleProperty.BOTTOM -> containerRect.y + containerRect.height - desiredHeight - magnitude
+            else -> desiredY
+        }
+    }
+
     /** Measures the node's desired size. */
     internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         return measure(ctx)
@@ -703,6 +1153,7 @@ abstract class DOMNode(
         val layoutContentY = scrollState.viewportRect.y - layoutScrollY
         val availableOuterWidth = scrollState.viewportRect.width
         val availableOuterHeight = scrollState.viewportRect.height
+        setContentLayoutScroll(layoutScrollX, layoutScrollY)
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
             child.resolveLayoutStyleValues(
@@ -715,7 +1166,6 @@ abstract class DOMNode(
             val childY = layoutContentY + child.margin.top
             child.render(ctx, childX, childY, childSize.width, childSize.height)
         }
-        setContentLayoutScroll(layoutScrollX, layoutScrollY)
         scrollContainerState()
     }
 
@@ -742,7 +1192,7 @@ abstract class DOMNode(
                 height = effectiveClipRect.height.coerceAtLeast(0)
             )
             withInheritedChildRenderClipRect(effectiveClipRect) {
-                children.forEach { child ->
+                orderedChildrenForPaintTraversal().forEach { child ->
                     child.appendRenderCommands(ctx, out)
                 }
             }
@@ -750,11 +1200,12 @@ abstract class DOMNode(
             return
         }
         withInheritedChildRenderClipRect(inheritedClipRect) {
-            children.forEach { child ->
+            orderedChildrenForPaintTraversal().forEach { child ->
                 child.appendRenderCommands(ctx, out)
             }
         }
     }
+
     /** Appends render commands if this node is currently visible in render tree. */
     fun appendRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (!isChildrenRenderPassEnabled()) return
@@ -1032,6 +1483,8 @@ abstract class DOMNode(
         borderRadius = template.borderRadius
         align = template.align
         display = template.display
+        position = template.position
+        zIndex = template.zIndex
         overflow = template.overflow
         overflowX = template.overflowX
         overflowY = template.overflowY
@@ -1053,6 +1506,12 @@ abstract class DOMNode(
         minHeightStyleValue = template.minHeightStyleValue
         maxWidthStyleValue = template.maxWidthStyleValue
         maxHeightStyleValue = template.maxHeightStyleValue
+        leftStyleValue = template.leftStyleValue
+        topStyleValue = template.topStyleValue
+        rightStyleValue = template.rightStyleValue
+        bottomStyleValue = template.bottomStyleValue
+        relativeVisualOffsetXPx = template.relativeVisualOffsetXPx
+        relativeVisualOffsetYPx = template.relativeVisualOffsetYPx
         gapStyleValue = template.gapStyleValue
         flexBasisStyleValue = template.flexBasisStyleValue
         borderColorStyleValue = template.borderColorStyleValue
@@ -1141,6 +1600,12 @@ abstract class DOMNode(
             maxHeight = maxHeight?.let { CssLength.px(it) },
             align = align,
             display = display,
+            position = position,
+            left = leftStyleValue,
+            top = topStyleValue,
+            right = rightStyleValue,
+            bottom = bottomStyleValue,
+            zIndex = zIndex,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
             alignItems = alignItems,
@@ -1186,11 +1651,17 @@ abstract class DOMNode(
         minHeightStyleValue = style.minHeight
         maxWidthStyleValue = style.maxWidth
         maxHeightStyleValue = style.maxHeight
+        leftStyleValue = style.left
+        topStyleValue = style.top
+        rightStyleValue = style.right
+        bottomStyleValue = style.bottom
         gapStyleValue = style.gap
         flexBasisStyleValue = style.flexBasis
         borderColorStyleValue = style.borderColor
         align = style.align
         display = style.display
+        position = style.position
+        zIndex = style.zIndex
         overflow = style.overflow
         overflowX = style.overflowX
         overflowY = style.overflowY
@@ -1245,6 +1716,11 @@ abstract class DOMNode(
                 previous.maxHeight != style.maxHeight ||
                 previous.align != style.align ||
                 previous.display != style.display ||
+                previous.position != style.position ||
+                previous.left != style.left ||
+                previous.top != style.top ||
+                previous.right != style.right ||
+                previous.bottom != style.bottom ||
                 previous.flexDirection != style.flexDirection ||
                 previous.justifyContent != style.justifyContent ||
                 previous.alignItems != style.alignItems ||
@@ -1267,7 +1743,8 @@ abstract class DOMNode(
                 previous.textDecoration != style.textDecoration ||
                 previous.obfuscated != style.obfuscated ||
                 previous.fontId != style.fontId ||
-                previous.fontSize != style.fontSize
+                previous.fontSize != style.fontSize ||
+                previous.lineHeight != style.lineHeight
         return NodeStyleApplyResult(
             visualDirty = true,
             layoutDirty = layoutDirty
@@ -1280,8 +1757,8 @@ abstract class DOMNode(
         val normalizedOpacity = opacity?.coerceIn(0f, 1f)
         val changed =
             animatedTransform != transform ||
-                animatedOpacity != normalizedOpacity ||
-                animatedColor != color
+                    animatedOpacity != normalizedOpacity ||
+                    animatedColor != color
         animatedTransform = transform
         animatedOpacity = normalizedOpacity
         animatedColor = color
@@ -1297,6 +1774,8 @@ abstract class DOMNode(
         result = 31L * result + bounds.hashCode().toLong()
         result = 31L * result + if (dragRenderHidden) 1L else 0L
         result = 31L * result + display.ordinal.toLong()
+        result = 31L * result + position.ordinal.toLong()
+        result = 31L * result + zIndex.toLong()
         result = 31L * result + overflow.ordinal.toLong()
         result = 31L * result + overflowX.ordinal.toLong()
         result = 31L * result + overflowY.ordinal.toLong()
@@ -1316,7 +1795,28 @@ abstract class DOMNode(
         renderCommandsRevision += 1L
     }
 
-    fun effectiveTransform(): UiTransform = animatedTransform ?: transform
+    fun effectiveTransform(): UiTransform {
+        val base = animatedTransform ?: transform
+        val relativeOffsetX = if (position == PositionMode.Relative) relativeVisualOffsetXPx else 0
+        val relativeOffsetY = if (position == PositionMode.Relative) relativeVisualOffsetYPx else 0
+        val stickyOffsetX: Int
+        val stickyOffsetY: Int
+        if (position == PositionMode.Sticky) {
+            ensureStickyVisualOffsetsResolved()
+            stickyOffsetX = stickyVisualOffsetXPx
+            stickyOffsetY = stickyVisualOffsetYPx
+        } else {
+            stickyOffsetX = 0
+            stickyOffsetY = 0
+        }
+        if (relativeOffsetX == 0 && relativeOffsetY == 0 && stickyOffsetX == 0 && stickyOffsetY == 0) {
+            return base
+        }
+        return base.copy(
+            translateX = base.translateX + relativeOffsetX.toFloat() + stickyOffsetX.toFloat(),
+            translateY = base.translateY + relativeOffsetY.toFloat() + stickyOffsetY.toFloat()
+        )
+    }
 
     fun effectiveOpacity(): Float = (animatedOpacity ?: opacity).coerceIn(0f, 1f)
 
@@ -1386,6 +1886,85 @@ abstract class DOMNode(
         return ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
     }
 
+    protected fun resolveComputedFontSizePx(): Int {
+        return (appliedComputedStyleSnapshot()?.fontSize ?: fontSize ?: 16).coerceAtLeast(1)
+    }
+
+    protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
+        return resolveTextMetrics(ctx).lineHeightPx
+    }
+
+    protected fun resolveEffectiveLineTopLeading(ctx: UiMeasureContext): Int {
+        return resolveTextMetrics(ctx).topLeadingPx.roundToInt().coerceAtLeast(0)
+    }
+
+    protected fun resolveEffectiveAscenderPx(ctx: UiMeasureContext): Float {
+        return resolveTextMetrics(ctx).ascenderPx
+    }
+
+    protected fun resolveEffectiveDescenderPx(ctx: UiMeasureContext): Float {
+        return resolveTextMetrics(ctx).descenderPx
+    }
+
+    protected fun resolveTextMetrics(ctx: UiMeasureContext): ResolvedTextMetrics {
+        val fontSizePx = resolveComputedFontSizePx().coerceAtLeast(1)
+        val nativeMetrics = resolveNativeFontMetrics(ctx, fontSizePx)
+        val fallbackFontHeightPx = resolveFontSize(ctx).coerceAtLeast(1)
+        val fallbackNormalLineHeightPx = (fallbackFontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
+            .roundToInt()
+            .coerceAtLeast(fallbackFontHeightPx)
+            .coerceAtLeast(1)
+
+        val nativeLineHeightPx = nativeMetrics?.lineHeightPx ?: fallbackNormalLineHeightPx
+        val ascenderPx = nativeMetrics?.ascenderPx ?: (fallbackFontHeightPx * 0.8f)
+        val descenderPx = nativeMetrics?.descenderPx
+            ?: (nativeLineHeightPx - ascenderPx).coerceAtLeast(0f)
+
+        val computedLineHeight =
+            when (val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal) {
+                LineHeightValue.Normal -> nativeLineHeightPx
+                is LineHeightValue.Length -> {
+                    val currentFontSizePx = fontSizePx.toFloat()
+                    val context = LengthResolveContext(
+                        rootFontSizePx = currentFontSizePx,
+                        currentFontSizePx = currentFontSizePx,
+                        inheritedFontSizePx = currentFontSizePx
+                    )
+                    computedLineHeight.value
+                        .resolvePx(context, LengthPercentBase.CurrentFontSize)
+                        .roundToInt()
+                        .coerceAtLeast(1)
+                }
+            }
+
+        val extraLeadingPx = (computedLineHeight - nativeLineHeightPx).coerceAtLeast(0).toFloat()
+        val topLeadingPx = extraLeadingPx / 2f
+        val bottomLeadingPx = extraLeadingPx - topLeadingPx
+        return ResolvedTextMetrics(
+            fontSizePx = fontSizePx,
+            lineHeightPx = computedLineHeight,
+            nativeLineHeightPx = nativeLineHeightPx,
+            ascenderPx = ascenderPx,
+            descenderPx = descenderPx,
+            topLeadingPx = topLeadingPx,
+            bottomLeadingPx = bottomLeadingPx
+        )
+    }
+
+    private fun resolveNativeFontMetrics(ctx: UiMeasureContext, fontSizePx: Int): NativeFontMetricsPx? {
+        val metrics = ctx.fontLineMetrics(fontId, fontSizePx) ?: return null
+        if (metrics.emSize <= 0f || metrics.lineHeightEm <= 0f) return null
+        val scalePx = fontSizePx / metrics.emSize
+        val lineHeightPx = kotlin.math.ceil(metrics.lineHeightEm * scalePx).toInt().coerceAtLeast(1)
+        val ascenderPx = (metrics.ascenderEm * scalePx).coerceAtLeast(0f)
+        val descenderPx = kotlin.math.abs(metrics.descenderEm * scalePx)
+        return NativeFontMetricsPx(
+            lineHeightPx = lineHeightPx,
+            ascenderPx = ascenderPx,
+            descenderPx = descenderPx
+        )
+    }
+
     protected fun parseTextForFormatting(rawText: String): ParsedText {
         return MinecraftFormattingParser.parse(rawText, textFormatting)
     }
@@ -1403,9 +1982,10 @@ abstract class DOMNode(
     }
 
     protected fun measureText(ctx: UiMeasureContext, text: String): Int {
+        val metrics = resolveTextMetrics(ctx)
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
-        val base = ctx.measureText(plainText, fontId, fontSize)
+        val base = ctx.measureText(plainText, fontId, metrics.fontSizePx)
         val extraBold = TextStyleMetrics.boldExtraPxForRange(
             plainText = plainText,
             spans = parsed.spans,
@@ -1415,12 +1995,14 @@ abstract class DOMNode(
     }
 
     protected fun drawTextCommand(
+        ctx: UiMeasureContext,
         text: String,
         x: Int,
         y: Int,
         color: Int,
         styleSpans: List<RenderCommand.TextStyleSpan> = emptyList()
     ): RenderCommand.DrawText {
+        val metrics = resolveTextMetrics(ctx)
         val baseFlags = baseTextStyleFlags()
         return RenderCommand.DrawText(
             text = text,
@@ -1428,7 +2010,7 @@ abstract class DOMNode(
             y = y,
             color = color,
             fontId = fontId,
-            fontSize = fontSize,
+            fontSize = metrics.fontSizePx,
             textFormatting = textFormatting,
             bold = baseFlags.bold,
             italic = baseFlags.italic,
@@ -1501,15 +2083,140 @@ abstract class DOMNode(
         return changed
     }
 
-    internal fun consumeScrollLayoutDirtyRecursively(): Boolean {
-        var dirty = scrollLayoutDirty
+    internal fun consumeScrollInvalidationRecursively(): ScrollInvalidationState {
+        var layoutDirty = scrollLayoutDirty
+        var visualDirty = scrollVisualDirty
+        var interactionDirty = scrollInteractionDirty
         scrollLayoutDirty = false
+        scrollVisualDirty = false
+        scrollInteractionDirty = false
         children.forEach { child ->
-            if (child.consumeScrollLayoutDirtyRecursively()) {
-                dirty = true
+            val childInvalidation = child.consumeScrollInvalidationRecursively()
+            layoutDirty = layoutDirty || childInvalidation.layoutDirty
+            visualDirty = visualDirty || childInvalidation.visualDirty
+            interactionDirty = interactionDirty || childInvalidation.interactionDirty
+        }
+        if (!layoutDirty && !visualDirty && !interactionDirty) {
+            return ScrollInvalidationState.CLEAN
+        }
+        return ScrollInvalidationState(
+            layoutDirty = layoutDirty,
+            visualDirty = visualDirty,
+            interactionDirty = interactionDirty
+        )
+    }
+
+    internal fun consumeScrollLayoutDirtyRecursively(): Boolean {
+        return consumeScrollInvalidationRecursively().layoutDirty
+    }
+
+    internal fun invalidateStickyVisualOffsetsRecursively() {
+        ScrollPerformanceCounters.incrementStickyVisualInvalidateRuns()
+        markStickyVisualRefreshPathDirtyUpwards()
+        invalidateStickyVisualOffsetsSubtree()
+    }
+
+    private fun markStickyVisualRefreshPathDirtyUpwards() {
+        var current: DOMNode? = this
+        while (current != null) {
+            if (current.stickyVisualRefreshSubtreeDirty) {
+                break
+            }
+            current.stickyVisualRefreshSubtreeDirty = true
+            current = current.parent
+        }
+    }
+
+    private fun invalidateStickyVisualOffsetsSubtree() {
+        stickyVisualRefreshSubtreeDirty = true
+        if (position == PositionMode.Sticky && !stickyVisualOffsetsDirty) {
+            stickyVisualOffsetsDirty = true
+            ScrollPerformanceCounters.incrementStickyVisualInvalidatedNodes()
+        }
+        children.forEach { child ->
+            child.invalidateStickyVisualOffsetsSubtree()
+        }
+    }
+
+    internal fun refreshStickyVisualOffsetsRecursively(): Int {
+        if (!stickyVisualRefreshSubtreeDirty) {
+            return 0
+        }
+        var resolvedStickyNodes = 0
+        if (position == PositionMode.Sticky) {
+            if (stickyVisualOffsetsDirty) {
+                ensureStickyVisualOffsetsResolved()
+                resolvedStickyNodes += 1
+            }
+        } else {
+            stickyVisualOffsetsDirty = false
+            if (stickyVisualOffsetXPx != 0 || stickyVisualOffsetYPx != 0) {
+                stickyVisualOffsetXPx = 0
+                stickyVisualOffsetYPx = 0
+                markRenderCommandsDirty()
             }
         }
-        return dirty
+        children.forEach { child ->
+            if (child.stickyVisualRefreshSubtreeDirty) {
+                resolvedStickyNodes += child.refreshStickyVisualOffsetsRecursively()
+            }
+        }
+        stickyVisualRefreshSubtreeDirty = false
+        return resolvedStickyNodes
+    }
+
+    internal fun applyScrollVisualGeometryRecursively(): Int {
+        var translatedNodes = 0
+        val isScrollContainerCandidate = overflowX != Overflow.Visible || overflowY != Overflow.Visible
+        if (isScrollContainerCandidate && shouldResolveScrollContainerStateForVisualRefresh()) {
+            val scrollState = scrollContainerState()
+            val deltaScrollX = scrollState.scrollX - contentLayoutScrollX
+            val deltaScrollY = scrollState.scrollY - contentLayoutScrollY
+            if (deltaScrollX != 0 || deltaScrollY != 0) {
+                val shiftX = -deltaScrollX
+                val shiftY = -deltaScrollY
+                children.forEach { child ->
+                    translatedNodes += child.translateSubtreeBoundsForScroll(shiftX, shiftY)
+                }
+                setContentLayoutScroll(scrollState.scrollX, scrollState.scrollY)
+                markRenderCommandsDirty()
+            }
+        }
+        children.forEach { child ->
+            translatedNodes += child.applyScrollVisualGeometryRecursively()
+        }
+        return translatedNodes
+    }
+
+    private fun shouldResolveScrollContainerStateForVisualRefresh(): Boolean {
+        if (activeScrollbarDragAxis != null) return true
+        if (scrollOffsetResolvedX != contentLayoutScrollX || scrollOffsetResolvedY != contentLayoutScrollY) return true
+        if (scrollOffsetTargetX != scrollOffsetResolvedX || scrollOffsetTargetY != scrollOffsetResolvedY) return true
+        if (scrollOffsetDisplayedX.roundToInt() != scrollOffsetResolvedX) return true
+        if (scrollOffsetDisplayedY.roundToInt() != scrollOffsetResolvedY) return true
+        return false
+    }
+
+    private fun translateSubtreeBoundsForScroll(deltaX: Int, deltaY: Int): Int {
+        if ((deltaX == 0 && deltaY == 0) || position == PositionMode.Fixed) {
+            return 0
+        }
+        var translated = 0
+        val next = Rect(
+            x = bounds.x + deltaX,
+            y = bounds.y + deltaY,
+            width = bounds.width,
+            height = bounds.height
+        )
+        if (next != bounds) {
+            bounds = next
+            markRenderCommandsDirty()
+            translated += 1
+        }
+        children.forEach { child ->
+            translated += child.translateSubtreeBoundsForScroll(deltaX, deltaY)
+        }
+        return translated
     }
 
     internal fun debugScrollAnimationState(): ScrollAnimationDebugState {
@@ -1539,6 +2246,7 @@ abstract class DOMNode(
     internal fun restoreScrollSessionSnapshot(snapshot: ScrollSessionSnapshot?) {
         if (snapshot == null) return
         var changed = false
+        var layoutChanged = false
 
         val nextTargetX = snapshot.targetX.coerceAtLeast(0)
         val nextTargetY = snapshot.targetY.coerceAtLeast(0)
@@ -1565,13 +2273,13 @@ abstract class DOMNode(
         }
         if (scrollOffsetResolvedX != nextResolvedX) {
             scrollOffsetResolvedX = nextResolvedX
-            scrollLayoutDirty = true
             changed = true
+            layoutChanged = true
         }
         if (scrollOffsetResolvedY != nextResolvedY) {
             scrollOffsetResolvedY = nextResolvedY
-            scrollLayoutDirty = true
             changed = true
+            layoutChanged = true
         }
         if (contentLayoutScrollX != nextResolvedX) {
             contentLayoutScrollX = nextResolvedX
@@ -1609,7 +2317,29 @@ abstract class DOMNode(
         }
 
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = layoutChanged,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
+        }
+    }
+
+    private fun markScrollInvalidation(
+        layoutDirty: Boolean,
+        visualDirty: Boolean,
+        interactionDirty: Boolean
+    ) {
+        if (layoutDirty) {
+            scrollLayoutDirty = true
+        }
+        if (visualDirty) {
+            scrollVisualDirty = true
+            invalidateStickyVisualOffsetsRecursively()
+        }
+        if (interactionDirty) {
+            scrollInteractionDirty = true
         }
     }
 
@@ -1636,11 +2366,13 @@ abstract class DOMNode(
                 scrollOffsetDisplayedY = immediateDisplayY
                 changed = true
             }
-            if (changed) {
-                scrollLayoutDirty = true
-            }
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = false,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
     }
@@ -1685,7 +2417,6 @@ abstract class DOMNode(
             }
             if (resolvedScrollAxis(vertical) != clamped) {
                 setResolvedScrollAxis(vertical, clamped)
-                scrollLayoutDirty = true
                 markRenderCommandsDirty()
                 changed = true
             }
@@ -1693,6 +2424,13 @@ abstract class DOMNode(
                 setTargetScrollAxis(vertical, clamped)
                 markRenderCommandsDirty()
                 changed = true
+            }
+            if (changed) {
+                markScrollInvalidation(
+                    layoutDirty = false,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
             }
             return changed
         }
@@ -1726,9 +2464,15 @@ abstract class DOMNode(
         val resolved = nextDisplayed.roundToInt().coerceIn(0, maxScroll)
         if (resolved != resolvedScrollAxis(vertical)) {
             setResolvedScrollAxis(vertical, resolved)
-            scrollLayoutDirty = true
             markRenderCommandsDirty()
             changed = true
+        }
+        if (changed) {
+            markScrollInvalidation(
+                layoutDirty = false,
+                visualDirty = true,
+                interactionDirty = true
+            )
         }
         return changed
     }
@@ -1745,10 +2489,14 @@ abstract class DOMNode(
         }
         if (resolvedScrollAxis(vertical) != 0) {
             setResolvedScrollAxis(vertical, 0)
-            scrollLayoutDirty = true
             changed = true
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = false,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
         return changed
@@ -1799,6 +2547,7 @@ abstract class DOMNode(
     }
 
     fun scrollContainerState(): ScrollContainerState {
+        ScrollPerformanceCounters.incrementScrollContainerStateCalls()
         val baseViewportRect = Rect(
             x = contentX(),
             y = contentY(),
@@ -1862,10 +2611,14 @@ abstract class DOMNode(
             val resolvedX = clampedDisplayedX.roundToInt().coerceIn(0, maxScrollX)
             if (resolvedX != scrollOffsetResolvedX) {
                 scrollOffsetResolvedX = resolvedX
-                scrollLayoutDirty = true
                 axisChanged = true
             }
             if (axisChanged) {
+                markScrollInvalidation(
+                    layoutDirty = false,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
                 markRenderCommandsDirty()
             }
         } else {
@@ -1889,10 +2642,14 @@ abstract class DOMNode(
             val resolvedY = clampedDisplayedY.roundToInt().coerceIn(0, maxScrollY)
             if (resolvedY != scrollOffsetResolvedY) {
                 scrollOffsetResolvedY = resolvedY
-                scrollLayoutDirty = true
                 axisChanged = true
             }
             if (axisChanged) {
+                markScrollInvalidation(
+                    layoutDirty = false,
+                    visualDirty = true,
+                    interactionDirty = true
+                )
                 markRenderCommandsDirty()
             }
         } else {
@@ -2256,12 +3013,10 @@ abstract class DOMNode(
         }
         if (scrollOffsetResolvedX != resolvedX) {
             scrollOffsetResolvedX = resolvedX
-            scrollLayoutDirty = true
             changed = true
         }
         if (scrollOffsetResolvedY != resolvedY) {
             scrollOffsetResolvedY = resolvedY
-            scrollLayoutDirty = true
             changed = true
         }
         if (scrollOffsetTargetX != resolvedX) {
@@ -2273,6 +3028,11 @@ abstract class DOMNode(
             changed = true
         }
         if (changed) {
+            markScrollInvalidation(
+                layoutDirty = false,
+                visualDirty = true,
+                interactionDirty = true
+            )
             markRenderCommandsDirty()
         }
     }
@@ -2287,6 +3047,7 @@ abstract class DOMNode(
         var maxHeight = 0
         children.forEach { child ->
             if (child.display == Display.None) return@forEach
+            if (child.isRemovedFromNormalFlowForPositioning()) return@forEach
             val outerStartX = child.bounds.x - child.margin.left
             val outerStartY = child.bounds.y - child.margin.top
             val outerEndX = outerStartX + child.bounds.width + child.margin.horizontal
@@ -2330,15 +3091,28 @@ abstract class DOMNode(
     }
 
     private fun isPointInsideEffectiveAncestorClip(pointX: Int, pointY: Int): Boolean {
+        if (position == PositionMode.Fixed) {
+            return fixedViewportClipRectForPromotedParticipation().contains(pointX, pointY)
+        }
+        val effectiveClip = effectiveAncestorOverflowClipRect() ?: return true
+        return effectiveClip.contains(pointX, pointY)
+    }
+
+    internal fun effectiveAncestorOverflowClipRect(): Rect? {
         var current: DOMNode? = parent
+        var effectiveRect: Rect? = null
         while (current != null) {
             val clipRect = current.overflowViewportRect()
-            if (clipRect != null && !clipRect.contains(pointX, pointY)) {
-                return false
+            if (clipRect != null) {
+                effectiveRect = if (effectiveRect == null) {
+                    clipRect
+                } else {
+                    effectiveRect.intersection(clipRect) ?: return Rect(0, 0, 0, 0)
+                }
             }
             current = current.parent
         }
-        return true
+        return effectiveRect
     }
 
     open fun inspectorScrollOffset(): Pair<Int, Int>? {
@@ -2499,5 +3273,4 @@ fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     }
     return this
 }
-
 

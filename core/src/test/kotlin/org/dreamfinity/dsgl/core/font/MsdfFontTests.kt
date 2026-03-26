@@ -231,6 +231,37 @@ class MsdfFontTests {
     }
 
     @Test
+    fun `probing caches preserve fallback segmentation and shaped output semantics`() {
+        val primary = FontRegistry.get(FontRegistry.FONT_MINECRAFT)
+        val fallback = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
+        assertNotNull(primary)
+        assertNotNull(fallback)
+        val primaryAwt = primary.awtBaseFont
+        val fallbackAwt = fallback.awtBaseFont
+        assertNotNull(primaryAwt)
+        assertNotNull(fallbackAwt)
+        val codepoint = findFallbackOnlyCodepoint(primaryAwt, fallbackAwt) ?: return
+        val mixed = "A${String(Character.toChars(codepoint))}B${String(Character.toChars(0x10FFFF))}C"
+
+        FontRegistry.clearLoadedCache()
+        FontRegistry.resetShapeCacheStats()
+        FontRegistry.resetTextHotPathStats()
+        val cold = FontRegistry.shapeText(mixed, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "probe-semantic-cold")
+        val coldStats = FontRegistry.textHotPathStats()
+        assertTrue(coldStats.requiresReplacementGlyphEvaluations > 0)
+
+        FontRegistry.resetTextHotPathStats()
+        val warm = FontRegistry.shapeText(mixed, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "probe-semantic-warm")
+        val warmStats = FontRegistry.textHotPathStats()
+        assertTrue(warmStats.requiresReplacementGlyphCacheHits > 0)
+
+        assertEquals(cold.runs.map { it.fontId }, warm.runs.map { it.fontId })
+        assertEquals(cold.glyphs.map { it.fontId to it.glyphIndex }, warm.glyphs.map { it.fontId to it.glyphIndex })
+        assertEquals(cold.glyphs.map { it.sourceCodepoint }, warm.glyphs.map { it.sourceCodepoint })
+        assertTrue(abs(cold.width - warm.width) <= 0.01f)
+    }
+
+    @Test
     fun `wrapping respects max width and total height`() {
         val maxWidth = 128
         val fontSize = 14

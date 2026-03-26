@@ -25,6 +25,14 @@ enum class Display {
     Grid
 }
 
+enum class PositionMode {
+    Static,
+    Relative,
+    Absolute,
+    Fixed,
+    Sticky
+}
+
 enum class Overflow {
     Visible,
     Hidden,
@@ -92,6 +100,11 @@ enum class TextDecoration {
     UnderlineStrikethrough
 }
 
+sealed class LineHeightValue {
+    object Normal : LineHeightValue()
+    data class Length(val value: CssLength) : LineHeightValue()
+}
+
 data class UiTransform(
     val translateX: Float = 0f,
     val translateY: Float = 0f,
@@ -141,6 +154,7 @@ enum class StyleProperty(val key: String) {
     FOREGROUND_COLOR("color"),
     FONT_ID("font-id"),
     FONT_SIZE("font-size"),
+    LINE_HEIGHT("line-height"),
     FONT_WEIGHT("font-weight"),
     FONT_STYLE("font-style"),
     TEXT_DECORATION("text-decoration"),
@@ -153,6 +167,12 @@ enum class StyleProperty(val key: String) {
     MAX_HEIGHT("max-height"),
     ALIGN("align"),
     DISPLAY("display"),
+    POSITION("position"),
+    LEFT("left"),
+    TOP("top"),
+    RIGHT("right"),
+    BOTTOM("bottom"),
+    Z_INDEX("z-index"),
     FLEX_DIRECTION("flex-direction"),
     JUSTIFY_CONTENT("justify-content"),
     ALIGN_ITEMS("align-items"),
@@ -195,11 +215,20 @@ enum class StyleProperty(val key: String) {
                     "font" to FONT_ID,
                     "fontsize" to FONT_SIZE,
                     "font-size" to FONT_SIZE,
+                    "lineheight" to LINE_HEIGHT,
+                    "line-height" to LINE_HEIGHT,
                     "fontweight" to FONT_WEIGHT,
                     "font-weight" to FONT_WEIGHT,
                     "fontstyle" to FONT_STYLE,
                     "font-style" to FONT_STYLE
                 ) + mapOf(
+            "position" to POSITION,
+            "left" to LEFT,
+            "top" to TOP,
+            "right" to RIGHT,
+            "bottom" to BOTTOM,
+            "zindex" to Z_INDEX,
+            "z-index" to Z_INDEX,
             "flexdirection" to FLEX_DIRECTION,
             "flex-direction" to FLEX_DIRECTION,
             "justifycontent" to JUSTIFY_CONTENT,
@@ -316,6 +345,7 @@ data class ComputedStyle(
     val fontId: String?,
     val fontSize: Int?,
     val fontSizeValue: CssLength?,
+    val lineHeight: LineHeightValue,
     val fontWeight: FontWeight,
     val fontStyle: FontStyle,
     val textDecoration: TextDecoration,
@@ -328,6 +358,12 @@ data class ComputedStyle(
     val maxHeight: CssLength?,
     val align: StyleAlign,
     val display: Display,
+    val position: PositionMode,
+    val left: CssLength?,
+    val top: CssLength?,
+    val right: CssLength?,
+    val bottom: CssLength?,
+    val zIndex: Int,
     val flexDirection: FlexDirection,
     val justifyContent: JustifyContent,
     val alignItems: AlignItems,
@@ -363,6 +399,7 @@ data class ComputedStyleDefaults(
     val fontId: String? = FontRegistry.DEFAULT_FONT_ID,
     val fontSize: Int? = null,
     val fontSizeValue: CssLength? = null,
+    val lineHeight: LineHeightValue = LineHeightValue.Normal,
     val fontWeight: FontWeight = FontWeight.Normal,
     val fontStyle: FontStyle = FontStyle.Normal,
     val textDecoration: TextDecoration = TextDecoration.None,
@@ -375,6 +412,12 @@ data class ComputedStyleDefaults(
     val maxHeight: CssLength? = null,
     val align: StyleAlign = StyleAlign.START,
     val display: Display = Display.Block,
+    val position: PositionMode = PositionMode.Static,
+    val left: CssLength? = null,
+    val top: CssLength? = null,
+    val right: CssLength? = null,
+    val bottom: CssLength? = null,
+    val zIndex: Int = 0,
     val flexDirection: FlexDirection = FlexDirection.Row,
     val justifyContent: JustifyContent = JustifyContent.Start,
     val alignItems: AlignItems = AlignItems.Stretch,
@@ -410,6 +453,7 @@ data class ComputedStyleDefaults(
             fontId = fontId,
             fontSize = fontSize,
             fontSizeValue = fontSizeValue,
+            lineHeight = lineHeight,
             fontWeight = fontWeight,
             fontStyle = fontStyle,
             textDecoration = textDecoration,
@@ -422,6 +466,12 @@ data class ComputedStyleDefaults(
             maxHeight = maxHeight,
             align = align,
             display = display,
+            position = position,
+            left = left,
+            top = top,
+            right = right,
+            bottom = bottom,
+            zIndex = zIndex,
             flexDirection = flexDirection,
             justifyContent = justifyContent,
             alignItems = alignItems,
@@ -446,4 +496,3 @@ data class ComputedStyleDefaults(
         )
     }
 }
-

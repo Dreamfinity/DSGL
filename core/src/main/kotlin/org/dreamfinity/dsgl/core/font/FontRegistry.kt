@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
 import javax.imageio.ImageIO
@@ -187,6 +188,7 @@ object FontRegistry {
     const val DEFAULT_FONT_ID: String = FONT_MINECRAFT
     const val FALLBACK_FONT_ID: String = FONT_NOTO_SANS
     const val DEFAULT_FONT_SIZE: Int = 9
+    private const val GLYPH_INDEX_NULL_SENTINEL: Int = Int.MIN_VALUE
 
     private data class ShapeCacheKey(
         val primaryFontId: FontId,
@@ -197,6 +199,11 @@ object FontRegistry {
         val rangeEnd: Int,
         val directionFlags: Int,
         val formattingMode: String
+    )
+
+    private data class FontCodepointKey(
+        val fontId: FontId,
+        val codepoint: Int
     )
 
     private data class MutableShapingSegment(
@@ -220,9 +227,26 @@ object FontRegistry {
         }
     private val derivedFontCache: MutableMap<String, Font> = ConcurrentHashMap()
     private val fontRenderContext: FontRenderContext = FontRenderContext(AffineTransform(), true, true)
-    private val shapeCacheRequests = java.util.concurrent.atomic.AtomicLong(0L)
-    private val shapeCacheHits = java.util.concurrent.atomic.AtomicLong(0L)
-    private val shapeCacheMisses = java.util.concurrent.atomic.AtomicLong(0L)
+    private val shapeCacheRequests = AtomicLong(0L)
+    private val shapeCacheHits = AtomicLong(0L)
+    private val shapeCacheMisses = AtomicLong(0L)
+    private val canDisplayByFontCodepoint: MutableMap<FontCodepointKey, Boolean> = ConcurrentHashMap()
+    private val glyphIndexByFontCodepoint: MutableMap<FontCodepointKey, Int> = ConcurrentHashMap()
+    private val requiresReplacementGlyphByFontCodepoint: MutableMap<FontCodepointKey, Boolean> = ConcurrentHashMap()
+    private val shapeTextRangeCalls = AtomicLong(0L)
+    private val shapeSegmentCalls = AtomicLong(0L)
+    private val requiresReplacementGlyphCalls = AtomicLong(0L)
+    private val requiresReplacementGlyphCacheHits = AtomicLong(0L)
+    private val requiresReplacementGlyphCacheMisses = AtomicLong(0L)
+    private val requiresReplacementGlyphEvaluations = AtomicLong(0L)
+    private val canDisplayCalls = AtomicLong(0L)
+    private val canDisplayCacheHits = AtomicLong(0L)
+    private val canDisplayCacheMisses = AtomicLong(0L)
+    private val canDisplayAwtCalls = AtomicLong(0L)
+    private val glyphIndexForCodepointCalls = AtomicLong(0L)
+    private val glyphIndexCacheHits = AtomicLong(0L)
+    private val glyphIndexCacheMisses = AtomicLong(0L)
+    private val glyphIndexVectorBuildCalls = AtomicLong(0L)
 
     private var defaultsRegistered: Boolean = false
     private var resourceClassLoader: ClassLoader = javaClass.classLoader
@@ -233,6 +257,23 @@ object FontRegistry {
         val misses: Long,
         val entries: Int,
         val maxEntries: Int
+    )
+
+    data class TextHotPathStats(
+        val shapeTextRangeCalls: Long,
+        val shapeSegmentCalls: Long,
+        val requiresReplacementGlyphCalls: Long,
+        val requiresReplacementGlyphCacheHits: Long,
+        val requiresReplacementGlyphCacheMisses: Long,
+        val requiresReplacementGlyphEvaluations: Long,
+        val canDisplayCalls: Long,
+        val canDisplayCacheHits: Long,
+        val canDisplayCacheMisses: Long,
+        val canDisplayAwtCalls: Long,
+        val glyphIndexForCodepointCalls: Long,
+        val glyphIndexCacheHits: Long,
+        val glyphIndexCacheMisses: Long,
+        val glyphIndexVectorBuildCalls: Long
     )
 
     @Synchronized
@@ -406,8 +447,12 @@ object FontRegistry {
         synchronized(shapeCache) {
             shapeCache.clear()
         }
+        canDisplayByFontCodepoint.clear()
+        glyphIndexByFontCodepoint.clear()
+        requiresReplacementGlyphByFontCodepoint.clear()
         derivedFontCache.clear()
         resetShapeCacheStats()
+        resetTextHotPathStats()
     }
 
     fun measureText(text: String, fontId: FontId?, fontSize: Int?): Int {
@@ -442,6 +487,7 @@ object FontRegistry {
         fontSize: Int?,
         formattingMode: String = "plain"
     ): ShapedText {
+        shapeTextRangeCalls.incrementAndGet()
         val (safeStart, safeEnd) = normalizeRange(text, startIndex, endIndexExclusive)
         if (safeEnd <= safeStart) {
             return ShapedText(glyphs = emptyList(), runs = emptyList(), width = 0f)
@@ -496,7 +542,7 @@ object FontRegistry {
     }
 
     fun resolveFontSize(fontSize: Int?): Int {
-        return (fontSize ?: DEFAULT_FONT_SIZE).coerceIn(6, 96)
+        return (fontSize ?: DEFAULT_FONT_SIZE).coerceAtLeast(1)
     }
 
     fun fontIdFromTtfPath(relativeTtfPath: String): FontId {
@@ -535,6 +581,42 @@ object FontRegistry {
         shapeCacheRequests.set(0L)
         shapeCacheHits.set(0L)
         shapeCacheMisses.set(0L)
+    }
+
+    fun textHotPathStats(): TextHotPathStats {
+        return TextHotPathStats(
+            shapeTextRangeCalls = shapeTextRangeCalls.get(),
+            shapeSegmentCalls = shapeSegmentCalls.get(),
+            requiresReplacementGlyphCalls = requiresReplacementGlyphCalls.get(),
+            requiresReplacementGlyphCacheHits = requiresReplacementGlyphCacheHits.get(),
+            requiresReplacementGlyphCacheMisses = requiresReplacementGlyphCacheMisses.get(),
+            requiresReplacementGlyphEvaluations = requiresReplacementGlyphEvaluations.get(),
+            canDisplayCalls = canDisplayCalls.get(),
+            canDisplayCacheHits = canDisplayCacheHits.get(),
+            canDisplayCacheMisses = canDisplayCacheMisses.get(),
+            canDisplayAwtCalls = canDisplayAwtCalls.get(),
+            glyphIndexForCodepointCalls = glyphIndexForCodepointCalls.get(),
+            glyphIndexCacheHits = glyphIndexCacheHits.get(),
+            glyphIndexCacheMisses = glyphIndexCacheMisses.get(),
+            glyphIndexVectorBuildCalls = glyphIndexVectorBuildCalls.get()
+        )
+    }
+
+    fun resetTextHotPathStats() {
+        shapeTextRangeCalls.set(0L)
+        shapeSegmentCalls.set(0L)
+        requiresReplacementGlyphCalls.set(0L)
+        requiresReplacementGlyphCacheHits.set(0L)
+        requiresReplacementGlyphCacheMisses.set(0L)
+        requiresReplacementGlyphEvaluations.set(0L)
+        canDisplayCalls.set(0L)
+        canDisplayCacheHits.set(0L)
+        canDisplayCacheMisses.set(0L)
+        canDisplayAwtCalls.set(0L)
+        glyphIndexForCodepointCalls.set(0L)
+        glyphIndexCacheHits.set(0L)
+        glyphIndexCacheMisses.set(0L)
+        glyphIndexVectorBuildCalls.set(0L)
     }
 
     private fun fallbackMeasureText(text: String, fontSize: Int?): Int {
@@ -608,6 +690,9 @@ object FontRegistry {
         synchronized(shapeCache) {
             shapeCache.clear()
         }
+        canDisplayByFontCodepoint.clear()
+        glyphIndexByFontCodepoint.clear()
+        requiresReplacementGlyphByFontCodepoint.clear()
         derivedFontCache.keys
             .filter { key -> key.startsWith("$fontId@") }
             .forEach(derivedFontCache::remove)
@@ -658,8 +743,8 @@ object FontRegistry {
             descriptor = descriptor,
             meta = meta,
             awtBaseFont = awtBase,
-            preferredMissingGlyphIndex = glyphIndexForCodepoint(awtBase, 0xFFFD),
-            preferredQuestionGlyphIndex = glyphIndexForCodepoint(awtBase, '?'.code),
+            preferredMissingGlyphIndex = computeGlyphIndexForCodepoint(awtBase, 0xFFFD),
+            preferredQuestionGlyphIndex = computeGlyphIndexForCodepoint(awtBase, '?'.code),
             atlasPayload = AtlasPayload(atlasBytes)
         )
         loaded[descriptor.fontId] = loadedFont
@@ -807,6 +892,7 @@ object FontRegistry {
         fontPx: Int,
         penX: Float
     ): ShapedTextRun {
+        shapeSegmentCalls.incrementAndGet()
         val font = deriveAwtFont(segment.font, fontPx)
         if (font == null || segment.text.isEmpty()) {
             return ShapedTextRun(
@@ -878,23 +964,66 @@ object FontRegistry {
     }
 
     private fun canDisplay(font: LoadedMsdfFont, codepoint: Int): Boolean {
+        canDisplayCalls.incrementAndGet()
+        val key = FontCodepointKey(font.descriptor.fontId, codepoint)
+        canDisplayByFontCodepoint[key]?.let { cached ->
+            canDisplayCacheHits.incrementAndGet()
+            return cached
+        }
+        canDisplayCacheMisses.incrementAndGet()
         val awt = font.awtBaseFont ?: return false
-        return runCatching { awt.canDisplay(codepoint) }.getOrDefault(false)
+        canDisplayAwtCalls.incrementAndGet()
+        val resolved = runCatching { awt.canDisplay(codepoint) }.getOrDefault(false)
+        canDisplayByFontCodepoint[key] = resolved
+        return resolved
     }
 
     private fun requiresReplacementGlyph(font: LoadedMsdfFont, codepoint: Int): Boolean {
-        if (!Character.isValidCodePoint(codepoint)) return true
-        if (!canDisplay(font, codepoint)) return true
-        val awt = font.awtBaseFont ?: return true
-        val glyphIndex = glyphIndexForCodepoint(awt, codepoint) ?: return true
-        if (glyphIndex < 0) return true
-        val missingIndex = font.preferredMissingGlyphIndex
-        if (missingIndex != null && glyphIndex == missingIndex) return true
-        if (glyphIndex == 0 && (missingIndex == null || missingIndex == 0)) return true
-        return false
+        requiresReplacementGlyphCalls.incrementAndGet()
+        val key = FontCodepointKey(font.descriptor.fontId, codepoint)
+        requiresReplacementGlyphByFontCodepoint[key]?.let { cached ->
+            requiresReplacementGlyphCacheHits.incrementAndGet()
+            return cached
+        }
+        requiresReplacementGlyphCacheMisses.incrementAndGet()
+        requiresReplacementGlyphEvaluations.incrementAndGet()
+        val resolved = if (!Character.isValidCodePoint(codepoint)) {
+            true
+        } else if (!canDisplay(font, codepoint)) {
+            true
+        } else {
+            val glyphIndex = glyphIndexForCodepoint(font, codepoint)
+            if (glyphIndex == null || glyphIndex < 0) {
+                true
+            } else {
+                val missingIndex = font.preferredMissingGlyphIndex
+                if (missingIndex != null && glyphIndex == missingIndex) {
+                    true
+                } else {
+                    glyphIndex == 0 && (missingIndex == null || missingIndex == 0)
+                }
+            }
+        }
+        requiresReplacementGlyphByFontCodepoint[key] = resolved
+        return resolved
     }
 
-    private fun glyphIndexForCodepoint(font: Font?, codepoint: Int): Int? {
+    private fun glyphIndexForCodepoint(font: LoadedMsdfFont, codepoint: Int): Int? {
+        glyphIndexForCodepointCalls.incrementAndGet()
+        if (!Character.isValidCodePoint(codepoint)) return null
+        val key = FontCodepointKey(font.descriptor.fontId, codepoint)
+        glyphIndexByFontCodepoint[key]?.let { cached ->
+            glyphIndexCacheHits.incrementAndGet()
+            return if (cached == GLYPH_INDEX_NULL_SENTINEL) null else cached
+        }
+        glyphIndexCacheMisses.incrementAndGet()
+        glyphIndexVectorBuildCalls.incrementAndGet()
+        val resolved = computeGlyphIndexForCodepoint(font.awtBaseFont, codepoint)
+        glyphIndexByFontCodepoint[key] = resolved ?: GLYPH_INDEX_NULL_SENTINEL
+        return resolved
+    }
+
+    private fun computeGlyphIndexForCodepoint(font: Font?, codepoint: Int): Int? {
         if (font == null || !Character.isValidCodePoint(codepoint)) return null
         val text = String(Character.toChars(codepoint))
         return runCatching {

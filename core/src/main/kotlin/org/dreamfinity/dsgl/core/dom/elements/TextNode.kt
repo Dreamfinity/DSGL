@@ -2,13 +2,13 @@ package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.support.MeasuredTextRangeWidthSource
 import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
 /**
  * Static text node.
@@ -18,6 +18,10 @@ class TextNode(
     var color: Int = DsglColors.TEXT,
     key: Any? = null
 ) : DOMNode(key) {
+    companion object {
+        const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = DOMNode.NORMAL_LINE_HEIGHT_MULTIPLIER
+    }
+
     override val styleType: String = "text"
 
     var text: String = textSource.resolve()
@@ -32,23 +36,19 @@ class TextNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveFontSize(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
-        val measureRange: (Int, Int) -> Int = { start, end ->
-            val safeStart = start.coerceIn(0, plainText.length)
-            val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
-            val extra = TextStyleMetrics.boldExtraPxForRange(
-                plainText = plainText,
-                spans = parsed.spans,
-                baseFlags = baseFlags,
-                rangeStart = safeStart,
-                rangeEnd = safeEnd
-            )
-            baseWidth + extra
-        }
+        val measuredRanges = MeasuredTextRangeWidthSource(
+            plainText = plainText,
+            fontId = fontId,
+            fontSizePx = textMetrics.fontSizePx,
+            baseFlags = baseFlags,
+            spans = parsed.spans,
+            ctx = ctx
+        )
         val contentLimit = resolvedContentLimit(availableOuterWidth)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentLimit else null
         val layout = TextLayoutEngine.layout(
@@ -56,8 +56,9 @@ class TextNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
-            measureRange = measureRange
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
+            measureRange = measuredRanges::measureRange,
+            measureRangeCacheKey = measuredRanges.cacheKey
         )
         val naturalContentWidth = width ?: layout.maxLineWidth
         val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
@@ -79,23 +80,20 @@ class TextNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        val lineHeight = resolveFontSize(ctx)
+        val textMetrics = resolveTextMetrics(ctx)
+        val lineHeight = textMetrics.lineHeightPx
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val parsed = parseTextForFormatting(this@TextNode.text)
         val plainText = parsed.plainText
         val baseFlags = baseTextStyleFlags()
-        val measureRange: (Int, Int) -> Int = { start, end ->
-            val safeStart = start.coerceIn(0, plainText.length)
-            val safeEnd = end.coerceIn(safeStart, plainText.length)
-            val baseWidth = ctx.measureText(plainText.substring(safeStart, safeEnd), fontId, fontSize)
-            val extra = TextStyleMetrics.boldExtraPxForRange(
-                plainText = plainText,
-                spans = parsed.spans,
-                baseFlags = baseFlags,
-                rangeStart = safeStart,
-                rangeEnd = safeEnd
-            )
-            baseWidth + extra
-        }
+        val measuredRanges = MeasuredTextRangeWidthSource(
+            plainText = plainText,
+            fontId = fontId,
+            fontSizePx = textMetrics.fontSizePx,
+            baseFlags = baseFlags,
+            spans = parsed.spans,
+            ctx = ctx
+        )
         addBorderCommands(out)
         val wrapWidth = if (textWrap == TextWrap.Wrap) contentWidth() else null
         val layout = TextLayoutEngine.layout(
@@ -103,8 +101,9 @@ class TextNode(
             maxWidth = wrapWidth,
             wrap = textWrap,
             fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, fontId, fontSize) },
-            measureRange = measureRange
+            measureText = { value -> ctx.measureText(value, fontId, textMetrics.fontSizePx) },
+            measureRange = measuredRanges::measureRange,
+            measureRangeCacheKey = measuredRanges.cacheKey
         )
         val baseX = contentX()
         var lineY = contentY()
@@ -127,7 +126,7 @@ class TextNode(
                     obfuscated = span.flags.obfuscated
                 )
             }
-            out.add(drawTextCommand(line.text, baseX, lineY, color, spans))
+            out.add(drawTextCommand(ctx, line.text, baseX, lineY + lineTopLeading, color, spans))
             lineY += layout.lineHeight
         }
     }
@@ -136,6 +135,12 @@ class TextNode(
 
     override fun applyForegroundColor(value: Int) {
         color = value
+    }
+
+    fun setText(value: String) {
+        if (text == value) return
+        text = value
+        markRenderCommandsDirty()
     }
 
     internal fun syncSourceFrom(template: TextNode) {

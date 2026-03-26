@@ -95,7 +95,7 @@ class RadioGroupNode(
             }
             val textX = startX + boxSize + 6
             val textY = cursorY + (lineHeight - fontHeight) / 2
-            out.add(drawTextCommand(option.label, textX, textY, textColor))
+            out.add(drawTextCommand(ctx, option.label, textX, textY, textColor))
             cursorY += lineHeight
         }
     }

@@ -110,6 +110,27 @@ fun parseDisplay(raw: String): Display {
     }
 }
 
+fun parsePosition(raw: String): PositionMode {
+    return when (raw.trim().lowercase()) {
+        "static" -> PositionMode.Static
+        "relative" -> PositionMode.Relative
+        "absolute" -> PositionMode.Absolute
+        "fixed" -> PositionMode.Fixed
+        "sticky" -> PositionMode.Sticky
+        else -> error("Unsupported position value '$raw'.")
+    }
+}
+
+fun parseLineHeightValue(raw: String): LineHeightValue {
+    val normalized = raw.trim().lowercase()
+    if (normalized == "normal") {
+        return LineHeightValue.Normal
+    }
+    val length = parseCssLength(raw = raw, allowUnitlessZero = true)
+    require(length.value >= 0f) { "line-height must be non-negative." }
+    return LineHeightValue.Length(length)
+}
+
 data class OverflowAxes(
     val overflowX: Overflow,
     val overflowY: Overflow
@@ -379,6 +400,7 @@ fun validateLiteralForProperty(
             )
             require(parsed.value >= 0f) { "font-size must be non-negative." }
         }
+        StyleProperty.LINE_HEIGHT -> StylePropertyRegistry.parseLineHeightLiteral(property, literal)
         StyleProperty.WIDTH -> validateLengthLiteral(literal, allowNegative = false)
         StyleProperty.HEIGHT -> validateLengthLiteral(literal, allowNegative = false)
         StyleProperty.MIN_WIDTH,
@@ -393,6 +415,12 @@ fun validateLiteralForProperty(
 
         StyleProperty.ALIGN -> parseAlign(literal)
         StyleProperty.DISPLAY -> parseDisplay(literal)
+        StyleProperty.POSITION -> StylePropertyRegistry.parseEnumLiteral(property, literal)
+        StyleProperty.LEFT,
+        StyleProperty.TOP,
+        StyleProperty.RIGHT,
+        StyleProperty.BOTTOM -> parseOptionalCssLength(literal)
+        StyleProperty.Z_INDEX -> StylePropertyRegistry.parseUnitlessIntLiteral(property, literal)
         StyleProperty.OVERFLOW -> parseOverflowShorthand(literal)
         StyleProperty.OVERFLOW_X,
         StyleProperty.OVERFLOW_Y -> parseOverflow(literal)
@@ -456,4 +484,3 @@ fun resolveExpressionToLiteral(
         }
     }
 }
-

@@ -105,6 +105,7 @@ class ColorPickerPopupPaneNode(
         out += RenderCommand.DrawRect(swatchRect.x, swatchRect.y, 1, swatchRect.height, borderColor)
         out += RenderCommand.DrawRect(swatchRect.x + swatchRect.width - 1, swatchRect.y, 1, swatchRect.height, borderColor)
         out += drawTextCommand(
+            ctx,
             text = ColorTextCodec.format(effectiveColor(), mode, alphaEnabled),
             x = swatchRect.x + swatchRect.width + 6,
             y = rect.y + 3,
@@ -112,6 +113,7 @@ class ColorPickerPopupPaneNode(
         )
         out += if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
             drawTextCommand(
+                ctx,
                 text = "^",
                 x = rect.x + rect.width - 14,
                 y = rect.y + 3,
@@ -119,6 +121,7 @@ class ColorPickerPopupPaneNode(
             )
         } else {
             drawTextCommand(
+                ctx,
                 text = "v",
                 x = rect.x + rect.width - 14,
                 y = rect.y + 3,
