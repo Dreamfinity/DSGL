@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
+import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
@@ -371,6 +372,122 @@ class PositionedLayoutStickyBehaviorTests {
         val rect = visibleRect(sticky)
         assertTrue(dispatchClick(root, MouseClickEvent(rect.x + 4, rect.y + 4, MouseButton.LEFT)))
         assertEquals(1, clicks)
+    }
+
+    @Test
+    fun `sticky with high z-index paints above later normal-flow overlap content`() {
+        val stickyColor = 0xFF1B6BA8.toInt()
+        val overlapColor = 0xFFE06262.toInt()
+        val root = ContainerNode(key = "sticky-z-paint-root").apply {
+            width = 120
+            height = 80
+            overflowY = Overflow.Auto
+        }
+        val sticky = ContainerNode(key = "sticky-z-paint-sticky", backgroundColor = stickyColor).apply {
+            width = 120
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px",
+                StyleProperty.Z_INDEX to "999"
+            )
+        }
+        val filler = ContainerNode(key = "sticky-z-paint-filler").apply {
+            width = 120
+            height = 80
+        }
+        val overlap = ContainerNode(key = "sticky-z-paint-overlap", backgroundColor = overlapColor).apply {
+            width = 120
+            height = 20
+        }
+        val tail = ContainerNode(key = "sticky-z-paint-tail").apply {
+            width = 120
+            height = 120
+        }
+        sticky.applyParent(root)
+        filler.applyParent(root)
+        overlap.applyParent(root)
+        tail.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 160)
+        root.setScrollOffsets(0, 96)
+        tree.render(ctx, 220, 160)
+
+        val stickyRect = visibleRect(sticky)
+        val overlapRect = visibleRect(overlap)
+        assertNotNull(stickyRect.intersection(overlapRect))
+
+        val commands = tree.paint(ctx)
+        val stickyDrawIndex = commands.indexOfFirst {
+            it is RenderCommand.DrawRect && it.color == stickyColor
+        }
+        val overlapDrawIndex = commands.indexOfFirst {
+            it is RenderCommand.DrawRect && it.color == overlapColor
+        }
+        assertTrue(stickyDrawIndex >= 0, "Expected sticky draw command")
+        assertTrue(overlapDrawIndex >= 0, "Expected overlap draw command")
+        assertTrue(
+            stickyDrawIndex > overlapDrawIndex,
+            "Expected sticky draw after overlap draw, but stickyDrawIndex=$stickyDrawIndex overlapDrawIndex=$overlapDrawIndex"
+        )
+    }
+
+    @Test
+    fun `sticky with high z-index wins hover and click over later overlap content`() {
+        val root = ContainerNode(key = "sticky-z-hit-root").apply {
+            width = 120
+            height = 80
+            overflowY = Overflow.Auto
+        }
+        var stickyClicks = 0
+        var overlapClicks = 0
+        val sticky = ButtonNode("sticky-top", key = "sticky-z-hit-sticky").apply {
+            width = 120
+            height = 20
+            inlineStyleDeclarations = styleDeclarations(
+                StyleProperty.POSITION to "sticky",
+                StyleProperty.TOP to "0px",
+                StyleProperty.Z_INDEX to "999"
+            )
+            onClick { stickyClicks += 1 }
+        }
+        val filler = ContainerNode(key = "sticky-z-hit-filler").apply {
+            width = 120
+            height = 80
+        }
+        val overlap = ButtonNode("later-overlap", key = "sticky-z-hit-overlap").apply {
+            width = 120
+            height = 20
+            onClick { overlapClicks += 1 }
+        }
+        val tail = ContainerNode(key = "sticky-z-hit-tail").apply {
+            width = 120
+            height = 120
+        }
+        sticky.applyParent(root)
+        filler.applyParent(root)
+        overlap.applyParent(root)
+        tail.applyParent(root)
+
+        val tree = DomTree(root)
+        tree.render(ctx, 220, 160)
+        root.setScrollOffsets(0, 96)
+        tree.render(ctx, 220, 160)
+
+        val stickyRect = visibleRect(sticky)
+        val overlapRect = visibleRect(overlap)
+        val intersection = stickyRect.intersection(overlapRect)
+        assertNotNull(intersection)
+        val x = intersection.x + intersection.width / 2
+        val y = intersection.y + intersection.height / 2
+
+        val hovered = collectHoverChain(root, x, y).lastOrNull()
+        assertEquals(sticky, hovered)
+
+        assertTrue(dispatchClick(root, MouseClickEvent(x, y, MouseButton.LEFT)))
+        assertEquals(1, stickyClicks)
+        assertEquals(0, overlapClicks)
     }
 
     @Test

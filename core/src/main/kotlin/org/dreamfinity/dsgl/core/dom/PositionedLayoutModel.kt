@@ -5,13 +5,23 @@ import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleProperty
 
 internal object PositionedLayoutModel {
-    private fun isRuntimePositionedMode(mode: PositionMode): Boolean {
+    private fun isLayoutRuntimePositionedMode(mode: PositionMode): Boolean {
         return when (mode) {
             PositionMode.Relative,
             PositionMode.Absolute,
             PositionMode.Fixed -> true
             PositionMode.Static,
             PositionMode.Sticky -> false
+        }
+    }
+
+    private fun isOrderingPositionedMode(mode: PositionMode): Boolean {
+        return when (mode) {
+            PositionMode.Static -> false
+            PositionMode.Relative,
+            PositionMode.Absolute,
+            PositionMode.Fixed,
+            PositionMode.Sticky -> true
         }
     }
 
@@ -58,7 +68,7 @@ internal object PositionedLayoutModel {
     )
 
     fun isPositioned(node: DOMNode): Boolean {
-        return isRuntimePositionedMode(node.position)
+        return isOrderingPositionedMode(node.position)
     }
 
     private fun effectiveOrderingZIndex(node: DOMNode): Int {
@@ -90,7 +100,7 @@ internal object PositionedLayoutModel {
     }
 
     fun matchesChildContextTrigger(node: DOMNode): Boolean {
-        return isRuntimePositionedMode(node.position) && node.zIndex != 0
+        return isOrderingPositionedMode(node.position) && node.zIndex != 0
     }
 
     fun stackingContextScaffold(owner: DOMNode): StackingContext {
@@ -112,7 +122,7 @@ internal object PositionedLayoutModel {
     fun containingBlockForAbsolute(node: DOMNode): DOMNode {
         var current = node.parent
         while (current != null) {
-            if (isPositioned(current)) {
+            if (isLayoutRuntimePositionedMode(current.position)) {
                 return current
             }
             current = current.parent

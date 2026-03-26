@@ -191,7 +191,7 @@ class PositionedLayoutStaticBaselineTests {
     }
 
     @Test
-    fun `sticky style value remains runtime-inactive`() {
+    fun `sticky style value remains in-flow but participates in ordering`() {
         val root = ContainerNode(key = "sticky-inactive-root")
         val sticky = ContainerNode(key = "sticky-inactive-node").apply {
             width = 50
@@ -215,8 +215,8 @@ class PositionedLayoutStaticBaselineTests {
         assertEquals(0, sticky.bounds.x)
         assertEquals(0, sticky.bounds.y)
         assertEquals(sticky.bounds.y + sticky.bounds.height, follower.bounds.y)
-        assertFalse(sticky.participatesInPositionedOrderingModel())
-        assertEquals(listOf(sticky, follower), root.orderedChildrenForPaintTraversal())
+        assertTrue(sticky.participatesInPositionedOrderingModel())
+        assertEquals(listOf(follower, sticky), root.orderedChildrenForPaintTraversal())
     }
 
     private fun renderTree(root: ContainerNode) {

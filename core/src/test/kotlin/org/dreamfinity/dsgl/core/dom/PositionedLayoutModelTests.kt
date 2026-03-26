@@ -94,7 +94,7 @@ class PositionedLayoutModelTests {
     }
 
     @Test
-    fun `sticky remains non-positioned for ordering and containing-block semantics `() {
+    fun `sticky participates in ordering but not absolute containing-block semantics`() {
         val root = ContainerNode(key = "sticky-root")
         val stickyAncestor = ContainerNode(key = "sticky-ancestor").apply {
             position = PositionMode.Sticky
@@ -104,8 +104,8 @@ class PositionedLayoutModelTests {
             position = PositionMode.Absolute
         }.applyParent(stickyAncestor)
 
-        assertFalse(stickyAncestor.participatesInPositionedOrderingModel())
-        assertFalse(PositionedLayoutModel.matchesChildContextTrigger(stickyAncestor))
+        assertTrue(stickyAncestor.participatesInPositionedOrderingModel())
+        assertTrue(PositionedLayoutModel.matchesChildContextTrigger(stickyAncestor))
         assertSame(root, absoluteLeaf.containingBlockForAbsolutePositioning())
     }
 
