@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.style.*
@@ -1003,6 +1004,8 @@ private fun UiScope.controls(props: ControlsProps) {
             padding = 5.px
             border(1.px, 0xFF617A90.toInt())
             backgroundColor = 0xFF2A3541.toInt()
+            position = PositionMode.Sticky
+            top = 0.px
             zIndex = 999
         }
     }) {
@@ -1033,6 +1036,15 @@ private fun UiScope.controls(props: ControlsProps) {
             button("Reset", {
                 onMouseClick = resetPositions
             })
+            select {
+                for (i in 0..5) {
+                    option("$i", "$i")
+                }
+            }
+            input(type = InputType.Text())
+            input(type = InputType.Checkbox(listOf(1, 2, 3).map { InputOption(id = "$it", label = "$it") }))
+            input(type = InputType.Radio(listOf(1, 2, 3).map { InputOption(id = "$it", label = "$it") }))
+            input(type = InputType.Number())
         }
 
         positionedRangeControl(

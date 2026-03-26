@@ -19,6 +19,11 @@ class RangeInputNode(
     var step: Long? = null,
     key: Any? = null
 ) : DOMNode(key) {
+    private data class SliderGeometry(
+        val trackRect: Rect,
+        val knobSize: Int
+    )
+
     companion object {
         private var activeDragIdentity: Any? = null
         private var activeDragStartValue: Long? = null
@@ -36,9 +41,6 @@ class RangeInputNode(
         private set
     var trackColor: Int = 0xFF4A4A52.toInt()
     var knobColor: Int = DsglColors.TEXT
-    private var trackRect: Rect = Rect(0, 0, 0, 0)
-    private var knobSize: Int = 8
-    private var trackHeight: Int = 4
 
     init {
         setValue(initialValue)
@@ -121,26 +123,29 @@ class RangeInputNode(
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        val contentX = contentX()
-        val contentY = contentY()
-        val contentWidth = contentWidth()
-        val contentHeight = contentHeight()
-        trackHeight = maxOf(2, (contentHeight / 3))
-        knobSize = maxOf(trackHeight * 2, 8)
-        val trackY = contentY + (contentHeight - trackHeight) / 2
-        trackRect = Rect(contentX, trackY, contentWidth, trackHeight)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
+        val geometry = sliderGeometry()
         addBackgroundImageCommand(out)
         addBorderCommands(out)
-        out.add(RenderCommand.DrawRect(trackRect.x, trackRect.y, trackRect.width, trackRect.height, trackColor))
-        val knobX = valueToX()
-        val knobY = trackRect.y + (trackRect.height - knobSize) / 2
-        out.add(RenderCommand.DrawRect(knobX, knobY, knobSize, knobSize, knobColor))
+        out.add(
+            RenderCommand.DrawRect(
+                geometry.trackRect.x,
+                geometry.trackRect.y,
+                geometry.trackRect.width,
+                geometry.trackRect.height,
+                trackColor
+            )
+        )
+        val knobX = valueToX(geometry)
+        val knobY = geometry.trackRect.y + (geometry.trackRect.height - geometry.knobSize) / 2
+        out.add(RenderCommand.DrawRect(knobX, knobY, geometry.knobSize, geometry.knobSize, knobColor))
     }
 
     private fun updateFromMouse(mouseX: Int) {
+        val geometry = sliderGeometry()
+        val trackRect = geometry.trackRect
         val trackWidth = trackRect.width.coerceAtLeast(1)
         val clamped = mouseX.coerceIn(trackRect.x, trackRect.x + trackWidth)
         val ratio = (clamped - trackRect.x).toDouble() / trackWidth.toDouble()
@@ -155,12 +160,30 @@ class RangeInputNode(
         setValue(next)
     }
 
-    private fun valueToX(): Int {
+    private fun valueToX(geometry: SliderGeometry): Int {
+        val trackRect = geometry.trackRect
+        val knobSize = geometry.knobSize
         val trackWidth = trackRect.width.coerceAtLeast(1)
         if (max == min) return trackRect.x
         val ratio = (value - min).toDouble() / (max - min).toDouble()
         return (trackRect.x + ratio * trackWidth - knobSize / 2.0).toInt()
             .coerceIn(trackRect.x, trackRect.x + trackWidth - knobSize)
+    }
+
+    private fun sliderGeometry(): SliderGeometry {
+        val contentHeight = contentHeight()
+        val resolvedTrackHeight = maxOf(2, contentHeight / 3)
+        val resolvedKnobSize = maxOf(resolvedTrackHeight * 2, 8)
+        val trackRect = Rect(
+            x = contentX(),
+            y = contentY() + (contentHeight - resolvedTrackHeight) / 2,
+            width = contentWidth(),
+            height = resolvedTrackHeight
+        )
+        return SliderGeometry(
+            trackRect = trackRect,
+            knobSize = resolvedKnobSize
+        )
     }
 
     private fun setValue(next: Long) {
