@@ -1,12 +1,16 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
+import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class UseStateHookRuntimeTests {
     @Test
@@ -61,6 +65,38 @@ class UseStateHookRuntimeTests {
     }
 
     @Test
+    fun `conditional same-name incompatible useState branch fails in normal runtime`() {
+        val window = ConditionalStateTypeWindow()
+
+        window.useStringBranch = false
+        renderWithHookSession(window)
+
+        window.useStringBranch = true
+        val error = assertFailsWith<HookUsageException> {
+            renderWithHookSession(window)
+        }
+
+        assertTrue(error.message?.contains("Hook signature mismatch") == true)
+        assertTrue(error.message?.contains("counter") == true)
+    }
+
+    @Test
+    fun `hot reload mismatch remounts conditional useState branch and resets state`() {
+        val window = ConditionalStateTypeWindow()
+
+        window.useStringBranch = false
+        window.pendingIntMutation = 12
+        renderWithHookSession(window)
+        assertEquals(12, window.lastSeen)
+
+        window.useStringBranch = true
+        val attempts = renderWithHotReloadRecovery(window)
+        assertEquals(2, attempts)
+
+        assertEquals("fresh", window.lastSeen)
+    }
+
+    @Test
     fun `direct assignment useState fails loudly at render end`() {
         val window = DirectUseStateWindow()
 
@@ -85,13 +121,32 @@ class UseStateHookRuntimeTests {
         assertEquals(error.message?.contains("outside active component render"), true)
     }
 
-    private fun renderWithHookSession(window: DsglWindow): DomTree {
-        window.beginRenderBuild()
+    private fun renderWithHookSession(
+        window: DsglWindow,
+        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
+    ): DomTree {
+        window.beginRenderBuild(mode)
         return try {
             window.render()
         } finally {
             window.endRenderBuild()
         }
+    }
+
+    private fun renderWithHotReloadRecovery(window: DsglWindow, maxAttempts: Int = 8): Int {
+        var attempt = 0
+        var lastWarning: HookHotReloadRemountException? = null
+        while (attempt < maxAttempts) {
+            attempt += 1
+            try {
+                renderWithHookSession(window, HookRenderSessionMode.HotReload)
+                return attempt
+            } catch (warning: HookHotReloadRemountException) {
+                lastWarning = warning
+                assertTrue(warning.message?.contains("Hot-reload remount/reset") == true)
+            }
+        }
+        fail("Expected hot-reload recovery to succeed. last=${lastWarning?.message}")
     }
 
     private class StateProbeWindow : DsglWindow() {
@@ -118,6 +173,28 @@ class UseStateHookRuntimeTests {
                 lastSeen = null
             }
             return DomTree(ContainerNode(key = "state.probe.root"))
+        }
+    }
+
+    private class ConditionalStateTypeWindow : DsglWindow() {
+        var useStringBranch: Boolean = false
+        var pendingIntMutation: Int? = null
+        var lastSeen: Any? = null
+
+        override fun render(): DomTree {
+            if (useStringBranch) {
+                var counter by useState("fresh")
+                lastSeen = counter
+            } else {
+                var counter by useState(0)
+                val mutation = pendingIntMutation
+                if (mutation != null) {
+                    counter = mutation
+                    pendingIntMutation = null
+                }
+                lastSeen = counter
+            }
+            return DomTree(ContainerNode(key = "state.conditional.root"))
         }
     }
 

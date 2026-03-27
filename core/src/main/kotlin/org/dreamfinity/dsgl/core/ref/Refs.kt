@@ -2,7 +2,11 @@ package org.dreamfinity.dsgl.core.ref
 
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.hooks.HookEntryKind
+import org.dreamfinity.dsgl.core.hooks.HookSignature
+import org.dreamfinity.dsgl.core.hooks.HookSignatures
+import kotlin.ExperimentalStdlibApi
 import kotlin.reflect.KProperty
+import kotlin.reflect.typeOf
 
 typealias RefCallback<T> = (T?) -> Unit
 
@@ -24,9 +28,10 @@ class RefObject<T : Any>(
 
 fun <T : Any> createRef(initial: T? = null): Ref<T> = RefObject(initial)
 
-class RefHookDelegate<T : Any> internal constructor(
+class RefHookDelegate<T : Any> @PublishedApi internal constructor(
     private val window: DsglWindow,
-    private val initial: T?
+    private val initial: T?,
+    private val signature: HookSignature
 ) {
     private val runtime = window.hookRuntime()
     private val bindingToken = runtime.registerStorageBackedHookCandidate("useRef")
@@ -37,6 +42,7 @@ class RefHookDelegate<T : Any> internal constructor(
         val resolved = runtime.resolveNamedTypedEntry(
             kind = HookEntryKind.Ref,
             delegateName = property.name,
+            signature = signature,
             expectedRawType = Ref::class.java
         ) {
             RefObject(initial)
@@ -54,6 +60,11 @@ class RefHookDelegate<T : Any> internal constructor(
     }
 }
 
-fun <T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> {
-    return RefHookDelegate(window = this, initial = initial)
+@OptIn(ExperimentalStdlibApi::class)
+inline fun <reified T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> {
+    return RefHookDelegate(
+        window = this,
+        initial = initial,
+        signature = HookSignatures.ref(typeOf<T>())
+    )
 }

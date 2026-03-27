@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
+import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.ref.Ref
 import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
@@ -93,9 +94,9 @@ abstract class DsglWindow {
     /**
      * Host lifecycle hook: resets hook-style slots before calling [render].
      */
-    fun beginRenderBuild() {
+    fun beginRenderBuild(mode: HookRenderSessionMode = HookRenderSessionMode.Normal) {
         refSlotCursor = 0
-        componentHookRuntime.beginRender(this)
+        componentHookRuntime.beginRender(this, mode)
     }
 
     /**

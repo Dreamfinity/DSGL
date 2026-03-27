@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.hooks
 
+import kotlin.reflect.KType
 import java.util.ArrayDeque
 
 internal enum class HookEntryKind {
@@ -9,7 +10,51 @@ internal enum class HookEntryKind {
     Custom
 }
 
+enum class HookRenderSessionMode {
+    Normal,
+    HotReload
+}
+
+class HookHotReloadRemountException(
+    message: String
+) : RuntimeException(message)
+
 internal class HookUsageException(message: String) : IllegalStateException(message)
+
+@PublishedApi
+internal sealed interface HookSignature {
+    fun diagnosticLabel(): String
+}
+
+internal data class KindOnlyHookSignature(
+    val kind: HookEntryKind
+) : HookSignature {
+    override fun diagnosticLabel(): String = "KindOnly($kind)"
+}
+
+internal data class StateHookSignature(
+    val valueType: KType
+) : HookSignature {
+    override fun diagnosticLabel(): String = "State<$valueType>"
+}
+
+internal data class RefHookSignature(
+    val valueType: KType
+) : HookSignature {
+    override fun diagnosticLabel(): String = "Ref<$valueType>"
+}
+
+@PublishedApi
+internal object HookSignatures {
+    @PublishedApi
+    internal fun kindOnly(kind: HookEntryKind): HookSignature = KindOnlyHookSignature(kind)
+
+    @PublishedApi
+    internal fun state(valueType: KType): HookSignature = StateHookSignature(valueType)
+
+    @PublishedApi
+    internal fun ref(valueType: KType): HookSignature = RefHookSignature(valueType)
+}
 
 internal data class HookPath(
     val segments: List<String>
@@ -79,6 +124,16 @@ internal data class ComponentInstanceId(
         )
     }
 
+    fun isSameOrDescendantOf(ancestor: ComponentInstanceId): Boolean {
+        if (ownerIdentity != ancestor.ownerIdentity) {
+            return false
+        }
+        if (segments.size < ancestor.segments.size) {
+            return false
+        }
+        return segments.subList(0, ancestor.segments.size) == ancestor.segments
+    }
+
     fun debugPath(): String {
         if (segments.isEmpty()) return "root"
         return segments.joinToString(".") { segment -> segment.debugLabel() }
@@ -87,6 +142,7 @@ internal data class ComponentInstanceId(
 
 internal data class HookEntry(
     val kind: HookEntryKind,
+    val signature: HookSignature,
     var value: Any?,
     val synthetic: Boolean,
     val createdRenderEpoch: Long
@@ -113,6 +169,51 @@ private data class SyntheticCounterKey(
     val hookName: String
 )
 
+private enum class HookCompatibilityMismatchReason {
+    Kind,
+    Signature
+}
+
+private data class HookCompatibilityMismatch(
+    val componentId: ComponentInstanceId,
+    val path: HookPath,
+    val existingKind: HookEntryKind,
+    val requestedKind: HookEntryKind,
+    val existingSignature: HookSignature,
+    val requestedSignature: HookSignature,
+    val reason: HookCompatibilityMismatchReason
+) {
+    fun runtimeErrorMessage(): String {
+        val guidance = "Use distinct delegated property names/scopes for semantically different hooks."
+        return when (reason) {
+            HookCompatibilityMismatchReason.Kind -> {
+                "Hook kind mismatch at path '$path' in component '${componentId.debugPath()}': " +
+                    "existing=$existingKind (${existingSignature.diagnosticLabel()}), " +
+                    "requested=$requestedKind (${requestedSignature.diagnosticLabel()}). $guidance"
+            }
+
+            HookCompatibilityMismatchReason.Signature -> {
+                "Hook signature mismatch at path '$path' in component '${componentId.debugPath()}': " +
+                    "existing=${existingSignature.diagnosticLabel()}, " +
+                    "requested=${requestedSignature.diagnosticLabel()}. $guidance"
+            }
+        }
+    }
+
+    fun hotReloadWarningMessage(): String {
+        return "[DSGL][Hooks] Hot-reload remount/reset for component '${componentId.debugPath()}' due to " +
+            "incompatible hook at path '$path': " +
+            "previous=${existingSignature.diagnosticLabel()} ($existingKind), " +
+            "next=${requestedSignature.diagnosticLabel()} ($requestedKind). " +
+            "Local hook state for this component subtree was reset. " +
+            "Use distinct delegated property names/scopes for semantically different hooks."
+    }
+}
+
+private class HookCompatibilityMismatchException(
+    val mismatch: HookCompatibilityMismatch
+) : RuntimeException()
+
 internal class ComponentHookContext(
     val componentId: ComponentInstanceId
 ) {
@@ -133,6 +234,7 @@ internal class ComponentHookContext(
         scopeSegments: List<String>,
         delegateName: String,
         kind: HookEntryKind,
+        signature: HookSignature,
         renderEpoch: Long,
         initializer: () -> Any?
     ): ResolvedHookEntry {
@@ -140,6 +242,7 @@ internal class ComponentHookContext(
         return resolvePath(
             path = path,
             kind = kind,
+            signature = signature,
             synthetic = false,
             renderEpoch = renderEpoch,
             initializer = initializer
@@ -150,6 +253,7 @@ internal class ComponentHookContext(
         scopeSegments: List<String>,
         hookName: String,
         kind: HookEntryKind,
+        signature: HookSignature,
         renderEpoch: Long,
         initializer: () -> Any?
     ): ResolvedHookEntry {
@@ -161,6 +265,7 @@ internal class ComponentHookContext(
         return resolvePath(
             path = path,
             kind = kind,
+            signature = signature,
             synthetic = true,
             renderEpoch = renderEpoch,
             initializer = initializer
@@ -182,6 +287,7 @@ internal class ComponentHookContext(
     private fun resolvePath(
         path: HookPath,
         kind: HookEntryKind,
+        signature: HookSignature,
         synthetic: Boolean,
         renderEpoch: Long,
         initializer: () -> Any?
@@ -205,9 +311,29 @@ internal class ComponentHookContext(
                 )
             }
             if (existing.kind != kind) {
-                throw HookUsageException(
-                    "Hook kind mismatch at path '$path' in component '${componentId.debugPath()}': " +
-                        "existing=${existing.kind}, requested=$kind."
+                throw HookCompatibilityMismatchException(
+                    HookCompatibilityMismatch(
+                        componentId = componentId,
+                        path = path,
+                        existingKind = existing.kind,
+                        requestedKind = kind,
+                        existingSignature = existing.signature,
+                        requestedSignature = signature,
+                        reason = HookCompatibilityMismatchReason.Kind
+                    )
+                )
+            }
+            if (existing.signature != signature) {
+                throw HookCompatibilityMismatchException(
+                    HookCompatibilityMismatch(
+                        componentId = componentId,
+                        path = path,
+                        existingKind = existing.kind,
+                        requestedKind = kind,
+                        existingSignature = existing.signature,
+                        requestedSignature = signature,
+                        reason = HookCompatibilityMismatchReason.Signature
+                    )
                 )
             }
             existing.lastVisitedRenderEpoch = renderEpoch
@@ -216,6 +342,7 @@ internal class ComponentHookContext(
 
         val created = HookEntry(
             kind = kind,
+            signature = signature,
             value = initializer(),
             synthetic = synthetic,
             createdRenderEpoch = renderEpoch
@@ -235,7 +362,7 @@ internal class ComponentHookRuntime {
 
     private data class ComponentFrame(
         val componentId: ComponentInstanceId,
-        val context: ComponentHookContext,
+        var context: ComponentHookContext,
         val scopeSegments: ArrayDeque<String> = ArrayDeque(),
         val positionalChildCounters: MutableMap<String, Int> = linkedMapOf()
     )
@@ -247,10 +374,14 @@ internal class ComponentHookRuntime {
 
     private var renderEpoch: Long = 0L
     private var renderActive: Boolean = false
+    private var renderSessionMode: HookRenderSessionMode = HookRenderSessionMode.Normal
+    private var renderAbortedByHotReloadRemount: Boolean = false
 
-    fun beginRender(owner: Any) {
+    fun beginRender(owner: Any, sessionMode: HookRenderSessionMode = HookRenderSessionMode.Normal) {
         ensureNotActiveRender()
         renderActive = true
+        renderSessionMode = sessionMode
+        renderAbortedByHotReloadRemount = false
         renderEpoch += 1L
         enteredComponentIdsThisRender.clear()
         componentStack.clear()
@@ -265,6 +396,11 @@ internal class ComponentHookRuntime {
 
     fun endRender() {
         ensureActiveRender()
+        if (renderAbortedByHotReloadRemount) {
+            clearRenderSessionStateOnly()
+            return
+        }
+
         val unboundStorageHook = pendingStorageHookBindings.firstOrNull { token ->
             token.renderEpoch == renderEpoch && !token.bound
         }
@@ -298,10 +434,7 @@ internal class ComponentHookRuntime {
             }
         }
 
-        enteredComponentIdsThisRender.clear()
-        componentStack.clear()
-        pendingStorageHookBindings.clear()
-        renderActive = false
+        clearRenderSessionStateOnly()
     }
 
     fun enterComponentInstance(componentName: String, key: Any? = null) {
@@ -362,6 +495,7 @@ internal class ComponentHookRuntime {
             scopeSegments = frame.scopeSegments.toList(),
             delegateName = normalizedName,
             kind = HookEntryKind.CustomScope,
+            signature = HookSignatures.kindOnly(HookEntryKind.CustomScope),
             renderEpoch = renderEpoch
         ) { Unit }
         frame.scopeSegments.addLast(normalizedName)
@@ -393,13 +527,8 @@ internal class ComponentHookRuntime {
     ): ResolvedHookEntry {
         val frame = currentFrame()
         val normalizedName = validateSegment(delegateName, "delegated property")
-        return frame.context.resolveNamedEntry(
-            scopeSegments = frame.scopeSegments.toList(),
-            delegateName = normalizedName,
-            kind = kind,
-            renderEpoch = renderEpoch,
-            initializer = initializer
-        )
+        val signature = HookSignatures.kindOnly(kind)
+        return resolveNamedEntryWithSignature(frame, kind, signature, normalizedName, initializer)
     }
 
     fun resolveUnnamedEntry(
@@ -409,23 +538,20 @@ internal class ComponentHookRuntime {
     ): ResolvedHookEntry {
         val frame = currentFrame()
         val normalizedHookName = validateSegment(hookName, "hook name")
-        return frame.context.resolveUnnamedEntry(
-            scopeSegments = frame.scopeSegments.toList(),
-            hookName = normalizedHookName,
-            kind = kind,
-            renderEpoch = renderEpoch,
-            initializer = initializer
-        )
+        val signature = HookSignatures.kindOnly(kind)
+        return resolveUnnamedEntryWithSignature(frame, kind, signature, normalizedHookName, initializer)
     }
 
     fun <T : Any> resolveNamedTypedEntry(
         kind: HookEntryKind,
         delegateName: String,
+        signature: HookSignature,
         expectedRawType: Class<*>,
         initializer: () -> T
     ): ResolvedTypedHookEntry<T> {
         val frame = currentFrame()
-        val resolved = resolveNamedEntry(kind = kind, delegateName = delegateName, initializer = initializer)
+        val normalizedName = validateSegment(delegateName, "delegated property")
+        val resolved = resolveNamedEntryWithSignature(frame, kind, signature, normalizedName, initializer)
         val typedValue: T = castResolvedEntryValue(
             value = resolved.entry.value,
             path = resolved.path,
@@ -443,11 +569,13 @@ internal class ComponentHookRuntime {
     inline fun <reified T : Any> resolveNamedTypedEntry(
         kind: HookEntryKind,
         delegateName: String,
+        signature: HookSignature,
         noinline initializer: () -> T
     ): ResolvedTypedHookEntry<T> {
         return resolveNamedTypedEntry(
             kind = kind,
             delegateName = delegateName,
+            signature = signature,
             expectedRawType = T::class.java,
             initializer = initializer
         )
@@ -456,11 +584,13 @@ internal class ComponentHookRuntime {
     fun <T : Any> resolveUnnamedTypedEntry(
         kind: HookEntryKind,
         hookName: String,
+        signature: HookSignature,
         expectedRawType: Class<*>,
         initializer: () -> T
     ): ResolvedTypedHookEntry<T> {
         val frame = currentFrame()
-        val resolved = resolveUnnamedEntry(kind = kind, hookName = hookName, initializer = initializer)
+        val normalizedHookName = validateSegment(hookName, "hook name")
+        val resolved = resolveUnnamedEntryWithSignature(frame, kind, signature, normalizedHookName, initializer)
         val typedValue: T = castResolvedEntryValue(
             value = resolved.entry.value,
             path = resolved.path,
@@ -478,11 +608,13 @@ internal class ComponentHookRuntime {
     inline fun <reified T : Any> resolveUnnamedTypedEntry(
         kind: HookEntryKind,
         hookName: String,
+        signature: HookSignature,
         noinline initializer: () -> T
     ): ResolvedTypedHookEntry<T> {
         return resolveUnnamedTypedEntry(
             kind = kind,
             hookName = hookName,
+            signature = signature,
             expectedRawType = T::class.java,
             initializer = initializer
         )
@@ -518,6 +650,80 @@ internal class ComponentHookRuntime {
     fun debugComponentContextCount(): Int = contextsByComponent.size
 
     fun debugTotalEntryCount(): Int = contextsByComponent.values.sumOf { context -> context.entryCount() }
+
+    private fun resolveNamedEntryWithSignature(
+        frame: ComponentFrame,
+        kind: HookEntryKind,
+        signature: HookSignature,
+        delegateName: String,
+        initializer: () -> Any?
+    ): ResolvedHookEntry {
+        return try {
+            frame.context.resolveNamedEntry(
+                scopeSegments = frame.scopeSegments.toList(),
+                delegateName = delegateName,
+                kind = kind,
+                signature = signature,
+                renderEpoch = renderEpoch,
+                initializer = initializer
+            )
+        } catch (mismatch: HookCompatibilityMismatchException) {
+            handleCompatibilityMismatch(mismatch.mismatch)
+        }
+    }
+
+    private fun resolveUnnamedEntryWithSignature(
+        frame: ComponentFrame,
+        kind: HookEntryKind,
+        signature: HookSignature,
+        hookName: String,
+        initializer: () -> Any?
+    ): ResolvedHookEntry {
+        return try {
+            frame.context.resolveUnnamedEntry(
+                scopeSegments = frame.scopeSegments.toList(),
+                hookName = hookName,
+                kind = kind,
+                signature = signature,
+                renderEpoch = renderEpoch,
+                initializer = initializer
+            )
+        } catch (mismatch: HookCompatibilityMismatchException) {
+            handleCompatibilityMismatch(mismatch.mismatch)
+        }
+    }
+
+    private fun handleCompatibilityMismatch(mismatch: HookCompatibilityMismatch): Nothing {
+        if (renderSessionMode != HookRenderSessionMode.HotReload) {
+            throw HookUsageException(mismatch.runtimeErrorMessage())
+        }
+        resetComponentSubtree(mismatch.componentId)
+        renderAbortedByHotReloadRemount = true
+        throw HookHotReloadRemountException(mismatch.hotReloadWarningMessage())
+    }
+
+    private fun resetComponentSubtree(root: ComponentInstanceId) {
+        val idsToRemove = contextsByComponent.keys
+            .filter { componentId -> componentId.isSameOrDescendantOf(root) }
+            .toSet()
+        if (idsToRemove.isEmpty()) return
+        val iterator = contextsByComponent.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.key in idsToRemove) {
+                iterator.remove()
+            }
+        }
+    }
+
+    private fun clearRenderSessionStateOnly() {
+        enteredComponentIdsThisRender.clear()
+        componentStack.clear()
+        pendingStorageHookBindings.clear()
+        renderActive = false
+        renderSessionMode = HookRenderSessionMode.Normal
+        renderAbortedByHotReloadRemount = false
+    }
 
     private fun currentFrame(): ComponentFrame {
         ensureActiveRender()
@@ -565,4 +771,3 @@ internal class ComponentHookRuntime {
         return value as T
     }
 }
-

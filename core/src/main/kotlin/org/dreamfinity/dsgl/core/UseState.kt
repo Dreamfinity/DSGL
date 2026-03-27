@@ -1,7 +1,11 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.hooks.HookEntryKind
+import org.dreamfinity.dsgl.core.hooks.HookSignature
+import org.dreamfinity.dsgl.core.hooks.HookSignatures
+import kotlin.ExperimentalStdlibApi
 import kotlin.reflect.KProperty
+import kotlin.reflect.typeOf
 
 internal class HookStateCell<T>(
     initial: T,
@@ -19,9 +23,10 @@ internal class HookStateCell<T>(
     }
 }
 
-class StateHookDelegate<T> internal constructor(
+class StateHookDelegate<T> @PublishedApi internal constructor(
     private val window: DsglWindow,
-    private val initial: T
+    private val initial: T,
+    private val signature: HookSignature
 ) {
     private val runtime = window.hookRuntime()
     private val bindingToken = runtime.registerStorageBackedHookCandidate("useState")
@@ -32,6 +37,7 @@ class StateHookDelegate<T> internal constructor(
         val resolved = runtime.resolveNamedTypedEntry(
             kind = HookEntryKind.State,
             delegateName = property.name,
+            signature = signature,
             expectedRawType = HookStateCell::class.java
         ) {
             HookStateCell(initial) {
@@ -59,6 +65,11 @@ class StateHookDelegate<T> internal constructor(
     }
 }
 
-fun <T> DsglWindow.useState(initial: T): StateHookDelegate<T> {
-    return StateHookDelegate(window = this, initial = initial)
+@OptIn(ExperimentalStdlibApi::class)
+inline fun <reified T> DsglWindow.useState(initial: T): StateHookDelegate<T> {
+    return StateHookDelegate(
+        window = this,
+        initial = initial,
+        signature = HookSignatures.state(typeOf<T>())
+    )
 }

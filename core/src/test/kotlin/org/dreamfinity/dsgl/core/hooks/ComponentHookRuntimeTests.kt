@@ -1,10 +1,15 @@
 package org.dreamfinity.dsgl.core.hooks
 
+import org.dreamfinity.dsgl.core.ref.Ref
+import org.dreamfinity.dsgl.core.ref.RefObject
+import kotlin.ExperimentalStdlibApi
+import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class ComponentHookRuntimeTests {
     @Test
@@ -79,7 +84,6 @@ class ComponentHookRuntimeTests {
         }
 
         render(runtime, owner) {
-            // panel not visited, so its context must be removed after this render
             resolveNamedEntry(HookEntryKind.State, "sentinel") { 0 }
         }
 
@@ -193,54 +197,169 @@ class ComponentHookRuntimeTests {
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
-    fun `typed resolver reuses existing value across rerenders`() {
+    fun `same path state int then string fails with signature mismatch in normal runtime`() {
         val runtime = ComponentHookRuntime()
         val owner = Any()
 
         render(runtime, owner) {
             val value = resolveNamedTypedEntry(
                 kind = HookEntryKind.State,
-                delegateName = "typed"
+                delegateName = "counter",
+                signature = HookSignatures.state(typeOf<Int>()),
+                expectedRawType = CounterHolder::class.java
             ) {
                 CounterHolder(0)
             }
-            assertTrue(value.created)
             value.value.count = 7
         }
 
-        render(runtime, owner) {
-            val value = resolveNamedTypedEntry(
-                kind = HookEntryKind.State,
-                delegateName = "typed"
-            ) {
-                CounterHolder(0)
+        val error = assertFailsWith<HookUsageException> {
+            render(runtime, owner) {
+                resolveNamedTypedEntry(
+                    kind = HookEntryKind.State,
+                    delegateName = "counter",
+                    signature = HookSignatures.state(typeOf<String>()),
+                    expectedRawType = CounterHolder::class.java
+                ) {
+                    CounterHolder(0)
+                }
             }
-            assertFalse(value.created)
-            assertEquals(7, value.value.count)
         }
+
+        assertTrue(error.message?.contains("Hook signature mismatch") == true)
+        assertTrue(error.message?.contains("counter") == true)
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
-    fun `typed resolver fails loudly on stored value type mismatch`() {
+    fun `same path ref A then ref B fails with signature mismatch in normal runtime`() {
         val runtime = ComponentHookRuntime()
         val owner = Any()
 
         render(runtime, owner) {
-            resolveNamedEntry(HookEntryKind.State, "typedMismatch") { 0 }
+            resolveNamedTypedEntry(
+                kind = HookEntryKind.Ref,
+                delegateName = "inputRef",
+                signature = HookSignatures.ref(typeOf<AlphaRefTarget>()),
+                expectedRawType = Ref::class.java
+            ) {
+                RefObject<AlphaRefTarget>()
+            }
         }
 
-        render(runtime, owner) {
-            val error = assertFailsWith<HookUsageException> {
-                resolveNamedTypedEntry<String>(
-                    kind = HookEntryKind.State,
-                    delegateName = "typedMismatch"
-                ) { "value" }
+        val error = assertFailsWith<HookUsageException> {
+            render(runtime, owner) {
+                resolveNamedTypedEntry(
+                    kind = HookEntryKind.Ref,
+                    delegateName = "inputRef",
+                    signature = HookSignatures.ref(typeOf<BetaRefTarget>()),
+                    expectedRawType = Ref::class.java
+                ) {
+                    RefObject<BetaRefTarget>()
+                }
             }
-            assertTrue(error.message?.contains("Hook value type mismatch") == true)
-            assertTrue(error.message?.contains("typedMismatch") == true)
         }
+
+        assertTrue(error.message?.contains("Hook signature mismatch") == true)
+        assertTrue(error.message?.contains("inputRef") == true)
+        assertTrue(error.message?.contains("AlphaRefTarget") == true)
+        assertTrue(error.message?.contains("BetaRefTarget") == true)
     }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun `conditional same name incompatible branch reuse fails loudly in normal runtime`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+        var useStringBranch = false
+
+        render(runtime, owner) {
+            if (useStringBranch) {
+                resolveNamedTypedEntry(
+                    kind = HookEntryKind.State,
+                    delegateName = "branchValue",
+                    signature = HookSignatures.state(typeOf<String>()),
+                    expectedRawType = BranchHolder::class.java
+                ) {
+                    BranchHolder("s")
+                }
+            } else {
+                resolveNamedTypedEntry(
+                    kind = HookEntryKind.State,
+                    delegateName = "branchValue",
+                    signature = HookSignatures.state(typeOf<Int>()),
+                    expectedRawType = BranchHolder::class.java
+                ) {
+                    BranchHolder(1)
+                }
+            }
+        }
+
+        useStringBranch = true
+        val error = assertFailsWith<HookUsageException> {
+            render(runtime, owner) {
+                if (useStringBranch) {
+                    resolveNamedTypedEntry(
+                        kind = HookEntryKind.State,
+                        delegateName = "branchValue",
+                        signature = HookSignatures.state(typeOf<String>()),
+                        expectedRawType = BranchHolder::class.java
+                    ) {
+                        BranchHolder("s")
+                    }
+                } else {
+                    resolveNamedTypedEntry(
+                        kind = HookEntryKind.State,
+                        delegateName = "branchValue",
+                        signature = HookSignatures.state(typeOf<Int>()),
+                        expectedRawType = BranchHolder::class.java
+                    ) {
+                        BranchHolder(1)
+                    }
+                }
+            }
+        }
+
+        assertTrue(error.message?.contains("Hook signature mismatch") == true)
+        assertTrue(error.message?.contains("branchValue") == true)
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun `hot reload mismatch remounts component state instead of crashing`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+
+        render(runtime, owner) {
+            val value = resolveNamedTypedEntry(
+                kind = HookEntryKind.State,
+                delegateName = "counter",
+                signature = HookSignatures.state(typeOf<Int>()),
+                expectedRawType = CounterHolder::class.java
+            ) {
+                CounterHolder(0)
+            }
+            value.value.count = 42
+        }
+
+        val attempts = renderWithHotReloadRecovery(runtime, owner) {
+            val value = resolveNamedTypedEntry(
+                kind = HookEntryKind.State,
+                delegateName = "counter",
+                signature = HookSignatures.state(typeOf<String>()),
+                expectedRawType = StringHolder::class.java
+            ) {
+                StringHolder("fresh")
+            }
+            assertTrue(value.created)
+            assertEquals("fresh", value.value.value)
+        }
+
+        assertEquals(2, attempts)
+    }
+
     @Test
     fun `state does not leak across different owners`() {
         val runtime = ComponentHookRuntime()
@@ -259,17 +378,54 @@ class ComponentHookRuntimeTests {
         }
     }
 
-    private data class CounterHolder(
-        var count: Int
-    )
-    private inline fun render(runtime: ComponentHookRuntime, owner: Any, block: ComponentHookRuntime.() -> Unit) {
-        runtime.beginRender(owner)
+    private inline fun render(
+        runtime: ComponentHookRuntime,
+        owner: Any,
+        mode: HookRenderSessionMode = HookRenderSessionMode.Normal,
+        block: ComponentHookRuntime.() -> Unit
+    ) {
+        runtime.beginRender(owner, mode)
         try {
             runtime.block()
         } finally {
             runtime.endRender()
         }
     }
+
+    private inline fun renderWithHotReloadRecovery(
+        runtime: ComponentHookRuntime,
+        owner: Any,
+        maxAttempts: Int = 8,
+        block: ComponentHookRuntime.() -> Unit
+    ): Int {
+        var attempt = 0
+        var lastWarning: HookHotReloadRemountException? = null
+        while (attempt < maxAttempts) {
+            attempt += 1
+            try {
+                render(runtime, owner, HookRenderSessionMode.HotReload, block)
+                return attempt
+            } catch (warning: HookHotReloadRemountException) {
+                lastWarning = warning
+                assertTrue(warning.message?.contains("Hot-reload remount/reset") == true)
+            }
+        }
+        fail("Expected hot-reload remount recovery to succeed, but exceeded attempts. last=${lastWarning?.message}")
+    }
+
+    private data class CounterHolder(
+        var count: Int
+    )
+
+    private data class StringHolder(
+        var value: String
+    )
+
+    private data class BranchHolder(
+        var value: Any
+    )
+
+    private class AlphaRefTarget
+
+    private class BetaRefTarget
 }
-
-
