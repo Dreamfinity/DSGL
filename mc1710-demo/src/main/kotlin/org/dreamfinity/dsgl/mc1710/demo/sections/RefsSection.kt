@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
@@ -57,9 +58,9 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
     fun appendEffectLog(line: String) {
         val buffer = hooksEffectLogBuffer.current ?: return
         buffer += line
-        while (buffer.size > 8) {
-            buffer.removeAt(0)
-        }
+//        while (buffer.size > 8) {
+//            buffer.removeAt(0)
+//        }
         hooksEffectLogRevision += 1
     }
     if (hooksEffectMounted) {
@@ -303,15 +304,25 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
                     }
                 })
             }
+
             text("mounted=$hooksEffectMounted dep=$hooksEffectDep logRevision=$hooksEffectLogRevision", {
                 style = { color = DEMO_MUTED }
             })
-            val logLines: List<String> = hooksEffectLogBuffer.current?.toList() ?: emptyList()
-            if (logLines.isEmpty()) {
-                text("log: <empty>", { style = { color = DEMO_MUTED } })
-            } else {
-                logLines.asReversed().forEach { line ->
-                    text("log: $line", { style = { color = DEMO_MUTED } })
+            div({
+                style = {
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Column
+                    overflowY = Overflow.Auto
+                    maxHeight = 8.em
+                }
+            }) {
+                val logLines: List<String> = hooksEffectLogBuffer.current?.toList() ?: emptyList()
+                if (logLines.isEmpty()) {
+                    text("log: <empty>", { style = { color = DEMO_MUTED } })
+                } else {
+                    logLines.asReversed().forEach { line ->
+                        text("log: $line", { style = { color = DEMO_MUTED } })
+                    }
                 }
             }
         }

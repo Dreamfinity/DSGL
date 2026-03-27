@@ -39,7 +39,7 @@ fun UiScope.modalHost(
         }
     }
 
-    val hostScope = UiScope(hostNode)
+    val hostScope = childScope(hostNode)
     hostScope.div({ key = "$modalKey.content" }) {
         content()
     }

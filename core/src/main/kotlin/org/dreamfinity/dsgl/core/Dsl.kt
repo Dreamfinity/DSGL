@@ -246,6 +246,10 @@ class UiScope internal constructor(
         )
     }
 
+    internal fun childScope(childParent: DOMNode): UiScope {
+        return UiScope(childParent, ownerWindow)
+    }
+
     /** Generic container; layout is controlled by style.display. */
     fun div(
         props: ComponentProps.() -> Unit,
@@ -260,7 +264,7 @@ class UiScope internal constructor(
             applyHandlers(this, props)
             applyRef(this, ref)
             add(this)
-            UiScope(this, ownerWindow).block()
+            childScope(this).block()
         }
     }
 
@@ -278,7 +282,7 @@ class UiScope internal constructor(
             applyHandlers(this, props)
             applyRef(this, ref)
             add(this)
-            UiScope(this, ownerWindow).block()
+            childScope(this).block()
         }
     }
 
