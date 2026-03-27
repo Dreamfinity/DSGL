@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.dnd
+﻿package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.ref.ElementHandle
@@ -32,46 +32,48 @@ fun DsglWindow.useDraggable(
     onDrag: ((DragEvent) -> Unit)? = null,
     onDragEnd: ((DragEndEvent) -> Unit)? = null
 ): Draggable {
-    DndSystem.registerPayload(id, data)
-    val ref = useRef<ElementHandle>()
-    val monitor = DndSystem.monitor(nodeKey)
-    val isDragging = monitor.isDragging && monitor.sourceKey == nodeKey
-    val transform = if (isDragging) {
-        Transform(
-            x = monitor.previewX - monitor.cursorX.toDouble(),
-            y = monitor.previewY - monitor.cursorY.toDouble()
+    return hookRuntime().withComponentInstance(componentName = "useDraggable", key = nodeKey) {
+        DndSystem.registerPayload(id, data)
+        val ref by useRef<ElementHandle>()
+        val monitor = DndSystem.monitor(nodeKey)
+        val isDragging = monitor.isDragging && monitor.sourceKey == nodeKey
+        val transform = if (isDragging) {
+            Transform(
+                x = monitor.previewX - monitor.cursorX.toDouble(),
+                y = monitor.previewY - monitor.cursorY.toDouble()
+            )
+        } else {
+            null
+        }
+
+        val listeners = DndListeners(
+            onDragStart = { event ->
+                event.dataTransfer.setData(DND_DATA_ID_MIME, id)
+                event.dataTransfer.setData(DND_DATA_TYPE_MIME, type)
+                onDragStart?.invoke(event)
+            },
+            onDrag = onDrag,
+            onDragEnd = onDragEnd
         )
-    } else {
-        null
+
+        Draggable(
+            id = id,
+            nodeKey = nodeKey,
+            attributes = mapOf(
+                "data-dnd-id" to id,
+                "data-dnd-type" to type
+            ),
+            listeners = listeners,
+            isDragging = isDragging,
+            activeTransform = transform,
+            setNodeRef = { value -> ref.current = value },
+            data = data,
+            previewMode = previewMode,
+            hideSourceWhileDragging = hideSourceWhileDragging,
+            renderPreview = renderPreview,
+            renderPlaceholder = renderPlaceholder
+        )
     }
-
-    val listeners = DndListeners(
-        onDragStart = { event ->
-            event.dataTransfer.setData(DND_DATA_ID_MIME, id)
-            event.dataTransfer.setData(DND_DATA_TYPE_MIME, type)
-            onDragStart?.invoke(event)
-        },
-        onDrag = onDrag,
-        onDragEnd = onDragEnd
-    )
-
-    return Draggable(
-        id = id,
-        nodeKey = nodeKey,
-        attributes = mapOf(
-            "data-dnd-id" to id,
-            "data-dnd-type" to type
-        ),
-        listeners = listeners,
-        isDragging = isDragging,
-        activeTransform = transform,
-        setNodeRef = { value -> ref.current = value },
-        data = data,
-        previewMode = previewMode,
-        hideSourceWhileDragging = hideSourceWhileDragging,
-        renderPreview = renderPreview,
-        renderPlaceholder = renderPlaceholder
-    )
 }
 
 fun DsglWindow.useDroppable(
@@ -83,38 +85,40 @@ fun DsglWindow.useDroppable(
     onDragEnter: ((DragEnterEvent, ActiveDrag?) -> Unit)? = null,
     onDragLeave: ((DragLeaveEvent, ActiveDrag?) -> Unit)? = null
 ): Droppable {
-    val ref = useRef<ElementHandle>()
-    val active = DndSystem.activeDrag()
-    val isOver = active?.overKey == nodeKey
-    val listeners = DndListeners(
-        onDragEnter = { event ->
-            val snapshot = activeFromEvent(event)
-            onDragEnter?.invoke(event, snapshot)
-        },
-        onDragOver = { event ->
-            val snapshot = activeFromEvent(event)
-            if (snapshot != null && accepts(snapshot)) {
-                event.acceptDrop(snapshot.dropEffect)
+    return hookRuntime().withComponentInstance(componentName = "useDroppable", key = nodeKey) {
+        val ref by useRef<ElementHandle>()
+        val active = DndSystem.activeDrag()
+        val isOver = active?.overKey == nodeKey
+        val listeners = DndListeners(
+            onDragEnter = { event ->
+                val snapshot = activeFromEvent(event)
+                onDragEnter?.invoke(event, snapshot)
+            },
+            onDragOver = { event ->
+                val snapshot = activeFromEvent(event)
+                if (accepts(snapshot)) {
+                    event.acceptDrop(snapshot.dropEffect)
+                }
+                onDragOver?.invoke(event, snapshot)
+            },
+            onDragLeave = { event ->
+                val snapshot = activeFromEvent(event)
+                onDragLeave?.invoke(event, snapshot)
+            },
+            onDrop = { event ->
+                val snapshot = activeFromEvent(event)
+                onDrop?.invoke(event, snapshot)
             }
-            onDragOver?.invoke(event, snapshot)
-        },
-        onDragLeave = { event ->
-            val snapshot = activeFromEvent(event)
-            onDragLeave?.invoke(event, snapshot)
-        },
-        onDrop = { event ->
-            val snapshot = activeFromEvent(event)
-            onDrop?.invoke(event, snapshot)
-        }
-    )
-    return Droppable(
-        id = id,
-        nodeKey = nodeKey,
-        isOver = isOver,
-        active = active,
-        listeners = listeners,
-        setNodeRef = RefTarget { value -> ref.current = value }
-    )
+        )
+        Droppable(
+            id = id,
+            nodeKey = nodeKey,
+            isOver = isOver,
+            active = active,
+            listeners = listeners,
+            setNodeRef = { value -> ref.current = value }
+        )
+    }
 }
 
 fun DsglWindow.useSortable(
@@ -191,31 +195,33 @@ fun DsglWindow.useSortable(
 }
 
 fun DsglWindow.useDragDropMonitor(callbacks: DragDropMonitorCallbacks) {
-    val callbackRef = useRef(callbacks)
-    callbackRef.current = callbacks
-    val subscriptionRef = useRef<AutoCloseable>()
-    if (subscriptionRef.current != null) return
-    subscriptionRef.current = DndRuntime.engine.subscribe(object : DndMonitorListener {
-        override fun onDragStart(active: ActiveDrag) {
-            callbackRef.current?.onDragStart?.invoke(active)
-        }
+    hookRuntime().withComponentInstance(componentName = "useDragDropMonitor") {
+        val callbackRef by useRef(callbacks)
+        callbackRef.current = callbacks
+        val subscriptionRef by useRef<AutoCloseable>()
+        if (subscriptionRef.current != null) return@withComponentInstance
+        subscriptionRef.current = DndRuntime.engine.subscribe(object : DndMonitorListener {
+            override fun onDragStart(active: ActiveDrag) {
+                callbackRef.current?.onDragStart?.invoke(active)
+            }
 
-        override fun onDragMove(active: ActiveDrag, over: Any?) {
-            callbackRef.current?.onDragMove?.invoke(active, over)
-        }
+            override fun onDragMove(active: ActiveDrag, over: Any?) {
+                callbackRef.current?.onDragMove?.invoke(active, over)
+            }
 
-        override fun onDragOver(active: ActiveDrag, over: Any?) {
-            callbackRef.current?.onDragOver?.invoke(active, over)
-        }
+            override fun onDragOver(active: ActiveDrag, over: Any?) {
+                callbackRef.current?.onDragOver?.invoke(active, over)
+            }
 
-        override fun onDragEnd(active: ActiveDrag, over: Any?, dropEffect: DropEffect) {
-            callbackRef.current?.onDragEnd?.invoke(active, over, dropEffect)
-        }
+            override fun onDragEnd(active: ActiveDrag, over: Any?, dropEffect: DropEffect) {
+                callbackRef.current?.onDragEnd?.invoke(active, over, dropEffect)
+            }
 
-        override fun onDragCancel(active: ActiveDrag) {
-            callbackRef.current?.onDragCancel?.invoke(active)
-        }
-    })
+            override fun onDragCancel(active: ActiveDrag) {
+                callbackRef.current?.onDragCancel?.invoke(active)
+            }
+        })
+    }
 }
 
 private fun activeFromEvent(event: DragDropEvent): ActiveDrag {

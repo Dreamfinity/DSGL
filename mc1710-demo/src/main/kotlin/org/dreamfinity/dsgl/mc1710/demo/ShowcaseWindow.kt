@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.mc1710.demo
+﻿package org.dreamfinity.dsgl.mc1710.demo
 
 import net.minecraft.client.Minecraft
 import net.minecraft.init.Blocks
@@ -392,8 +392,8 @@ class ShowcaseWindow : DsglWindow() {
                 }
             )
         )
-        val refsInputHandle = useRef<ElementHandle>()
-        val refsPanelHandle = useRef<ElementHandle>()
+        val refsInputHandle by useRef<ElementHandle>()
+        val refsPanelHandle by useRef<ElementHandle>()
 
         val navWidth = 106
         val sidebarWidth = 158
@@ -2600,5 +2600,6 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
+
 
 

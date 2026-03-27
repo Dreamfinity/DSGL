@@ -220,6 +220,12 @@ internal class ComponentHookContext(
 }
 
 internal class ComponentHookRuntime {
+    internal data class StorageHookBindingToken(
+        val hookName: String,
+        val renderEpoch: Long,
+        var bound: Boolean = false
+    )
+
     private data class ComponentFrame(
         val componentId: ComponentInstanceId,
         val context: ComponentHookContext,
@@ -230,6 +236,7 @@ internal class ComponentHookRuntime {
     private val contextsByComponent: MutableMap<ComponentInstanceId, ComponentHookContext> = linkedMapOf()
     private val enteredComponentIdsThisRender: MutableSet<ComponentInstanceId> = linkedSetOf()
     private val componentStack: ArrayDeque<ComponentFrame> = ArrayDeque()
+    private val pendingStorageHookBindings: MutableList<StorageHookBindingToken> = arrayListOf()
 
     private var renderEpoch: Long = 0L
     private var renderActive: Boolean = false
@@ -240,6 +247,7 @@ internal class ComponentHookRuntime {
         renderEpoch += 1L
         enteredComponentIdsThisRender.clear()
         componentStack.clear()
+        pendingStorageHookBindings.clear()
 
         val rootId = ComponentInstanceId.root(owner)
         val rootContext = contextsByComponent.getOrPut(rootId) { ComponentHookContext(rootId) }
@@ -250,6 +258,12 @@ internal class ComponentHookRuntime {
 
     fun endRender() {
         ensureActiveRender()
+        val unboundStorageHook = pendingStorageHookBindings.firstOrNull { token ->
+            token.renderEpoch == renderEpoch && !token.bound
+        }
+        if (unboundStorageHook != null) {
+            failStorageBackedHookWithoutDelegate(unboundStorageHook.hookName)
+        }
         val current = componentStack.lastOrNull()
         if (componentStack.size != 1 || current == null) {
             throw HookUsageException(
@@ -279,6 +293,7 @@ internal class ComponentHookRuntime {
 
         enteredComponentIdsThisRender.clear()
         componentStack.clear()
+        pendingStorageHookBindings.clear()
         renderActive = false
     }
 
@@ -401,6 +416,26 @@ internal class ComponentHookRuntime {
             "Storage-backed hook '$hookName' must be bound via delegated property syntax (`by $hookName(...)`). " +
                 "Direct assignment is not supported."
         )
+    }
+
+    fun registerStorageBackedHookCandidate(hookName: String): StorageHookBindingToken {
+        ensureActiveRender()
+        val token = StorageHookBindingToken(
+            hookName = hookName,
+            renderEpoch = renderEpoch
+        )
+        pendingStorageHookBindings.add(token)
+        return token
+    }
+
+    fun markStorageBackedHookBound(token: StorageHookBindingToken) {
+        ensureActiveRender()
+        if (token.renderEpoch != renderEpoch) {
+            throw HookUsageException(
+                "Storage-backed hook '${token.hookName}' binding token does not belong to current render session."
+            )
+        }
+        token.bound = true
     }
 
     fun debugComponentContextCount(): Int = contextsByComponent.size

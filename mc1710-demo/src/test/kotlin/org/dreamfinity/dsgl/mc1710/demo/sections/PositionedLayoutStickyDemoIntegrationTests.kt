@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.mc1710.demo.sections
+﻿package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -146,15 +146,20 @@ class PositionedLayoutStickyDemoIntegrationTests {
         val window: ShowcaseWindow,
         val tree: DomTree
     )
-
     private fun renderFixture(): Fixture {
         val window = ShowcaseWindow()
         window.onResize(width, height)
         window.selectedSection = DemoSection.POSITIONED_LAYOUT
-        val tree = window.render()
+        window.beginRenderBuild()
+        val tree = try {
+            window.render()
+        } finally {
+            window.endRenderBuild()
+        }
         tree.render(ctx, width, height)
         return Fixture(window = window, tree = tree)
     }
+
 
     private fun scrollMainSectionToSticky(fixture: Fixture) {
         val sectionScroller = requireContainer(fixture.tree.root, "section.positionedLayout")
@@ -300,6 +305,3 @@ class PositionedLayoutStickyDemoIntegrationTests {
         error("Method '$methodName/$arity' not found on ${clazz.name}")
     }
 }
-
-
-
