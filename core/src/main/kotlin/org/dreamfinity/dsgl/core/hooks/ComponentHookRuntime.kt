@@ -1,11 +1,13 @@
 package org.dreamfinity.dsgl.core.hooks
 
 import kotlin.reflect.KType
+import kotlin.reflect.KClass
 import java.util.ArrayDeque
 
 internal enum class HookEntryKind {
     Ref,
     State,
+    Reducer,
     Memo,
     Effect,
     CustomScope,
@@ -52,6 +54,17 @@ internal data class MemoHookSignature(
     override fun diagnosticLabel(): String = "Memo<$valueType>"
 }
 
+internal data class ReducerHookSignature(
+    val stateClass: KClass<*>?,
+    val initialWasNull: Boolean
+) : HookSignature {
+    override fun diagnosticLabel(): String {
+        val classLabel = stateClass?.qualifiedName ?: "unknown"
+        val nullabilityLabel = if (initialWasNull) "null-initial" else "non-null-initial"
+        return "Reducer<state=$classLabel,$nullabilityLabel>"
+    }
+}
+
 internal enum class EffectHookRunMode {
     OnDependencyChange,
     EveryCommit
@@ -76,6 +89,14 @@ internal object HookSignatures {
 
     @PublishedApi
     internal fun memo(valueType: KType): HookSignature = MemoHookSignature(valueType)
+
+    @PublishedApi
+    internal fun reducer(stateClass: KClass<*>?, initialWasNull: Boolean): HookSignature {
+        return ReducerHookSignature(
+            stateClass = stateClass,
+            initialWasNull = initialWasNull
+        )
+    }
 
     @PublishedApi
     internal fun effect(runMode: EffectHookRunMode): HookSignature = EffectHookSignature(runMode)

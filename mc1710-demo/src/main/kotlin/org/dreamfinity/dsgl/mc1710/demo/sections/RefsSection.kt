@@ -50,6 +50,9 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
     }
     hooksCallbackIdentityRef.current = hooksCallbackIdentity
 
+    var hooksReducerMounted by useState(true)
+    var hooksReducerNoise by useState(0)
+
     var hooksEffectMounted by useState(true)
     var hooksEffectDep by useState(0)
     var hooksEffectNoise by useState(0)
@@ -58,9 +61,6 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
     fun appendEffectLog(line: String) {
         val buffer = hooksEffectLogBuffer.current ?: return
         buffer += line
-//        while (buffer.size > 8) {
-//            buffer.removeAt(0)
-//        }
         hooksEffectLogRevision += 1
     }
     if (hooksEffectMounted) {
@@ -81,7 +81,7 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
             flexDirection = FlexDirection.Column
         }
     }) {
-        text("Hooks showcase: useRef, useState, useMemo, useCallback, useEffect.")
+        text("Hooks showcase: useRef, useState, useMemo, useCallback, useReducer, useEffect.")
         text("Keep blocks small and behavior-focused; use this section for manual hook verification.", {
             style = { color = DEMO_MUTED }
         })
@@ -280,6 +280,57 @@ fun UiScope.refsSection(window: ShowcaseWindow) {
             })
         }
 
+        hookCard("useReducer", "Reducer-driven local state + dispatch behavior") {
+            div({
+                style = {
+                    gap = 4.px
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            }) {
+                button(if (hooksReducerMounted) "Hide reducer sample" else "Show reducer sample", {
+                    onMouseClick = { hooksReducerMounted = !hooksReducerMounted }
+                })
+                button("rerender only ($hooksReducerNoise)", {
+                    onMouseClick = { hooksReducerNoise += 1 }
+                })
+            }
+
+            if (hooksReducerMounted) {
+                val (hooksReducerCount, dispatchReducer) = useReducer(
+                    initialState = 0,
+                    reducer = { old: Int, action: Int -> old + action }
+                )
+                div({
+                    style = {
+                        gap = 4.px
+                        display = Display.Flex
+                        flexDirection = FlexDirection.Row
+                    }
+                }) {
+                    button("dispatch +1", {
+                        onMouseClick = { dispatchReducer(1) }
+                    })
+                    button("dispatch +5", {
+                        onMouseClick = { dispatchReducer(5) }
+                    })
+                    button("dispatch -1", {
+                        onMouseClick = { dispatchReducer(-1) }
+                    })
+                }
+                text("state=$hooksReducerCount noise=$hooksReducerNoise", {
+                    style = { color = DEMO_MUTED }
+                })
+                text("Expected: dispatch changes reducer state; rerender-only keeps state unchanged.", {
+                    style = { color = DEMO_MUTED }
+                })
+            } else {
+                text("Reducer sample is hidden. Show it again: reducer state should reinitialize to 0.", {
+                    style = { color = DEMO_MUTED }
+                })
+            }
+        }
+
         hookCard("useEffect", "Post-commit run/cleanup log + hide/show cleanup behavior") {
             div({
                 style = {
@@ -358,5 +409,4 @@ private fun expensiveDerivedValue(base: Int, multiplier: Int): Int {
     }
     return acc
 }
-
 

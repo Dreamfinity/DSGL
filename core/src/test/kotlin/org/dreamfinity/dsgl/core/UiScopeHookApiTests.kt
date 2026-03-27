@@ -15,6 +15,7 @@ class UiScopeHookApiTests {
         assertEquals(4, window.memoSeen)
         assertEquals(2, window.callbackSeen)
         assertEquals(2, window.refSeen)
+        assertEquals(10, window.reducerSeen)
         assertEquals(listOf("run:2"), window.effectEvents)
 
         window.initial = 7
@@ -23,6 +24,7 @@ class UiScopeHookApiTests {
         assertEquals(4, window.memoSeen)
         assertEquals(2, window.callbackSeen)
         assertEquals(2, window.refSeen)
+        assertEquals(10, window.reducerSeen)
         assertEquals(listOf("run:2"), window.effectEvents)
     }
 
@@ -49,6 +51,7 @@ class UiScopeHookApiTests {
         var memoSeen: Int? = null
         var callbackSeen: Int? = null
         var refSeen: Int? = null
+        var reducerSeen: Int? = null
         val effectEvents: MutableList<String> = arrayListOf()
 
         override fun render(): DomTree {
@@ -60,6 +63,10 @@ class UiScopeHookApiTests {
                     val captured = count
                     { captured }
                 }
+                val (reducerValue, _) = useReducer(
+                    initialState = 10,
+                    reducer = { old: Int, action: Int -> old + action }
+                )
                 useEffect(count) {
                     val captured = count
                     effectEvents += "run:$captured"
@@ -71,6 +78,7 @@ class UiScopeHookApiTests {
                 memoSeen = memoValue
                 callbackSeen = callback()
                 refSeen = valueRef.current
+                reducerSeen = reducerValue
             }
         }
     }
