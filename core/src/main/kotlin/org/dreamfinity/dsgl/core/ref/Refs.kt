@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.core.ref
+package org.dreamfinity.dsgl.core.ref
 
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.hooks.HookEntryKind
@@ -34,14 +34,14 @@ class RefHookDelegate<T : Any> internal constructor(
 
     operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): RefHookDelegate<T> {
         runtime.markStorageBackedHookBound(bindingToken)
-        val resolved = runtime.resolveNamedEntry(
+        val resolved = runtime.resolveNamedTypedEntry(
             kind = HookEntryKind.Ref,
-            delegateName = property.name
+            delegateName = property.name,
+            expectedRawType = Ref::class.java
         ) {
             RefObject(initial)
         }
-        @Suppress("UNCHECKED_CAST")
-        boundRef = resolved.entry.value as Ref<T>
+        boundRef = resolved.value
         return this
     }
 

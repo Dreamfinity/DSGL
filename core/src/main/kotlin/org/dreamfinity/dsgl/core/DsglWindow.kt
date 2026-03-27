@@ -105,6 +105,10 @@ abstract class DsglWindow {
         componentHookRuntime.endRender()
     }
 
+    internal fun onHookStateChanged() {
+        invalidate()
+    }
+
     internal fun <T : Any> useRefSlot(initial: T?): Ref<T> {
         val slotIndex = refSlotCursor
         refSlotCursor += 1
@@ -120,3 +124,4 @@ abstract class DsglWindow {
 
     internal fun hookRuntime(): ComponentHookRuntime = componentHookRuntime
 }
+

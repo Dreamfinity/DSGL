@@ -101,6 +101,13 @@ internal data class ResolvedHookEntry(
     val synthetic: Boolean
 )
 
+internal data class ResolvedTypedHookEntry<T : Any>(
+    val path: HookPath,
+    val value: T,
+    val created: Boolean,
+    val synthetic: Boolean
+)
+
 private data class SyntheticCounterKey(
     val scopeSegments: List<String>,
     val hookName: String
@@ -411,6 +418,76 @@ internal class ComponentHookRuntime {
         )
     }
 
+    fun <T : Any> resolveNamedTypedEntry(
+        kind: HookEntryKind,
+        delegateName: String,
+        expectedRawType: Class<*>,
+        initializer: () -> T
+    ): ResolvedTypedHookEntry<T> {
+        val frame = currentFrame()
+        val resolved = resolveNamedEntry(kind = kind, delegateName = delegateName, initializer = initializer)
+        val typedValue: T = castResolvedEntryValue(
+            value = resolved.entry.value,
+            path = resolved.path,
+            componentLabel = frame.componentId.debugPath(),
+            expectedRawType = expectedRawType
+        )
+        return ResolvedTypedHookEntry(
+            path = resolved.path,
+            value = typedValue,
+            created = resolved.created,
+            synthetic = resolved.synthetic
+        )
+    }
+
+    inline fun <reified T : Any> resolveNamedTypedEntry(
+        kind: HookEntryKind,
+        delegateName: String,
+        noinline initializer: () -> T
+    ): ResolvedTypedHookEntry<T> {
+        return resolveNamedTypedEntry(
+            kind = kind,
+            delegateName = delegateName,
+            expectedRawType = T::class.java,
+            initializer = initializer
+        )
+    }
+
+    fun <T : Any> resolveUnnamedTypedEntry(
+        kind: HookEntryKind,
+        hookName: String,
+        expectedRawType: Class<*>,
+        initializer: () -> T
+    ): ResolvedTypedHookEntry<T> {
+        val frame = currentFrame()
+        val resolved = resolveUnnamedEntry(kind = kind, hookName = hookName, initializer = initializer)
+        val typedValue: T = castResolvedEntryValue(
+            value = resolved.entry.value,
+            path = resolved.path,
+            componentLabel = frame.componentId.debugPath(),
+            expectedRawType = expectedRawType
+        )
+        return ResolvedTypedHookEntry(
+            path = resolved.path,
+            value = typedValue,
+            created = resolved.created,
+            synthetic = resolved.synthetic
+        )
+    }
+
+    inline fun <reified T : Any> resolveUnnamedTypedEntry(
+        kind: HookEntryKind,
+        hookName: String,
+        noinline initializer: () -> T
+    ): ResolvedTypedHookEntry<T> {
+        return resolveUnnamedTypedEntry(
+            kind = kind,
+            hookName = hookName,
+            expectedRawType = T::class.java,
+            initializer = initializer
+        )
+    }
+
     fun failStorageBackedHookWithoutDelegate(hookName: String): Nothing {
         throw HookUsageException(
             "Storage-backed hook '$hookName' must be bound via delegated property syntax (`by $hookName(...)`). " +
@@ -470,4 +547,22 @@ internal class ComponentHookRuntime {
         }
         return normalized
     }
+
+    private fun <T : Any> castResolvedEntryValue(
+        value: Any?,
+        path: HookPath,
+        componentLabel: String,
+        expectedRawType: Class<*>
+    ): T {
+        if (value == null || !expectedRawType.isInstance(value)) {
+            val actualType = if (value == null) "null" else value.javaClass.name
+            throw HookUsageException(
+                "Hook value type mismatch at path '$path' in component '$componentLabel': " +
+                    "expected=${expectedRawType.name}, actual=$actualType."
+            )
+        }
+        @Suppress("UNCHECKED_CAST")
+        return value as T
+    }
 }
+

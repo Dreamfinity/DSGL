@@ -194,6 +194,54 @@ class ComponentHookRuntimeTests {
     }
 
     @Test
+    fun `typed resolver reuses existing value across rerenders`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+
+        render(runtime, owner) {
+            val value = resolveNamedTypedEntry(
+                kind = HookEntryKind.State,
+                delegateName = "typed"
+            ) {
+                CounterHolder(0)
+            }
+            assertTrue(value.created)
+            value.value.count = 7
+        }
+
+        render(runtime, owner) {
+            val value = resolveNamedTypedEntry(
+                kind = HookEntryKind.State,
+                delegateName = "typed"
+            ) {
+                CounterHolder(0)
+            }
+            assertFalse(value.created)
+            assertEquals(7, value.value.count)
+        }
+    }
+
+    @Test
+    fun `typed resolver fails loudly on stored value type mismatch`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+
+        render(runtime, owner) {
+            resolveNamedEntry(HookEntryKind.State, "typedMismatch") { 0 }
+        }
+
+        render(runtime, owner) {
+            val error = assertFailsWith<HookUsageException> {
+                resolveNamedTypedEntry<String>(
+                    kind = HookEntryKind.State,
+                    delegateName = "typedMismatch"
+                ) { "value" }
+            }
+            assertTrue(error.message?.contains("Hook value type mismatch") == true)
+            assertTrue(error.message?.contains("typedMismatch") == true)
+        }
+    }
+    @Test
     fun `state does not leak across different owners`() {
         val runtime = ComponentHookRuntime()
         val firstOwner = Any()
@@ -211,6 +259,9 @@ class ComponentHookRuntimeTests {
         }
     }
 
+    private data class CounterHolder(
+        var count: Int
+    )
     private inline fun render(runtime: ComponentHookRuntime, owner: Any, block: ComponentHookRuntime.() -> Unit) {
         runtime.beginRender(owner)
         try {
@@ -220,3 +271,5 @@ class ComponentHookRuntimeTests {
         }
     }
 }
+
+
