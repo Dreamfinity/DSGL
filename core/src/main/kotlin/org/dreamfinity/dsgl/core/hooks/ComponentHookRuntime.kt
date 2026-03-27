@@ -6,6 +6,7 @@ import java.util.ArrayDeque
 internal enum class HookEntryKind {
     Ref,
     State,
+    Memo,
     CustomScope,
     Custom
 }
@@ -44,6 +45,12 @@ internal data class RefHookSignature(
     override fun diagnosticLabel(): String = "Ref<$valueType>"
 }
 
+internal data class MemoHookSignature(
+    val valueType: KType
+) : HookSignature {
+    override fun diagnosticLabel(): String = "Memo<$valueType>"
+}
+
 @PublishedApi
 internal object HookSignatures {
     @PublishedApi
@@ -54,6 +61,9 @@ internal object HookSignatures {
 
     @PublishedApi
     internal fun ref(valueType: KType): HookSignature = RefHookSignature(valueType)
+
+    @PublishedApi
+    internal fun memo(valueType: KType): HookSignature = MemoHookSignature(valueType)
 }
 
 internal data class HookPath(
