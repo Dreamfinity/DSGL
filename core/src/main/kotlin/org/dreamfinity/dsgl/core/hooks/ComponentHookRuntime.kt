@@ -7,6 +7,7 @@ internal enum class HookEntryKind {
     Ref,
     State,
     Memo,
+    Effect,
     CustomScope,
     Custom
 }
@@ -51,6 +52,17 @@ internal data class MemoHookSignature(
     override fun diagnosticLabel(): String = "Memo<$valueType>"
 }
 
+internal enum class EffectHookRunMode {
+    OnDependencyChange,
+    EveryCommit
+}
+
+internal data class EffectHookSignature(
+    val runMode: EffectHookRunMode
+) : HookSignature {
+    override fun diagnosticLabel(): String = "Effect<$runMode>"
+}
+
 @PublishedApi
 internal object HookSignatures {
     @PublishedApi
@@ -64,6 +76,9 @@ internal object HookSignatures {
 
     @PublishedApi
     internal fun memo(valueType: KType): HookSignature = MemoHookSignature(valueType)
+
+    @PublishedApi
+    internal fun effect(runMode: EffectHookRunMode): HookSignature = EffectHookSignature(runMode)
 }
 
 internal data class HookPath(
@@ -377,10 +392,38 @@ internal class ComponentHookRuntime {
         val positionalChildCounters: MutableMap<String, Int> = linkedMapOf()
     )
 
+    private data class EffectRegistrationKey(
+        val componentId: ComponentInstanceId,
+        val path: HookPath
+    )
+
+    private data class EffectRenderRegistration(
+        val componentId: ComponentInstanceId,
+        val path: HookPath,
+        val runMode: EffectHookRunMode,
+        val deps: List<Any?>,
+        val effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+    )
+
+    private data class CommittedEffectState(
+        val runMode: EffectHookRunMode,
+        val deps: List<Any?>,
+        val cleanup: (() -> Unit)?
+    )
+
+    private data class PendingEffectCommitBatch(
+        val visitedComponents: Set<ComponentInstanceId>,
+        val registrationsInOrder: List<EffectRenderRegistration>
+    )
+
     private val contextsByComponent: MutableMap<ComponentInstanceId, ComponentHookContext> = linkedMapOf()
     private val enteredComponentIdsThisRender: MutableSet<ComponentInstanceId> = linkedSetOf()
     private val componentStack: ArrayDeque<ComponentFrame> = ArrayDeque()
     private val pendingStorageHookBindings: MutableList<StorageHookBindingToken> = arrayListOf()
+    private val renderEffectRegistrations: MutableMap<EffectRegistrationKey, EffectRenderRegistration> = linkedMapOf()
+    private val committedEffectsByComponent: MutableMap<ComponentInstanceId, MutableMap<HookPath, CommittedEffectState>> =
+        linkedMapOf()
+    private var pendingEffectCommitBatch: PendingEffectCommitBatch? = null
 
     private var renderEpoch: Long = 0L
     private var renderActive: Boolean = false
@@ -389,6 +432,7 @@ internal class ComponentHookRuntime {
 
     fun beginRender(owner: Any, sessionMode: HookRenderSessionMode = HookRenderSessionMode.Normal) {
         ensureNotActiveRender()
+        pendingEffectCommitBatch = null
         renderActive = true
         renderSessionMode = sessionMode
         renderAbortedByHotReloadRemount = false
@@ -396,6 +440,7 @@ internal class ComponentHookRuntime {
         enteredComponentIdsThisRender.clear()
         componentStack.clear()
         pendingStorageHookBindings.clear()
+        renderEffectRegistrations.clear()
 
         val rootId = ComponentInstanceId.root(owner)
         val rootContext = contextsByComponent.getOrPut(rootId) { ComponentHookContext(rootId) }
@@ -444,7 +489,62 @@ internal class ComponentHookRuntime {
             }
         }
 
+        pendingEffectCommitBatch = PendingEffectCommitBatch(
+            visitedComponents = enteredComponentIdsThisRender.toSet(),
+            registrationsInOrder = renderEffectRegistrations.values.toList()
+        )
+
         clearRenderSessionStateOnly()
+    }
+
+    fun registerEffectOnDependencyChange(
+        deps: List<Any?>,
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+    ) {
+        registerEffectInvocation(
+            runMode = EffectHookRunMode.OnDependencyChange,
+            deps = deps,
+            effect = effect
+        )
+    }
+
+    fun registerEffectEveryCommit(
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+    ) {
+        registerEffectInvocation(
+            runMode = EffectHookRunMode.EveryCommit,
+            deps = emptyList(),
+            effect = effect
+        )
+    }
+
+    fun commitPostRenderEffects() {
+        ensureNotActiveRender()
+        val pending = pendingEffectCommitBatch ?: return
+        pendingEffectCommitBatch = null
+        applyEffectCommitBatch(pending)
+    }
+
+    fun discardPostRenderEffects() {
+        ensureNotActiveRender()
+        pendingEffectCommitBatch = null
+    }
+
+    fun disposeAll() {
+        if (renderActive) {
+            throw HookUsageException("Cannot dispose hook runtime during an active render session.")
+        }
+        pendingEffectCommitBatch = null
+        runCommittedEffectCleanupForSubtree(
+            root = null,
+            reason = "component runtime disposal"
+        )
+        committedEffectsByComponent.clear()
+        contextsByComponent.clear()
+        enteredComponentIdsThisRender.clear()
+        componentStack.clear()
+        pendingStorageHookBindings.clear()
+        renderEffectRegistrations.clear()
     }
 
     fun enterComponentInstance(componentName: String, key: Any? = null) {
@@ -724,15 +824,202 @@ internal class ComponentHookRuntime {
                 iterator.remove()
             }
         }
+        runCommittedEffectCleanupForSubtree(
+            root = root,
+            reason = "hot-reload remount/reset"
+        )
+        committedEffectsByComponent.keys
+            .filter { componentId -> componentId.isSameOrDescendantOf(root) }
+            .toList()
+            .forEach { componentId ->
+                committedEffectsByComponent.remove(componentId)
+            }
     }
 
     private fun clearRenderSessionStateOnly() {
         enteredComponentIdsThisRender.clear()
         componentStack.clear()
         pendingStorageHookBindings.clear()
+        renderEffectRegistrations.clear()
         renderActive = false
         renderSessionMode = HookRenderSessionMode.Normal
         renderAbortedByHotReloadRemount = false
+    }
+
+    private fun registerEffectInvocation(
+        runMode: EffectHookRunMode,
+        deps: List<Any?>,
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+    ) {
+        val frame = currentFrame()
+        val resolved = resolveUnnamedEntryWithSignature(
+            frame = frame,
+            kind = HookEntryKind.Effect,
+            signature = HookSignatures.effect(runMode),
+            hookName = "useEffect"
+        ) { }
+        val key = EffectRegistrationKey(
+            componentId = frame.componentId,
+            path = resolved.path
+        )
+        renderEffectRegistrations[key] = EffectRenderRegistration(
+            componentId = frame.componentId,
+            path = resolved.path,
+            runMode = runMode,
+            deps = deps,
+            effect = effect
+        )
+    }
+
+    private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch) {
+        val cleanupQueue: MutableList<Pair<EffectRegistrationKey, () -> Unit>> = arrayListOf()
+        val removeQueue: MutableList<EffectRegistrationKey> = arrayListOf()
+        val runQueue: MutableList<EffectRenderRegistration> = arrayListOf()
+
+        val visitedComponents = batch.visitedComponents
+        val registrationsByComponent: MutableMap<ComponentInstanceId, MutableList<EffectRenderRegistration>> = linkedMapOf()
+        batch.registrationsInOrder.forEach { registration ->
+            registrationsByComponent.getOrPut(registration.componentId) { arrayListOf() }
+                .add(registration)
+        }
+
+        committedEffectsByComponent.forEach { (componentId, effectsByPath) ->
+            if (componentId !in visitedComponents) {
+                effectsByPath.forEach { (path, state) ->
+                    val cleanup = state.cleanup
+                    if (cleanup != null) {
+                        cleanupQueue.add(EffectRegistrationKey(componentId, path) to cleanup)
+                    }
+                    removeQueue.add(EffectRegistrationKey(componentId, path))
+                }
+            }
+        }
+
+        batch.registrationsInOrder.forEach { registration ->
+            val committedByPath = committedEffectsByComponent[registration.componentId]
+            val existing = committedByPath?.get(registration.path)
+            if (existing == null) {
+                runQueue.add(registration)
+                return@forEach
+            }
+            val shouldRerun = when (registration.runMode) {
+                EffectHookRunMode.EveryCommit -> true
+                EffectHookRunMode.OnDependencyChange -> existing.deps != registration.deps
+            }
+            if (shouldRerun) {
+                val cleanup = existing.cleanup
+                if (cleanup != null) {
+                    cleanupQueue.add(
+                        EffectRegistrationKey(registration.componentId, registration.path) to cleanup
+                    )
+                }
+                runQueue.add(registration)
+            }
+        }
+
+        committedEffectsByComponent.forEach { (componentId, committedByPath) ->
+            if (componentId !in visitedComponents) {
+                return@forEach
+            }
+            val registrations = registrationsByComponent[componentId].orEmpty()
+            val visitedPaths = registrations.mapTo(linkedSetOf()) { registration -> registration.path }
+            committedByPath.forEach { (path, state) ->
+                if (path !in visitedPaths) {
+                    val cleanup = state.cleanup
+                    if (cleanup != null) {
+                        cleanupQueue.add(EffectRegistrationKey(componentId, path) to cleanup)
+                    }
+                    removeQueue.add(EffectRegistrationKey(componentId, path))
+                }
+            }
+        }
+
+        cleanupQueue.forEach { (key, cleanup) ->
+            runEffectCleanup(
+                componentId = key.componentId,
+                path = key.path,
+                cleanup = cleanup,
+                reason = "effect cleanup"
+            )
+        }
+
+        removeQueue.forEach { key ->
+            val committedByPath = committedEffectsByComponent[key.componentId] ?: return@forEach
+            committedByPath.remove(key.path)
+            if (committedByPath.isEmpty()) {
+                committedEffectsByComponent.remove(key.componentId)
+            }
+        }
+
+        runQueue.forEach { registration ->
+            val committedByPath = committedEffectsByComponent
+                .getOrPut(registration.componentId) { linkedMapOf() }
+            val cleanup = runCommittedEffect(
+                componentId = registration.componentId,
+                path = registration.path,
+                effect = registration.effect
+            )
+            committedByPath[registration.path] = CommittedEffectState(
+                runMode = registration.runMode,
+                deps = registration.deps,
+                cleanup = cleanup
+            )
+        }
+    }
+
+    private fun runCommittedEffect(
+        componentId: ComponentInstanceId,
+        path: HookPath,
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+    ): (() -> Unit)? {
+        var cleanupRegistration: (() -> Unit)? = null
+        effect { cleanup ->
+            if (cleanupRegistration != null) {
+                throw HookUsageException(
+                    "Effect at path '$path' in component '${componentId.debugPath()}' " +
+                        "registered multiple cleanup handlers via onDispose."
+                )
+            }
+            cleanupRegistration = cleanup
+        }
+        return cleanupRegistration
+    }
+
+    private fun runEffectCleanup(
+        componentId: ComponentInstanceId,
+        path: HookPath,
+        cleanup: () -> Unit,
+        reason: String
+    ) {
+        try {
+            cleanup()
+        } catch (error: Throwable) {
+            println(
+                "[DSGL][Hooks] Effect cleanup failed at path '$path' in component '${componentId.debugPath()}' " +
+                    "during $reason: ${error.message}"
+            )
+        }
+    }
+
+    private fun runCommittedEffectCleanupForSubtree(
+        root: ComponentInstanceId?,
+        reason: String
+    ) {
+        val entries = committedEffectsByComponent.entries.toList()
+        entries.forEach { (componentId, byPath) ->
+            if (root != null && !componentId.isSameOrDescendantOf(root)) {
+                return@forEach
+            }
+            byPath.forEach { (path, state) ->
+                val cleanup = state.cleanup ?: return@forEach
+                runEffectCleanup(
+                    componentId = componentId,
+                    path = path,
+                    cleanup = cleanup,
+                    reason = reason
+                )
+            }
+        }
     }
 
     private fun currentFrame(): ComponentFrame {

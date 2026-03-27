@@ -106,6 +106,27 @@ abstract class DsglWindow {
         componentHookRuntime.endRender()
     }
 
+    /**
+     * Host lifecycle hook: commits post-render hook side effects for the last successful tree commit.
+     */
+    fun commitRenderBuild() {
+        componentHookRuntime.commitPostRenderEffects()
+    }
+
+    /**
+     * Host lifecycle hook: discards post-render hook side effects from an aborted/failed render attempt.
+     */
+    fun discardRenderBuild() {
+        componentHookRuntime.discardPostRenderEffects()
+    }
+
+    /**
+     * Host lifecycle hook: disposes all hook-local runtime state for this window instance.
+     */
+    fun disposeHookRuntime() {
+        componentHookRuntime.disposeAll()
+    }
+
     internal fun onHookStateChanged() {
         invalidate()
     }

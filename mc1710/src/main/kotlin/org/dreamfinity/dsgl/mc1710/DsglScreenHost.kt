@@ -394,6 +394,7 @@ abstract class DsglScreenHost(
         hoverTarget = null
         releaseDragCapture()
         lastFrameNanos = 0L
+        window.disposeHookRuntime()
         window.onClose()
         super.onGuiClosed()
     }
@@ -461,9 +462,11 @@ abstract class DsglScreenHost(
                 restoreDragCapture(root)
                 DndRuntime.engine.rebindAfterReconcile(root)
             }
+            window.commitRenderBuild()
             tracePhase("rebuild.end")
             true
         } catch (error: Throwable) {
+            window.discardRenderBuild()
             logPipelineError(
                 key = "rebuild",
                 message = "[DSGL] Rebuild failed; keeping previous committed frame/tree: ${error.message}"
@@ -481,16 +484,21 @@ abstract class DsglScreenHost(
         while (attempt < maxAttempts) {
             attempt += 1
             window.beginRenderBuild(mode)
+            var remountRequested = false
             try {
                 return window.render()
             } catch (remount: HookHotReloadRemountException) {
                 if (!hotSwapped) {
                     throw remount
                 }
+                remountRequested = true
                 lastRemountRequest = remount
                 println(remount.message)
             } finally {
                 window.endRenderBuild()
+                if (remountRequested) {
+                    window.discardRenderBuild()
+                }
             }
         }
 
