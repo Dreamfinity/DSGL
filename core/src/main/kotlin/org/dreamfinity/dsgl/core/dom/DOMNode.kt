@@ -3062,8 +3062,8 @@ abstract class DOMNode(
 
     open fun overflowViewportRect(): Rect? {
         val state = scrollContainerState()
-        val clipX = state.axisX.clipsToViewport
-        val clipY = state.axisY.clipsToViewport
+        val clipX = shouldClipToOverflowViewportHorizontal(state)
+        val clipY = shouldClipToOverflowViewportVertical(state)
         if (!clipX && !clipY) return null
         val root = rootNode()
         return Rect(
@@ -3072,6 +3072,16 @@ abstract class DOMNode(
             width = if (clipX) state.viewportRect.width.coerceAtLeast(0) else root.bounds.width.coerceAtLeast(0),
             height = if (clipY) state.viewportRect.height.coerceAtLeast(0) else root.bounds.height.coerceAtLeast(0)
         )
+    }
+
+    private fun shouldClipToOverflowViewportHorizontal(state: ScrollContainerState): Boolean {
+        if (state.axisX.clipsToViewport) return true
+        return overflowX == Overflow.Visible && overflowY != Overflow.Visible
+    }
+
+    private fun shouldClipToOverflowViewportVertical(state: ScrollContainerState): Boolean {
+        if (state.axisY.clipsToViewport) return true
+        return overflowY == Overflow.Visible && overflowX != Overflow.Visible
     }
 
     fun inputClipRectForChildren(parentClipRect: Rect?): Rect? {

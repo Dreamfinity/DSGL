@@ -51,6 +51,7 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             maxHeight = 90.vh
             gap = 4.px
             overflowY = Overflow.Auto
+            overflowX = Overflow.Scroll
         }
     }) {
         text("Positioned layout verification surface: static/relative/absolute/fixed + z-index + scroll + hit-testing")
