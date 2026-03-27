@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
+import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.ref.Ref
 import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
@@ -19,6 +20,7 @@ abstract class DsglWindow {
     private var openedZoneId: ZoneId = ZoneId.systemDefault()
     private val refSlots: MutableList<RefObject<*>> = ArrayList()
     private var refSlotCursor: Int = 0
+    private val componentHookRuntime: ComponentHookRuntime = ComponentHookRuntime()
 
     /**
      * Called by platform hosts to connect this window to a host implementation.
@@ -93,6 +95,14 @@ abstract class DsglWindow {
      */
     fun beginRenderBuild() {
         refSlotCursor = 0
+        componentHookRuntime.beginRender(this)
+    }
+
+    /**
+     * Host lifecycle hook: finalizes per-render hook runtime cleanup after [render].
+     */
+    fun endRenderBuild() {
+        componentHookRuntime.endRender()
     }
 
     internal fun <T : Any> useRefSlot(initial: T?): Ref<T> {
@@ -107,4 +117,6 @@ abstract class DsglWindow {
         refSlots.add(created)
         return created
     }
+
+    internal fun hookRuntime(): ComponentHookRuntime = componentHookRuntime
 }

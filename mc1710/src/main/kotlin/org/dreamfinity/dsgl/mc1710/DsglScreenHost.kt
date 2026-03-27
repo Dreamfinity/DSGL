@@ -438,7 +438,11 @@ abstract class DsglScreenHost(
             tracePhase("rebuild.start")
             rendersCount++
             window.beginRenderBuild()
-            val nextTree = window.render()
+            val nextTree = try {
+                window.render()
+            } finally {
+                window.endRenderBuild()
+            }
             val currentTree = domTree
             if (currentTree == null) {
                 domTree = nextTree
