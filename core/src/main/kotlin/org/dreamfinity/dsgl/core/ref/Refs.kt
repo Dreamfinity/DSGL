@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.ref
 
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.hooks.HookEntryKind
 import org.dreamfinity.dsgl.core.hooks.HookSignature
 import org.dreamfinity.dsgl.core.hooks.HookSignatures
@@ -61,9 +62,24 @@ class RefHookDelegate<T : Any> @PublishedApi internal constructor(
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> {
+inline fun <reified T : Any> UiScope.useRef(initial: T? = null): RefHookDelegate<T> {
+    return createRefHookDelegate(window = requireHookOwnerWindow(), initial = initial)
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> {
+    return createRefHookDelegate(window = this, initial = initial)
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T : Any> createRefHookDelegate(
+    window: DsglWindow,
+    initial: T? = null
+): RefHookDelegate<T> {
     return RefHookDelegate(
-        window = this,
+        window = window,
         initial = initial,
         signature = HookSignatures.ref(typeOf<T>())
     )

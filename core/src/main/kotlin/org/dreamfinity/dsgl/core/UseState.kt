@@ -66,9 +66,24 @@ class StateHookDelegate<T> @PublishedApi internal constructor(
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T> DsglWindow.useState(initial: T): StateHookDelegate<T> {
+inline fun <reified T> UiScope.useState(initial: T): StateHookDelegate<T> {
+    return createStateHookDelegate(window = requireHookOwnerWindow(), initial = initial)
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T> DsglWindow.useState(initial: T): StateHookDelegate<T> {
+    return createStateHookDelegate(window = this, initial = initial)
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T> createStateHookDelegate(
+    window: DsglWindow,
+    initial: T
+): StateHookDelegate<T> {
     return StateHookDelegate(
-        window = this,
+        window = window,
         initial = initial,
         signature = HookSignatures.state(typeOf<T>())
     )

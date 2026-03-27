@@ -61,9 +61,9 @@ class MemoHookDelegate<T> @PublishedApi internal constructor(
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T> DsglWindow.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> {
-    return MemoHookDelegate(
-        window = this,
+inline fun <reified T> UiScope.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> {
+    return createMemoHookDelegate(
+        window = requireHookOwnerWindow(),
         hookName = "useMemo",
         deps = deps.toList(),
         compute = compute,
@@ -72,9 +72,9 @@ inline fun <reified T> DsglWindow.useMemo(vararg deps: Any?, noinline compute: (
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T> DsglWindow.useMemo(noinline compute: () -> T): MemoHookDelegate<T> {
-    return MemoHookDelegate(
-        window = this,
+inline fun <reified T> UiScope.useMemo(noinline compute: () -> T): MemoHookDelegate<T> {
+    return createMemoHookDelegate(
+        window = requireHookOwnerWindow(),
         hookName = "useMemo",
         deps = emptyList(),
         compute = compute,
@@ -83,12 +83,68 @@ inline fun <reified T> DsglWindow.useMemo(noinline compute: () -> T): MemoHookDe
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified F : Any> DsglWindow.useCallback(vararg deps: Any?, noinline factory: () -> F): MemoHookDelegate<F> {
-    return MemoHookDelegate(
+inline fun <reified F : Any> UiScope.useCallback(vararg deps: Any?, noinline factory: () -> F): MemoHookDelegate<F> {
+    return createMemoHookDelegate(
+        window = requireHookOwnerWindow(),
+        hookName = "useCallback",
+        deps = deps.toList(),
+        compute = factory,
+        signature = HookSignatures.memo(typeOf<F>())
+    )
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T> DsglWindow.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> {
+    return createMemoHookDelegate(
+        window = this,
+        hookName = "useMemo",
+        deps = deps.toList(),
+        compute = compute,
+        signature = HookSignatures.memo(typeOf<T>())
+    )
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified T> DsglWindow.useMemo(noinline compute: () -> T): MemoHookDelegate<T> {
+    return createMemoHookDelegate(
+        window = this,
+        hookName = "useMemo",
+        deps = emptyList(),
+        compute = compute,
+        signature = HookSignatures.memo(typeOf<T>())
+    )
+}
+
+@PublishedApi
+@OptIn(ExperimentalStdlibApi::class)
+internal inline fun <reified F : Any> DsglWindow.useCallback(
+    vararg deps: Any?,
+    noinline factory: () -> F
+): MemoHookDelegate<F> {
+    return createMemoHookDelegate(
         window = this,
         hookName = "useCallback",
         deps = deps.toList(),
         compute = factory,
         signature = HookSignatures.memo(typeOf<F>())
+    )
+}
+
+@PublishedApi
+internal fun <T> createMemoHookDelegate(
+    window: DsglWindow,
+    hookName: String,
+    deps: List<Any?>,
+    compute: () -> T,
+    signature: HookSignature
+): MemoHookDelegate<T> {
+    return MemoHookDelegate(
+        window = window,
+        hookName = hookName,
+        deps = deps,
+        compute = compute,
+        signature = signature
     )
 }

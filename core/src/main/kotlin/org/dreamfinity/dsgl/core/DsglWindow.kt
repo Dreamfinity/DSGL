@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.ref.Ref
 import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
@@ -60,6 +61,20 @@ abstract class DsglWindow {
 
     /** Build the current UI tree. Called by the host on rebuild. */
     abstract fun render(): DomTree
+
+    /**
+     * Builds a tree bound to this window so UiScope hook APIs can resolve the owning runtime.
+     */
+    protected fun ui(block: UiScope.() -> Unit): DomTree {
+        return ui(this, block)
+    }
+
+    /**
+     * Builds a tree from a custom root bound to this window.
+     */
+    protected fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
+        return ui(this, root, block)
+    }
 
     /** Lifecycle callback when the UI is opened by the host. */
     open fun onOpen() {}

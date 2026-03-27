@@ -30,11 +30,23 @@ annotation class DsglDsl
  * Call this from [DsglWindow.render] to define the UI hierarchy.
  */
 fun ui(block: UiScope.() -> Unit): DomTree {
-    return ui(ContainerNode(stackLayout = true), block)
+    return buildUiTree(ownerWindow = null, root = ContainerNode(stackLayout = true), block = block)
+}
+
+fun ui(window: DsglWindow, block: UiScope.() -> Unit): DomTree {
+    return buildUiTree(ownerWindow = window, root = ContainerNode(stackLayout = true), block = block)
 }
 
 fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
-    val scope = UiScope(root)
+    return buildUiTree(ownerWindow = null, root = root, block = block)
+}
+
+fun ui(window: DsglWindow, root: DOMNode, block: UiScope.() -> Unit): DomTree {
+    return buildUiTree(ownerWindow = window, root = root, block = block)
+}
+
+private fun buildUiTree(ownerWindow: DsglWindow?, root: DOMNode, block: UiScope.() -> Unit): DomTree {
+    val scope = UiScope(root, ownerWindow)
     scope.block()
     return DomTree(root)
 }
@@ -223,7 +235,17 @@ inline fun <T, R> withProps(value: T, block: (T) -> R): R = block(value)
 /**
  * Root DSL scope used by [ui] to add layout and component nodes.
  */
-class UiScope internal constructor(private val parent: DOMNode) {
+class UiScope internal constructor(
+    private val parent: DOMNode,
+    private val ownerWindow: DsglWindow? = null
+) {
+    @PublishedApi
+    internal fun requireHookOwnerWindow(): DsglWindow {
+        return ownerWindow ?: throw IllegalStateException(
+            "Hook APIs require a UiScope owned by a DsglWindow render session."
+        )
+    }
+
     /** Generic container; layout is controlled by style.display. */
     fun div(
         props: ComponentProps.() -> Unit,
@@ -238,7 +260,7 @@ class UiScope internal constructor(private val parent: DOMNode) {
             applyHandlers(this, props)
             applyRef(this, ref)
             add(this)
-            UiScope(this).block()
+            UiScope(this, ownerWindow).block()
         }
     }
 
@@ -256,7 +278,7 @@ class UiScope internal constructor(private val parent: DOMNode) {
             applyHandlers(this, props)
             applyRef(this, ref)
             add(this)
-            UiScope(this).block()
+            UiScope(this, ownerWindow).block()
         }
     }
 

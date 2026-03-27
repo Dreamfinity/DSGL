@@ -20,13 +20,11 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
-import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
-import org.dreamfinity.dsgl.core.ui
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
 import org.dreamfinity.dsgl.mc1710.demo.support.*
@@ -392,9 +390,6 @@ class ShowcaseWindow : DsglWindow() {
                 }
             )
         )
-        val refsInputHandle by useRef<ElementHandle>()
-        val refsPanelHandle by useRef<ElementHandle>()
-
         val navWidth = 106
         val sidebarWidth = 158
         val bodyHeight = (viewportHeight - 34).coerceAtLeast(170)
@@ -578,11 +573,7 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.REFS -> refsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30,
-                                    refsInputHandle,
-                                    refsPanelHandle
+                                    this@ShowcaseWindow
                                 )
 
                                 DemoSection.DRAG_DROP -> dragNDropSection(
