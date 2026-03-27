@@ -572,7 +572,7 @@ class ShowcaseWindow : DsglWindow() {
                                     bodyHeight - 30
                                 )
 
-                                DemoSection.REFS -> refsSection(
+                                DemoSection.REFS -> hooksSection(
                                     this@ShowcaseWindow
                                 )
 

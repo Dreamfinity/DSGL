@@ -237,7 +237,8 @@ inline fun <T, R> withProps(value: T, block: (T) -> R): R = block(value)
  */
 class UiScope internal constructor(
     private val parent: DOMNode,
-    private val ownerWindow: DsglWindow? = null
+    private val ownerWindow: DsglWindow? = null,
+    private val providedContexts: Map<DsglContext<*>, Any?> = emptyMap()
 ) {
     @PublishedApi
     internal fun requireHookOwnerWindow(): DsglWindow {
@@ -247,7 +248,32 @@ class UiScope internal constructor(
     }
 
     internal fun childScope(childParent: DOMNode): UiScope {
-        return UiScope(childParent, ownerWindow)
+        return UiScope(
+            parent = childParent,
+            ownerWindow = ownerWindow,
+            providedContexts = providedContexts
+        )
+    }
+
+    internal fun <T, R> withProvidedContext(
+        context: DsglContext<T>,
+        value: T,
+        block: UiScope.() -> R
+    ): R {
+        val nextScope = UiScope(
+            parent = parent,
+            ownerWindow = ownerWindow,
+            providedContexts = providedContexts + (context to value)
+        )
+        return nextScope.block()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    internal fun <T> readContextValue(context: DsglContext<T>): T {
+        if (!providedContexts.containsKey(context)) {
+            return context.defaultValue
+        }
+        return providedContexts[context] as T
     }
 
     /** Generic container; layout is controlled by style.display. */

@@ -5,6 +5,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class UiScopeHookApiTests {
+    private companion object {
+        val ApiContext = createContext(defaultValue = "fallback", name = "UiScopeHookApiContext")
+    }
+
     @Test
     fun `hooks are callable from UiScope without window qualification`() {
         val window = UiScopeHookWindow()
@@ -16,6 +20,7 @@ class UiScopeHookApiTests {
         assertEquals(2, window.callbackSeen)
         assertEquals(2, window.refSeen)
         assertEquals(10, window.reducerSeen)
+        assertEquals("provided", window.contextSeen)
         assertEquals(listOf("run:2"), window.effectEvents)
 
         window.initial = 7
@@ -25,6 +30,7 @@ class UiScopeHookApiTests {
         assertEquals(2, window.callbackSeen)
         assertEquals(2, window.refSeen)
         assertEquals(10, window.reducerSeen)
+        assertEquals("provided", window.contextSeen)
         assertEquals(listOf("run:2"), window.effectEvents)
     }
 
@@ -52,6 +58,7 @@ class UiScopeHookApiTests {
         var callbackSeen: Int? = null
         var refSeen: Int? = null
         var reducerSeen: Int? = null
+        var contextSeen: String? = null
         val effectEvents: MutableList<String> = arrayListOf()
 
         override fun render(): DomTree {
@@ -79,6 +86,9 @@ class UiScopeHookApiTests {
                 callbackSeen = callback()
                 refSeen = valueRef.current
                 reducerSeen = reducerValue
+                provideContext(ApiContext, "provided") {
+                    contextSeen = useContext(ApiContext)
+                }
             }
         }
     }
