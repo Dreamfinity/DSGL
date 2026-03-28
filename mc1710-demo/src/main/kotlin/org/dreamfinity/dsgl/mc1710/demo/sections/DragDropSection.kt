@@ -161,7 +161,7 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
             text("No items available", { style = { color = DEMO_MUTED } })
         } else {
             val laneCardSize = CARD_SIZE.coerceAtMost((panelWidth - 12).coerceAtLeast(24))
-            val laneDroppable = window.useDroppable(
+            val laneDroppable = useDroppable(
                 id = "lane",
                 nodeKey = "dnd.lane.column",
                 accepts = { active -> !active.id.isNullOrBlank() },
@@ -187,7 +187,7 @@ private fun UiScope.originalModeReorder(window: ShowcaseWindow, panelWidth: Int)
                 previewOrder.forEach { item ->
                     val indicator = window.laneIndicatorForCard(item.id, monitor.sourceKey)
                     val isDraggedItem = draggedId != null && draggedId == item.id
-                    val sortable = window.useSortable(
+                    val sortable = useSortable(
                         id = item.id,
                         nodeKey = "dnd.lane.card.${item.id}",
                         containerId = "lane",
@@ -386,7 +386,7 @@ private fun UiScope.dropBox(
     boxWidth: Int
 ) {
     val highlighted = window.dndHoverZone == boxId
-    val dropDescriptor = window.useDroppable(
+    val dropDescriptor = useDroppable(
         id = boxId,
         nodeKey = boxKey,
         accepts = { active -> !active.id.isNullOrBlank() },
@@ -431,7 +431,7 @@ private fun UiScope.dropBox(
                 }
             }) {
                 cards.take(maxVisibleCards).forEach { item ->
-                    val draggable = window.useDraggable(
+                    val draggable = useDraggable(
                         id = item.id,
                         nodeKey = "dnd.box.$boxId.card.${item.id}",
                         type = "card",

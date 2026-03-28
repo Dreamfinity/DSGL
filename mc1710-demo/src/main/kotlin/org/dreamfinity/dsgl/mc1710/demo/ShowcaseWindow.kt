@@ -368,28 +368,6 @@ class ShowcaseWindow : DsglWindow() {
 
     override fun render(): DomTree {
         renderPasses += 1
-        useDragDropMonitor(
-            DragDropMonitorCallbacks(
-                onDragMove = { active, over ->
-                    dndActiveItem = active.id ?: active.sourceKey?.toString() ?: "none"
-                    dndDebugOverContainerId = if (over == null) "none" else "target"
-                    dndDebugOverId = over?.toString() ?: "none"
-                },
-                onDragOver = { active, over ->
-                    dndDropEffect = active.dropEffect.name.lowercase()
-                    dndDebugOverId = over?.toString() ?: "none"
-                },
-                onDragEnd = { _, _, effect ->
-                    dndDropEffect = effect.name.lowercase()
-                    dndDebugOverId = "none"
-                    dndDebugOverContainerId = "none"
-                },
-                onDragCancel = {
-                    dndDebugOverId = "none"
-                    dndDebugOverContainerId = "none"
-                }
-            )
-        )
         val navWidth = 106
         val sidebarWidth = 158
         val bodyHeight = (viewportHeight - 34).coerceAtLeast(170)
@@ -398,6 +376,28 @@ class ShowcaseWindow : DsglWindow() {
         val checklistHeight = (bodyHeight - inspectorHeight - 4).coerceAtLeast(72)
 
         return ui {
+            useDragDropMonitor(
+                DragDropMonitorCallbacks(
+                    onDragMove = { active, over ->
+                        dndActiveItem = active.id ?: active.sourceKey?.toString() ?: "none"
+                        dndDebugOverContainerId = if (over == null) "none" else "target"
+                        dndDebugOverId = over?.toString() ?: "none"
+                    },
+                    onDragOver = { active, over ->
+                        dndDropEffect = active.dropEffect.name.lowercase()
+                        dndDebugOverId = over?.toString() ?: "none"
+                    },
+                    onDragEnd = { _, _, effect ->
+                        dndDropEffect = effect.name.lowercase()
+                        dndDebugOverId = "none"
+                        dndDebugOverContainerId = "none"
+                    },
+                    onDragCancel = {
+                        dndDebugOverId = "none"
+                        dndDebugOverContainerId = "none"
+                    }
+                )
+            )
             modalHost(modals = demoModals, modalKey = "showcase.modalHost") {
                 div({
                     key = "showcase.root"

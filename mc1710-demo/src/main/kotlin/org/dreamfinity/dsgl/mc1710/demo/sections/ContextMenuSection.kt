@@ -126,7 +126,7 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
                         text("/", { style = { color = DEMO_MUTED } })
                     }
                     val breadcrumbKey = "section.contextMenu.path.${breadcrumb.id}"
-                    val breadcrumbDrop = window.useDroppable(
+                    val breadcrumbDrop = useDroppable(
                         id = "context.fs.path.${breadcrumb.id}",
                         nodeKey = breadcrumbKey,
                         accepts = { active ->
@@ -183,7 +183,7 @@ fun UiScope.contextMenuSection(window: ShowcaseWindow, contentWidth: Int, conten
                 }
             }
 
-            val listDroppable = window.useDroppable(
+            val listDroppable = useDroppable(
                 id = "context.fs.current.${window.contextMenuCurrentDirectoryId}",
                 nodeKey = "section.contextMenu.list",
                 accepts = { active ->
@@ -284,7 +284,7 @@ private fun UiScope.contextMenuEntryTile(
 ) {
     val tileKey = "context.fs.tile.${file.id}"
     val iconURL = iconFor(file)
-    val draggable = window.useDraggable(
+    val draggable = useDraggable(
         id = file.id,
         nodeKey = tileKey,
         type = "context.fs.entry",
@@ -301,7 +301,7 @@ private fun UiScope.contextMenuEntryTile(
         }
     )
     val droppable = if (file.isDirectory) {
-        window.useDroppable(
+        useDroppable(
             id = "context.fs.dir.${file.id}",
             nodeKey = tileKey,
             accepts = { active ->
