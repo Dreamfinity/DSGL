@@ -2,19 +2,70 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
 
-fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.interactionsSection(
+    onInfo: (String) -> Unit,
+    onLogHook: (String, Event, String?) -> Unit
+) {
+    var mouseEnterCount by useState(0)
+    var mouseLeaveCount by useState(0)
+    var mouseOverCount by useState(0)
+    var mouseMoveCount by useState(0)
+    var mouseDownCount by useState(0)
+    var mouseUpCount by useState(0)
+    var mouseClickCount by useState(0)
+    var mouseDragCount by useState(0)
+    var mouseWheelCount by useState(0)
+    var keyDownCount by useState(0)
+    var keyUpCount by useState(0)
+    var keyPressedCount by useState(0)
+    var keyReleasedCount by useState(0)
+    var enterActionCount by useState(0)
+    var cancellationEnabled by useState(true)
+    var cancellationParentHits by useState(0)
+    var cancellationChildHits by useState(0)
+
+    val mouseOverSamplesRef by useRef(0)
+    val mouseMoveSamplesRef by useRef(0)
+    val interactionZoneInsideRef by useRef(false)
+
+    fun sampledMouseOverEvent(): Boolean {
+        val next = (mouseOverSamplesRef.current ?: 0) + 1
+        mouseOverSamplesRef.current = next
+        return next % 6 == 0
+    }
+
+    fun sampledMouseMoveEvent(): Boolean {
+        val next = (mouseMoveSamplesRef.current ?: 0) + 1
+        mouseMoveSamplesRef.current = next
+        return next % 8 == 0
+    }
+
+    fun markInteractionZoneEntered(): Boolean {
+        val inside = interactionZoneInsideRef.current ?: false
+        if (inside) return false
+        interactionZoneInsideRef.current = true
+        return true
+    }
+
+    fun markInteractionZoneLeft(): Boolean {
+        val inside = interactionZoneInsideRef.current ?: false
+        if (!inside) return false
+        interactionZoneInsideRef.current = false
+        return true
+    }
+
     div({
         key = "section.interactions"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -28,51 +79,51 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
         div({
             key = "interactions.mouse.zone"
             onMouseEnter = { event ->
-                if (window.markInteractionZoneEntered()) {
-                    window.mouseEnterCount += 1
-                    window.logHook("onMouseEnter", event)
+                if (markInteractionZoneEntered()) {
+                    mouseEnterCount += 1
+                    onLogHook("onMouseEnter", event, null)
                 }
             }
             onMouseLeave = { event ->
-                if (window.markInteractionZoneLeft()) {
-                    window.mouseLeaveCount += 1
-                    window.logHook("onMouseLeave", event)
+                if (markInteractionZoneLeft()) {
+                    mouseLeaveCount += 1
+                    onLogHook("onMouseLeave", event, null)
                 }
             }
             onMouseOver = { event ->
-                window.mouseOverCount += 1
-                if (window.sampledMouseOverEvent()) {
-                    window.logHook("onMouseOver", event, "sampled")
+                mouseOverCount += 1
+                if (sampledMouseOverEvent()) {
+                    onLogHook("onMouseOver", event, "sampled")
                 }
             }
             onMouseMove = { event ->
-                window.mouseMoveCount += 1
-                if (window.sampledMouseMoveEvent()) {
-                    window.logHook("onMouseMove", event, "sampled")
+                mouseMoveCount += 1
+                if (sampledMouseMoveEvent()) {
+                    onLogHook("onMouseMove", event, "sampled")
                 }
             }
             onMouseDown = { event ->
-                window.mouseDownCount += 1
-                window.logHook("onMouseDown", event)
+                mouseDownCount += 1
+                onLogHook("onMouseDown", event, null)
             }
             onMouseUp = { event ->
-                window.mouseUpCount += 1
-                window.logHook("onMouseUp", event)
+                mouseUpCount += 1
+                onLogHook("onMouseUp", event, null)
             }
             onMouseClick = { event ->
-                window.mouseClickCount += 1
-                window.logHook("onMouseClick", event)
+                mouseClickCount += 1
+                onLogHook("onMouseClick", event, null)
             }
             onMouseDrag = { event ->
-                window.mouseDragCount += 1
-                window.logHook("onMouseDrag", event)
+                mouseDragCount += 1
+                onLogHook("onMouseDrag", event, null)
             }
             onMouseWheel = { event ->
-                window.mouseWheelCount += 1
-                window.logHook("onMouseWheel", event)
+                mouseWheelCount += 1
+                onLogHook("onMouseWheel", event, null)
             }
             style = {
-                width = (contentWidth - 8).px
+                width = 100.percent
                 height = 52.px
                 padding = 4.px
                 backgroundColor = DEMO_SURFACE_ALT
@@ -81,7 +132,7 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
         }) {
             text("Move, click, drag and wheel here")
             text(
-                "E${window.mouseEnterCount} L${window.mouseLeaveCount} O${window.mouseOverCount} M${window.mouseMoveCount} D${window.mouseDownCount}/${window.mouseUpCount} C${window.mouseClickCount} G${window.mouseDragCount} W${window.mouseWheelCount}",
+                "E$mouseEnterCount L$mouseLeaveCount O$mouseOverCount M$mouseMoveCount D$mouseDownCount/$mouseUpCount C$mouseClickCount G$mouseDragCount W$mouseWheelCount",
                 { style = { color = DEMO_MUTED } }
             )
         }
@@ -90,46 +141,46 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             style = {
                 gap = 4.px
                 display = Display.Flex
-                flexDirection = FlexDirection.Row
+                flexDirection = FlexDirection.Column
             }
         }) {
             input(
                 InputType.Text(placeholder = "onKeyDown/onKeyUp"), {
                     key = "interactions.key.downUp"
-                    style = { width = ((contentWidth / 2) - 6).px }
+                    style = { width = 100.percent }
                     onKeyDown = { event ->
-                        window.keyDownCount += 1
+                        keyDownCount += 1
                         if (event.keyCode == KeyCodes.ENTER) {
-                            window.enterActionCount += 1
-                            window.logHook("onKeyDown", event, "enterAction")
+                            enterActionCount += 1
+                            onLogHook("onKeyDown", event, "enterAction")
                         } else {
-                            window.logHook("onKeyDown", event)
+                            onLogHook("onKeyDown", event, null)
                         }
                     }
                     onKeyUp = { event ->
-                        window.keyUpCount += 1
-                        window.logHook("onKeyUp", event)
+                        keyUpCount += 1
+                        onLogHook("onKeyUp", event, null)
                     }
                 }
             )
             input(
                 InputType.Text(placeholder = "onKeyPressed/onKeyReleased"), {
                     key = "interactions.key.aliases"
-                    style = { width = ((contentWidth / 2) - 6).px }
+                    style = { width = 100.percent }
                     onKeyPressed = { event ->
-                        window.keyPressedCount += 1
-                        window.logHook("onKeyPressed", event)
+                        keyPressedCount += 1
+                        onLogHook("onKeyPressed", event, null)
                     }
                     onKeyReleased = { event ->
-                        window.keyReleasedCount += 1
-                        window.logHook("onKeyReleased", event)
+                        keyReleasedCount += 1
+                        onLogHook("onKeyReleased", event, null)
                     }
                 }
             )
         }
 
         text(
-            "Key counters: down=${window.keyDownCount} up=${window.keyUpCount} pressed=${window.keyPressedCount} released=${window.keyReleasedCount} enter=${window.enterActionCount}",
+            "Key counters: down=$keyDownCount up=$keyUpCount pressed=$keyPressedCount released=$keyReleasedCount enter=$enterActionCount",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -141,17 +192,16 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             }
         }) {
             button(
-                if (window.cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF",
+                if (cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF",
                 {
-                    style = { width = 126.px }
                     onMouseClick = {
-                        window.cancellationEnabled = !window.cancellationEnabled
-                        window.appendInfo("Interactions: cancellation=${window.cancellationEnabled}")
+                        cancellationEnabled = !cancellationEnabled
+                        onInfo("Interactions: cancellation=$cancellationEnabled")
                     }
                 }
             )
             text(
-                "Parent=${window.cancellationParentHits} Child=${window.cancellationChildHits}",
+                "Parent=$cancellationParentHits Child=$cancellationChildHits",
                 { style = { color = DEMO_MUTED } }
             )
         }
@@ -159,11 +209,11 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
         div({
             key = "interactions.bubble.parent"
             onMouseClick = { event ->
-                window.cancellationParentHits += 1
-                window.logHook("parent.onMouseClick", event)
+                cancellationParentHits += 1
+                onLogHook("parent.onMouseClick", event, null)
             }
             style = {
-                width = (contentWidth - 8).px
+                width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF353D46.toInt()
                 border(1.px, 0xFF708090.toInt())
@@ -173,18 +223,17 @@ fun UiScope.interactionsSection(window: ShowcaseWindow, contentWidth: Int, conte
             div({
                 key = "interactions.bubble.child"
                 onMouseClick = { event ->
-                    window.cancellationChildHits += 1
-                    if (window.cancellationEnabled) {
+                    cancellationChildHits += 1
+                    if (cancellationEnabled) {
                         event.cancelled = true
                     }
-                    window.logHook(
+                    onLogHook(
                         "child.onMouseClick",
                         event,
-                        if (window.cancellationEnabled) "cancelled=true" else "cancelled=false"
+                        if (cancellationEnabled) "cancelled=true" else "cancelled=false"
                     )
                 }
                 style = {
-                    width = 118.px
                     padding = 3.px
                     backgroundColor = 0xFF4D5560.toInt()
                     border(1.px, 0xFF9AA5B1.toInt())

@@ -2,18 +2,39 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyInput
+import org.dreamfinity.dsgl.core.event.KeyModifiers
+import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
-fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.focusRebuildSection(
+    renderPasses: Int,
+    onManualInvalidate: (String) -> Unit,
+    onInfo: (String) -> Unit,
+    onLogHook: (String, Event, String?) -> Unit
+) {
+    var focusStableValue by useState("")
+    var focusUnstableValue by useState("")
+    var focusStableEnterRebuilds by useState(0)
+    var focusKeyVersion by useState(0)
+    var autoRebuildCounter by useState(0)
+    var manualInvalidateCount by useState(0)
+    var lastManualReason by useState("none")
+
+    fun requestLocalManualInvalidate(reason: String) {
+        manualInvalidateCount += 1
+        lastManualReason = reason
+        onManualInvalidate(reason)
+    }
+
     div({
         key = "section.focusRebuild"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -26,51 +47,49 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
         })
 
         text(
-            "renderPasses=${window.renderPasses} autoState=${window.autoRebuildCounter} manualInvalidates=${window.manualInvalidateCount}",
+            "renderPasses=$renderPasses autoState=$autoRebuildCounter manualInvalidates=$manualInvalidateCount",
             { style = { color = DEMO_MUTED } }
         )
         text(
-            "stableEnterRebuilds=${window.focusStableEnterRebuilds} unstableKeyVersion=${window.focusKeyVersion}",
+            "stableEnterRebuilds=$focusStableEnterRebuilds unstableKeyVersion=$focusKeyVersion",
             { style = { color = DEMO_MUTED } }
         )
 
         input(
             InputType.Text(
-                value = window.focusStableValue,
+                value = focusStableValue,
                 placeholder = "Stable key input (press Enter to rebuild)"
             ),
             {
                 key = "focus.stable.input"
-                style = { width = (contentWidth - 10).px }
+                style = { width = 100.percent }
                 onKeyDown = { event ->
                     if (event.keyCode == KeyCodes.ENTER) {
-                        window.focusStableEnterRebuilds += 1
-                        window.requestManualInvalidate("stable input Enter")
-                        window.logHook("focus.stable.onKeyDown", event, "manual rebuild")
+                        focusStableEnterRebuilds += 1
+                        requestLocalManualInvalidate("stable input Enter")
+                        onLogHook("focus.stable.onKeyDown", event, "manual rebuild")
                     } else {
-                        window.focusStableValue =
-                            window.applyTextMutation(window.focusStableValue, event, maxLength = 28)
-                        window.logHook("focus.stable.onKeyDown", event)
+                        focusStableValue = applyTextMutation(focusStableValue, event, maxLength = 28)
+                        onLogHook("focus.stable.onKeyDown", event, null)
                     }
                 }
                 onKeyUp = { event ->
-                    window.logHook("focus.stable.onKeyUp", event)
+                    onLogHook("focus.stable.onKeyUp", event, null)
                 }
             }
         )
 
         input(
             InputType.Text(
-                value = window.focusUnstableValue,
+                value = focusUnstableValue,
                 placeholder = "Unstable key input"
             ),
             {
-                key = "focus.unstable.input.${window.focusKeyVersion}"
-                style = { width = (contentWidth - 10).px }
+                key = "focus.unstable.input.$focusKeyVersion"
+                style = { width = 100.percent }
                 onKeyDown = { event ->
-                    window.focusUnstableValue =
-                        window.applyTextMutation(window.focusUnstableValue, event, maxLength = 28)
-                    window.logHook("focus.unstable.onKeyDown", event)
+                    focusUnstableValue = applyTextMutation(focusUnstableValue, event, maxLength = 28)
+                    onLogHook("focus.unstable.onKeyDown", event, null)
                 }
             }
         )
@@ -83,17 +102,15 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             }
         }) {
             button("Auto state +1", {
-                style = { width = 80.px }
                 onMouseClick = {
-                    window.bumpAutoRebuildCounter()
-                    window.appendInfo("Focus/Rebuild: state counter increment")
+                    autoRebuildCounter += 1
+                    onInfo("Focus/Rebuild: state counter increment")
                 }
             })
             button("Manual invalidate", {
-                style = { width = 96.px }
                 onMouseClick = {
-                    window.requestManualInvalidate("focus section button")
-                    window.appendInfo("Focus/Rebuild: manual invalidate button")
+                    requestLocalManualInvalidate("focus section button")
+                    onInfo("Focus/Rebuild: manual invalidate button")
                 }
             })
         }
@@ -106,18 +123,37 @@ fun UiScope.focusRebuildSection(window: ShowcaseWindow, contentWidth: Int, conte
             }
         }) {
             button("Bump unstable key", {
-                style = { width = 94.px }
                 onMouseClick = {
-                    window.bumpFocusVersion()
-                    window.requestManualInvalidate("unstable key version changed")
-                    window.appendInfo("Focus/Rebuild: unstable key version=${window.focusKeyVersion}")
+                    focusKeyVersion += 1
+                    requestLocalManualInvalidate("unstable key version changed")
+                    onInfo("Focus/Rebuild: unstable key version=$focusKeyVersion")
                 }
             })
             text(
-                "lastManualReason=${window.lastManualReason}",
+                "lastManualReason=$lastManualReason",
                 { style = { color = DEMO_MUTED } }
             )
         }
     }
+}
+
+private fun applyTextMutation(
+    current: String,
+    event: KeyboardKeyDownEvent,
+    allowedChars: String? = null,
+    maxLength: Int? = null
+): String {
+    if (event.keyCode == KeyCodes.BACKSPACE) {
+        if (current.isEmpty()) return current
+        return current.dropLast(1)
+    }
+
+    var ch = event.keyChar
+    if (ch < ' ' || ch.code == 127) return current
+    ch = KeyInput.applyShift(ch, KeyModifiers.shiftDown)
+    if (allowedChars != null && !allowedChars.contains(ch)) return current
+    val next = current + ch
+    if (maxLength != null && next.length > maxLength) return current
+    return next
 }
 

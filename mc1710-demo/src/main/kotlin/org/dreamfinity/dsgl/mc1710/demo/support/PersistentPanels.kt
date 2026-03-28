@@ -4,14 +4,19 @@ import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 
-fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, panelHeight: Int) {
+fun UiScope.renderEventInspectorPanel(
+    eventLogs: List<EventLogEntry>,
+    maxEventLogs: Int,
+    visibleEventLines: Int,
+    onClearLogs: () -> Unit
+) {
     div({
         key = "panel.eventInspector"
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
+            flexGrow = 1f
             gap = 4.px
             padding = 20.px
             backgroundColor = DEMO_SURFACE_ALT
@@ -29,15 +34,15 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
             text("Event Inspector")
             button("Clear", {
                 style = { }
-                onMouseClick = { window.clearEventLogs() }
+                onMouseClick = { onClearLogs() }
             })
         }
-        text("Stored: ${window.eventLogs.size}/${window.maxEventLogs}", { style = { color = DEMO_MUTED } })
-        if (window.eventLogs.isEmpty()) {
+        text("Stored: ${eventLogs.size}/$maxEventLogs", { style = { color = DEMO_MUTED } })
+        if (eventLogs.isEmpty()) {
             text("No events yet. Interact with any demo area.", { style = { color = DEMO_MUTED } })
         } else {
-            window.eventLogs
-                .take(window.visibleEventLines)
+            eventLogs
+                .take(visibleEventLines)
                 .forEach { entry ->
                     text("#${entry.sequence} ${entry.line}", { style = { color = entry.color } })
                 }
@@ -45,14 +50,19 @@ fun UiScope.renderEventInspectorPanel(window: ShowcaseWindow, panelWidth: Int, p
     }
 }
 
-fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelHeight: Int) {
+fun UiScope.renderChecklistPanel(
+    implementedCapabilities: Set<CapabilityId>,
+    checklistPage: Int,
+    checklistPageSize: Int,
+    onSetChecklistPage: (Int) -> Unit,
+    onMoveChecklistPage: (Int) -> Unit
+) {
     val required = CapabilityChecklistCatalog.required
-    val implemented = window.implementedCapabilities
-    val pageSize = window.checklistPageSize
+    val pageSize = checklistPageSize
     val pageCount = ((required.size + pageSize - 1) / pageSize).coerceAtLeast(1)
-    val safePage = window.checklistPage.coerceIn(0, pageCount - 1)
-    if (safePage != window.checklistPage) {
-        window.checklistPage = safePage
+    val safePage = checklistPage.coerceIn(0, pageCount - 1)
+    if (safePage != checklistPage) {
+        onSetChecklistPage(safePage)
     }
     val from = safePage * pageSize
     val to = minOf(required.size, from + pageSize)
@@ -63,6 +73,7 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
         style = {
             display = Display.Flex
             flexDirection = FlexDirection.Column
+            flexGrow = 1f
             padding = 20.px
             gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
@@ -79,22 +90,20 @@ fun UiScope.renderChecklistPanel(window: ShowcaseWindow, panelWidth: Int, panelH
             }
         }) {
             button("<", {
-                style = { width = 22.px }
-                onMouseClick = { window.moveChecklistPage(-1) }
+                onMouseClick = { onMoveChecklistPage(-1) }
             })
-            text("Page ${window.checklistPage + 1}/$pageCount", { style = { color = DEMO_MUTED } })
+            text("Page ${safePage + 1}/$pageCount", { style = { color = DEMO_MUTED } })
             button(">", {
-                style = { width = 22.px }
-                onMouseClick = { window.moveChecklistPage(1) }
+                onMouseClick = { onMoveChecklistPage(1) }
             })
         }
         pageItems.forEach { capability ->
-            val ok = implemented.contains(capability)
+            val ok = implementedCapabilities.contains(capability)
             text("${if (ok) "[OK]" else "[MISS]"} ${capability.label}", {
                 style = { color = if (ok) DEMO_OK else DEMO_ERR }
             })
         }
-        val missing = required.count { !implemented.contains(it) }
+        val missing = required.count { !implementedCapabilities.contains(it) }
         text("Missing: $missing / ${required.size}", { style = { color = if (missing == 0) DEMO_OK else DEMO_ERR } })
     }
 }

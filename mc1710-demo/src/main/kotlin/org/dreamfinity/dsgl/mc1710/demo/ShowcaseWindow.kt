@@ -14,7 +14,6 @@ import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.*
@@ -88,9 +87,6 @@ class ShowcaseWindow : DsglWindow() {
     private var logSequence: Int = 0
 
     internal var renderPasses: Int = 0
-    internal var lastManualReason: String = "none"
-    internal var manualInvalidateCount: Int = 0
-    internal var autoRebuildCounter by state(0)
     internal var overlayClicks by state(0)
 
     internal var styleUseMargin by state(true)
@@ -98,9 +94,6 @@ class ShowcaseWindow : DsglWindow() {
     internal var styleUseBorder by state(true)
     internal var styleLargeGap by state(false)
     internal var styleFixedSize by state(false)
-    internal var layoutDebugStrict by state(LayoutDebug.strictBounds)
-    internal var layoutDebugDraw by state(LayoutDebug.drawBounds)
-    internal var layoutDebugWrapWidth by state(148L)
     internal var displayBlockLargeGap by state(false)
     internal var displayInlineWidth by state(132L)
     internal var displayShowHidden by state(true)
@@ -109,8 +102,6 @@ class ShowcaseWindow : DsglWindow() {
     internal var displayGridColumns by state(3L)
     internal var displayGridLargeGap by state(false)
     internal var displayNoneClicks by state(0)
-    internal var textWrapNoWrap by state(false)
-    internal var textWrapWidth by state(176L)
     internal var msdfFontIndex by state(0)
     internal var msdfOpacityPercent by state(100L)
     internal var msdfFontSizePx by state(9L)
@@ -179,31 +170,6 @@ class ShowcaseWindow : DsglWindow() {
     internal var cascadeGeneralInsertExtra by state(false)
     internal var cascadeMixedSpacerEnabled by state(false)
 
-    internal var mouseEnterCount by state(0)
-    internal var mouseLeaveCount by state(0)
-    internal var mouseOverCount by state(0)
-    internal var mouseMoveCount by state(0)
-    internal var mouseDownCount by state(0)
-    internal var mouseUpCount by state(0)
-    internal var mouseClickCount by state(0)
-    internal var mouseDragCount by state(0)
-    internal var mouseWheelCount by state(0)
-    internal var keyDownCount by state(0)
-    internal var keyUpCount by state(0)
-    internal var keyPressedCount by state(0)
-    internal var keyReleasedCount by state(0)
-    internal var enterActionCount by state(0)
-    internal var cancellationEnabled by state(true)
-    internal var cancellationParentHits by state(0)
-    internal var cancellationChildHits by state(0)
-    private var mouseOverSamples: Int = 0
-    private var mouseMoveSamples: Int = 0
-    private var interactionZoneInside: Boolean = false
-
-    internal var focusStableValue by state("")
-    internal var focusUnstableValue by state("")
-    internal var focusStableEnterRebuilds by state(0)
-    internal var focusKeyVersion by state(0)
 
     internal var itemRotY by state(160.0)
     internal var itemRotX by state(-11.0)
@@ -297,7 +263,6 @@ class ShowcaseWindow : DsglWindow() {
     internal var refsCallbackAttachCount by state(0)
     internal var refsCallbackDetachCount by state(0)
     internal var refsCallbackLast by state("none")
-    internal var inspectorBehindClickCounter by state(0)
     internal var dndItems by state(
         defaultDndItems()
     )
@@ -356,8 +321,6 @@ class ShowcaseWindow : DsglWindow() {
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
         MsdfRuntimeDebugSettings.decorationGuidesEnabled = msdfShowBaselineGuides
-        LayoutDebug.strictBounds = layoutDebugStrict
-        LayoutDebug.drawBounds = layoutDebugDraw
         appendInfo("Showcase opened")
     }
 
@@ -372,8 +335,6 @@ class ShowcaseWindow : DsglWindow() {
         val sidebarWidth = 158
         val bodyHeight = (viewportHeight - 34).coerceAtLeast(170)
         val contentWidth = (viewportWidth - navWidth - sidebarWidth - 18).coerceAtLeast(160)
-        val inspectorHeight = (bodyHeight * 56) / 100
-        val checklistHeight = (bodyHeight - inspectorHeight - 4).coerceAtLeast(72)
 
         return ui {
             useDragDropMonitor(
@@ -467,15 +428,13 @@ class ShowcaseWindow : DsglWindow() {
                             text(selectedSection.subtitle, { style = { color = DEMO_MUTED } })
                             when (selectedSection) {
                                 DemoSection.OVERVIEW -> overviewSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    implementedCapabilities = implementedCapabilities,
+                                    onManualInvalidate = ::requestManualInvalidate,
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.INSPECTOR -> inspectorSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.LAYOUT_STYLE -> layoutStyleSection(
@@ -485,9 +444,8 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.LAYOUT_DEBUG -> layoutDebugSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onClearLogs = ::clearEventLogs,
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.POSITIONED_LAYOUT -> positionedLayoutSection(
@@ -507,9 +465,7 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.TEXT_WRAP -> textWrapSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.MSDF_FONTS -> msdfFontsSection(
@@ -583,15 +539,15 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.INTERACTIONS -> interactionsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo,
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.FOCUS_REBUILD -> focusRebuildSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    renderPasses = renderPasses,
+                                    onManualInvalidate = ::requestManualInvalidate,
+                                    onInfo = ::appendInfo,
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.MC_FEATURES -> mcFeaturesSection(
@@ -611,8 +567,19 @@ class ShowcaseWindow : DsglWindow() {
                                 width = 15.vw
                             }
                         }) {
-                            renderEventInspectorPanel(this@ShowcaseWindow, sidebarWidth, inspectorHeight)
-                            renderChecklistPanel(this@ShowcaseWindow, sidebarWidth, checklistHeight)
+                            renderEventInspectorPanel(
+                                eventLogs = eventLogs,
+                                maxEventLogs = maxEventLogs,
+                                visibleEventLines = visibleEventLines,
+                                onClearLogs = ::clearEventLogs
+                            )
+                            renderChecklistPanel(
+                                implementedCapabilities = implementedCapabilities,
+                                checklistPage = checklistPage,
+                                checklistPageSize = checklistPageSize,
+                                onSetChecklistPage = { checklistPage = it },
+                                onMoveChecklistPage = ::moveChecklistPage
+                            )
                         }
                     }
                 }
@@ -652,37 +619,7 @@ class ShowcaseWindow : DsglWindow() {
     }
 
     internal fun requestManualInvalidate(reason: String) {
-        manualInvalidateCount += 1
-        lastManualReason = reason
         invalidate()
-    }
-
-    internal fun bumpAutoRebuildCounter() {
-        autoRebuildCounter += 1
-    }
-
-    internal fun bumpFocusVersion() {
-        focusKeyVersion += 1
-    }
-
-    internal fun applyTextMutation(
-        current: String,
-        event: KeyboardKeyDownEvent,
-        allowedChars: String? = null,
-        maxLength: Int? = null
-    ): String {
-        if (event.keyCode == KeyCodes.BACKSPACE) {
-            if (current.isEmpty()) return current
-            return current.dropLast(1)
-        }
-
-        var ch = event.keyChar
-        if (ch < ' ' || ch.code == 127) return current
-        ch = KeyInput.applyShift(ch, KeyModifiers.shiftDown)
-        if (allowedChars != null && !allowedChars.contains(ch)) return current
-        val next = current + ch
-        if (maxLength != null && next.length > maxLength) return current
-        return next
     }
 
     internal fun logHook(hookName: String, event: Event, note: String? = null, color: Int = DsglColors.TEXT) {
@@ -1024,28 +961,6 @@ class ShowcaseWindow : DsglWindow() {
     internal fun contextMenuEntryById(entryId: String?): ContextMenuDemoFile? {
         if (entryId == null) return null
         return contextMenuFiles.firstOrNull { it.id == entryId }
-    }
-
-    internal fun sampledMouseOverEvent(): Boolean {
-        mouseOverSamples += 1
-        return mouseOverSamples % 5 == 0
-    }
-
-    internal fun sampledMouseMoveEvent(): Boolean {
-        mouseMoveSamples += 1
-        return mouseMoveSamples % 6 == 0
-    }
-
-    internal fun markInteractionZoneEntered(): Boolean {
-        if (interactionZoneInside) return false
-        interactionZoneInside = true
-        return true
-    }
-
-    internal fun markInteractionZoneLeft(): Boolean {
-        if (!interactionZoneInside) return false
-        interactionZoneInside = false
-        return true
     }
 
     internal fun adjustItemRotation(deltaY: Double = 0.0, deltaX: Double = 0.0) {
@@ -1734,7 +1649,6 @@ class ShowcaseWindow : DsglWindow() {
     private fun selectSection(section: DemoSection) {
         if (selectedSection == section) return
         selectedSection = section
-        interactionZoneInside = false
         if (section != DemoSection.DRAG_DROP) {
             dndHoverZone = "none"
         }
