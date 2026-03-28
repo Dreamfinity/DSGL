@@ -15,7 +15,7 @@ private val hooksThemeContext = createContext(defaultValue = "System", name = "H
 
 fun UiScope.hooksSection(window: ShowcaseWindow) {
     div({
-        key = "section.refs"
+        key = "section.hooks"
         style = {
             gap = 4.px
             display = Display.Flex

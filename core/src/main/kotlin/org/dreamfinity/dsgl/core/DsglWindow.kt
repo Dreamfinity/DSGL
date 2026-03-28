@@ -4,24 +4,21 @@ import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.ref.Ref
-import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
 import java.time.ZoneId
 
 /**
  * Version-agnostic window definition. Platform hosts own the UI lifecycle.
  *
- * Implement [render] to return a [DomTree]. Use [state] or [invalidate] to request
- * rebuilds from the host when UI state changes. This class is expected to be used
- * on the client/UI thread of the host platform.
+ * Implement [render] to return a [DomTree].
+ *
+ * Use [state] for window-owned state and [UiScope] hooks for component-local state.
+ * This class is expected to be used on the client/UI thread of the host platform.
  */
 abstract class DsglWindow {
     private var invalidator: (() -> Unit)? = null
     private var openedAtInstant: Instant = Instant.now()
     private var openedZoneId: ZoneId = ZoneId.systemDefault()
-    private val refSlots: MutableList<RefObject<*>> = ArrayList()
-    private var refSlotCursor: Int = 0
     private val componentHookRuntime: ComponentHookRuntime = ComponentHookRuntime()
 
     /**
@@ -43,9 +40,9 @@ abstract class DsglWindow {
     }
 
     /**
-     * Creates observable state that triggers [invalidate] on change.
-     * TODO(Veritaris): think how to avoid making it private; maybe rework state to be kept
-     * TODO: between re-renders and rebuild inside closure
+     * Creates window-owned observable state that triggers [invalidate] on change.
+     *
+     * This is intentionally separate from component-local hook state.
      */
     fun <T> state(initial: T): MutableState<T> {
         return mutableStateOf(initial) { invalidate() }
@@ -107,10 +104,9 @@ abstract class DsglWindow {
         get() = false
 
     /**
-     * Host lifecycle hook: resets hook-style slots before calling [render].
+     * Host lifecycle hook: starts a hook render session before calling [render].
      */
     fun beginRenderBuild(mode: HookRenderSessionMode = HookRenderSessionMode.Normal) {
-        refSlotCursor = 0
         componentHookRuntime.beginRender(this, mode)
     }
 
@@ -144,19 +140,6 @@ abstract class DsglWindow {
 
     internal fun onHookStateChanged() {
         invalidate()
-    }
-
-    internal fun <T : Any> useRefSlot(initial: T?): Ref<T> {
-        val slotIndex = refSlotCursor
-        refSlotCursor += 1
-        @Suppress("UNCHECKED_CAST")
-        val existing = refSlots.getOrNull(slotIndex) as RefObject<T>?
-        if (existing != null) {
-            return existing
-        }
-        val created = RefObject(initial)
-        refSlots.add(created)
-        return created
     }
 
     internal fun hookRuntime(): ComponentHookRuntime = componentHookRuntime
