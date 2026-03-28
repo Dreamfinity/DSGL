@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private val OVERFLOW_MODES = listOf(
@@ -28,26 +28,33 @@ private fun nextOverflow(current: Overflow): Overflow {
     return OVERFLOW_MODES[(idx + 1) % OVERFLOW_MODES.size]
 }
 
-fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    val viewportMinWidth = 88
-    val viewportMaxWidth = (contentWidth - 24).coerceAtLeast(viewportMinWidth)
-    val viewportMinHeight = 56
-    val viewportMaxHeight = (contentHeight - 84).coerceAtLeast(viewportMinHeight)
-    val contentMinWidth = 60
-    val contentMaxWidth = (contentWidth + 80).coerceAtLeast(contentMinWidth)
-    val contentMinHeight = 48
-    val contentMaxHeight = (contentHeight + 180).coerceAtLeast(contentMinHeight)
+fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
+    var overflowDemoOverflowX by useState(Overflow.Auto)
+    var overflowDemoOverflowY by useState(Overflow.Auto)
+    var overflowDemoViewportWidth by useState(118L)
+    var overflowDemoViewportHeight by useState(76L)
+    var overflowDemoContentWidth by useState(132L)
+    var overflowDemoContentHeight by useState(126L)
+    var overflowDemoVisibleClicks by useState(0)
+    var overflowDemoEdgeClicks by useState(0)
 
-    val viewportWidth = window.overflowDemoViewportWidth.toInt().coerceIn(viewportMinWidth, viewportMaxWidth)
-    val viewportHeight = window.overflowDemoViewportHeight.toInt().coerceIn(viewportMinHeight, viewportMaxHeight)
-    val demoContentWidth = window.overflowDemoContentWidth.toInt().coerceIn(contentMinWidth, contentMaxWidth)
-    val demoContentHeight = window.overflowDemoContentHeight.toInt().coerceIn(contentMinHeight, contentMaxHeight)
+    val viewportMinWidth = 88
+    val viewportMaxWidth = 260
+    val viewportMinHeight = 56
+    val viewportMaxHeight = 180
+    val contentMinWidth = 60
+    val contentMaxWidth = 420
+    val contentMinHeight = 48
+    val contentMaxHeight = 420
+
+    val viewportWidth = overflowDemoViewportWidth.toInt().coerceIn(viewportMinWidth, viewportMaxWidth)
+    val viewportHeight = overflowDemoViewportHeight.toInt().coerceIn(viewportMinHeight, viewportMaxHeight)
+    val demoContentWidth = overflowDemoContentWidth.toInt().coerceIn(contentMinWidth, contentMaxWidth)
+    val demoContentHeight = overflowDemoContentHeight.toInt().coerceIn(contentMinHeight, contentMaxHeight)
 
     div({
         key = "section.overflowScroll"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -68,29 +75,29 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
                 gap = 4.px
             }
         }) {
-            button("overflow-x: ${window.overflowDemoOverflowX.label()}", {
+            button("overflow-x: ${overflowDemoOverflowX.label()}", {
                 onMouseClick = {
-                    window.overflowDemoOverflowX = nextOverflow(window.overflowDemoOverflowX)
-                    window.appendInfo("Overflow demo x=${window.overflowDemoOverflowX.label()}")
+                    overflowDemoOverflowX = nextOverflow(overflowDemoOverflowX)
+                    onInfo("Overflow demo x=${overflowDemoOverflowX.label()}")
                 }
             })
-            button("overflow-y: ${window.overflowDemoOverflowY.label()}", {
+            button("overflow-y: ${overflowDemoOverflowY.label()}", {
                 onMouseClick = {
-                    window.overflowDemoOverflowY = nextOverflow(window.overflowDemoOverflowY)
-                    window.appendInfo("Overflow demo y=${window.overflowDemoOverflowY.label()}")
+                    overflowDemoOverflowY = nextOverflow(overflowDemoOverflowY)
+                    onInfo("Overflow demo y=${overflowDemoOverflowY.label()}")
                 }
             })
             button("Reset", {
                 onMouseClick = {
-                    window.overflowDemoOverflowX = Overflow.Auto
-                    window.overflowDemoOverflowY = Overflow.Auto
-                    window.overflowDemoViewportWidth = 118L
-                    window.overflowDemoViewportHeight = 76L
-                    window.overflowDemoContentWidth = 132L
-                    window.overflowDemoContentHeight = 126L
-                    window.overflowDemoVisibleClicks = 0
-                    window.overflowDemoEdgeClicks = 0
-                    window.appendInfo("Overflow demo reset")
+                    overflowDemoOverflowX = Overflow.Auto
+                    overflowDemoOverflowY = Overflow.Auto
+                    overflowDemoViewportWidth = 118L
+                    overflowDemoViewportHeight = 76L
+                    overflowDemoContentWidth = 132L
+                    overflowDemoContentHeight = 126L
+                    overflowDemoVisibleClicks = 0
+                    overflowDemoEdgeClicks = 0
+                    onInfo("Overflow demo reset")
                 }
             })
         }
@@ -104,11 +111,10 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
             ),
             {
                 key = "section.overflowScroll.viewportWidth"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: viewportWidth.toLong()
-                    window.overflowDemoViewportWidth =
-                        next.coerceIn(viewportMinWidth.toLong(), viewportMaxWidth.toLong())
+                    overflowDemoViewportWidth = next.coerceIn(viewportMinWidth.toLong(), viewportMaxWidth.toLong())
                 }
             }
         )
@@ -123,11 +129,10 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
             ),
             {
                 key = "section.overflowScroll.viewportHeight"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: viewportHeight.toLong()
-                    window.overflowDemoViewportHeight =
-                        next.coerceIn(viewportMinHeight.toLong(), viewportMaxHeight.toLong())
+                    overflowDemoViewportHeight = next.coerceIn(viewportMinHeight.toLong(), viewportMaxHeight.toLong())
                 }
             }
         )
@@ -142,10 +147,10 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
             ),
             {
                 key = "section.overflowScroll.contentWidth"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: demoContentWidth.toLong()
-                    window.overflowDemoContentWidth = next.coerceIn(contentMinWidth.toLong(), contentMaxWidth.toLong())
+                    overflowDemoContentWidth = next.coerceIn(contentMinWidth.toLong(), contentMaxWidth.toLong())
                 }
             }
         )
@@ -160,18 +165,17 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
             ),
             {
                 key = "section.overflowScroll.contentHeight"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: demoContentHeight.toLong()
-                    window.overflowDemoContentHeight =
-                        next.coerceIn(contentMinHeight.toLong(), contentMaxHeight.toLong())
+                    overflowDemoContentHeight = next.coerceIn(contentMinHeight.toLong(), contentMaxHeight.toLong())
                 }
             }
         )
         text("Content height = $demoContentHeight", { style = { color = DEMO_MUTED } })
 
         text(
-            "Clicks: visible=${window.overflowDemoVisibleClicks} edge=${window.overflowDemoEdgeClicks} (edge click only when visible)",
+            "Clicks: visible=$overflowDemoVisibleClicks edge=$overflowDemoEdgeClicks (edge click only when visible)",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -182,16 +186,16 @@ fun UiScope.overflowScrollSection(window: ShowcaseWindow, contentWidth: Int, con
             viewportHeight = viewportHeight,
             contentWidth = demoContentWidth,
             contentHeight = demoContentHeight,
-            overflowX = window.overflowDemoOverflowX,
-            overflowY = window.overflowDemoOverflowY,
+            overflowX = overflowDemoOverflowX,
+            overflowY = overflowDemoOverflowY,
             keyPrefix = "section.overflowScroll.lab",
             onVisibleClick = {
-                window.overflowDemoVisibleClicks += 1
-                window.appendInfo("Overflow demo visible click")
+                overflowDemoVisibleClicks += 1
+                onInfo("Overflow demo visible click")
             },
             onEdgeClick = {
-                window.overflowDemoEdgeClicks += 1
-                window.appendInfo("Overflow demo edge click")
+                overflowDemoEdgeClicks += 1
+                onInfo("Overflow demo edge click")
             }
         )
 
@@ -286,7 +290,7 @@ private fun UiScope.overflowDemoCard(
                 div({
                     key = "$keyPrefix.row"
                     style = {
-                        width = contentWidth.px
+                        width = 100.percent
                         display = Display.Flex
                         flexDirection = FlexDirection.Row
                         gap = 2.px
@@ -294,19 +298,14 @@ private fun UiScope.overflowDemoCard(
                 }) {
                     button("visible", {
                         key = "$keyPrefix.visible"
-                        style = { width = 50.px }
                         onMouseClick = { onVisibleClick() }
                     })
                     div({
                         key = "$keyPrefix.spacer"
-                        style = {
-                            width = (contentWidth - 112).coerceAtLeast(0).px
-                            height = 1.px
-                        }
+                        style = { flexGrow = 1f }
                     }) {}
                     button("edge", {
                         key = "$keyPrefix.edge"
-                        style = { width = 44.px }
                         onMouseClick = { onEdgeClick() }
                     })
                 }
@@ -317,4 +316,3 @@ private fun UiScope.overflowDemoCard(
         }
     }
 }
-

@@ -1,18 +1,65 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
+import java.time.Instant
+import java.time.ZoneId
 
-fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    val halfWidth = ((contentWidth - 6) / 2).coerceAtLeast(88)
-    val inputWidth = (halfWidth - 6).coerceAtLeast(76)
+private val inputsCheckboxOptions = listOf(
+    InputOption("alpha", "Alpha"),
+    InputOption("beta", "Beta"),
+    InputOption("gamma", "Gamma")
+)
+
+private val inputsRadioOptions = listOf(
+    InputOption("north", "North"),
+    InputOption("center", "Center"),
+    InputOption("south", "South")
+)
+
+fun UiScope.inputsGallerySection(
+    openedAt: Instant,
+    timeZoneId: ZoneId,
+    clippingScrollDemoText: String,
+    onClippingScrollDemoTextChange: (String) -> Unit
+) {
+    var sharedRangeValue by useState(35L)
+    var inputCheckboxValue by useState(setOf("alpha"))
+    var inputRadioValue by useState<String?>("center")
+    var selectBasicValue by useState<String?>(null)
+    var selectManyValue by useState<String?>("item-05")
+    var selectDisabledValue by useState<String?>("locked")
+    var selectDynamicValue by useState<String?>("alpha")
+    var selectDynamicAlt by useState(false)
+    var toggleBasicValue by useState(false)
+    var toggleSecondaryValue by useState(true)
+
+    fun parseCheckboxSelection(parsedValue: Any?): Set<String> {
+        val parsedSet = parsedValue as? Set<*>
+        if (parsedSet != null) {
+            return parsedSet.mapNotNull { it as? String }.toSet()
+        }
+        val parsedString = parsedValue as? String
+        if (!parsedString.isNullOrBlank()) {
+            return parsedString
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }
+        return emptySet()
+    }
+
+    fun checkboxValueString(): String = inputCheckboxValue.toList().sorted().joinToString(",")
+
     SelectRuntime.engine.setStyle(
         SelectStyle(
             panelBackgroundColor = 0xFF202A35.toInt(),
@@ -29,10 +76,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
     div({
         key = "section.inputs"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
-
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
@@ -53,7 +97,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             div({
                 key = "inputs.left"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -69,7 +113,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                     ),
                     {
                         key = "input.text"
-                        style = { width = inputWidth.px }
+                        style = { width = 100.percent }
                     }
                 )
 
@@ -82,7 +126,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                     ),
                     {
                         key = "input.password"
-                        style = { width = inputWidth.px }
+                        style = { width = 100.percent }
                     }
                 )
 
@@ -95,38 +139,48 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                         max = 20
                     ),
                     {
-                        key = "input.number"
-                        style = { width = inputWidth.px }
+                        key = "input.number.basic"
+                        style = { width = 100.percent }
                     }
                 )
 
                 text("Number 0..100 wired with slider below")
                 input(
                     InputType.Number(
-                        value = window.sharedRangeValue,
+                        value = sharedRangeValue,
                         placeholder = "0..100",
                         min = 0,
                         max = 100
                     ),
                     {
-                        key = "input.number"
-                        style = { width = inputWidth.px }
+                        key = "input.number.shared"
+                        style = { width = 100.percent }
+                        onInput = { event ->
+                            sharedRangeValue = (event.parsedValue as? Long) ?: sharedRangeValue
+                        }
+                        onValueChange = { event ->
+                            sharedRangeValue = event.value.toLongOrNull() ?: sharedRangeValue
+                        }
                     }
                 )
 
-                text("Range (step 5, value=${window.sharedRangeValue})")
+                text("Range (step 5, value=$sharedRangeValue)")
                 input(
                     InputType.Range(
-                        value = window.sharedRangeValue,
+                        value = sharedRangeValue,
                         min = 0,
                         max = 100,
                         step = 5
                     ),
                     {
                         key = "input.range"
-                        style = { width = inputWidth.px }
-                        onInput = { window.sharedRangeValue = it.parsedValue as? Long ?: Long.MIN_VALUE }
-                        onValueChange = { window.sharedRangeValue = it.value.toLongOrNull() ?: Long.MIN_VALUE }
+                        style = { width = 100.percent }
+                        onInput = { event ->
+                            sharedRangeValue = (event.parsedValue as? Long) ?: sharedRangeValue
+                        }
+                        onValueChange = { event ->
+                            sharedRangeValue = event.value.toLongOrNull() ?: sharedRangeValue
+                        }
                     }
                 )
             }
@@ -134,7 +188,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             div({
                 key = "inputs.right"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -143,42 +197,42 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 text("Checkbox (min 1, max 2)")
                 input(
                     InputType.Checkbox(
-                        variants = window.checkboxOptions,
-                        selected = window.inputEventCheckboxValue,
+                        variants = inputsCheckboxOptions,
+                        selected = inputCheckboxValue,
                         minSelected = 1,
                         maxSelected = 2
                     ),
                     {
                         key = "input.checkbox"
-                        style = { width = inputWidth.px }
+                        style = { width = 100.percent }
                         onInput = { event ->
-                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
+                            inputCheckboxValue = parseCheckboxSelection(event.parsedValue)
                         }
                         onValueChange = { event ->
-                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
+                            inputCheckboxValue = parseCheckboxSelection(event.parsedValue)
                         }
                     }
                 )
-                text("Selected: ${window.checkboxValueString()}", { style = { color = DEMO_MUTED } })
+                text("Selected: ${checkboxValueString()}", { style = { color = DEMO_MUTED } })
 
                 text("Radio")
                 input(
                     InputType.Radio(
-                        variants = window.radioOptions,
-                        selected = window.inputEventRadioValue
+                        variants = inputsRadioOptions,
+                        selected = inputRadioValue
                     ),
                     {
                         key = "input.radio"
-                        style = { width = inputWidth.px }
+                        style = { width = 100.percent }
                         onInput = { event ->
-                            window.inputEventRadioValue = event.parsedValue as? String
+                            inputRadioValue = event.parsedValue as? String
                         }
                         onValueChange = { event ->
-                            window.inputEventRadioValue = event.parsedValue as? String
+                            inputRadioValue = event.parsedValue as? String
                         }
                     }
                 )
-                text("Selected: ${window.inputEventRadioValue ?: "-"}", { style = { color = DEMO_MUTED } })
+                text("Selected: ${inputRadioValue ?: "-"}", { style = { color = DEMO_MUTED } })
 
                 text("Toggle (iOS-like)")
                 div({
@@ -191,44 +245,43 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 }) {
                     toggle({
                         key = "input.toggle.basic"
-                        checked = window.toggleBasicValue
+                        checked = toggleBasicValue
                         onValueChange = { event ->
-                            window.toggleBasicValue = event.parsedValue as? Boolean ?: false
+                            toggleBasicValue = event.parsedValue as? Boolean ?: false
                         }
                     })
-                    text(if (window.toggleBasicValue) "On" else "Off", { style = { color = DEMO_MUTED } })
+                    text(if (toggleBasicValue) "On" else "Off", { style = { color = DEMO_MUTED } })
                 }
 
                 text("Disabled toggle")
                 toggle({
                     key = "input.toggle.disabled"
-                    checked = window.toggleSecondaryValue
+                    checked = toggleSecondaryValue
                     disabled = true
                 })
 
                 text("Date (dd.MM.yyyy HH:mm)")
                 input(
                     InputType.Date(
-                        value = window.openedAtForDemo,
-                        zoneId = window.timeZoneForDemo
-                    ), {
+                        value = openedAt,
+                        zoneId = timeZoneId
+                    ),
+                    {
                         key = "input.date"
-                        style = { width = inputWidth.px }
+                        style = { width = 100.percent }
                     }
                 )
 
-                text("Opened: ${window.openedAtForDemo}", { style = { color = DEMO_MUTED } }
-                )
+                text("Opened: $openedAt", { style = { color = DEMO_MUTED } })
             }
         }
 
         text("Textarea (multiline input)")
         textarea({
-            placeholder = "Multiline example"
             key = "input.textarea"
             placeholder = "Type multiple lines"
             style = {
-                width = (contentWidth - 8).px
+                width = 100.percent
                 height = 40.px
             }
         })
@@ -250,7 +303,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             div({
                 key = "inputs.select.left"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -259,10 +312,10 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 text("Basic")
                 select({
                     key = "input.select.basic"
-                    value = window.selectBasicValue
-                    style = { width = inputWidth.px }
+                    value = selectBasicValue
+                    style = { width = 100.percent }
                     onValueChange = { event ->
-                        window.selectBasicValue = event.value
+                        selectBasicValue = event.value
                     }
                 }) {
                     placeholder("Choose a fruit")
@@ -279,10 +332,13 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 text("Many options (scroll)")
                 select({
                     key = "input.select.many"
-                    value = window.selectManyValue
-                    style = { width = inputWidth.px }
+                    value = selectManyValue
+                    style = {
+                        maxHeight = 15.em
+                        width = 100.percent
+                    }
                     onValueChange = { event ->
-                        window.selectManyValue = event.value
+                        selectManyValue = event.value
                     }
                 }) {
                     placeholder("Pick one")
@@ -298,7 +354,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             div({
                 key = "inputs.select.right"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 4.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -307,11 +363,11 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 text("Disabled select")
                 select({
                     key = "input.select.disabled"
-                    value = window.selectDisabledValue
+                    value = selectDisabledValue
                     disabled = true
-                    style = { width = inputWidth.px }
+                    style = { width = 100.percent }
                     onValueChange = { event ->
-                        window.selectDisabledValue = event.value
+                        selectDisabledValue = event.value
                     }
                 }) {
                     option("locked", "Locked value")
@@ -319,24 +375,24 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 }
 
                 button(
-                    if (window.selectDynamicAlt) "Use option set A" else "Use option set B",
+                    if (selectDynamicAlt) "Use option set A" else "Use option set B",
                     {
                         onMouseClick = {
-                            window.selectDynamicAlt = !window.selectDynamicAlt
+                            selectDynamicAlt = !selectDynamicAlt
                         }
                     }
                 )
                 text("Dynamic options")
                 select({
                     key = "input.select.dynamic"
-                    value = window.selectDynamicValue
-                    style = { width = inputWidth.px }
+                    value = selectDynamicValue
+                    style = { width = 100.percent }
                     onValueChange = { event ->
-                        window.selectDynamicValue = event.value
+                        selectDynamicValue = event.value
                     }
                 }) {
                     placeholder("Dynamic set")
-                    if (window.selectDynamicAlt) {
+                    if (selectDynamicAlt) {
                         option("alpha", "Alpha")
                         option("beta", "Beta")
                         option("gamma", "Gamma")
@@ -349,7 +405,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             }
         }
         text(
-            "Select state: basic=${window.selectBasicValue ?: "-"} many=${window.selectManyValue ?: "-"} dynamic=${window.selectDynamicValue ?: "-"}",
+            "Select state: basic=${selectBasicValue ?: "-"} many=${selectManyValue ?: "-"} dynamic=${selectDynamicValue ?: "-"}",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -372,6 +428,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
             key = "input.textarea.clip.demo.row"
             style = {
                 gap = 4.px
+                height = 8.em
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
             }
@@ -380,7 +437,7 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 key = "input.textarea.clip.left"
                 style = {
                     width = 42.px
-                    height = 84.px
+                    height = 100.percent
                     backgroundColor = 0xFF5A3434.toInt()
                     padding = 2.px
                 }
@@ -391,22 +448,21 @@ fun UiScope.inputsGallerySection(window: ShowcaseWindow, contentWidth: Int, cont
                 placeholder = "Scroll with wheel / PgUp / PgDn"
                 key = "input.textarea.clip"
                 style = {
-                    width = ((contentWidth - 100).coerceAtLeast(90)).px
-                    height = 84.px
+                    flexGrow = 1f
                 }
-                value = window.clippingScrollDemoText
+                value = clippingScrollDemoText
                 onInput = { event ->
-                    window.clippingScrollDemoText = event.value
+                    onClippingScrollDemoTextChange(event.value)
                 }
                 onValueChange = { event ->
-                    window.clippingScrollDemoText = event.value
+                    onClippingScrollDemoTextChange(event.value)
                 }
             })
             div({
                 key = "input.textarea.clip.right"
                 style = {
                     width = 42.px
-                    height = 84.px
+                    height = 100.percent
                     backgroundColor = 0xFF345A34.toInt()
                     padding = 2.px
                 }

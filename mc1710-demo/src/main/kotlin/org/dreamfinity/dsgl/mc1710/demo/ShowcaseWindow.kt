@@ -9,29 +9,22 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.keyframes
-import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.elements.InputOption
-import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.ref.ElementHandle
 import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
-import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
 import org.dreamfinity.dsgl.mc1710.demo.support.*
-import org.dreamfinity.dsgl.mc1710.text.MsdfRuntimeDebugSettings
 import java.awt.image.BufferedImage
 import java.io.File
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.imageio.ImageIO
 import kotlin.math.abs
@@ -87,40 +80,6 @@ class ShowcaseWindow : DsglWindow() {
     private var logSequence: Int = 0
 
     internal var renderPasses: Int = 0
-    internal var overlayClicks by state(0)
-
-    internal var styleUseMargin by state(true)
-    internal var styleUsePadding by state(true)
-    internal var styleUseBorder by state(true)
-    internal var styleLargeGap by state(false)
-    internal var styleFixedSize by state(false)
-    internal var displayBlockLargeGap by state(false)
-    internal var displayInlineWidth by state(132L)
-    internal var displayShowHidden by state(true)
-    internal var displayFlexJustifyIndex by state(0)
-    internal var displayFlexAlignIndex by state(0)
-    internal var displayGridColumns by state(3L)
-    internal var displayGridLargeGap by state(false)
-    internal var displayNoneClicks by state(0)
-    internal var msdfFontIndex by state(0)
-    internal var msdfOpacityPercent by state(100L)
-    internal var msdfFontSizePx by state(9L)
-    internal var msdfWrapWidth by state(220L)
-    internal var msdfColorIndex by state(0)
-    internal var msdfParseMinecraftFormatting by state(true)
-    internal var msdfShowBaselineGuides by state(MsdfRuntimeDebugSettings.decorationGuidesEnabled)
-    internal var animationsToggle by state(false)
-    internal var animationsHover by state(false)
-    internal var animationsPaused by state(false)
-    internal var animationsDurationMs by state(1400L)
-    internal var animationsUseInfinite by state(true)
-    internal var animationsEasingIndex by state(0)
-    internal var animationsDirectionIndex by state(0)
-    internal var animationsFillModeIndex by state(0)
-    internal var animationsBezierX1 by state(17L)
-    internal var animationsBezierY1 by state(67L)
-    internal var animationsBezierX2 by state(83L)
-    internal var animationsBezierY2 by state(67L)
     internal var modalBackgroundCounter by state(0)
     internal var modalPromptValue by state("hello")
     internal var demoModals by state(emptyList<ModalSpec>())
@@ -150,13 +109,6 @@ class ShowcaseWindow : DsglWindow() {
     private var contextMenuLastClickMs: Long = 0L
     internal var contextMenuFiles by state(defaultContextMenuFiles())
     private var contextMenuFileSequence by state(100L)
-    internal var stackOverlayEnabled by state(true)
-    internal var layoutOverlayX by state(8)
-    internal var layoutOverlayY by state(92)
-    internal var layoutOverlayDragging: Boolean = false
-    private var layoutOverlayDragAnchorX: Int = 0
-    private var layoutOverlayDragAnchorY: Int = 0
-    private var layoutOverlayDragMoved: Boolean = false
     internal var stylesheetReloadCount by state(0)
     internal var stylesheetDemoTextValue by state("")
     internal var stylesheetDemoClickCount by state(0)
@@ -180,51 +132,7 @@ class ShowcaseWindow : DsglWindow() {
     internal val httpImageSource: String = "https://demo.local/assets/showcase_http.png"
     internal val flatItemRef = McItemStackRef(ItemStack(Items.diamond_sword, 1, 0))
     internal val blockItemRef = McItemStackRef(ItemStack(Item.getItemFromBlock(Blocks.stone), 1, 0))
-    internal val checkboxOptions = listOf(
-        InputOption("alpha", "Alpha"),
-        InputOption("beta", "Beta"),
-        InputOption("gamma", "Gamma")
-    )
-    internal val radioOptions = listOf(
-        InputOption("north", "North"),
-        InputOption("center", "Center"),
-        InputOption("south", "South")
-    )
-    internal var inputEventTextValue by state("")
-    internal var inputEventTextareaValue by state("Multiline event sample")
-    internal var inputEventCheckboxValue by state(setOf("alpha"))
-    internal var inputEventRadioValue by state<String?>("center")
-    internal var inputEventRangeValue by state(35L)
-    internal var inputEventLogEntries by state(emptyList<String>())
-    private val inputEventLogLimit = 8
-    private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
-    internal var selectBasicValue by state<String?>(null)
-    internal var selectManyValue by state<String?>("item-05")
-    internal var selectDisabledValue by state<String?>("locked")
-    internal var selectDynamicValue by state<String?>("alpha")
-    internal var selectDynamicAlt by state(false)
-    internal var toggleBasicValue by state(false)
-    internal var toggleSecondaryValue by state(true)
-    internal var colorInlineValue by state(RgbaColor(0.28f, 0.52f, 0.88f, 1f))
-    internal var colorInlineMode by state(ColorFormatMode.HEX)
-    internal var colorPopupValue by state(RgbaColor(0.82f, 0.31f, 0.41f, 0.9f))
-    internal var colorPopupSecondValue by state(RgbaColor(0.29f, 0.73f, 0.46f, 1f))
-    internal var colorSharedA by state(RgbaColor(0.91f, 0.73f, 0.19f, 1f))
-    internal var colorSharedB by state(RgbaColor(0.45f, 0.41f, 0.96f, 0.8f))
-    internal var colorSharedTarget by state("A")
-    internal var colorPickerLastCommit by state("none")
-    internal var colorPickerAlphaEnabled by state(true)
-    private val sharedColorPickerManager: ColorPickerPopupManager = ColorPickerPopupManager()
-    internal var sharedRangeValue by state(35L)
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
-    internal var overflowDemoOverflowX by state(Overflow.Auto)
-    internal var overflowDemoOverflowY by state(Overflow.Auto)
-    internal var overflowDemoViewportWidth by state(118L)
-    internal var overflowDemoViewportHeight by state(76L)
-    internal var overflowDemoContentWidth by state(132L)
-    internal var overflowDemoContentHeight by state(126L)
-    internal var overflowDemoVisibleClicks by state(0)
-    internal var overflowDemoEdgeClicks by state(0)
     internal var positionedDemoModeIndex by state(1L)
     internal var positionedDemoUseLeft by state(true)
     internal var positionedDemoUseTop by state(true)
@@ -248,15 +156,6 @@ class ShowcaseWindow : DsglWindow() {
     internal var positionedDemoScrollClicks by state(0)
     internal var positionedDemoStickyTopClicks by state(0)
     internal var positionedDemoStickyCombinedClicks by state(0)
-    internal var textEditingSingleValue by state("Edit this line")
-    internal var textEditingPasswordValue by state("secret42")
-    internal var textEditingAreaValue by state(
-        "Line 1: drag-select me\nLine 2: use Shift+Arrows\nLine 3: Ctrl/Cmd+C/V/X"
-    )
-    internal var textEditingSawSelectionDrag by state(false)
-    internal var textEditingSawShiftSelection by state(false)
-    internal var textEditingSawClipboardShortcut by state(false)
-    internal var textEditingSawFocus by state(false)
     internal var refsInputValue by state("Ref demo input")
     internal var refsRebuildCount by state(0)
     internal var refsCallbackMounted by state(true)
@@ -320,7 +219,6 @@ class ShowcaseWindow : DsglWindow() {
         registerAnimationKeyframes()
         loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
-        MsdfRuntimeDebugSettings.decorationGuidesEnabled = msdfShowBaselineGuides
         appendInfo("Showcase opened")
     }
 
@@ -375,7 +273,12 @@ class ShowcaseWindow : DsglWindow() {
                     text("DSGL Showcase Window", { style = { color = DsglColors.WHITE } })
                     text(
                         "renderPasses=$renderPasses section=${selectedSection.title} viewport=${viewportWidth}x$viewportHeight",
-                        { style = { color = DEMO_MUTED } }
+                        {
+                            style = {
+                                color = DEMO_MUTED
+                                padding = 4.px
+                            }
+                        }
                     )
 
                     div({
@@ -438,9 +341,8 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.LAYOUT_STYLE -> layoutStyleSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo,
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.LAYOUT_DEBUG -> layoutDebugSection(
@@ -453,15 +355,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.DISPLAY -> displaySection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo,
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.TEXT_WRAP -> textWrapSection(
@@ -469,15 +368,11 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.MSDF_FONTS -> msdfFontsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.ANIMATIONS -> animationsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.MODALS -> modalsSection(
@@ -505,27 +400,20 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.INPUTS -> inputsGallerySection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    openedAt = openedAtForDemo,
+                                    timeZoneId = timeZoneForDemo,
+                                    clippingScrollDemoText = clippingScrollDemoText,
+                                    onClippingScrollDemoTextChange = { clippingScrollDemoText = it }
                                 )
 
                                 DemoSection.INPUT_EVENTS -> inputEventsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
-                                DemoSection.COLOR_PICKER -> colorPickerSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
-                                )
+                                DemoSection.COLOR_PICKER -> colorPickerSection()
 
                                 DemoSection.TEXT_EDITING -> textEditingSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.REFS -> hooksSection(
@@ -1045,79 +933,6 @@ class ShowcaseWindow : DsglWindow() {
     internal fun itemRotYLong(): Long = itemRotY.roundToLong().coerceIn(0L, 360L)
 
     internal fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
-
-    internal fun beginLayoutOverlayDrag(event: MouseDownEvent) {
-        if (event.mouseButton != MouseButton.LEFT) return
-        val overlayNode = findNodeInPath(event.target, "layout.stack.overlay") ?: return
-        layoutOverlayDragging = true
-        layoutOverlayDragAnchorX =
-            (event.mouseX - overlayNode.bounds.x).coerceIn(0, overlayNode.bounds.width.coerceAtLeast(1))
-        layoutOverlayDragAnchorY =
-            (event.mouseY - overlayNode.bounds.y).coerceIn(0, overlayNode.bounds.height.coerceAtLeast(1))
-        layoutOverlayDragMoved = false
-    }
-
-    internal fun updateLayoutOverlayDrag(event: MouseDragEvent, maxX: Int, maxY: Int) {
-        if (!layoutOverlayDragging) return
-        val currentX = event.lastMouseX + event.dx
-        val currentY = event.lastMouseY + event.dy
-        val stackNode = findNodeInPath(event.target, "section.layoutStyle.stack") ?: return
-        val nextX = (currentX - stackNode.bounds.x - layoutOverlayDragAnchorX).coerceIn(0, maxX)
-        val nextY = (currentY - stackNode.bounds.y - layoutOverlayDragAnchorY).coerceIn(0, maxY)
-        if (nextX != layoutOverlayX) {
-            if (abs(nextX - layoutOverlayX) > 0) {
-                layoutOverlayDragMoved = true
-            }
-            layoutOverlayX = nextX
-        }
-        if (nextY != layoutOverlayY) {
-            if (abs(nextY - layoutOverlayY) > 0) {
-                layoutOverlayDragMoved = true
-            }
-            layoutOverlayY = nextY
-        }
-    }
-
-    internal fun finishLayoutOverlayDrag(event: MouseUpEvent) {
-        if (!layoutOverlayDragging) return
-        if (event.mouseButton == MouseButton.LEFT && !layoutOverlayDragMoved) {
-            overlayClicks += 1
-            logHook("overlay.onMouseClick", event, "overlayClicks=$overlayClicks")
-        }
-        layoutOverlayDragging = false
-        layoutOverlayDragMoved = false
-    }
-
-    internal fun recordInputEvent(control: String, phase: String, value: String, event: Event) {
-        val time = LocalTime.now().format(inputEventTimeFormatter)
-        val line = "$time $control.$phase value=$value"
-        inputEventLogEntries = (listOf(line) + inputEventLogEntries).take(inputEventLogLimit)
-        logHook("inputEvents.$control.$phase", event, "value=$value")
-    }
-
-    internal fun clearInputEventLog() {
-        inputEventLogEntries = emptyList()
-    }
-
-    internal fun parseCheckboxSelection(parsedValue: Any?): Set<String> {
-        val parsedSet = parsedValue as? Set<*>
-        if (parsedSet != null) {
-            return parsedSet.mapNotNull { it as? String }.toSet()
-        }
-        val parsedString = parsedValue as? String
-        if (!parsedString.isNullOrBlank()) {
-            return parsedString
-                .split(",")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .toSet()
-        }
-        return emptySet()
-    }
-
-    internal fun checkboxValueString(): String {
-        return inputEventCheckboxValue.toList().sorted().joinToString(",")
-    }
 
     internal fun resetDndItems(source: String) {
         dndItems = defaultDndItems()
@@ -1667,15 +1482,6 @@ class ShowcaseWindow : DsglWindow() {
         return normalized
     }
 
-    private fun findNodeInPath(start: DOMNode?, key: Any): DOMNode? {
-        var current = start
-        while (current != null) {
-            if (current.key == key) return current
-            current = current.parent
-        }
-        return null
-    }
-
     private fun prepareDemoMedia() {
         try {
             val dataDir = Minecraft.getMinecraft().mcDataDir
@@ -2101,49 +1907,6 @@ class ShowcaseWindow : DsglWindow() {
     private fun demoStylesheetFile(): File {
         val dataDir = Minecraft.getMinecraft().mcDataDir
         return File(dataDir, "dsgl/styles/showcase_styles.dss")
-    }
-
-    internal fun openSharedColorPicker(mouseX: Int, mouseY: Int, target: String) {
-        colorSharedTarget = target
-        val current = if (target == "A") colorSharedA else colorSharedB
-        sharedColorPickerManager.open(
-            anchorRect = Rect(mouseX, mouseY, 1, 1),
-            title = "Shared Picker [$target]",
-            state = ColorPickerState(
-                color = current,
-                previous = current,
-                mode = colorInlineMode,
-                alphaEnabled = colorPickerAlphaEnabled,
-                closeOnSelect = false
-            ),
-            closeOnOutsideClick = false,
-            onPreview = { color ->
-                if (colorSharedTarget == "A") {
-                    colorSharedA = color
-                } else {
-                    colorSharedB = color
-                }
-            },
-            onChange = { color ->
-                if (colorSharedTarget == "A") {
-                    colorSharedA = color
-                } else {
-                    colorSharedB = color
-                }
-            },
-            onCommit = { color ->
-                if (colorSharedTarget == "A") {
-                    colorSharedA = color
-                } else {
-                    colorSharedB = color
-                }
-                colorPickerLastCommit = ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
-            }
-        )
-    }
-
-    internal fun colorLabel(color: RgbaColor): String {
-        return ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
     }
 
     private fun cascadeStylesheetFile(): File {

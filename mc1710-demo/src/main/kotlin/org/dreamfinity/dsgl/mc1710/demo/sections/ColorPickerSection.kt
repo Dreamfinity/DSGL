@@ -1,18 +1,71 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
-import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
+import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useEffect
+import org.dreamfinity.dsgl.core.useMemo
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
-fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.colorPickerSection() {
+    var colorInlineValue by useState(RgbaColor(0.28f, 0.52f, 0.88f, 1f))
+    var colorInlineMode by useState(ColorFormatMode.HEX)
+    var colorPopupValue by useState(RgbaColor(0.82f, 0.31f, 0.41f, 0.9f))
+    var colorPopupSecondValue by useState(RgbaColor(0.29f, 0.73f, 0.46f, 1f))
+    var colorSharedA by useState(RgbaColor(0.91f, 0.73f, 0.19f, 1f))
+    var colorSharedB by useState(RgbaColor(0.45f, 0.41f, 0.96f, 0.8f))
+    var colorPickerLastCommit by useState("none")
+    var colorPickerAlphaEnabled by useState(true)
+    val sharedColorPickerManager by useMemo { ColorPickerPopupManager() }
+
+    useEffect(sharedColorPickerManager) {
+        onDispose { sharedColorPickerManager.close() }
+    }
+
+    fun openSharedColorPicker(target: String, mouseX: Int, mouseY: Int) {
+        val current = if (target == "A") colorSharedA else colorSharedB
+        sharedColorPickerManager.open(
+            anchorRect = Rect(mouseX, mouseY, 1, 1),
+            title = "Shared Picker [$target]",
+            state = ColorPickerState(
+                color = current,
+                previous = current,
+                mode = colorInlineMode,
+                alphaEnabled = colorPickerAlphaEnabled,
+                closeOnSelect = false
+            ),
+            closeOnOutsideClick = false,
+            onPreview = { color ->
+                if (target == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+            },
+            onChange = { color ->
+                if (target == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+            },
+            onCommit = { color ->
+                if (target == "A") {
+                    colorSharedA = color
+                } else {
+                    colorSharedB = color
+                }
+                colorPickerLastCommit = colorLabel(color)
+            }
+        )
+    }
+
     div({
         key = "section.color-picker"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -35,26 +88,26 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(if (window.colorPickerAlphaEnabled) "Alpha ON" else "Alpha OFF", {
+            button(if (colorPickerAlphaEnabled) "Alpha ON" else "Alpha OFF", {
                 onMouseClick = {
-                    window.colorPickerAlphaEnabled = !window.colorPickerAlphaEnabled
+                    colorPickerAlphaEnabled = !colorPickerAlphaEnabled
                 }
             })
             button("HEX", {
-                style = { backgroundColor = if (window.colorInlineMode == ColorFormatMode.HEX) 0xFF3E5877.toInt() else null }
-                onMouseClick = { window.colorInlineMode = ColorFormatMode.HEX }
+                style = { backgroundColor = if (colorInlineMode == ColorFormatMode.HEX) 0xFF3E5877.toInt() else null }
+                onMouseClick = { colorInlineMode = ColorFormatMode.HEX }
             })
             button("RGB", {
-                style = { backgroundColor = if (window.colorInlineMode == ColorFormatMode.RGB) 0xFF3E5877.toInt() else null }
-                onMouseClick = { window.colorInlineMode = ColorFormatMode.RGB }
+                style = { backgroundColor = if (colorInlineMode == ColorFormatMode.RGB) 0xFF3E5877.toInt() else null }
+                onMouseClick = { colorInlineMode = ColorFormatMode.RGB }
             })
             button("HSL", {
-                style = { backgroundColor = if (window.colorInlineMode == ColorFormatMode.HSL) 0xFF3E5877.toInt() else null }
-                onMouseClick = { window.colorInlineMode = ColorFormatMode.HSL }
+                style = { backgroundColor = if (colorInlineMode == ColorFormatMode.HSL) 0xFF3E5877.toInt() else null }
+                onMouseClick = { colorInlineMode = ColorFormatMode.HSL }
             })
             button("HSB", {
-                style = { backgroundColor = if (window.colorInlineMode == ColorFormatMode.HSB) 0xFF3E5877.toInt() else null }
-                onMouseClick = { window.colorInlineMode = ColorFormatMode.HSB }
+                style = { backgroundColor = if (colorInlineMode == ColorFormatMode.HSB) 0xFF3E5877.toInt() else null }
+                onMouseClick = { colorInlineMode = ColorFormatMode.HSB }
             })
         }
 
@@ -62,28 +115,30 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
             style = {
                 gap = 6.px
                 display = Display.Flex
-                flexDirection = FlexDirection.Row
+                flexDirection = FlexDirection.Column
             }
         }) {
-            colorPicker({
-                key = "demo.color.inline"
-                value = window.colorInlineValue
-                mode = window.colorInlineMode
-                alphaEnabled = window.colorPickerAlphaEnabled
-                closeOnSelect = false
-                style = {}
-                onPreviewColor = { window.colorInlineValue = it }
-                onChangeColor = { window.colorInlineValue = it }
-                onCommitColor = {
-                    window.colorInlineValue = it
-                    window.colorPickerLastCommit = window.colorLabel(it)
-                }
-            })
+            div({ style = { display = Display.Inline } }) {
+                colorPicker({
+                    key = "demo.color.inline"
+                    value = colorInlineValue
+                    mode = colorInlineMode
+                    alphaEnabled = colorPickerAlphaEnabled
+                    closeOnSelect = false
+                    style = {}
+                    onPreviewColor = { colorInlineValue = it }
+                    onChangeColor = { colorInlineValue = it }
+                    onCommitColor = {
+                        colorInlineValue = it
+                        colorPickerLastCommit = colorLabel(it)
+                    }
+                })
+            }
 
             div({
                 style = {
                     gap = 4.px
-                    width = (contentWidth - 374).coerceAtLeast(110).px
+                    flexGrow = 1f
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -91,53 +146,57 @@ fun UiScope.colorPickerSection(window: ShowcaseWindow, contentWidth: Int, conten
                 text("Popup wrapper fields")
                 colorPickerPopup({
                     key = "demo.color.popup.primary"
-                    value = window.colorPopupValue
+                    value = colorPopupValue
                     mode = ColorFormatMode.HEX
-                    alphaEnabled = window.colorPickerAlphaEnabled
+                    alphaEnabled = colorPickerAlphaEnabled
                     popupCloseOnOutsideClick = false
                     closeOnSelect = false
-                    onPreviewColor = { window.colorPopupValue = it }
-                    onChangeColor = { window.colorPopupValue = it }
+                    onPreviewColor = { colorPopupValue = it }
+                    onChangeColor = { colorPopupValue = it }
                     onCommitColor = {
-                        window.colorPopupValue = it
-                        window.colorPickerLastCommit = window.colorLabel(it)
+                        colorPopupValue = it
+                        colorPickerLastCommit = colorLabel(it)
                     }
-                    style = { width = 170.px }
+                    style = { width = 100.percent }
                 })
                 colorPickerPopup({
                     key = "demo.color.popup.secondary"
-                    value = window.colorPopupSecondValue
+                    value = colorPopupSecondValue
                     mode = ColorFormatMode.RGB
-                    alphaEnabled = window.colorPickerAlphaEnabled
+                    alphaEnabled = colorPickerAlphaEnabled
                     popupCloseOnOutsideClick = false
                     closeOnSelect = false
-                    onPreviewColor = { window.colorPopupSecondValue = it }
-                    onChangeColor = { window.colorPopupSecondValue = it }
+                    onPreviewColor = { colorPopupSecondValue = it }
+                    onChangeColor = { colorPopupSecondValue = it }
                     onCommitColor = {
-                        window.colorPopupSecondValue = it
-                        window.colorPickerLastCommit = window.colorLabel(it)
+                        colorPopupSecondValue = it
+                        colorPickerLastCommit = colorLabel(it)
                     }
-                    style = { width = 170.px }
+                    style = { width = 100.percent }
                 })
 
                 text("Shared manager retarget demo")
-                button("Edit A (${window.colorLabel(window.colorSharedA)})", {
-                    style = { width = 220.px }
+                button("Edit A (${colorLabel(colorSharedA)})", {
+                    style = { width = 100.percent }
                     onMouseDown = { event ->
-                        window.openSharedColorPicker(event.mouseX, event.mouseY, "A")
+                        openSharedColorPicker("A", event.mouseX, event.mouseY)
                     }
                 })
-                button("Edit B (${window.colorLabel(window.colorSharedB)})", {
-                    style = { width = 220.px }
+                button("Edit B (${colorLabel(colorSharedB)})", {
+                    style = { width = 100.percent }
                     onMouseDown = { event ->
-                        window.openSharedColorPicker(event.mouseX, event.mouseY, "B")
+                        openSharedColorPicker("B", event.mouseX, event.mouseY)
                     }
                 })
 
-                text("Last commit: ${window.colorPickerLastCommit}", { style = { color = DEMO_MUTED } })
-                text("A=${window.colorLabel(window.colorSharedA)}", { style = { color = DEMO_MUTED } })
-                text("B=${window.colorLabel(window.colorSharedB)}", { style = { color = DEMO_MUTED } })
+                text("Last commit: $colorPickerLastCommit", { style = { color = DEMO_MUTED } })
+                text("A=${colorLabel(colorSharedA)}", { style = { color = DEMO_MUTED } })
+                text("B=${colorLabel(colorSharedB)}", { style = { color = DEMO_MUTED } })
             }
         }
     }
+}
+
+private fun colorLabel(color: RgbaColor): String {
+    return ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
 }
