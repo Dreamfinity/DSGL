@@ -2,18 +2,22 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.ref.ElementHandle
+import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
 
 private val hooksThemeContext = createContext(defaultValue = "System", name = "HooksTheme")
 
-fun UiScope.hooksSection(window: ShowcaseWindow) {
+fun UiScope.hooksSection(
+    onInfo: (String) -> Unit,
+    onLogHook: (String, Event, String?) -> Unit
+) {
     div({
         key = "section.hooks"
         style = {
@@ -27,7 +31,7 @@ fun UiScope.hooksSection(window: ShowcaseWindow) {
             style = { color = DEMO_MUTED }
         })
 
-        overviewUseRef(window)
+        overviewUseRef(onInfo = onInfo, onLogHook = onLogHook)
         overviewUseState()
         overviewUseMemo()
         overviewUseCallback()
@@ -37,21 +41,44 @@ fun UiScope.hooksSection(window: ShowcaseWindow) {
     }
 }
 
-private fun UiScope.overviewUseRef(window: ShowcaseWindow) {
+private fun UiScope.overviewUseRef(
+    onInfo: (String) -> Unit,
+    onLogHook: (String, Event, String?) -> Unit
+) {
+    var refsInputValue by useState("Ref demo input")
+    var refsRebuildCount by useState(0)
+    var refsCallbackMounted by useState(true)
+    var refsCallbackAttachCount by useState(0)
+    var refsCallbackDetachCount by useState(0)
+    var refsCallbackLast by useState("none")
+
     val inputRef by useRef<ElementHandle>()
     val panelRef by useRef<ElementHandle>()
+    val refsCallbackRef by useMemo {
+        RefTarget<ElementHandle> { handle ->
+            if (handle == null) {
+                refsCallbackDetachCount += 1
+                refsCallbackLast = "detach"
+                onInfo("Hooks/useRef callback detached")
+                return@RefTarget
+            }
+            refsCallbackAttachCount += 1
+            refsCallbackLast = "attach key=${handle.key}"
+            onInfo("Hooks/useRef callback attached key=${handle.key}")
+        }
+    }
 
     hookCard("useRef", "Object ref + callback ref + imperative handle checks") {
         input(
             InputType.Text(
-                value = window.refsInputValue,
+                value = refsInputValue,
                 placeholder = "Focusable input with stable key"
             ),
             {
                 key = "refs.input.primary"
                 onInput = { event ->
-                    window.refsInputValue = event.value
-                    window.logHook("refs.input.onInput", event, "value=${event.value}")
+                    refsInputValue = event.value
+                    onLogHook("refs.input.onInput", event, "value=${event.value}")
                 }
             },
             ref = inputRef
@@ -67,26 +94,25 @@ private fun UiScope.overviewUseRef(window: ShowcaseWindow) {
             button("Focus via ref", {
                 onMouseClick = {
                     inputRef.current?.requestFocus()
-                    window.appendInfo("Hooks/useRef: requestFocus() via object ref")
+                    onInfo("Hooks/useRef: requestFocus() via object ref")
                 }
             })
             button("Rebuild", {
                 onMouseClick = {
-                    window.refsRebuildCount += 1
-                    window.requestManualInvalidate("hooks useRef rebuild")
+                    refsRebuildCount += 1
                 }
             })
-            button(if (window.refsCallbackMounted) "Unmount callback target" else "Mount callback target", {
+            button(if (refsCallbackMounted) "Unmount callback target" else "Mount callback target", {
                 onMouseClick = {
-                    window.refsCallbackMounted = !window.refsCallbackMounted
-                    window.appendInfo("Hooks/useRef callback target mounted=${window.refsCallbackMounted}")
+                    refsCallbackMounted = !refsCallbackMounted
+                    onInfo("Hooks/useRef callback target mounted=$refsCallbackMounted")
                 }
             })
         }
 
         text({
             val hasRef = inputRef.current != null
-            value = "objectRef.current set=$hasRef rebuilds=${window.refsRebuildCount}"
+            value = "objectRef.current set=$hasRef rebuilds=$refsRebuildCount"
             style = { color = DEMO_MUTED }
         })
 
@@ -94,8 +120,6 @@ private fun UiScope.overviewUseRef(window: ShowcaseWindow) {
             {
                 key = "refs.bounds.panel"
                 style = {
-//                        width = (contentWidth - 26).px
-//                        height = 34.px
                     padding = 4.px
                     backgroundColor = 0xFF313844.toInt()
                 }
@@ -115,25 +139,23 @@ private fun UiScope.overviewUseRef(window: ShowcaseWindow) {
             style = { color = DEMO_MUTED }
         })
 
-        if (window.refsCallbackMounted) {
+        if (refsCallbackMounted) {
             div(
                 {
                     key = "refs.callback.target"
                     style = {
-//                            width = (contentWidth - 26).px
-//                            height = 24.px
                         backgroundColor = 0xFF2F3C2F.toInt()
                         padding = 4.px
                     }
                 },
-                ref = window.refsCallbackRef
+                ref = refsCallbackRef
             ) {
                 text("Callback ref target", { style = { color = 0xFFC5E8C5.toInt() } })
             }
         }
 
         text(
-            "callback attaches=${window.refsCallbackAttachCount} detaches=${window.refsCallbackDetachCount} last=${window.refsCallbackLast}",
+            "callback attaches=$refsCallbackAttachCount detaches=$refsCallbackDetachCount last=$refsCallbackLast",
             { style = { color = DEMO_MUTED } }
         )
     }

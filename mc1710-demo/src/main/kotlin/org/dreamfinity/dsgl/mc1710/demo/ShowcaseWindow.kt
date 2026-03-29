@@ -14,8 +14,6 @@ import org.dreamfinity.dsgl.core.components.modal.modalHost
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.event.Event
-import org.dreamfinity.dsgl.core.ref.ElementHandle
-import org.dreamfinity.dsgl.core.ref.RefTarget
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
@@ -117,35 +115,6 @@ class ShowcaseWindow : DsglWindow() {
     internal val flatItemRef = McItemStackRef(ItemStack(Items.diamond_sword, 1, 0))
     internal val blockItemRef = McItemStackRef(ItemStack(Item.getItemFromBlock(Blocks.stone), 1, 0))
     internal var clippingScrollDemoText by state(buildClippingScrollDemoText())
-    internal var positionedDemoModeIndex by state(1L)
-    internal var positionedDemoUseLeft by state(true)
-    internal var positionedDemoUseTop by state(true)
-    internal var positionedDemoLeft by state(24L)
-    internal var positionedDemoTop by state(14L)
-    internal var positionedDemoRight by state(26L)
-    internal var positionedDemoBottom by state(18L)
-    internal var positionedDemoZBlue by state(1L)
-    internal var positionedDemoZGreen by state(4L)
-    internal var positionedDemoZRed by state(2L)
-    internal var positionedDemoTieSwap by state(false)
-    internal var positionedDemoLastHover by state("none")
-    internal var positionedDemoLastClick by state("none")
-    internal var positionedDemoBlueClicks by state(0)
-    internal var positionedDemoGreenClicks by state(0)
-    internal var positionedDemoRedClicks by state(0)
-    internal var positionedDemoTieFirstClicks by state(0)
-    internal var positionedDemoTieSecondClicks by state(0)
-    internal var positionedDemoMixedStaticClicks by state(0)
-    internal var positionedDemoMixedPositionedClicks by state(0)
-    internal var positionedDemoScrollClicks by state(0)
-    internal var positionedDemoStickyTopClicks by state(0)
-    internal var positionedDemoStickyCombinedClicks by state(0)
-    internal var refsInputValue by state("Ref demo input")
-    internal var refsRebuildCount by state(0)
-    internal var refsCallbackMounted by state(true)
-    internal var refsCallbackAttachCount by state(0)
-    internal var refsCallbackDetachCount by state(0)
-    internal var refsCallbackLast by state("none")
     internal var dndItems by state(
         defaultDndItems()
     )
@@ -183,18 +152,6 @@ class ShowcaseWindow : DsglWindow() {
 
     override val rebuildOnResize: Boolean
         get() = true
-
-    internal val refsCallbackRef: RefTarget<ElementHandle> = RefTarget { handle ->
-        if (handle == null) {
-            refsCallbackDetachCount += 1
-            refsCallbackLast = "detach"
-            appendInfo("Refs callback detached")
-            return@RefTarget
-        }
-        refsCallbackAttachCount += 1
-        refsCallbackLast = "attach key=${handle.key}"
-        appendInfo("Refs callback attached key=${handle.key}")
-    }
 
     override fun onOpen() {
         prepareDemoMedia()
@@ -334,7 +291,7 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.POSITIONED_LAYOUT -> positionedLayoutSection(
-                                    this@ShowcaseWindow
+                                    viewportWidthPx = viewportWidthPx
                                 )
 
                                 DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(
@@ -403,7 +360,8 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.REFS -> hooksSection(
-                                    this@ShowcaseWindow
+                                    onInfo = ::appendInfo,
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.DRAG_DROP -> dragNDropSection(
