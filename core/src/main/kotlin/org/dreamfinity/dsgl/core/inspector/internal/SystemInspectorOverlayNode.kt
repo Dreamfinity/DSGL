@@ -238,7 +238,39 @@ internal class SystemInspectorOverlayNode(
         if (controller.blocksUnderlyingInput() || overlayPanel.isDragging() || minimizedChipDragSession != null) {
             return viewportRect
         }
-        return panelRect ?: viewportRect
+        val base = panelRect ?: viewportRect
+        val dropdownBounds = resolveRenderedDropdownInputBounds()
+        if (dropdownBounds == null) {
+            return base
+        }
+        return unionRect(base, dropdownBounds)
+    }
+
+    private fun resolveRenderedDropdownInputBounds(): Rect? {
+        val dropdowns = controller.debugStyleEditorDropdowns()
+        if (dropdowns.isNotEmpty()) {
+            return dropdowns
+                .map { it.popupRect }
+                .reduce(::unionRect)
+        }
+        return if (activeDomDropdown != null) {
+            Rect(0, 0, lastViewportWidth.coerceAtLeast(1), lastViewportHeight.coerceAtLeast(1))
+        } else {
+            null
+        }
+    }
+
+    private fun unionRect(a: Rect, b: Rect): Rect {
+        val left = minOf(a.x, b.x)
+        val top = minOf(a.y, b.y)
+        val right = maxOf(a.x + a.width, b.x + b.width)
+        val bottom = maxOf(a.y + a.height, b.y + b.height)
+        return Rect(
+            x = left,
+            y = top,
+            width = (right - left).coerceAtLeast(0),
+            height = (bottom - top).coerceAtLeast(0)
+        )
     }
 
     private fun clearTree() {

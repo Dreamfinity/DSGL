@@ -7,7 +7,6 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -80,14 +79,6 @@ class InspectorController(
         val nodeClass: Class<out DOMNode>,
         val layoutVersion: Long,
         val inspection: StyleInspection
-    )
-
-    private data class NodeBoxes(
-        val margin: Rect,
-        val border: Rect,
-        val padding: Rect,
-        val content: Rect,
-        val parentContent: Rect?
     )
 
     private enum class DragMode {
@@ -787,11 +778,24 @@ class InspectorController(
         var styleLines: List<String> = emptyList()
 
         var y = bodyRect.y
-        val maxChars = estimateMaxChars(bodyRect.width - 12, textFontSizePx)
-        val buttonLabelMaxChars = estimateMaxChars((clamped.width - 32).coerceAtLeast(40), secondaryFontSizePx)
+        val maxChars = InspectorPresentationSupport.estimateMaxChars(bodyRect.width - 12, textFontSizePx)
+        val buttonLabelMaxChars = InspectorPresentationSupport.estimateMaxChars(
+            (clamped.width - 32).coerceAtLeast(40),
+            secondaryFontSizePx
+        )
         y = appendDomLine(infoLines, y, "F12 toggle, F9 mode, Esc cancel pick", maxChars)
-        y = appendDomLine(infoLines, y, "Hovered: ${hoveredNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
-        y = appendDomLine(infoLines, y, "Selected: ${selectedNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
+        y = appendDomLine(
+            infoLines,
+            y,
+            "Hovered: ${hoveredNode?.let { InspectorPresentationSupport.nodeLabel(it) } ?: "none"}",
+            maxChars
+        )
+        y = appendDomLine(
+            infoLines,
+            y,
+            "Selected: ${selectedNode?.let { InspectorPresentationSupport.nodeLabel(it) } ?: "none"}",
+            maxChars
+        )
         y = appendDomLine(infoLines, y, "Inspector handled last: $lastHandledPointerEvent", maxChars)
         y = appendDomLine(infoLines, y, "Pointer over Inspector: $pointerOverInspectorUi", maxChars)
         y = appendDomLine(infoLines, y, "Hover pick enabled: $hoverPickEnabled", maxChars)
@@ -818,21 +822,39 @@ class InspectorController(
             )
         }
 
-        val pathLines = wrapPathLines(pathToNode(root, selected), maxChars)
+        val pathLines = InspectorPresentationSupport.wrapPathLines(
+            InspectorPresentationSupport.pathToNode(root, selected),
+            maxChars
+        )
         pathLines.forEach { line ->
             infoLines += line
             y += lineHeightPx
         }
 
-        val boxes = computeBoxes(selected)
-        y = appendDomLine(infoLines, y, "Border box: ${rectLabel(boxes.border)}", maxChars)
-        y = appendDomLine(infoLines, y, "Content box: ${rectLabel(boxes.content)}", maxChars)
-        y = appendDomLine(infoLines, y, "Margin box: ${rectLabel(boxes.margin)}", maxChars)
+        val boxes = InspectorGeometrySupport.computeBoxes(selected)
+        y = appendDomLine(
+            infoLines,
+            y,
+            "Border box: ${InspectorPresentationSupport.rectLabel(boxes.border)}",
+            maxChars
+        )
+        y = appendDomLine(
+            infoLines,
+            y,
+            "Content box: ${InspectorPresentationSupport.rectLabel(boxes.content)}",
+            maxChars
+        )
+        y = appendDomLine(
+            infoLines,
+            y,
+            "Margin box: ${InspectorPresentationSupport.rectLabel(boxes.margin)}",
+            maxChars
+        )
         boxes.parentContent?.let {
-            y = appendDomLine(infoLines, y, "Parent content: ${rectLabel(it)}", maxChars)
+            y = appendDomLine(infoLines, y, "Parent content: ${InspectorPresentationSupport.rectLabel(it)}", maxChars)
         }
         val localPos = selected.parent?.let { parent ->
-            val parentContent = contentRect(parent)
+            val parentContent = InspectorGeometrySupport.contentRect(parent)
             "${selected.bounds.x - parentContent.x},${selected.bounds.y - parentContent.y}"
         } ?: "${selected.bounds.x},${selected.bounds.y}"
         y = appendDomLine(infoLines, y, "Local pos: $localPos", maxChars)
@@ -842,7 +864,7 @@ class InspectorController(
 
         val parent = selected.parent
         if (parent != null) {
-            parentLabel = ellipsize("[Parent] ${nodeLabel(parent)}", buttonLabelMaxChars)
+            parentLabel = ellipsize("[Parent] ${InspectorPresentationSupport.nodeLabel(parent)}", buttonLabelMaxChars)
             val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, rowHeightPx)
             panelActions += PanelAction(row, ActionKind.Parent)
             y += rowHeightPx + 2
@@ -853,7 +875,7 @@ class InspectorController(
             y = appendDomLine(infoLines, y, "Children:", maxChars)
             for (index in children.indices) {
                 val child = children[index]
-                childLabels += ellipsize("[$index] ${nodeLabel(child)}", buttonLabelMaxChars)
+                childLabels += ellipsize("[$index] ${InspectorPresentationSupport.nodeLabel(child)}", buttonLabelMaxChars)
                 val row = Rect(clamped.x + 10, y - panelScrollY, clamped.width - 20, rowHeightPx)
                 panelActions += PanelAction(row, ActionKind.Child, index)
                 y += rowHeightPx + 2
@@ -872,7 +894,7 @@ class InspectorController(
 
         y = appendDomLine(infoLines, y, "Computed styles:", maxChars)
         styleLines = styleRows(inspection).flatMap { line ->
-            wrapText(line, maxChars)
+            InspectorPresentationSupport.wrapText(line, maxChars)
         }
         y += styleLines.size * lineHeightPx
 
@@ -919,8 +941,8 @@ class InspectorController(
 
         val badge = if (mode == InspectorMode.Pick) "[Pick]" else "[Locked]"
         val selectedShort = selectedNode?.key?.toString()?.let { " $it" } ?: ""
-        val maxChars = estimateMaxChars(chipRect.width - 12, secondaryFontSizePx)
-        val lines = wrapMinimizedLabel("Inspector $badge$selectedShort", maxChars, maxLines = 2)
+        val maxChars = InspectorPresentationSupport.estimateMaxChars(chipRect.width - 12, secondaryFontSizePx)
+        val lines = InspectorPresentationSupport.wrapMinimizedLabel("Inspector $badge$selectedShort", maxChars, maxLines = 2)
         return InspectorDomSnapshot(
             panelState = InspectorPanelState.Minimized,
             panelRect = chipRect,
@@ -942,7 +964,7 @@ class InspectorController(
         text: String,
         maxChars: Int
     ): Int {
-        val wrapped = wrapText(text, maxChars)
+        val wrapped = InspectorPresentationSupport.wrapText(text, maxChars)
         lines += wrapped
         return y + wrapped.size * lineHeightPx
     }
@@ -953,7 +975,7 @@ class InspectorController(
         viewportHeight: Int
     ) {
         nativeSelectedHighlight = selected?.let { node ->
-            val boxes = computeHighlightBoxes(node)
+            val boxes = InspectorGeometrySupport.computeHighlightBoxes(node)
             InspectorHighlightSnapshot(
                 marginRect = boxes.margin,
                 borderRect = boxes.border,
@@ -965,7 +987,7 @@ class InspectorController(
         if (hoverPickEnabled) {
             val hovered = hoveredNode
             nativeHoveredHighlight = hovered?.let { node ->
-                val boxes = computeHighlightBoxes(node)
+                val boxes = InspectorGeometrySupport.computeHighlightBoxes(node)
                 InspectorHighlightSnapshot(
                     marginRect = boxes.margin,
                     borderRect = boxes.border,
@@ -1010,8 +1032,11 @@ class InspectorController(
             val buttonsRight = rowLeft + rowWidth - 8
             val maxLabelWidth = (rowWidth - btnWidth - gap - 36).coerceAtLeast(80)
             val labelWidth = (rowWidth * 0.40f).toInt().coerceIn(80, maxLabelWidth)
-            val labelMaxChars = estimateMaxChars((labelWidth - 12).coerceAtLeast(24), labelLineHeight)
-            val labelLineCount = wrapText(labelText, labelMaxChars).size.coerceAtLeast(1)
+            val labelMaxChars = InspectorPresentationSupport.estimateMaxChars(
+                (labelWidth - 12).coerceAtLeast(24),
+                labelLineHeight
+            )
+            val labelLineCount = InspectorPresentationSupport.wrapText(labelText, labelMaxChars).size.coerceAtLeast(1)
             val rowHeight = maxOf(rowHeightPx, labelLineCount * labelLineHeight + 10, controlHeight + 8)
             val rowRect = Rect(rowLeft, y, rowWidth, rowHeight)
             val controlX = rowRect.x + labelWidth
@@ -1786,7 +1811,8 @@ class InspectorController(
         }
         tooltipNodeRef = node
         tooltipNodeBounds = bounds
-        tooltipLabelCache = "${nodeLabel(node)} ${bounds.width}x${bounds.height} @ ${bounds.x},${bounds.y}"
+        tooltipLabelCache =
+            "${InspectorPresentationSupport.nodeLabel(node)} ${bounds.width}x${bounds.height} @ ${bounds.x},${bounds.y}"
         return tooltipLabelCache
     }
 
@@ -2380,82 +2406,6 @@ class InspectorController(
         return if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString()
     }
 
-    private fun wrapPathLines(path: List<DOMNode>, maxChars: Int): List<String> {
-        if (path.isEmpty()) return listOf("Path: <none>")
-        val tokens = path.map(::pathToken)
-        val lines = ArrayList<String>()
-        var current = "Path: "
-        tokens.forEachIndexed { index, token ->
-            val segment = if (index == 0) token else " > $token"
-            if (current.length + segment.length <= maxChars) {
-                current += segment
-                return@forEachIndexed
-            }
-            if (current.isNotBlank()) {
-                lines += current
-            }
-            val continued = if (index == 0) token else "> $token"
-            val wrapped = wrapText(continued, maxChars - 2)
-            if (wrapped.isEmpty()) {
-                current = "  "
-            } else {
-                lines += wrapped.dropLast(1).map { "  $it" }
-                current = "  ${wrapped.last()}"
-            }
-        }
-        lines += current
-        return lines
-    }
-
-    private fun estimateMaxChars(pixelWidth: Int, fontSize: Int): Int {
-        val approxCharWidth = (fontSize * 0.56f).toInt().coerceAtLeast(6)
-        return (pixelWidth / approxCharWidth).coerceAtLeast(8)
-    }
-
-    private fun wrapText(text: String, maxChars: Int): List<String> {
-        val limit = maxChars.coerceAtLeast(1)
-        if (text.length <= limit) return listOf(text)
-        val result = ArrayList<String>()
-        var cursor = 0
-        while (cursor < text.length) {
-            val end = (cursor + limit).coerceAtMost(text.length)
-            var cut = end
-            if (end < text.length) {
-                val ws = text.lastIndexOf(' ', end - 1)
-                if (ws >= cursor + 1) {
-                    cut = ws
-                }
-            }
-            if (cut <= cursor) {
-                cut = end
-            }
-            result += text.substring(cursor, cut).trimEnd()
-            cursor = cut
-            while (cursor < text.length && text[cursor] == ' ') cursor++
-        }
-        return if (result.isEmpty()) listOf("") else result
-    }
-
-    private fun pathToNode(root: DOMNode, target: DOMNode): List<DOMNode> {
-        val path = ArrayList<DOMNode>(8)
-        if (collectPath(root, target, path)) {
-            return path
-        }
-        return listOf(target)
-    }
-
-    private fun collectPath(node: DOMNode, target: DOMNode, path: MutableList<DOMNode>): Boolean {
-        path += node
-        if (node === target) return true
-        for (child in node.children) {
-            if (collectPath(child, target, path)) {
-                return true
-            }
-        }
-        path.removeAt(path.lastIndex)
-        return false
-    }
-
     private fun startMinimizedMoveDrag(mouseX: Int, mouseY: Int) {
         dragMode = DragMode.MinimizedMove
         dragStartMouseX = mouseX
@@ -2735,43 +2685,6 @@ class InspectorController(
 
     private fun minimizedHeight(): Int = chipHeight
 
-    private fun wrapMinimizedLabel(
-        text: String,
-        maxCharsPerLine: Int,
-        maxLines: Int
-    ): List<String> {
-        val source = text.trim()
-        if (source.isEmpty()) return listOf("")
-        if (maxCharsPerLine <= 0 || maxLines <= 0) return listOf("")
-
-        val lines = ArrayList<String>(maxLines)
-        var cursor = 0
-        while (cursor < source.length && lines.size < maxLines) {
-            var end = (cursor + maxCharsPerLine).coerceAtMost(source.length)
-            if (end < source.length) {
-                val breakAt = source.lastIndexOf(' ', end - 1)
-                if (breakAt >= cursor + 1) {
-                    end = breakAt
-                }
-            }
-            var line = source.substring(cursor, end).trim()
-            if (line.isEmpty()) {
-                end = (cursor + maxCharsPerLine).coerceAtMost(source.length)
-                line = source.substring(cursor, end)
-            }
-            lines += line
-            cursor = end
-            while (cursor < source.length && source[cursor] == ' ') cursor++
-        }
-        if (cursor < source.length && lines.isNotEmpty()) {
-            val last = lines.last()
-            val keep = (maxCharsPerLine - 3).coerceAtLeast(0)
-            val trimmed = last.take(keep).trimEnd()
-            lines[lines.lastIndex] = if (trimmed.isEmpty()) "..." else "$trimmed..."
-        }
-        return lines
-    }
-
     private fun containsReference(root: DOMNode, target: DOMNode): Boolean {
         if (root === target) return true
         root.children.forEach { child ->
@@ -2793,113 +2706,9 @@ class InspectorController(
         return null
     }
 
-    private fun nodeLabel(node: DOMNode): String {
-        val key = node.key?.toString() ?: "<no-key>"
-        return "${node.styleType}[$key]"
-    }
-
-    private fun pathToken(node: DOMNode): String {
-        val key = node.key?.toString() ?: "?"
-        return "${node.styleType}:$key"
-    }
-
-    private fun rectLabel(rect: Rect): String {
-        return "${rect.x},${rect.y},${rect.width}x${rect.height}"
-    }
-
     private fun colorLabel(color: Int): String {
         val hex = color.toUInt().toString(16).uppercase().padStart(8, '0')
         return "#$hex"
-    }
-
-    private fun computeBoxes(node: DOMNode): NodeBoxes {
-        val borderRect = node.bounds
-        val marginRect = Rect(
-            x = borderRect.x - node.margin.left,
-            y = borderRect.y - node.margin.top,
-            width = (borderRect.width + node.margin.horizontal).coerceAtLeast(0),
-            height = (borderRect.height + node.margin.vertical).coerceAtLeast(0)
-        )
-        val paddingRect = Rect(
-            x = borderRect.x + node.border.left,
-            y = borderRect.y + node.border.top,
-            width = (borderRect.width - node.border.horizontal).coerceAtLeast(0),
-            height = (borderRect.height - node.border.vertical).coerceAtLeast(0)
-        )
-        val contentRect = Rect(
-            x = paddingRect.x + node.padding.left,
-            y = paddingRect.y + node.padding.top,
-            width = (paddingRect.width - node.padding.horizontal).coerceAtLeast(0),
-            height = (paddingRect.height - node.padding.vertical).coerceAtLeast(0)
-        )
-        val parentContent = node.parent?.let { parent -> contentRect(parent) }
-        return NodeBoxes(
-            margin = marginRect,
-            border = borderRect,
-            padding = paddingRect,
-            content = contentRect,
-            parentContent = parentContent
-        )
-    }
-
-    private fun computeHighlightBoxes(node: DOMNode): NodeBoxes {
-        val geometry = UsedInteractionGeometryResolver.resolveNodeGeometry(node)
-        val usedClip = geometry.usedClipRect
-        val borderRect = clipRectToUsedClip(geometry.usedBorderRect, usedClip)
-        val marginRect = clipRectToUsedClip(
-            Rect(
-                x = geometry.usedBorderRect.x - node.margin.left,
-                y = geometry.usedBorderRect.y - node.margin.top,
-                width = (geometry.usedBorderRect.width + node.margin.horizontal).coerceAtLeast(0),
-                height = (geometry.usedBorderRect.height + node.margin.vertical).coerceAtLeast(0)
-            ),
-            usedClip
-        )
-        val paddingRect = clipRectToUsedClip(
-            Rect(
-                x = geometry.usedBorderRect.x + node.border.left,
-                y = geometry.usedBorderRect.y + node.border.top,
-                width = (geometry.usedBorderRect.width - node.border.horizontal).coerceAtLeast(0),
-                height = (geometry.usedBorderRect.height - node.border.vertical).coerceAtLeast(0)
-            ),
-            usedClip
-        )
-        val contentRect = clipRectToUsedClip(
-            Rect(
-                x = paddingRect.x + node.padding.left,
-                y = paddingRect.y + node.padding.top,
-                width = (paddingRect.width - node.padding.horizontal).coerceAtLeast(0),
-                height = (paddingRect.height - node.padding.vertical).coerceAtLeast(0)
-            ),
-            usedClip
-        )
-        val parentContent = node.parent?.let { parent ->
-            clipRectToUsedClip(contentRect(parent), usedClip)
-        }
-        return NodeBoxes(
-            margin = marginRect,
-            border = borderRect,
-            padding = paddingRect,
-            content = contentRect,
-            parentContent = parentContent
-        )
-    }
-
-    private fun clipRectToUsedClip(rect: Rect, clip: Rect?): Rect {
-        if (rect.width <= 0 || rect.height <= 0) {
-            return Rect(0, 0, 0, 0)
-        }
-        if (clip == null) return rect
-        return rect.intersection(clip) ?: Rect(0, 0, 0, 0)
-    }
-
-    private fun contentRect(node: DOMNode): Rect {
-        return Rect(
-            x = node.bounds.x + node.border.left + node.padding.left,
-            y = node.bounds.y + node.border.top + node.padding.top,
-            width = (node.bounds.width - node.border.horizontal - node.padding.horizontal).coerceAtLeast(0),
-            height = (node.bounds.height - node.border.vertical - node.padding.vertical).coerceAtLeast(0)
-        )
     }
 
 }
