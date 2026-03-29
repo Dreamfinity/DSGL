@@ -68,6 +68,8 @@ internal class SystemInspectorOverlayNode(
         val startPointerX: Int,
         val startPointerY: Int,
         val startRect: Rect,
+        var currentPointerX: Int,
+        var currentPointerY: Int,
         var moved: Boolean = false
     )
 
@@ -181,6 +183,7 @@ internal class SystemInspectorOverlayNode(
     fun updateCursor(mouseX: Int, mouseY: Int, pointerCaptured: Boolean) {
         cursorX = mouseX
         cursorY = mouseY
+        updateMinimizedChipDragPointer(mouseX, mouseY)
     }
 
     fun syncInputBounds(viewportWidth: Int, viewportHeight: Int) {
@@ -201,6 +204,7 @@ internal class SystemInspectorOverlayNode(
         controller.onCursorMoved(cursorX, cursorY)
         lastViewportWidth = viewportRect.width.coerceAtLeast(1)
         lastViewportHeight = viewportRect.height.coerceAtLeast(1)
+        applyMinimizedChipDragFrame()
         val retainInspectorFocus = shouldRetainInspectorSubtreeFocus()
 
         val snapshot = controller.buildDomSnapshot(viewportRect.width, viewportRect.height)
@@ -221,10 +225,9 @@ internal class SystemInspectorOverlayNode(
 
         capturePersistedScrollStateFromCurrentTree()
         clearTree()
-        panelNode.render(ctx, x, y, width, height)
         when (snapshot.panelState) {
             InspectorPanelState.Minimized -> renderMinimized(ctx, snapshot)
-            InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot, viewportRect.width, viewportRect.height)
+            InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot, viewportRect)
         }
         if (retainInspectorFocus) {
             FocusManager.retainFocus(this, updateRootReference = false)
@@ -254,6 +257,7 @@ internal class SystemInspectorOverlayNode(
 
     private fun renderMinimized(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot) {
         closeActiveDomDropdown()
+        panelNode.render(ctx, 0, 0, 0, 0)
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
@@ -274,7 +278,7 @@ internal class SystemInspectorOverlayNode(
         chip.onMouseDrag = { event ->
             val currentX = event.lastMouseX + event.dx
             val currentY = event.lastMouseY + event.dy
-            continueMinimizedChipDrag(currentX, currentY)
+            updateMinimizedChipDragPointer(currentX, currentY)
             event.cancelled = true
         }
         chip.onMouseUp = { event ->
@@ -311,7 +315,9 @@ internal class SystemInspectorOverlayNode(
         }
     }
 
-    private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportWidth: Int, viewportHeight: Int) {
+    private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect) {
+        val viewportWidth = viewportRect.width
+        val viewportHeight = viewportRect.height
         val panelRect = snapshot.panelRect
         val bodyRect = snapshot.bodyRect
             ?: overlayPanel.bodyRect()
@@ -319,6 +325,8 @@ internal class SystemInspectorOverlayNode(
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
+        renderPanelOccluder(scope, ctx, panelRect)
+        panelNode.render(ctx, viewportRect.x, viewportRect.y, viewportRect.width, viewportRect.height)
 
         val pickRect = controller.debugPickToggleBounds()
             ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
@@ -474,6 +482,18 @@ internal class SystemInspectorOverlayNode(
         )
         renderTooltip(scope, ctx, "dsgl-system-inspector-variable-tooltip", controller.debugVariableTooltip(), 0xEE141A22.toInt(), 0xCC60758F.toInt())
         renderTooltip(scope, ctx, "dsgl-system-inspector-cursor-tooltip", controller.debugCursorTooltip(), 0xDD11151A.toInt(), 0xCC3F4A57.toInt())
+    }
+
+    private fun renderPanelOccluder(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
+        val occluder = scope.div({
+            key = "dsgl-system-inspector-panel-occluder"
+            style = {
+                display = Display.Block
+            }
+        })
+        occluder.backgroundColor = 0xFF141820.toInt()
+        occluder.border = Border.NONE
+        renderNode(ctx, occluder, panelRect)
     }
 
     private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext) {
@@ -954,15 +974,23 @@ internal class SystemInspectorOverlayNode(
             startPointerX = mouseX,
             startPointerY = mouseY,
             startRect = panelRect,
+            currentPointerX = mouseX,
+            currentPointerY = mouseY,
             moved = false
         )
         controller.onOverlayPanelPointerCaptureChanged(true)
     }
 
-    private fun continueMinimizedChipDrag(mouseX: Int, mouseY: Int) {
+    private fun updateMinimizedChipDragPointer(mouseX: Int, mouseY: Int) {
         val session = minimizedChipDragSession ?: return
-        val dx = mouseX - session.startPointerX
-        val dy = mouseY - session.startPointerY
+        session.currentPointerX = mouseX
+        session.currentPointerY = mouseY
+    }
+
+    private fun applyMinimizedChipDragFrame() {
+        val session = minimizedChipDragSession ?: return
+        val dx = session.currentPointerX - session.startPointerX
+        val dy = session.currentPointerY - session.startPointerY
         if (!session.moved && (kotlin.math.abs(dx) >= 2 || kotlin.math.abs(dy) >= 2)) {
             session.moved = true
         }
@@ -972,6 +1000,11 @@ internal class SystemInspectorOverlayNode(
             viewportWidth = lastViewportWidth,
             viewportHeight = lastViewportHeight
         )
+    }
+
+    private fun continueMinimizedChipDrag(mouseX: Int, mouseY: Int) {
+        updateMinimizedChipDragPointer(mouseX, mouseY)
+        applyMinimizedChipDragFrame()
     }
 
     private fun endMinimizedChipDrag(mouseX: Int, mouseY: Int) {

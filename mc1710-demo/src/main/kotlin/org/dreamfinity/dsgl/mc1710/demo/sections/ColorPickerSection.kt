@@ -77,7 +77,7 @@ fun UiScope.colorPickerSection() {
             { style = { color = DEMO_MUTED } }
         )
         text(
-            "Inline picker follows app styling. Inspector picker (F8) is rendered in isolated system overlay styles.",
+            "Inline picker follows app styling. Inspector picker (F12) is rendered in isolated system overlay styles.",
             { style = { color = DEMO_MUTED } }
         )
 

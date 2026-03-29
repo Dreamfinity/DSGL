@@ -810,7 +810,7 @@ class InspectorController(
         var y = bodyRect.y
         val maxChars = estimateMaxChars(bodyRect.width - 12, textFontSizePx)
         val buttonLabelMaxChars = estimateMaxChars((clamped.width - 32).coerceAtLeast(40), secondaryFontSizePx)
-        y = appendDomLine(infoLines, y, "F8 toggle, F9 mode, Esc cancel pick", maxChars)
+        y = appendDomLine(infoLines, y, "F12 toggle, F9 mode, Esc cancel pick", maxChars)
         y = appendDomLine(infoLines, y, "Hovered: ${hoveredNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
         y = appendDomLine(infoLines, y, "Selected: ${selectedNode?.let { nodeLabel(it) } ?: "none"}", maxChars)
         y = appendDomLine(infoLines, y, "Inspector handled last: $lastHandledPointerEvent", maxChars)
@@ -1962,7 +1962,7 @@ class InspectorController(
         out += RenderCommand.PushClip(bodyRect.x, bodyRect.y, bodyRect.width, bodyRect.height)
 
         var y = bodyRect.y
-        y = appendPanelLine(out, bodyRect, y, "F8 toggle, F9 mode, Esc cancel pick", maxChars, panelScrollY)
+        y = appendPanelLine(out, bodyRect, y, "F12 toggle, F9 mode, Esc cancel pick", maxChars, panelScrollY)
         y = appendPanelLine(
             out,
             bodyRect,

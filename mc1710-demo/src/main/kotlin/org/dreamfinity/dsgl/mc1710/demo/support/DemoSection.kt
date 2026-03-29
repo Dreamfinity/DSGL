@@ -5,7 +5,7 @@ enum class DemoSection(
     val subtitle: String
 ) {
     OVERVIEW("Overview", "How to use the showcase"),
-    INSPECTOR("Inspector", "Global in-game element/style/layout inspector (F8/F9)"),
+    INSPECTOR("Inspector", "Global in-game element/style/layout inspector (F12/F9)"),
     LAYOUT_STYLE("Layout & Style", "Containers, gaps, fixed sizes, style DSL"),
     LAYOUT_DEBUG("Layout Debug", "Strict bounds validator and diagnostics"),
     POSITIONED_LAYOUT("Positioned Layout", "static/relative/absolute/fixed/sticky + z-index overlap, scroll and hit-testing"),
