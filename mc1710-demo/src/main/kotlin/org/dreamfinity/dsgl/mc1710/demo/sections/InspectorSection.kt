@@ -4,7 +4,7 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.useState
+import org.dreamfinity.dsgl.core.hooks.useState
 
 private const val INSPECTOR_MUTED_TEXT: Int = 0xFFB0B7C1.toInt()
 

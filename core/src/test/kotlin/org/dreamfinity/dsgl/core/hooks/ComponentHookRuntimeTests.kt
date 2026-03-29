@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.hooks
 
-import org.dreamfinity.dsgl.core.ref.Ref
-import org.dreamfinity.dsgl.core.ref.RefObject
+import org.dreamfinity.dsgl.core.hooks.ref.Ref
+import org.dreamfinity.dsgl.core.hooks.ref.RefObject
 import kotlin.ExperimentalStdlibApi
 import kotlin.reflect.typeOf
 import kotlin.test.Test

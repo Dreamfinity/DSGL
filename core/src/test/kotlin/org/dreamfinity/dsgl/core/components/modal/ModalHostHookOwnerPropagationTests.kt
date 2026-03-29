@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.components.modal
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
-import org.dreamfinity.dsgl.core.useState
+import org.dreamfinity.dsgl.core.hooks.useState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

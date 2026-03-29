@@ -1,4 +1,7 @@
-package org.dreamfinity.dsgl.core
+package org.dreamfinity.dsgl.core.hooks
+
+import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.UiScope
 
 interface EffectScope {
     fun onDispose(cleanup: () -> Unit)

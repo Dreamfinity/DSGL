@@ -11,7 +11,7 @@ import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
-import org.dreamfinity.dsgl.core.ref.RefManager
+import org.dreamfinity.dsgl.core.hooks.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.PositionMode

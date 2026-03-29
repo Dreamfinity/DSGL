@@ -10,8 +10,9 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.event.*
-import org.dreamfinity.dsgl.core.ref.ElementHandle
-import org.dreamfinity.dsgl.core.ref.RefTarget
+import org.dreamfinity.dsgl.core.hooks.DsglContext
+import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
+import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 import org.dreamfinity.dsgl.core.select.SelectModelBuilder
 import org.dreamfinity.dsgl.core.select.selectModel
 import org.dreamfinity.dsgl.core.style.*

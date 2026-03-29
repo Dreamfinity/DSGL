@@ -5,9 +5,9 @@ import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.useEffect
-import org.dreamfinity.dsgl.core.useMemo
-import org.dreamfinity.dsgl.core.useState
+import org.dreamfinity.dsgl.core.hooks.useEffect
+import org.dreamfinity.dsgl.core.hooks.useMemo
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.colorPickerSection() {

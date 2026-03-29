@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.hooks.HookUsageException
+import org.dreamfinity.dsgl.core.hooks.useReducer
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import kotlin.test.Test

@@ -4,6 +4,8 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.hooks.HookUsageException
+import org.dreamfinity.dsgl.core.hooks.useEffect
+import org.dreamfinity.dsgl.core.hooks.useEffectEveryCommit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

@@ -1,4 +1,6 @@
-package org.dreamfinity.dsgl.core
+package org.dreamfinity.dsgl.core.hooks
+
+import org.dreamfinity.dsgl.core.UiScope
 
 class DsglContext<T>(
     val name: String,

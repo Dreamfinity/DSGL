@@ -4,7 +4,7 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.components.modal.*
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.useState
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 fun UiScope.modalsSection(

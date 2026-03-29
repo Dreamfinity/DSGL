@@ -1,8 +1,7 @@
-package org.dreamfinity.dsgl.core
+package org.dreamfinity.dsgl.core.hooks
 
-import org.dreamfinity.dsgl.core.hooks.HookEntryKind
-import org.dreamfinity.dsgl.core.hooks.HookSignature
-import org.dreamfinity.dsgl.core.hooks.HookSignatures
+import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.UiScope
 import kotlin.ExperimentalStdlibApi
 import kotlin.reflect.KProperty
 import kotlin.reflect.typeOf

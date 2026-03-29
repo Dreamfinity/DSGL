@@ -2,9 +2,9 @@ package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.UiScope
-import org.dreamfinity.dsgl.core.useEffect
-import org.dreamfinity.dsgl.core.ref.ElementHandle
-import org.dreamfinity.dsgl.core.ref.useRef
+import org.dreamfinity.dsgl.core.hooks.useEffect
+import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
+import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import java.util.WeakHashMap
 
 private data class SortableState(
