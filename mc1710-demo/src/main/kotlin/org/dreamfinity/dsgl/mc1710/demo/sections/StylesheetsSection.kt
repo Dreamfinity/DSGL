@@ -2,17 +2,38 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useMemo
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
-fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.stylesheetsSection(
+    onLogHook: (String, Event, String?) -> Unit,
+    onInfo: (String) -> Unit,
+    loadStylesheetText: () -> String,
+    saveStylesheetText: (String) -> Unit,
+    onReloadStylesheets: () -> Unit
+) {
+    val initialLoad by useMemo {
+        runCatching { loadStylesheetText() }
+    }
+    var stylesheetReloadCount by useState(0)
+    var stylesheetDemoTextValue by useState("")
+    var stylesheetDemoClickCount by useState(0)
+    var stylesheetEditorValue by useState(initialLoad.getOrDefault(""))
+    var stylesheetEditorStatus by useState(
+        if (initialLoad.isSuccess) {
+            "loaded"
+        } else {
+            "load failed: ${initialLoad.exceptionOrNull()?.javaClass?.simpleName ?: "unknown"}"
+        }
+    )
+
     div({
         key = "section.stylesheets"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -37,16 +58,16 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
             textarea({
                 placeholder = "Stylesheet content"
                 key = "styles.editor.textarea"
-                value = window.stylesheetEditorValue
+                value = stylesheetEditorValue
                 style = {
-                    width = ((contentWidth - 22).coerceAtLeast(120)).px
+                    width = 100.percent
                     height = 92.px
                 }
                 onInput = { event ->
-                    window.stylesheetEditorValue = event.value
+                    stylesheetEditorValue = event.value
                 }
                 onValueChange = { event ->
-                    window.stylesheetEditorValue = event.value
+                    stylesheetEditorValue = event.value
                 }
             })
 
@@ -59,33 +80,47 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
             }) {
                 button("Save", {
                     key = "styles.editor.save"
-                    style = { width = 50.px }
                     onMouseClick = { event ->
-                        window.saveStylesheetEditorToFile("styles section save")
-                        window.logHook("styles.editor.save", event)
+                        runCatching {
+                            saveStylesheetText(stylesheetEditorValue)
+                        }.onSuccess {
+                            stylesheetEditorStatus = "saved"
+                            onInfo("Stylesheet saved")
+                        }.onFailure { ex ->
+                            stylesheetEditorStatus = "save failed: ${ex.javaClass.simpleName}"
+                        }
+                        onLogHook("styles.editor.save", event, null)
                     }
                 })
                 button("Load", {
                     key = "styles.editor.load"
-                    style = { width = 50.px }
                     onMouseClick = { event ->
-                        window.loadStylesheetEditorFromFile("styles section load")
-                        window.logHook("styles.editor.load", event)
+                        runCatching {
+                            loadStylesheetText()
+                        }.onSuccess { loaded ->
+                            stylesheetEditorValue = loaded
+                            stylesheetEditorStatus = "loaded"
+                            onInfo("Stylesheet loaded")
+                        }.onFailure { ex ->
+                            stylesheetEditorStatus = "load failed: ${ex.javaClass.simpleName}"
+                        }
+                        onLogHook("styles.editor.load", event, null)
                     }
                 })
                 button("Reload stylesheets", {
                     key = "styles.reload.button"
                     id = "stylesReloadButton"
                     className = "primary"
-                    style = { width = 112.px }
                     onMouseClick = { event ->
-                        window.reloadStylesheetsProgrammatically("styles section button")
-                        window.logHook("styles.reload.onMouseClick", event)
+                        onReloadStylesheets()
+                        stylesheetReloadCount += 1
+                        stylesheetEditorStatus = "reloaded #$stylesheetReloadCount"
+                        onLogHook("styles.reload.onMouseClick", event, null)
                     }
                 })
             }
             text(
-                "status=${window.stylesheetEditorStatus}; reloads=${window.stylesheetReloadCount}; clicks=${window.stylesheetDemoClickCount}",
+                "status=$stylesheetEditorStatus; reloads=$stylesheetReloadCount; clicks=$stylesheetDemoClickCount",
                 { style = { color = DEMO_MUTED } }
             )
         }
@@ -117,24 +152,24 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 button("button", {
                     key = "styles.selector.type"
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.selector.type", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.selector.type", event, null)
                     }
                 })
                 button(".accent", {
                     key = "styles.selector.class"
                     className = "accent"
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.selector.class", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.selector.class", event, null)
                     }
                 })
                 button("button.primary", {
                     key = "styles.selector.typeClass"
                     className = "primary"
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.selector.typeClass", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.selector.typeClass", event, null)
                     }
                 })
             }
@@ -150,8 +185,8 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     key = "styles.selector.id"
                     id = "dangerAction"
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.selector.id", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.selector.id", event, null)
                     }
                 })
                 button("Inline > stylesheet", {
@@ -164,8 +199,8 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                         borderWidth(1.px)
                     }
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.selector.inline", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.selector.inline", event, null)
                     }
                 })
             }
@@ -186,7 +221,7 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 style = {
                     gap = 4.px
                     display = Display.Flex
-                    flexDirection = FlexDirection.Row
+                    flexDirection = FlexDirection.Column
                 }
             }) {
                 button("Hover / Active target", {
@@ -194,23 +229,23 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     id = "hoverActiveTarget"
                     className = "interactive-demo"
                     onMouseClick = { event ->
-                        window.stylesheetDemoClickCount += 1
-                        window.logHook("styles.state.hoverActive", event)
+                        stylesheetDemoClickCount += 1
+                        onLogHook("styles.state.hoverActive", event, null)
                     }
                 })
                 input(
                     InputType.Text(
-                        value = window.stylesheetDemoTextValue,
+                        value = stylesheetDemoTextValue,
                         placeholder = "Focus target"
                     ),
                     {
                         key = "styles.state.focusInput"
                         id = "focusInput"
                         className = "interactive-demo"
-                        style = { width = 98.px }
+                        style = { width = 100.percent }
                         onInput = { event ->
-                            window.stylesheetDemoTextValue = event.value
-                            window.logHook("styles.state.focusInput.onInput", event, "value=${event.value}")
+                            stylesheetDemoTextValue = event.value
+                            onLogHook("styles.state.focusInput.onInput", event, "value=${event.value}")
                         }
                     }
                 )
@@ -237,7 +272,7 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
             text("Try: .vars-demo { backgroundColor: var(--primary); borderColor: var(--accent); }", {
                 style = { color = DEMO_MUTED }
             })
-            text("focusInputValue='${window.stylesheetDemoTextValue}'", {
+            text("focusInputValue='$stylesheetDemoTextValue'", {
                 style = { color = DEMO_MUTED }
             })
         }
@@ -291,5 +326,3 @@ fun UiScope.stylesheetsSection(window: ShowcaseWindow, contentWidth: Int, conten
         }
     }
 }
-
-

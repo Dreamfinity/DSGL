@@ -4,15 +4,22 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.components.modal.*
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
-fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.modalsSection(
+    modals: List<ModalSpec>,
+    onPushModal: (ModalSpec) -> Unit,
+    onRemoveModal: (String) -> Unit,
+    onPopTopModal: () -> Unit,
+    onClearModals: () -> Unit,
+    onInfo: (String) -> Unit
+) {
+    var modalBackgroundCounter by useState(0)
+
     div({
         key = "section.modals"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -31,16 +38,16 @@ fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeig
             }
         }) {
             button("Open basic", {
-                onMouseClick = { window.pushModal(basicModal(window)) }
+                onMouseClick = { onPushModal(basicModal(onRemoveModal)) }
             })
             button("Open static", {
-                onMouseClick = { window.pushModal(staticModal(window)) }
+                onMouseClick = { onPushModal(staticModal(onRemoveModal)) }
             })
             button("Open lg centered", {
-                onMouseClick = { window.pushModal(largeCenteredModal(window)) }
+                onMouseClick = { onPushModal(largeCenteredModal(onRemoveModal)) }
             })
             button("Open flow step 1", {
-                onMouseClick = { window.pushModal(flowStep1Modal(window)) }
+                onMouseClick = { onPushModal(flowStep1Modal(onPushModal, onRemoveModal)) }
             })
         }
 
@@ -53,23 +60,23 @@ fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeig
         }) {
             button("Background +1", {
                 onMouseClick = {
-                    window.modalBackgroundCounter += 1
-                    window.appendInfo("Background counter incremented")
+                    modalBackgroundCounter += 1
+                    onInfo("Background counter incremented")
                 }
             })
             button("Pop top", {
-                onMouseClick = { window.popTopModal() }
+                onMouseClick = { onPopTopModal() }
             })
             button("Clear modals", {
                 onMouseClick = {
-                    window.demoModals = emptyList()
-                    window.appendInfo("Modal stack cleared")
+                    onClearModals()
+                    onInfo("Modal stack cleared")
                 }
             })
         }
 
         text({
-            val stack = if (window.demoModals.isEmpty()) "[]" else window.demoModals.joinToString(
+            val stack = if (modals.isEmpty()) "[]" else modals.joinToString(
                 prefix = "[",
                 postfix = "]"
             ) { it.key }
@@ -77,18 +84,18 @@ fun UiScope.modalsSection(window: ShowcaseWindow, contentWidth: Int, contentHeig
             style = { color = DEMO_MUTED }
         })
         text(
-            "Background counter=${window.modalBackgroundCounter}",
+            "Background counter=$modalBackgroundCounter",
             { style = { color = DEMO_MUTED } }
         )
     }
 }
 
-private fun basicModal(window: ShowcaseWindow): ModalSpec {
+private fun basicModal(onRemoveModal: (String) -> Unit): ModalSpec {
     return ModalSpec(
         key = "modal.basic",
         backdrop = BackdropMode.True,
         keyboard = true,
-        onHide = { window.removeModal("modal.basic") }
+        onHide = { onRemoveModal("modal.basic") }
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Basic Modal")
@@ -104,12 +111,12 @@ private fun basicModal(window: ShowcaseWindow): ModalSpec {
     }
 }
 
-private fun staticModal(window: ShowcaseWindow): ModalSpec {
+private fun staticModal(onRemoveModal: (String) -> Unit): ModalSpec {
     return ModalSpec(
         key = "modal.static",
         backdrop = BackdropMode.Static,
         keyboard = false,
-        onHide = { window.removeModal("modal.static") }
+        onHide = { onRemoveModal("modal.static") }
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Static Backdrop")
@@ -126,12 +133,12 @@ private fun staticModal(window: ShowcaseWindow): ModalSpec {
     }
 }
 
-private fun largeCenteredModal(window: ShowcaseWindow): ModalSpec {
+private fun largeCenteredModal(onRemoveModal: (String) -> Unit): ModalSpec {
     return ModalSpec(
         key = "modal.large",
         size = ModalSize.Lg,
         centered = true,
-        onHide = { window.removeModal("modal.large") }
+        onHide = { onRemoveModal("modal.large") }
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Large Centered")
@@ -148,10 +155,13 @@ private fun largeCenteredModal(window: ShowcaseWindow): ModalSpec {
     }
 }
 
-private fun flowStep1Modal(window: ShowcaseWindow): ModalSpec {
+private fun flowStep1Modal(
+    onPushModal: (ModalSpec) -> Unit,
+    onRemoveModal: (String) -> Unit
+): ModalSpec {
     return ModalSpec(
         key = "modal.flow.1",
-        onHide = { window.removeModal("modal.flow.1") }
+        onHide = { onRemoveModal("modal.flow.1") }
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Flow Step 1")
@@ -165,18 +175,18 @@ private fun flowStep1Modal(window: ShowcaseWindow): ModalSpec {
             })
             button("Next", {
                 onMouseClick = {
-                    window.pushModal(flowStep2Modal(window))
+                    onPushModal(flowStep2Modal(onRemoveModal))
                 }
             })
         }
     }
 }
 
-private fun flowStep2Modal(window: ShowcaseWindow): ModalSpec {
+private fun flowStep2Modal(onRemoveModal: (String) -> Unit): ModalSpec {
     return ModalSpec(
         key = "modal.flow.2",
         centered = true,
-        onHide = { window.removeModal("modal.flow.2") }
+        onHide = { onRemoveModal("modal.flow.2") }
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Flow Step 2")
@@ -191,5 +201,3 @@ private fun flowStep2Modal(window: ShowcaseWindow): ModalSpec {
         }
     }
 }
-
-

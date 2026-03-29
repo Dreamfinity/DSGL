@@ -1,22 +1,31 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
-fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    val parentThemeClass = if (window.cascadeParentDark) "dark" else "light"
-    val ruleBlockClass = if (window.cascadeRuleAEnabled) "rule-a" else "rule-b"
-    val adjacentOrder = if (window.cascadeAdjacentSwapOrder) {
+fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> Unit) {
+    var cascadeParentDark by useState(false)
+    var cascadeRuleAEnabled by useState(true)
+    var cascadeAdjacentSourceEnabled by useState(true)
+    var cascadeAdjacentSwapOrder by useState(false)
+    var cascadeGeneralWarningIndex by useState(1L)
+    var cascadeGeneralInsertExtra by useState(false)
+    var cascadeMixedSpacerEnabled by useState(false)
+
+    val parentThemeClass = if (cascadeParentDark) "dark" else "light"
+    val ruleBlockClass = if (cascadeRuleAEnabled) "rule-a" else "rule-b"
+    val adjacentOrder = if (cascadeAdjacentSwapOrder) {
         listOf("adj-target-1", "adj-source", "adj-target-2")
     } else {
         listOf("adj-source", "adj-target-1", "adj-target-2")
     }
     val generalItems = buildList {
         add("gen-0")
-        if (window.cascadeGeneralInsertExtra) {
+        if (cascadeGeneralInsertExtra) {
             add("gen-extra")
         }
         add("gen-1")
@@ -24,14 +33,12 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
         add("gen-3")
     }
     val effectiveWarningIndex = if (generalItems.isEmpty()) 0 else {
-        (window.cascadeGeneralWarningIndex.toInt().coerceAtLeast(0)) % generalItems.size
+        (cascadeGeneralWarningIndex.toInt().coerceAtLeast(0)) % generalItems.size
     }
 
     div({
         key = "section.cssCascade"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -52,22 +59,20 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             }
         }) {
             button(
-                if (window.cascadeParentDark) "Parent class: dark" else "Parent class: light",
+                if (cascadeParentDark) "Parent class: dark" else "Parent class: light",
                 {
                     key = "section.cssCascade.toggleParentClass"
-                    style = { width = 132.px }
                     onMouseClick = { event ->
-                        window.cascadeParentDark = !window.cascadeParentDark
-                        window.logHook("css.cascade.toggle.parentClass", event, "dark=${window.cascadeParentDark}")
+                        cascadeParentDark = !cascadeParentDark
+                        onLogHook("css.cascade.toggle.parentClass", event, "dark=$cascadeParentDark")
                     }
                 }
             )
-            button(if (window.cascadeRuleAEnabled) "Rule block: A" else "Rule block: B", {
+            button(if (cascadeRuleAEnabled) "Rule block: A" else "Rule block: B", {
                 key = "section.cssCascade.toggleRuleBlock"
-                style = { width = 108.px }
                 onMouseClick = { event ->
-                    window.cascadeRuleAEnabled = !window.cascadeRuleAEnabled
-                    window.logHook("css.cascade.toggle.ruleBlock", event, "ruleA=${window.cascadeRuleAEnabled}")
+                    cascadeRuleAEnabled = !cascadeRuleAEnabled
+                    onLogHook("css.cascade.toggle.ruleBlock", event, "ruleA=$cascadeRuleAEnabled")
                 }
             })
         }
@@ -125,7 +130,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 id = "primary"
                 className = "btn"
                 onMouseClick = { event ->
-                    window.logHook("css.cascade.specificity.target", event)
+                    onLogHook("css.cascade.specificity.target", event, null)
                 }
             })
 
@@ -164,26 +169,24 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 }
             }) {
                 button(
-                    if (window.cascadeAdjacentSourceEnabled) "Source class: ON" else "Source class: OFF",
+                    if (cascadeAdjacentSourceEnabled) "Source class: ON" else "Source class: OFF",
                     {
                         key = "section.cssCascade.adj.toggleSource"
-                        style = { width = 118.px }
                         onMouseClick = { event ->
-                            window.cascadeAdjacentSourceEnabled = !window.cascadeAdjacentSourceEnabled
-                            window.logHook(
+                            cascadeAdjacentSourceEnabled = !cascadeAdjacentSourceEnabled
+                            onLogHook(
                                 "css.cascade.adj.toggleSource",
                                 event,
-                                "enabled=${window.cascadeAdjacentSourceEnabled}"
+                                "enabled=$cascadeAdjacentSourceEnabled"
                             )
                         }
                     }
                 )
-                button(if (window.cascadeAdjacentSwapOrder) "Order: swapped" else "Order: default", {
+                button(if (cascadeAdjacentSwapOrder) "Order: swapped" else "Order: default", {
                     key = "section.cssCascade.adj.swap"
-                    style = { width = 108.px }
                     onMouseClick = { event ->
-                        window.cascadeAdjacentSwapOrder = !window.cascadeAdjacentSwapOrder
-                        window.logHook("css.cascade.adj.swap", event, "swap=${window.cascadeAdjacentSwapOrder}")
+                        cascadeAdjacentSwapOrder = !cascadeAdjacentSwapOrder
+                        onLogHook("css.cascade.adj.swap", event, "swap=$cascadeAdjacentSwapOrder")
                     }
                 })
             }
@@ -201,7 +204,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                         append("adj-item ")
                         when (item) {
                             "adj-source" -> {
-                                if (window.cascadeAdjacentSourceEnabled) append("adj-source")
+                                if (cascadeAdjacentSourceEnabled) append("adj-source")
                                 else append("adj-neutral")
                             }
 
@@ -229,27 +232,24 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
             }) {
                 button("Move warning", {
                     key = "section.cssCascade.gen.moveWarning"
-                    style = { width = 96.px }
                     onMouseClick = { event ->
                         val size = generalItems.size.coerceAtLeast(1)
-                        window.cascadeGeneralWarningIndex =
-                            (window.cascadeGeneralWarningIndex + 1L) % size
-                        window.logHook(
+                        cascadeGeneralWarningIndex = (cascadeGeneralWarningIndex + 1L) % size
+                        onLogHook(
                             "css.cascade.gen.moveWarning",
                             event,
-                            "index=${window.cascadeGeneralWarningIndex}"
+                            "index=$cascadeGeneralWarningIndex"
                         )
                     }
                 })
-                button(if (window.cascadeGeneralInsertExtra) "Extra sibling: ON" else "Extra sibling: OFF", {
+                button(if (cascadeGeneralInsertExtra) "Extra sibling: ON" else "Extra sibling: OFF", {
                     key = "section.cssCascade.gen.toggleExtra"
-                    style = { width = 118.px }
                     onMouseClick = { event ->
-                        window.cascadeGeneralInsertExtra = !window.cascadeGeneralInsertExtra
-                        window.logHook(
+                        cascadeGeneralInsertExtra = !cascadeGeneralInsertExtra
+                        onLogHook(
                             "css.cascade.gen.toggleExtra",
                             event,
-                            "extra=${window.cascadeGeneralInsertExtra}"
+                            "extra=$cascadeGeneralInsertExtra"
                         )
                     }
                 })
@@ -276,15 +276,14 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                 "Mixed chain: .cascade-mixed > .header + .body .title",
                 { style = { color = DEMO_MUTED } }
             )
-            button(if (window.cascadeMixedSpacerEnabled) "Spacer: ON (break +)" else "Spacer: OFF (adjacent)", {
+            button(if (cascadeMixedSpacerEnabled) "Spacer: ON (break +)" else "Spacer: OFF (adjacent)", {
                 key = "section.cssCascade.mixed.toggleSpacer"
-                style = { width = 156.px }
                 onMouseClick = { event ->
-                    window.cascadeMixedSpacerEnabled = !window.cascadeMixedSpacerEnabled
-                    window.logHook(
+                    cascadeMixedSpacerEnabled = !cascadeMixedSpacerEnabled
+                    onLogHook(
                         "css.cascade.mixed.toggleSpacer",
                         event,
-                        "spacer=${window.cascadeMixedSpacerEnabled}"
+                        "spacer=$cascadeMixedSpacerEnabled"
                     )
                 }
             })
@@ -301,7 +300,7 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
                     key = "section.cssCascade.mixed.header"
                     className = "header"
                 })
-                if (window.cascadeMixedSpacerEnabled) {
+                if (cascadeMixedSpacerEnabled) {
                     text("spacer", {
                         key = "section.cssCascade.mixed.spacer"
                         className = "spacer"
@@ -325,5 +324,3 @@ fun UiScope.cssCascadeCombinatorsSection(window: ShowcaseWindow, contentWidth: I
         }
     }
 }
-
-

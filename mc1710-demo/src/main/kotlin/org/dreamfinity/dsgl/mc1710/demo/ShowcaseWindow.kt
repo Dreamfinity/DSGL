@@ -80,8 +80,6 @@ class ShowcaseWindow : DsglWindow() {
     private var logSequence: Int = 0
 
     internal var renderPasses: Int = 0
-    internal var modalBackgroundCounter by state(0)
-    internal var modalPromptValue by state("hello")
     internal var demoModals by state(emptyList<ModalSpec>())
     internal var contextMenuLastAction by state("none")
     internal var contextMenuLastTarget by state("none")
@@ -109,20 +107,6 @@ class ShowcaseWindow : DsglWindow() {
     private var contextMenuLastClickMs: Long = 0L
     internal var contextMenuFiles by state(defaultContextMenuFiles())
     private var contextMenuFileSequence by state(100L)
-    internal var stylesheetReloadCount by state(0)
-    internal var stylesheetDemoTextValue by state("")
-    internal var stylesheetDemoClickCount by state(0)
-    internal var stylesheetEditorValue by state("")
-    internal var stylesheetEditorStatus by state("not loaded")
-    internal var cascadeParentDark by state(false)
-    internal var cascadeRuleAEnabled by state(true)
-    internal var cascadeAdjacentSourceEnabled by state(true)
-    internal var cascadeAdjacentSwapOrder by state(false)
-    internal var cascadeGeneralWarningIndex by state(1L)
-    internal var cascadeGeneralInsertExtra by state(false)
-    internal var cascadeMixedSpacerEnabled by state(false)
-
-
     internal var itemRotY by state(160.0)
     internal var itemRotX by state(-11.0)
     internal var mediaReady by state(false)
@@ -217,7 +201,6 @@ class ShowcaseWindow : DsglWindow() {
         prepareDemoStylesheet()
         prepareCascadeStylesheet()
         registerAnimationKeyframes()
-        loadStylesheetEditorFromFile("window open")
         DndSystem.setSmoothingFactor(dndSmoothFactor)
         appendInfo("Showcase opened")
     }
@@ -376,9 +359,12 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.MODALS -> modalsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    modals = demoModals,
+                                    onPushModal = ::pushModal,
+                                    onRemoveModal = ::removeModal,
+                                    onPopTopModal = ::popTopModal,
+                                    onClearModals = { demoModals = emptyList() },
+                                    onInfo = ::appendInfo
                                 )
 
                                 DemoSection.CONTEXT_MENU -> contextMenuSection(
@@ -388,15 +374,15 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.STYLESHEETS -> stylesheetsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    onInfo = ::appendInfo,
+                                    loadStylesheetText = { loadStylesheetEditorFromFile("styles section load") },
+                                    saveStylesheetText = { content -> saveStylesheetEditorToFile(content, "styles section save") },
+                                    onReloadStylesheets = { reloadStylesheetsProgrammatically("styles section button") }
                                 )
 
                                 DemoSection.CSS_CASCADE -> cssCascadeCombinatorsSection(
-                                    this@ShowcaseWindow,
-                                    contentWidth - 10,
-                                    bodyHeight - 30
+                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
                                 )
 
                                 DemoSection.INPUTS -> inputsGallerySection(
@@ -896,37 +882,34 @@ class ShowcaseWindow : DsglWindow() {
 
     internal fun reloadStylesheetsProgrammatically(source: String) {
         StyleEngine.forceReloadStylesheets()
-        stylesheetReloadCount += 1
         requestManualInvalidate("stylesheets reload")
-        appendInfo("Stylesheets reloaded by $source (#$stylesheetReloadCount)")
-        stylesheetEditorStatus = "reloaded #$stylesheetReloadCount"
+        appendInfo("Stylesheets reloaded by $source")
     }
 
-    internal fun loadStylesheetEditorFromFile(source: String) {
+    internal fun loadStylesheetEditorFromFile(source: String): String {
         try {
             val file = demoStylesheetFile()
             if (!file.exists()) {
                 prepareDemoStylesheet()
             }
-            stylesheetEditorValue = file.readText()
-            stylesheetEditorStatus = "loaded by $source"
+            val content = file.readText()
             appendInfo("Stylesheet loaded by $source")
+            return content
         } catch (ex: Exception) {
-            stylesheetEditorStatus = "load failed: ${ex.javaClass.simpleName}"
             appendLog("Stylesheet load failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+            throw ex
         }
     }
 
-    internal fun saveStylesheetEditorToFile(source: String) {
+    internal fun saveStylesheetEditorToFile(content: String, source: String) {
         try {
             val file = demoStylesheetFile()
             file.parentFile?.mkdirs()
-            file.writeText(stylesheetEditorValue)
-            stylesheetEditorStatus = "saved by $source"
+            file.writeText(content)
             appendInfo("Stylesheet saved by $source")
         } catch (ex: Exception) {
-            stylesheetEditorStatus = "save failed: ${ex.javaClass.simpleName}"
             appendLog("Stylesheet save failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
+            throw ex
         }
     }
 
