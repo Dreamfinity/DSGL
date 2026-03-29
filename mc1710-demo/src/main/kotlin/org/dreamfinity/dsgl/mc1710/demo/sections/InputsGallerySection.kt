@@ -4,11 +4,11 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.event.FocusManager
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import java.time.Instant
 import java.time.ZoneId
@@ -26,11 +26,11 @@ private val inputsRadioOptions = listOf(
 )
 
 fun UiScope.inputsGallerySection(
-    openedAt: Instant,
-    timeZoneId: ZoneId,
     clippingScrollDemoText: String,
     onClippingScrollDemoTextChange: (String) -> Unit
 ) {
+    var openedAt by useState(Instant.now())
+    var timeZoneId by useState(ZoneId.systemDefault())
     var sharedRangeValue by useState(35L)
     var inputCheckboxValue by useState(setOf("alpha"))
     var inputRadioValue by useState<String?>("center")

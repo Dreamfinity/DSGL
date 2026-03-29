@@ -54,10 +54,6 @@ class ShowcaseWindow : DsglWindow() {
 
     internal val implementedCapabilities: Set<CapabilityId>
         get() = CapabilityChecklistCatalog.implementedByAllSections()
-    internal val openedAtForDemo
-        get() = openedAt
-    internal val timeZoneForDemo
-        get() = timeZoneId
 
     override val rebuildOnResize: Boolean
         get() = true
@@ -223,8 +219,6 @@ class ShowcaseWindow : DsglWindow() {
                                 )
 
                                 DemoSection.INPUTS -> inputsGallerySection(
-                                    openedAt = openedAtForDemo,
-                                    timeZoneId = timeZoneForDemo,
                                     clippingScrollDemoText = clippingScrollDemoText,
                                     onClippingScrollDemoTextChange = { clippingScrollDemoText = it }
                                 )

@@ -1,9 +1,9 @@
 package org.dreamfinity.dsgl.core
 
-import org.dreamfinity.dsgl.core.host.DsglWindowHost
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
-import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import java.time.Instant
 import java.time.ZoneId
 
@@ -17,8 +17,6 @@ import java.time.ZoneId
  */
 abstract class DsglWindow {
     private var invalidator: (() -> Unit)? = null
-    private var openedAtInstant: Instant = Instant.now()
-    private var openedZoneId: ZoneId = ZoneId.systemDefault()
     private val componentHookRuntime: ComponentHookRuntime = ComponentHookRuntime()
 
     /**
@@ -30,8 +28,6 @@ abstract class DsglWindow {
 
     /** Records the open time for date/time controls. */
     fun markOpened(instant: Instant, zoneId: ZoneId) {
-        openedAtInstant = instant
-        openedZoneId = zoneId
     }
 
     /** Requests a rebuild of the DOM tree. */
@@ -47,14 +43,6 @@ abstract class DsglWindow {
     fun <T> state(initial: T): MutableState<T> {
         return mutableStateOf(initial) { invalidate() }
     }
-
-    /** Time when the window was opened, as provided by the host. */
-    protected val openedAt: Instant
-        get() = openedAtInstant
-
-    /** Time zone used for date/time inputs. */
-    protected val timeZoneId: ZoneId
-        get() = openedZoneId
 
     /** Build the current UI tree. Called by the host on rebuild. */
     abstract fun render(): DomTree
