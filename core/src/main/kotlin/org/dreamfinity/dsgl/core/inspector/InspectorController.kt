@@ -130,7 +130,7 @@ class InspectorController(
         get() = minimizedPosX to minimizedPosY
 
     val isPointerCaptured: Boolean
-        get() = dragMode != DragMode.None
+        get() = dragMode != DragMode.None && dragMode != DragMode.ScrollbarThumb
 
     val hoveredKey: String?
         get() = hoveredNode?.key?.toString()
@@ -167,6 +167,8 @@ class InspectorController(
     private var dragStartOffsetX: Int = 0
     private var dragStartOffsetY: Int = 0
     private var dragMoved: Boolean = false
+    private var overlayPanelPointerCapture: Boolean = false
+    private var overlayPanelAuthorityEnabled: Boolean = false
     private val paneMoveDrag: FloatingPaneDragModel = FloatingPaneDragModel()
     private var viewportW: Int = 0
     private var viewportH: Int = 0
@@ -302,6 +304,7 @@ class InspectorController(
         minimizedPosY = current.y
         panelState = InspectorPanelState.Minimized
         dragMode = DragMode.None
+        overlayPanelPointerCapture = false
         dragMoved = false
     }
 
@@ -311,28 +314,33 @@ class InspectorController(
         expandedRect = clampExpandedRect(expandedRect, viewportW, viewportH)
         panelState = InspectorPanelState.Expanded
         dragMode = DragMode.None
+        overlayPanelPointerCapture = false
         dragMoved = false
     }
 
-    fun blocksUnderlyingInput(): Boolean = active && (mode == InspectorMode.Pick || dragMode != DragMode.None)
+    fun blocksUnderlyingInput(): Boolean = active && (
+        mode == InspectorMode.Pick ||
+            dragMode != DragMode.None ||
+            overlayPanelPointerCapture
+        )
 
     fun shouldConsumePointer(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None) return true
+        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
         if (editSession.textSelectionDragActive) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
     fun shouldConsumeWheel(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None) return true
+        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
 
     fun shouldConsumeKeyboard(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None) return true
+        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
@@ -619,6 +627,9 @@ class InspectorController(
         variableTooltipText = null
         if (panelState == InspectorPanelState.Minimized) {
             if (minimizedBounds.contains(mouseX, mouseY)) {
+                if (overlayPanelAuthorityEnabled) {
+                    return true
+                }
                 startMinimizedMoveDrag(mouseX, mouseY)
                 return true
             }
@@ -636,7 +647,7 @@ class InspectorController(
         if (shouldCommitActiveEdit(action)) {
             commitActiveTextEdit()
         }
-        if (startScrollbarDrag(mouseX, mouseY)) {
+        if (!overlayPanelAuthorityEnabled && startScrollbarDrag(mouseX, mouseY)) {
             return true
         }
         if (action != null) {
@@ -648,14 +659,16 @@ class InspectorController(
             return true
         }
         editSession.closeAllDropdowns()
-        val resizeMode = resolveResizeDragMode(mouseX, mouseY)
-        if (resizeMode != DragMode.None) {
-            startExpandedDrag(resizeMode, mouseX, mouseY)
-            return true
-        }
-        if (headerBounds.contains(mouseX, mouseY)) {
-            startExpandedDrag(DragMode.Move, mouseX, mouseY)
-            return true
+        if (!overlayPanelAuthorityEnabled) {
+            val resizeMode = resolveResizeDragMode(mouseX, mouseY)
+            if (resizeMode != DragMode.None) {
+                startExpandedDrag(resizeMode, mouseX, mouseY)
+                return true
+            }
+            if (headerBounds.contains(mouseX, mouseY)) {
+                startExpandedDrag(DragMode.Move, mouseX, mouseY)
+                return true
+            }
         }
         val hitPanel = if (panelBounds.width > 0 && panelBounds.height > 0) panelBounds else expandedRect
         if (hitPanel.contains(mouseX, mouseY)) {
@@ -1347,6 +1360,21 @@ class InspectorController(
         minimizedBounds = Rect(0, 0, 0, 0)
     }
 
+    internal fun onOverlayPanelRectChanged(rect: Rect, viewportWidth: Int, viewportHeight: Int) {
+        onNativeDomExpandedPanelRect(rect, viewportWidth, viewportHeight)
+    }
+
+    internal fun onOverlayPanelPointerCaptureChanged(captured: Boolean) {
+        overlayPanelPointerCapture = captured
+    }
+
+    internal fun setOverlayPanelAuthorityEnabled(enabled: Boolean) {
+        overlayPanelAuthorityEnabled = enabled
+        if (enabled && dragMode != DragMode.ScrollbarThumb) {
+            dragMode = DragMode.None
+        }
+    }
+
     internal fun onNativeDomMinimizedPanelPosition(x: Int, y: Int, viewportWidth: Int, viewportHeight: Int) {
         minimizedPosX = x
         minimizedPosY = y
@@ -1697,6 +1725,8 @@ class InspectorController(
         hoverPickEnabled = true
         styleEditorError = null
         dragMode = DragMode.None
+        overlayPanelPointerCapture = false
+        overlayPanelAuthorityEnabled = false
         dragMoved = false
         panelScrollY = 0
         panelContentHeight = 0
@@ -2168,6 +2198,11 @@ class InspectorController(
     internal fun debugPanelRect(): Rect? {
         if (!active) return null
         return currentInspectorRect()
+    }
+
+    internal fun debugExpandedPanelRect(): Rect? {
+        if (!active || panelState != InspectorPanelState.Expanded) return null
+        return expandedRect
     }
 
     private fun performPanelAction(action: PanelAction) {

@@ -18,6 +18,7 @@ import org.dreamfinity.dsgl.core.style.TextWrap
 data class OverlayPanelStyle(
     val headerHeight: Int = 26,
     val panelPadding: Int = 6,
+    val resizeHandleSize: Int = 8,
     val closeButtonWidth: Int = 16,
     val closeButtonHeight: Int = 16,
     val closeButtonMarginTop: Int = 4,
@@ -61,6 +62,12 @@ class OverlayPanel(
     var title: String = ""
         private set
     var draggable: Boolean = true
+        private set
+    var resizable: Boolean = false
+        private set
+    var minWidth: Int = 120
+        private set
+    var minHeight: Int = 80
         private set
     private var onClose: (() -> Unit)? = null
     private var frame: OverlayPanelFrame? = null
@@ -123,6 +130,9 @@ class OverlayPanel(
     fun configure(
         title: String,
         draggable: Boolean,
+        resizable: Boolean = this.resizable,
+        minWidth: Int = this.minWidth,
+        minHeight: Int = this.minHeight,
         style: OverlayPanelStyle = this.style,
         onClose: (() -> Unit)? = this.onClose
     ) {
@@ -130,6 +140,9 @@ class OverlayPanel(
         val styleChanged = this.style != style
         this.title = title
         this.draggable = draggable
+        this.resizable = resizable
+        this.minWidth = minWidth.coerceAtLeast(1)
+        this.minHeight = minHeight.coerceAtLeast(1)
         this.style = style
         this.onClose = onClose
         if (titleChanged) {
@@ -160,22 +173,46 @@ class OverlayPanel(
 
     fun bodyRect(): Rect? = frame?.bodyRect
 
-    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+    fun isDragging(): Boolean = dragSession.active
+
+    fun beginHeaderDrag(mouseX: Int, mouseY: Int): Boolean {
+        val localFrame = frame ?: return false
+        if (!draggable) return false
+        if (!localFrame.headerRect.contains(mouseX, mouseY)) return false
+        if (localFrame.closeRect.contains(mouseX, mouseY)) return false
+        beginMoveDrag(mouseX, mouseY)
+        return true
+    }
+
+    fun handleMouseDown(
+        mouseX: Int,
+        mouseY: Int,
+        button: MouseButton,
+        includeCloseButton: Boolean = true
+    ): Boolean {
         val localFrame = frame ?: return false
         if (button != MouseButton.LEFT) return false
-        if (localFrame.closeRect.contains(mouseX, mouseY)) {
+        if (includeCloseButton && localFrame.closeRect.contains(mouseX, mouseY)) {
             onClose?.invoke()
             return true
         }
+        if (resizable && !localFrame.bodyRect.contains(mouseX, mouseY)) {
+            val resizeHandle = resolveResizeHandle(localFrame.panelRect, mouseX, mouseY)
+            if (resizeHandle != null) {
+                dragSession.begin(
+                    ownerId = ownerId,
+                    type = OverlayPanelDragType.PanelResize,
+                    pointerX = mouseX,
+                    pointerY = mouseY,
+                    panelState = panelState,
+                    resizeHandle = resizeHandle
+                )
+                return true
+            }
+        }
         if (!draggable) return false
         if (!localFrame.headerRect.contains(mouseX, mouseY)) return false
-        dragSession.begin(
-            ownerId = ownerId,
-            type = OverlayPanelDragType.PanelMove,
-            pointerX = mouseX,
-            pointerY = mouseY,
-            panelState = panelState
-        )
+        beginMoveDrag(mouseX, mouseY)
         return true
     }
 
@@ -214,6 +251,24 @@ class OverlayPanel(
     }
 
     private fun buildDraggedRect(viewportWidth: Int, viewportHeight: Int): Rect {
+        return when (dragSession.type) {
+            OverlayPanelDragType.PanelResize -> buildResizedRect(viewportWidth, viewportHeight)
+            else -> buildMovedRect(viewportWidth, viewportHeight)
+        }
+    }
+
+    private fun beginMoveDrag(mouseX: Int, mouseY: Int) {
+        dragSession.begin(
+            ownerId = ownerId,
+            type = OverlayPanelDragType.PanelMove,
+            pointerX = mouseX,
+            pointerY = mouseY,
+            panelState = panelState,
+            resizeHandle = null
+        )
+    }
+
+    private fun buildMovedRect(viewportWidth: Int, viewportHeight: Int): Rect {
         val dx = dragSession.currentPointerX - dragSession.startPointerX
         val dy = dragSession.currentPointerY - dragSession.startPointerY
         val raw = Rect(
@@ -223,6 +278,109 @@ class OverlayPanel(
             height = dragSession.startPanelHeight
         )
         return clampPanel(raw, viewportWidth, viewportHeight)
+    }
+
+    private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect {
+        val handle = dragSession.resizeHandle ?: return buildMovedRect(viewportWidth, viewportHeight)
+        val dx = dragSession.currentPointerX - dragSession.startPointerX
+        val dy = dragSession.currentPointerY - dragSession.startPointerY
+
+        var left = dragSession.startPanelX
+        var top = dragSession.startPanelY
+        var right = dragSession.startPanelX + dragSession.startPanelWidth
+        var bottom = dragSession.startPanelY + dragSession.startPanelHeight
+
+        when (handle) {
+            OverlayPanelResizeHandle.Left,
+            OverlayPanelResizeHandle.TopLeft,
+            OverlayPanelResizeHandle.BottomLeft -> left += dx
+
+            OverlayPanelResizeHandle.Right,
+            OverlayPanelResizeHandle.TopRight,
+            OverlayPanelResizeHandle.BottomRight -> right += dx
+
+            else -> Unit
+        }
+        when (handle) {
+            OverlayPanelResizeHandle.Top,
+            OverlayPanelResizeHandle.TopLeft,
+            OverlayPanelResizeHandle.TopRight -> top += dy
+
+            OverlayPanelResizeHandle.Bottom,
+            OverlayPanelResizeHandle.BottomLeft,
+            OverlayPanelResizeHandle.BottomRight -> bottom += dy
+
+            else -> Unit
+        }
+
+        if (right - left < minWidth) {
+            when (handle) {
+                OverlayPanelResizeHandle.Left,
+                OverlayPanelResizeHandle.TopLeft,
+                OverlayPanelResizeHandle.BottomLeft -> left = right - minWidth
+
+                OverlayPanelResizeHandle.Right,
+                OverlayPanelResizeHandle.TopRight,
+                OverlayPanelResizeHandle.BottomRight -> right = left + minWidth
+
+                else -> right = left + minWidth
+            }
+        }
+        if (bottom - top < minHeight) {
+            when (handle) {
+                OverlayPanelResizeHandle.Top,
+                OverlayPanelResizeHandle.TopLeft,
+                OverlayPanelResizeHandle.TopRight -> top = bottom - minHeight
+
+                OverlayPanelResizeHandle.Bottom,
+                OverlayPanelResizeHandle.BottomLeft,
+                OverlayPanelResizeHandle.BottomRight -> bottom = top + minHeight
+
+                else -> bottom = top + minHeight
+            }
+        }
+
+        val minX = 2
+        val minY = 2
+        val maxRight = (viewportWidth - 2).coerceAtLeast(minX + minWidth)
+        val maxBottom = (viewportHeight - 2).coerceAtLeast(minY + minHeight)
+
+        when (handle) {
+            OverlayPanelResizeHandle.Left,
+            OverlayPanelResizeHandle.TopLeft,
+            OverlayPanelResizeHandle.BottomLeft -> left = left.coerceIn(minX, right - minWidth)
+
+            OverlayPanelResizeHandle.Right,
+            OverlayPanelResizeHandle.TopRight,
+            OverlayPanelResizeHandle.BottomRight -> right = right.coerceIn(left + minWidth, maxRight)
+
+            else -> Unit
+        }
+        when (handle) {
+            OverlayPanelResizeHandle.Top,
+            OverlayPanelResizeHandle.TopLeft,
+            OverlayPanelResizeHandle.TopRight -> top = top.coerceIn(minY, bottom - minHeight)
+
+            OverlayPanelResizeHandle.Bottom,
+            OverlayPanelResizeHandle.BottomLeft,
+            OverlayPanelResizeHandle.BottomRight -> bottom = bottom.coerceIn(top + minHeight, maxBottom)
+
+            else -> Unit
+        }
+
+        val width = (right - left).coerceAtLeast(minWidth)
+        val height = (bottom - top).coerceAtLeast(minHeight)
+        val clamped = clampPanel(
+            Rect(left, top, width, height),
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight
+        )
+        return Rect(
+            x = clamped.x,
+            y = clamped.y,
+            width = clamped.width.coerceAtLeast(minWidth),
+            height = clamped.height.coerceAtLeast(minHeight)
+        )
     }
 
     private fun rebuildFrameFromState() {
@@ -267,6 +425,25 @@ class OverlayPanel(
             width = rect.width,
             height = rect.height
         )
+    }
+
+    private fun resolveResizeHandle(panelRect: Rect, mouseX: Int, mouseY: Int): OverlayPanelResizeHandle? {
+        if (!panelRect.contains(mouseX, mouseY)) return null
+        val edge = style.resizeHandleSize.coerceAtLeast(2)
+        val leftZone = mouseX <= panelRect.x + edge
+        val rightZone = mouseX >= panelRect.x + panelRect.width - edge
+        val topZone = mouseY <= panelRect.y + edge
+        val bottomZone = mouseY >= panelRect.y + panelRect.height - edge
+
+        if (leftZone && topZone) return OverlayPanelResizeHandle.TopLeft
+        if (rightZone && topZone) return OverlayPanelResizeHandle.TopRight
+        if (leftZone && bottomZone) return OverlayPanelResizeHandle.BottomLeft
+        if (rightZone && bottomZone) return OverlayPanelResizeHandle.BottomRight
+        if (leftZone) return OverlayPanelResizeHandle.Left
+        if (rightZone) return OverlayPanelResizeHandle.Right
+        if (topZone) return OverlayPanelResizeHandle.Top
+        if (bottomZone) return OverlayPanelResizeHandle.Bottom
+        return null
     }
 
     private fun applyStyleToNodes(style: OverlayPanelStyle) {

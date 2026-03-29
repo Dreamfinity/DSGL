@@ -6,6 +6,17 @@ enum class OverlayPanelDragType {
     Transient
 }
 
+enum class OverlayPanelResizeHandle {
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight
+}
+
 class OverlayPanelDragSession {
     var active: Boolean = false
         private set
@@ -29,17 +40,21 @@ class OverlayPanelDragSession {
         private set
     var startPanelHeight: Int = 0
         private set
+    var resizeHandle: OverlayPanelResizeHandle? = null
+        private set
 
     fun begin(
         ownerId: Any,
         type: OverlayPanelDragType,
         pointerX: Int,
         pointerY: Int,
-        panelState: OverlayPanelState
+        panelState: OverlayPanelState,
+        resizeHandle: OverlayPanelResizeHandle? = null
     ) {
         active = true
         this.ownerId = ownerId
         this.type = type
+        this.resizeHandle = resizeHandle
         startPointerX = pointerX
         startPointerY = pointerY
         currentPointerX = pointerX
@@ -60,5 +75,6 @@ class OverlayPanelDragSession {
         active = false
         ownerId = null
         type = null
+        resizeHandle = null
     }
 }

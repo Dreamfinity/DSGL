@@ -10,12 +10,12 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
-import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragType
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -249,7 +249,7 @@ class SystemOverlayHost(
     private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean {
         return activeEntriesTopFirst()
             .asSequence()
-            .filter { !it.participatesInDomInput() }
+            .filter { entry -> !entry.participatesInDomInput() }
             .any(handler)
     }
 
@@ -261,7 +261,15 @@ class SystemOverlayHost(
             order = 100,
             lane = SystemOverlayLane.PanelContent
         )
-        override val node: SystemInspectorOverlayNode = SystemInspectorOverlayNode(inspectorController)
+        private val overlayPanel: OverlayPanel = OverlayPanel(
+            ownerId = state.id,
+            panelState = state.panelState,
+            dragSession = state.dragSession
+        )
+        override val node: SystemInspectorOverlayNode = SystemInspectorOverlayNode(
+            controller = inspectorController,
+            overlayPanel = overlayPanel
+        )
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
 
@@ -280,24 +288,46 @@ class SystemOverlayHost(
                 inspectorController.onLayoutCommitted(root, frame.inspectedLayoutRevision)
             }
             state.active = inspectorController.active
+            inspectorController.setOverlayPanelAuthorityEnabled(state.active)
             if (!state.active) {
                 state.panelState.hide()
                 state.dragSession.end()
+                overlayPanel.syncPanelRect(null)
+                inspectorController.onOverlayPanelPointerCaptureChanged(false)
                 return
             }
-            val panelRect = inspectorController.debugPanelRect()
-            if (panelRect != null) {
-                state.panelState.updateFromRect(panelRect)
+            if (inspectorController.panelState == InspectorPanelState.Expanded) {
+                overlayPanel.configure(
+                    title = "Inspector",
+                    draggable = true,
+                    resizable = true,
+                    minWidth = 240,
+                    minHeight = 160,
+                    style = inspectorPanelStyle(),
+                    onClose = inspectorController::onPanelMinimizeTogglePressed
+                )
+                val panelRect = inspectorController.debugExpandedPanelRect()
+                if (panelRect != null) {
+                    inspectorController.onOverlayPanelRectChanged(panelRect, viewportWidth, viewportHeight)
+                    overlayPanel.syncPanelRect(inspectorController.debugExpandedPanelRect())
+                } else {
+                    state.panelState.show()
+                    overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
+                }
+                overlayPanel.handleMouseMove(
+                    mouseX = frame.cursorX,
+                    mouseY = frame.cursorY,
+                    viewportWidth = viewportWidth,
+                    viewportHeight = viewportHeight
+                ) { rect ->
+                    inspectorController.onOverlayPanelRectChanged(rect, viewportWidth, viewportHeight)
+                }
             } else {
-                state.panelState.show()
+                state.panelState.hide()
+                state.dragSession.end()
+                overlayPanel.syncPanelRect(null)
+                inspectorController.onOverlayPanelPointerCaptureChanged(false)
             }
-            syncDragSession(
-                entryState = state,
-                dragging = node.isDomPanelDragActive(),
-                dragType = OverlayPanelDragType.PanelMove,
-                pointerX = frame.cursorX,
-                pointerY = frame.cursorY
-            )
         }
     }
 
@@ -643,28 +673,22 @@ class SystemOverlayHost(
     }
 
     private companion object {
-        private fun syncDragSession(
-            entryState: SystemOverlayEntryState,
-            dragging: Boolean,
-            dragType: OverlayPanelDragType,
-            pointerX: Int,
-            pointerY: Int
-        ) {
-            if (dragging) {
-                if (!entryState.dragSession.active) {
-                    entryState.dragSession.begin(
-                        ownerId = entryState.id,
-                        type = dragType,
-                        pointerX = pointerX,
-                        pointerY = pointerY,
-                        panelState = entryState.panelState
-                    )
-                } else {
-                    entryState.dragSession.update(pointerX, pointerY)
-                }
-                return
-            }
-            entryState.dragSession.end()
+        private fun inspectorPanelStyle(): OverlayPanelStyle {
+            return OverlayPanelStyle(
+                headerHeight = 52,
+                panelPadding = 6,
+                resizeHandleSize = 8,
+                panelBackgroundColor = 0xE0141820.toInt(),
+                panelBorderColor = 0xCC425062.toInt(),
+                panelShadowColor = 0x7A0C1118,
+                headerBackgroundColor = 0x222D3846,
+                headerBorderColor = 0x553F4A57,
+                closeButtonBackgroundColor = 0x3346596E,
+                closeButtonBorderColor = 0x775E738C,
+                textColor = 0xFFE6EDF6.toInt(),
+                fontSize = 24,
+                closeGlyph = "-"
+            )
         }
 
         private fun toOverlayPanelStyle(style: ColorPickerStyle): OverlayPanelStyle {

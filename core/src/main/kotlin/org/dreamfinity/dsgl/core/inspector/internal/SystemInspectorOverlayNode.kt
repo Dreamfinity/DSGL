@@ -17,6 +17,9 @@ import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
+import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -25,10 +28,24 @@ import java.util.LinkedHashMap
 
 internal class SystemInspectorOverlayNode(
     private val controller: InspectorController,
+    private val overlayPanel: OverlayPanel,
     key: Any? = "dsgl-system-inspector"
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-inspector"
     override val focusable: Boolean = true
+
+    internal constructor(
+        controller: InspectorController,
+        key: Any? = "dsgl-system-inspector"
+    ) : this(
+        controller = controller,
+        overlayPanel = OverlayPanel(
+            ownerId = "standalone-system-inspector",
+            panelState = OverlayPanelState(),
+            dragSession = OverlayPanelDragSession()
+        ),
+        key = key
+    )
 
     private var inspectedRoot: DOMNode? = null
     private var inspectedLayoutRevision: Long = 0L
@@ -39,28 +56,15 @@ internal class SystemInspectorOverlayNode(
     private var persistedBodyScrollSession: ScrollSessionSnapshot? = null
     private val persistedDropdownScrollSession: MutableMap<String, ScrollSessionSnapshot> = LinkedHashMap()
     private var activeDomDropdown: ActiveDomDropdown? = null
-    private var panelDragSession: PanelDragSession? = null
+    private val panelNode: DOMNode = overlayPanel.node().applyParent(this)
+    private var minimizedChipDragSession: MinimizedChipDragSession? = null
 
     private data class ActiveDomDropdown(
         val property: StyleProperty,
         val unitSelect: Boolean
     )
 
-    private enum class PanelDragMode {
-        Move,
-        ResizeLeft,
-        ResizeRight,
-        ResizeTop,
-        ResizeBottom,
-        ResizeTopLeft,
-        ResizeTopRight,
-        ResizeBottomLeft,
-        ResizeBottomRight,
-        MinimizedMove
-    }
-
-    private data class PanelDragSession(
-        val mode: PanelDragMode,
+    private data class MinimizedChipDragSession(
         val startPointerX: Int,
         val startPointerY: Int,
         val startRect: Rect,
@@ -77,12 +81,21 @@ internal class SystemInspectorOverlayNode(
                 ) {
                     closeActiveDomDropdown()
                 }
-                if (isDomOwnedInteractionTarget(event.target)) return@addEventListener
+                if (handleOverlayPanelMouseDown(event)) {
+                    event.cancelled = true
+                    return@addEventListener
+                }
+                val domOwnedTarget = isDomOwnedInteractionTarget(event.target)
+                if (domOwnedTarget) return@addEventListener
                 if (controller.handleMouseDown(event.mouseX, event.mouseY, event.mouseButton)) {
                     event.cancelled = true
                 }
             }
             this@SystemInspectorOverlayNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                if (handleOverlayPanelMouseUp(event)) {
+                    event.cancelled = true
+                    return@addEventListener
+                }
                 val routeToController = controller.isPointerCaptured || !isDomOwnedInteractionTarget(event.target)
                 if (!routeToController) return@addEventListener
                 if (controller.handleMouseUp(event.mouseX, event.mouseY, event.mouseButton)) {
@@ -90,10 +103,14 @@ internal class SystemInspectorOverlayNode(
                 }
             }
             this@SystemInspectorOverlayNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
-                if (isDomOwnedInteractionTarget(event.target)) return@addEventListener
-                if (!controller.isPointerCaptured) return@addEventListener
                 val nextMouseX = event.lastMouseX + event.dx
                 val nextMouseY = event.lastMouseY + event.dy
+                if (handleOverlayPanelDrag(nextMouseX, nextMouseY)) {
+                    event.cancelled = true
+                    return@addEventListener
+                }
+                if (isDomOwnedInteractionTarget(event.target)) return@addEventListener
+                if (!controller.isPointerCaptured) return@addEventListener
                 controller.onCapturedPointerMove(nextMouseX, nextMouseY, bounds.width, bounds.height)
                 event.cancelled = true
             }
@@ -103,6 +120,56 @@ internal class SystemInspectorOverlayNode(
                 }
             }
         }
+    }
+
+    private fun handleOverlayPanelMouseDown(event: MouseDownEvent): Boolean {
+        if (event.mouseButton != MouseButton.LEFT) return false
+        val bodyRect = controller.debugContentRect()
+        val pointerInsideBody = bodyRect.width > 0 &&
+            bodyRect.height > 0 &&
+            bodyRect.contains(event.mouseX, event.mouseY)
+        if (pointerInsideBody) return false
+        val handled = overlayPanel.handleMouseDown(
+            mouseX = event.mouseX,
+            mouseY = event.mouseY,
+            button = event.mouseButton,
+            includeCloseButton = false
+        )
+        if (handled) {
+            controller.onOverlayPanelPointerCaptureChanged(true)
+        }
+        return handled
+    }
+
+    private fun handleOverlayPanelDrag(mouseX: Int, mouseY: Int): Boolean {
+        val handled = overlayPanel.handleMouseMove(
+            mouseX = mouseX,
+            mouseY = mouseY,
+            viewportWidth = lastViewportWidth,
+            viewportHeight = lastViewportHeight
+        ) { rect ->
+            controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
+        }
+        if (handled) {
+            controller.onOverlayPanelPointerCaptureChanged(true)
+        }
+        return handled
+    }
+
+    private fun handleOverlayPanelMouseUp(event: MouseUpEvent): Boolean {
+        val handled = overlayPanel.handleMouseUp(
+            mouseX = event.mouseX,
+            mouseY = event.mouseY,
+            button = event.mouseButton,
+            viewportWidth = lastViewportWidth,
+            viewportHeight = lastViewportHeight
+        ) { rect ->
+            controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
+        }
+        if (handled) {
+            controller.onOverlayPanelPointerCaptureChanged(false)
+        }
+        return handled
     }
 
     fun bindInspectedTree(root: DOMNode?, layoutRevision: Long) {
@@ -115,8 +182,6 @@ internal class SystemInspectorOverlayNode(
         cursorX = mouseX
         cursorY = mouseY
     }
-
-    internal fun isDomPanelDragActive(): Boolean = panelDragSession != null
 
     fun syncInputBounds(viewportWidth: Int, viewportHeight: Int) {
         val viewportRect = Rect(0, 0, viewportWidth.coerceAtLeast(0), viewportHeight.coerceAtLeast(0))
@@ -141,18 +206,22 @@ internal class SystemInspectorOverlayNode(
         val snapshot = controller.buildDomSnapshot(viewportRect.width, viewportRect.height)
         if (snapshot == null) {
             clearTree()
+            panelNode.render(ctx, 0, 0, 0, 0)
+            children.remove(panelNode)
+            panelNode.parent = null
             persistedBodyScrollSession = null
             persistedDropdownScrollSession.clear()
             closeActiveDomDropdown()
-            clearPanelDragSession()
+            clearMinimizedChipDragSession()
             controller.onNativeDomBodyScrollState(0, null, null)
+            controller.onOverlayPanelPointerCaptureChanged(false)
             return
         }
-        reconcilePanelDragSession(snapshot.panelState)
         bounds = resolveInputBounds(viewportRect, snapshot.panelRect)
 
         capturePersistedScrollStateFromCurrentTree()
         clearTree()
+        panelNode.render(ctx, x, y, width, height)
         when (snapshot.panelState) {
             InspectorPanelState.Minimized -> renderMinimized(ctx, snapshot)
             InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot, viewportRect.width, viewportRect.height)
@@ -163,7 +232,7 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun resolveInputBounds(viewportRect: Rect, panelRect: Rect?): Rect {
-        if (controller.blocksUnderlyingInput() || panelDragSession != null) {
+        if (controller.blocksUnderlyingInput() || overlayPanel.isDragging() || minimizedChipDragSession != null) {
             return viewportRect
         }
         return panelRect ?: viewportRect
@@ -171,12 +240,15 @@ internal class SystemInspectorOverlayNode(
 
     private fun clearTree() {
         EventBus.run {
-            children.forEach { child ->
+            children.filter { child -> child !== panelNode }.forEach { child ->
                 child.clearListenersDeep()
                 child.parent = null
             }
         }
-        children.clear()
+        children.retainAll(listOf(panelNode))
+        if (panelNode.parent !== this) {
+            panelNode.applyParent(this)
+        }
         markRenderCommandsDirty()
     }
 
@@ -195,19 +267,19 @@ internal class SystemInspectorOverlayNode(
         chip.border = Border.all(1, 0xCC4F6076.toInt())
         chip.onMouseDown = { event ->
             if (event.mouseButton == MouseButton.LEFT) {
-                startPanelDrag(PanelDragMode.MinimizedMove, snapshot.panelRect, event.mouseX, event.mouseY)
+                startMinimizedChipDrag(snapshot.panelRect, event.mouseX, event.mouseY)
                 event.cancelled = true
             }
         }
         chip.onMouseDrag = { event ->
             val currentX = event.lastMouseX + event.dx
             val currentY = event.lastMouseY + event.dy
-            continuePanelDrag(currentX, currentY)
+            continueMinimizedChipDrag(currentX, currentY)
             event.cancelled = true
         }
         chip.onMouseUp = { event ->
             if (event.mouseButton == MouseButton.LEFT) {
-                endPanelDrag(event.mouseX, event.mouseY)
+                endMinimizedChipDrag(event.mouseX, event.mouseY)
                 event.cancelled = true
             }
         }
@@ -241,64 +313,17 @@ internal class SystemInspectorOverlayNode(
 
     private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportWidth: Int, viewportHeight: Int) {
         val panelRect = snapshot.panelRect
-        val headerRect = snapshot.headerRect ?: Rect(panelRect.x, panelRect.y, panelRect.width, 42)
-        val bodyRect = snapshot.bodyRect ?: Rect(panelRect.x, panelRect.y + 42, panelRect.width, panelRect.height - 42)
+        val bodyRect = snapshot.bodyRect
+            ?: overlayPanel.bodyRect()
+            ?: Rect(panelRect.x + 6, panelRect.y + 58, panelRect.width - 12, (panelRect.height - 64).coerceAtLeast(24))
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
 
-        val panel = scope.div({
-            key = "dsgl-system-inspector-panel"
-            style = {
-                display = Display.Block
-            }
-        })
-        panel.backgroundColor = 0xE0141820.toInt()
-        panel.border = Border.all(1, 0xCC425062.toInt())
-        renderNode(ctx, panel, panelRect)
-
-        val header = scope.div({
-            key = "dsgl-system-inspector-header"
-            style = {
-                display = Display.Block
-            }
-        })
-        header.backgroundColor = 0x222D3846
-        header.border = Border.all(1, 0x553F4A57)
-        renderNode(ctx, header, headerRect)
-
         val pickRect = controller.debugPickToggleBounds()
-            ?: Rect(headerRect.x + headerRect.width - 264, headerRect.y + 8, 160, (headerRect.height - 16).coerceAtLeast(22))
+            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
         val minimizeRect = controller.debugMinimizeBounds()
-            ?: Rect(headerRect.x + headerRect.width - 96, headerRect.y + 8, 86, (headerRect.height - 16).coerceAtLeast(22))
-
-        val titleNode = scope.text(props = {
-            key = "dsgl-system-inspector-header-title"
-            value = snapshot.headerText
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
-        })
-        titleNode.color = 0xFFE6EDF6.toInt()
-        titleNode.fontSize = 24
-        renderNode(
-            ctx,
-            titleNode,
-            Rect(
-                headerRect.x + 8,
-                headerRect.y + 6,
-                (pickRect.x - headerRect.x - 14).coerceAtLeast(40),
-                (headerRect.height - 10).coerceAtLeast(24)
-            )
-        )
-        val headerDragRect = Rect(
-            headerRect.x + 8,
-            headerRect.y + 6,
-            (pickRect.x - headerRect.x - 14).coerceAtLeast(40),
-            (headerRect.height - 10).coerceAtLeast(24)
-        )
-        renderPanelDragHandle(scope, ctx, panelRect, headerDragRect)
-        renderPanelResizeHandles(scope, ctx, panelRect)
+            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
 
         val pickButton = scope.button("Select Element", {
             key = "dsgl-system-inspector-pick-toggle"
@@ -924,194 +949,44 @@ internal class SystemInspectorOverlayNode(
         return true
     }
 
-    private fun renderPanelDragHandle(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect, headerDragRect: Rect) {
-        val handle = scope.div({
-            key = "dsgl-system-inspector-header-drag-handle"
-            style = {
-                display = Display.Block
-            }
-        })
-        handle.backgroundColor = 0
-        handle.onMouseDown = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                startPanelDrag(PanelDragMode.Move, panelRect, event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        handle.onMouseDrag = { event ->
-            val currentX = event.lastMouseX + event.dx
-            val currentY = event.lastMouseY + event.dy
-            continuePanelDrag(currentX, currentY)
-            event.cancelled = true
-        }
-        handle.onMouseUp = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                endPanelDrag(event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        renderNode(ctx, handle, headerDragRect)
-    }
-
-    private fun renderPanelResizeHandles(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
-        val edge = 6
-        val corner = 10
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-left", Rect(panelRect.x, panelRect.y + corner, edge, (panelRect.height - corner * 2).coerceAtLeast(1)), PanelDragMode.ResizeLeft, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-right", Rect(panelRect.x + panelRect.width - edge, panelRect.y + corner, edge, (panelRect.height - corner * 2).coerceAtLeast(1)), PanelDragMode.ResizeRight, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-top", Rect(panelRect.x + corner, panelRect.y, (panelRect.width - corner * 2).coerceAtLeast(1), edge), PanelDragMode.ResizeTop, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-bottom", Rect(panelRect.x + corner, panelRect.y + panelRect.height - edge, (panelRect.width - corner * 2).coerceAtLeast(1), edge), PanelDragMode.ResizeBottom, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-top-left", Rect(panelRect.x, panelRect.y, corner, corner), PanelDragMode.ResizeTopLeft, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-top-right", Rect(panelRect.x + panelRect.width - corner, panelRect.y, corner, corner), PanelDragMode.ResizeTopRight, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-bottom-left", Rect(panelRect.x, panelRect.y + panelRect.height - corner, corner, corner), PanelDragMode.ResizeBottomLeft, panelRect)
-        renderResizeHandle(scope, ctx, "dsgl-system-inspector-resize-handle-bottom-right", Rect(panelRect.x + panelRect.width - corner, panelRect.y + panelRect.height - corner, corner, corner), PanelDragMode.ResizeBottomRight, panelRect)
-    }
-
-    private fun renderResizeHandle(
-        scope: UiScope,
-        ctx: UiMeasureContext,
-        key: String,
-        rect: Rect,
-        mode: PanelDragMode,
-        panelRect: Rect
-    ) {
-        val handle = scope.div({
-            this.key = key
-            style = {
-                display = Display.Block
-            }
-        })
-        handle.backgroundColor = 0
-        handle.onMouseDown = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                startPanelDrag(mode, panelRect, event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        handle.onMouseDrag = { event ->
-            val currentX = event.lastMouseX + event.dx
-            val currentY = event.lastMouseY + event.dy
-            continuePanelDrag(currentX, currentY)
-            event.cancelled = true
-        }
-        handle.onMouseUp = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                endPanelDrag(event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        renderNode(ctx, handle, rect)
-    }
-
-    private fun startPanelDrag(mode: PanelDragMode, panelRect: Rect, mouseX: Int, mouseY: Int) {
-        panelDragSession = PanelDragSession(
-            mode = mode,
+    private fun startMinimizedChipDrag(panelRect: Rect, mouseX: Int, mouseY: Int) {
+        minimizedChipDragSession = MinimizedChipDragSession(
             startPointerX = mouseX,
             startPointerY = mouseY,
             startRect = panelRect,
             moved = false
         )
+        controller.onOverlayPanelPointerCaptureChanged(true)
     }
 
-    private fun continuePanelDrag(mouseX: Int, mouseY: Int) {
-        val session = panelDragSession ?: return
+    private fun continueMinimizedChipDrag(mouseX: Int, mouseY: Int) {
+        val session = minimizedChipDragSession ?: return
         val dx = mouseX - session.startPointerX
         val dy = mouseY - session.startPointerY
         if (!session.moved && (kotlin.math.abs(dx) >= 2 || kotlin.math.abs(dy) >= 2)) {
             session.moved = true
         }
-        when (session.mode) {
-            PanelDragMode.MinimizedMove -> {
-                controller.onNativeDomMinimizedPanelPosition(
-                    x = session.startRect.x + dx,
-                    y = session.startRect.y + dy,
-                    viewportWidth = lastViewportWidth,
-                    viewportHeight = lastViewportHeight
-                )
-            }
-
-            PanelDragMode.Move -> {
-                controller.onNativeDomExpandedPanelRect(
-                    rect = Rect(
-                        session.startRect.x + dx,
-                        session.startRect.y + dy,
-                        session.startRect.width,
-                        session.startRect.height
-                    ),
-                    viewportWidth = lastViewportWidth,
-                    viewportHeight = lastViewportHeight
-                )
-            }
-
-            else -> {
-                controller.onNativeDomExpandedPanelRect(
-                    rect = resolveResizedPanelRect(session, dx, dy),
-                    viewportWidth = lastViewportWidth,
-                    viewportHeight = lastViewportHeight
-                )
-            }
-        }
+        controller.onNativeDomMinimizedPanelPosition(
+            x = session.startRect.x + dx,
+            y = session.startRect.y + dy,
+            viewportWidth = lastViewportWidth,
+            viewportHeight = lastViewportHeight
+        )
     }
 
-    private fun endPanelDrag(mouseX: Int, mouseY: Int) {
-        val session = panelDragSession ?: return
-        continuePanelDrag(mouseX, mouseY)
-        if (session.mode == PanelDragMode.MinimizedMove && !session.moved) {
+    private fun endMinimizedChipDrag(mouseX: Int, mouseY: Int) {
+        val session = minimizedChipDragSession ?: return
+        continueMinimizedChipDrag(mouseX, mouseY)
+        if (!session.moved) {
             controller.restore()
         }
-        panelDragSession = null
+        minimizedChipDragSession = null
+        controller.onOverlayPanelPointerCaptureChanged(false)
     }
 
-    private fun clearPanelDragSession() {
-        panelDragSession = null
-    }
-
-    private fun reconcilePanelDragSession(panelState: InspectorPanelState) {
-        val session = panelDragSession ?: return
-        if (panelState == InspectorPanelState.Minimized && session.mode != PanelDragMode.MinimizedMove) {
-            panelDragSession = null
-            return
-        }
-        if (panelState == InspectorPanelState.Expanded && session.mode == PanelDragMode.MinimizedMove) {
-            panelDragSession = null
-        }
-    }
-
-    private fun resolveResizedPanelRect(session: PanelDragSession, dx: Int, dy: Int): Rect {
-        var left = session.startRect.x
-        var top = session.startRect.y
-        var right = session.startRect.x + session.startRect.width
-        var bottom = session.startRect.y + session.startRect.height
-
-        when (session.mode) {
-            PanelDragMode.ResizeLeft,
-            PanelDragMode.ResizeTopLeft,
-            PanelDragMode.ResizeBottomLeft -> left += dx
-
-            PanelDragMode.ResizeRight,
-            PanelDragMode.ResizeTopRight,
-            PanelDragMode.ResizeBottomRight -> right += dx
-
-            else -> Unit
-        }
-
-        when (session.mode) {
-            PanelDragMode.ResizeTop,
-            PanelDragMode.ResizeTopLeft,
-            PanelDragMode.ResizeTopRight -> top += dy
-
-            PanelDragMode.ResizeBottom,
-            PanelDragMode.ResizeBottomLeft,
-            PanelDragMode.ResizeBottomRight -> bottom += dy
-
-            else -> Unit
-        }
-
-        return Rect(
-            x = left,
-            y = top,
-            width = (right - left).coerceAtLeast(1),
-            height = (bottom - top).coerceAtLeast(1)
-        )
+    private fun clearMinimizedChipDragSession() {
+        minimizedChipDragSession = null
+        controller.onOverlayPanelPointerCaptureChanged(false)
     }
     private fun renderTooltip(
         scope: UiScope,
@@ -1161,6 +1036,9 @@ internal class SystemInspectorOverlayNode(
             }
             val nodeKey = current.key?.toString()
             if (nodeKey?.startsWith("dsgl-system-inspector-") == true) {
+                return true
+            }
+            if (nodeKey?.startsWith("dsgl-overlay-panel-") == true) {
                 return true
             }
             current = current.parent
