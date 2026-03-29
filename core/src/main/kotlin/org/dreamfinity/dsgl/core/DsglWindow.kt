@@ -1,24 +1,23 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
+import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
-import org.dreamfinity.dsgl.core.ref.Ref
-import org.dreamfinity.dsgl.core.ref.RefObject
 import java.time.Instant
 import java.time.ZoneId
 
 /**
  * Version-agnostic window definition. Platform hosts own the UI lifecycle.
  *
- * Implement [render] to return a [DomTree]. Use [state] or [invalidate] to request
- * rebuilds from the host when UI state changes. This class is expected to be used
- * on the client/UI thread of the host platform.
+ * Implement [render] to return a [DomTree].
+ *
+ * Use [state] for window-owned state and [UiScope] hooks for component-local state.
+ * This class is expected to be used on the client/UI thread of the host platform.
  */
 abstract class DsglWindow {
     private var invalidator: (() -> Unit)? = null
-    private var openedAtInstant: Instant = Instant.now()
-    private var openedZoneId: ZoneId = ZoneId.systemDefault()
-    private val refSlots: MutableList<RefObject<*>> = ArrayList()
-    private var refSlotCursor: Int = 0
+    private val componentHookRuntime: ComponentHookRuntime = ComponentHookRuntime()
 
     /**
      * Called by platform hosts to connect this window to a host implementation.
@@ -29,8 +28,6 @@ abstract class DsglWindow {
 
     /** Records the open time for date/time controls. */
     fun markOpened(instant: Instant, zoneId: ZoneId) {
-        openedAtInstant = instant
-        openedZoneId = zoneId
     }
 
     /** Requests a rebuild of the DOM tree. */
@@ -39,24 +36,30 @@ abstract class DsglWindow {
     }
 
     /**
-     * Creates observable state that triggers [invalidate] on change.
-     * TODO(Veritaris): think how to avoid making it private; maybe rework state to be kept
-     * TODO: between re-renders and rebuild inside closure
+     * Creates window-owned observable state that triggers [invalidate] on change.
+     *
+     * This is intentionally separate from component-local hook state.
      */
     fun <T> state(initial: T): MutableState<T> {
         return mutableStateOf(initial) { invalidate() }
     }
 
-    /** Time when the window was opened, as provided by the host. */
-    protected val openedAt: Instant
-        get() = openedAtInstant
-
-    /** Time zone used for date/time inputs. */
-    protected val timeZoneId: ZoneId
-        get() = openedZoneId
-
     /** Build the current UI tree. Called by the host on rebuild. */
     abstract fun render(): DomTree
+
+    /**
+     * Builds a tree bound to this window so UiScope hook APIs can resolve the owning runtime.
+     */
+    protected fun ui(block: UiScope.() -> Unit): DomTree {
+        return ui(this, block)
+    }
+
+    /**
+     * Builds a tree from a custom root bound to this window.
+     */
+    protected fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
+        return ui(this, root, block)
+    }
 
     /** Lifecycle callback when the UI is opened by the host. */
     open fun onOpen() {}
@@ -89,22 +92,44 @@ abstract class DsglWindow {
         get() = false
 
     /**
-     * Host lifecycle hook: resets hook-style slots before calling [render].
+     * Host lifecycle hook: starts a hook render session before calling [render].
      */
-    fun beginRenderBuild() {
-        refSlotCursor = 0
+    fun beginRenderBuild(mode: HookRenderSessionMode = HookRenderSessionMode.Normal) {
+        componentHookRuntime.beginRender(this, mode)
     }
 
-    internal fun <T : Any> useRefSlot(initial: T?): Ref<T> {
-        val slotIndex = refSlotCursor
-        refSlotCursor += 1
-        @Suppress("UNCHECKED_CAST")
-        val existing = refSlots.getOrNull(slotIndex) as RefObject<T>?
-        if (existing != null) {
-            return existing
-        }
-        val created = RefObject(initial)
-        refSlots.add(created)
-        return created
+    /**
+     * Host lifecycle hook: finalizes per-render hook runtime cleanup after [render].
+     */
+    fun endRenderBuild() {
+        componentHookRuntime.endRender()
     }
+
+    /**
+     * Host lifecycle hook: commits post-render hook side effects for the last successful tree commit.
+     */
+    fun commitRenderBuild() {
+        componentHookRuntime.commitPostRenderEffects()
+    }
+
+    /**
+     * Host lifecycle hook: discards post-render hook side effects from an aborted/failed render attempt.
+     */
+    fun discardRenderBuild() {
+        componentHookRuntime.discardPostRenderEffects()
+    }
+
+    /**
+     * Host lifecycle hook: disposes all hook-local runtime state for this window instance.
+     */
+    fun disposeHookRuntime() {
+        componentHookRuntime.disposeAll()
+    }
+
+    internal fun onHookStateChanged() {
+        invalidate()
+    }
+
+    internal fun hookRuntime(): ComponentHookRuntime = componentHookRuntime
 }
+

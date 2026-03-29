@@ -3,9 +3,8 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private val POSITION_MODE_OPTIONS = listOf(
@@ -25,21 +24,45 @@ private const val CARD_BLUE = 0xFF355E91.toInt()
 private const val CARD_GREEN = 0xFF3E7A56.toInt()
 private const val CARD_RED = 0xFF8A4A44.toInt()
 
-fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
-    val modeIndex = window.positionedDemoModeIndex.toInt().coerceIn(0, POSITION_MODE_OPTIONS.lastIndex)
+fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
+    var positionedDemoModeIndex by useState(1L)
+    var positionedDemoUseLeft by useState(true)
+    var positionedDemoUseTop by useState(true)
+    var positionedDemoLeft by useState(24L)
+    var positionedDemoTop by useState(14L)
+    var positionedDemoRight by useState(26L)
+    var positionedDemoBottom by useState(18L)
+    var positionedDemoZBlue by useState(1L)
+    var positionedDemoZGreen by useState(4L)
+    var positionedDemoZRed by useState(2L)
+    var positionedDemoTieSwap by useState(false)
+    var positionedDemoLastHover by useState("none")
+    var positionedDemoLastClick by useState("none")
+    var positionedDemoBlueClicks by useState(0)
+    var positionedDemoGreenClicks by useState(0)
+    var positionedDemoRedClicks by useState(0)
+    var positionedDemoTieFirstClicks by useState(0)
+    var positionedDemoTieSecondClicks by useState(0)
+    var positionedDemoMixedStaticClicks by useState(0)
+    var positionedDemoMixedPositionedClicks by useState(0)
+    var positionedDemoScrollClicks by useState(0)
+    var positionedDemoStickyTopClicks by useState(0)
+    var positionedDemoStickyCombinedClicks by useState(0)
+
+    val modeIndex = positionedDemoModeIndex.toInt().coerceIn(0, POSITION_MODE_OPTIONS.lastIndex)
     val demoMode = POSITION_MODE_OPTIONS[modeIndex]
 
-    val leftOffset = window.positionedDemoLeft.toInt().coerceIn(OFFSET_MIN, OFFSET_MAX)
-    val topOffset = window.positionedDemoTop.toInt().coerceIn(OFFSET_MIN, OFFSET_MAX)
-    val rightOffset = window.positionedDemoRight.toInt().coerceIn(0, OFFSET_MAX)
-    val bottomOffset = window.positionedDemoBottom.toInt().coerceIn(0, OFFSET_MAX)
-    val zBlue = window.positionedDemoZBlue.toInt().coerceIn(Z_MIN, Z_MAX)
-    val zGreen = window.positionedDemoZGreen.toInt().coerceIn(Z_MIN, Z_MAX)
-    val zRed = window.positionedDemoZRed.toInt().coerceIn(Z_MIN, Z_MAX)
+    val leftOffset = positionedDemoLeft.toInt().coerceIn(OFFSET_MIN, OFFSET_MAX)
+    val topOffset = positionedDemoTop.toInt().coerceIn(OFFSET_MIN, OFFSET_MAX)
+    val rightOffset = positionedDemoRight.toInt().coerceIn(0, OFFSET_MAX)
+    val bottomOffset = positionedDemoBottom.toInt().coerceIn(0, OFFSET_MAX)
+    val zBlue = positionedDemoZBlue.toInt().coerceIn(Z_MIN, Z_MAX)
+    val zGreen = positionedDemoZGreen.toInt().coerceIn(Z_MIN, Z_MAX)
+    val zRed = positionedDemoZRed.toInt().coerceIn(Z_MIN, Z_MAX)
 
-    val rootAnchoredLeft = (window.viewportWidthPx / 2).coerceAtLeast(112)
+    val rootAnchoredLeft = (viewportWidthPx / 2).coerceAtLeast(112)
     val rootAnchoredTop = 58
-    val fixedBaseLeft = (window.viewportWidthPx - 236).coerceAtLeast(104)
+    val fixedBaseLeft = (viewportWidthPx - 236).coerceAtLeast(104)
     val fixedBaseTop = 72
 
 
@@ -51,6 +74,7 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             maxHeight = 90.vh
             gap = 4.px
             overflowY = Overflow.Auto
+            overflowX = Overflow.Scroll
         }
     }) {
         text("Positioned layout verification surface: static/relative/absolute/fixed + z-index + scroll + hit-testing")
@@ -61,16 +85,54 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
 
         controls(
             ControlsProps(
-                window,
-                modeIndex,
-                demoMode,
-                leftOffset,
-                rightOffset,
-                topOffset,
-                bottomOffset,
-                zBlue,
-                zGreen,
-                zRed
+                modeIndex = modeIndex,
+                demoMode = demoMode,
+                useLeft = positionedDemoUseLeft,
+                useTop = positionedDemoUseTop,
+                leftOffset = leftOffset,
+                rightOffset = rightOffset,
+                topOffset = topOffset,
+                bottomOffset = bottomOffset,
+                zBlue = zBlue,
+                zGreen = zGreen,
+                zRed = zRed,
+                lastHover = positionedDemoLastHover,
+                lastClick = positionedDemoLastClick,
+                onModeCycle = { positionedDemoModeIndex = ((modeIndex + 1) % POSITION_MODE_OPTIONS.size).toLong() },
+                onToggleUseLeft = { positionedDemoUseLeft = !positionedDemoUseLeft },
+                onToggleUseTop = { positionedDemoUseTop = !positionedDemoUseTop },
+                onSetLeft = { positionedDemoLeft = it },
+                onSetRight = { positionedDemoRight = it },
+                onSetTop = { positionedDemoTop = it },
+                onSetBottom = { positionedDemoBottom = it },
+                onSetZBlue = { positionedDemoZBlue = it },
+                onSetZGreen = { positionedDemoZGreen = it },
+                onSetZRed = { positionedDemoZRed = it },
+                onReset = {
+                    positionedDemoModeIndex = 1L
+                    positionedDemoUseLeft = true
+                    positionedDemoUseTop = true
+                    positionedDemoLeft = 24L
+                    positionedDemoTop = 14L
+                    positionedDemoRight = 26L
+                    positionedDemoBottom = 18L
+                    positionedDemoZBlue = 1L
+                    positionedDemoZGreen = 4L
+                    positionedDemoZRed = 2L
+                    positionedDemoTieSwap = false
+                    positionedDemoLastHover = "none"
+                    positionedDemoLastClick = "none"
+                    positionedDemoBlueClicks = 0
+                    positionedDemoGreenClicks = 0
+                    positionedDemoRedClicks = 0
+                    positionedDemoTieFirstClicks = 0
+                    positionedDemoTieSecondClicks = 0
+                    positionedDemoMixedStaticClicks = 0
+                    positionedDemoMixedPositionedClicks = 0
+                    positionedDemoScrollClicks = 0
+                    positionedDemoStickyTopClicks = 0
+                    positionedDemoStickyCombinedClicks = 0
+                }
             )
         )
 
@@ -92,17 +154,17 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             }) {
                 div({
                     key = "positioned.mode.target"
-                    onMouseEnter = { window.positionedDemoLastHover = "mode-$demoMode" }
-                    onMouseClick = { window.positionedDemoLastClick = "mode-$demoMode" }
+                    onMouseEnter = { positionedDemoLastHover = "mode-$demoMode" }
+                    onMouseClick = { positionedDemoLastClick = "mode-$demoMode" }
                     style = {
                         position = demoMode
-                        left = if (window.positionedDemoUseLeft) {
+                        left = if (positionedDemoUseLeft) {
                             leftOffset.px
                         } else {
                             null
                         }
                         right = rightOffset.px
-                        top = if (window.positionedDemoUseTop) {
+                        top = if (positionedDemoUseTop) {
                             topOffset.px
                         } else {
                             null
@@ -147,9 +209,9 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 }) { text("Flow item before") }
                 div({
                     key = "positioned.static.target"
-                    onMouseEnter = { window.positionedDemoLastHover = "static-target" }
+                    onMouseEnter = { positionedDemoLastHover = "static-target" }
                     onMouseClick = {
-                        window.positionedDemoLastClick = "static-target"
+                        positionedDemoLastClick = "static-target"
                     }
                     style = {
                         position = PositionMode.Static
@@ -198,17 +260,17 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 }) { text("left") }
                 div({
                     key = "positioned.relative.target"
-                    onMouseEnter = { window.positionedDemoLastHover = "relative-target" }
-                    onMouseClick = { window.positionedDemoLastClick = "relative-target" }
+                    onMouseEnter = { positionedDemoLastHover = "relative-target" }
+                    onMouseClick = { positionedDemoLastClick = "relative-target" }
                     style = {
                         position = PositionMode.Relative
-                        left = if (window.positionedDemoUseLeft) {
+                        left = if (positionedDemoUseLeft) {
                             leftOffset.px
                         } else {
                             null
                         }
                         right = rightOffset.px
-                        top = if (window.positionedDemoUseTop) {
+                        top = if (positionedDemoUseTop) {
                             topOffset.px
                         } else {
                             null
@@ -263,19 +325,19 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 }) {
                     div({
                         key = "positioned.absolute.inner"
-                        onMouseEnter = { window.positionedDemoLastHover = "absolute-inside" }
+                        onMouseEnter = { positionedDemoLastHover = "absolute-inside" }
                         onMouseClick = {
-                            window.positionedDemoLastClick = "absolute-inside"
+                            positionedDemoLastClick = "absolute-inside"
                         }
                         style = {
                             position = PositionMode.Absolute
-                            left = if (window.positionedDemoUseLeft) {
+                            left = if (positionedDemoUseLeft) {
                                 leftOffset.px
                             } else {
                                 null
                             }
                             right = rightOffset.px
-                            top = if (window.positionedDemoUseTop) {
+                            top = if (positionedDemoUseTop) {
                                 topOffset.px
                             } else {
                                 null
@@ -302,8 +364,8 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
         }) {
             div({
                 key = "positioned.absolute.rootBadge"
-                onMouseEnter = { window.positionedDemoLastHover = "absolute-root" }
-                onMouseClick = { window.positionedDemoLastClick = "absolute-root" }
+                onMouseEnter = { positionedDemoLastHover = "absolute-root" }
+                onMouseClick = { positionedDemoLastClick = "absolute-root" }
                 style = {
                     position = PositionMode.Absolute
                     left = rootAnchoredLeft.px
@@ -363,27 +425,27 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 button("scroll action", {
                     key = "positioned.scroll.button"
                     onMouseClick = {
-                        window.positionedDemoScrollClicks += 1
-                        window.positionedDemoLastClick = "scroll-action"
+                        positionedDemoScrollClicks += 1
+                        positionedDemoLastClick = "scroll-action"
                     }
                 })
-                text("scroll action clicks=${window.positionedDemoScrollClicks}", { style = { color = DEMO_MUTED } })
+                text("scroll action clicks=${positionedDemoScrollClicks}", { style = { color = DEMO_MUTED } })
             }
         }
 
         div({
             key = "positioned.fixed.badge"
-            onMouseEnter = { window.positionedDemoLastHover = "fixed-badge" }
-            onMouseClick = { window.positionedDemoLastClick = "fixed-badge" }
+            onMouseEnter = { positionedDemoLastHover = "fixed-badge" }
+            onMouseClick = { positionedDemoLastClick = "fixed-badge" }
             style = {
                 position = PositionMode.Fixed
-                left = if (window.positionedDemoUseLeft) {
+                left = if (positionedDemoUseLeft) {
                     (fixedBaseLeft + leftOffset).coerceAtLeast(0).px
                 } else {
                     null
                 }
                 right = rightOffset.px
-                top = if (window.positionedDemoUseTop) {
+                top = if (positionedDemoUseTop) {
                     (fixedBaseTop + topOffset).coerceAtLeast(0).px
                 } else {
                     null
@@ -414,9 +476,19 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 { style = { color = DEMO_MUTED } }
             )
 
-            stickyVerticalGroup(window)
+            stickyVerticalGroup(
+                onSetLastHover = { positionedDemoLastHover = it },
+                onSetLastClick = { positionedDemoLastClick = it },
+                stickyTopClicks = positionedDemoStickyTopClicks,
+                onStickyTopClick = { positionedDemoStickyTopClicks += 1 }
+            )
             stickyHorizontalGroup()
-            stickyXYGroup(window)
+            stickyXYGroup(
+                onSetLastHover = { positionedDemoLastHover = it },
+                onSetLastClick = { positionedDemoLastClick = it },
+                stickyCombinedClicks = positionedDemoStickyCombinedClicks,
+                onStickyCombinedClick = { positionedDemoStickyCombinedClicks += 1 }
+            )
             stickyNoInsets()
             stickyClamp()
         }
@@ -437,10 +509,10 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 top = 6,
                 zIndex = zBlue,
                 color = CARD_BLUE,
-                onHover = { window.positionedDemoLastHover = "blue" },
+                onHover = { positionedDemoLastHover = "blue" },
                 onClick = {
-                    window.positionedDemoBlueClicks += 1
-                    window.positionedDemoLastClick = "blue"
+                    positionedDemoBlueClicks += 1
+                    positionedDemoLastClick = "blue"
                 }
             )
             positionedOverlapCard(
@@ -450,10 +522,10 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 top = 20,
                 zIndex = zGreen,
                 color = CARD_GREEN,
-                onHover = { window.positionedDemoLastHover = "green" },
+                onHover = { positionedDemoLastHover = "green" },
                 onClick = {
-                    window.positionedDemoGreenClicks += 1
-                    window.positionedDemoLastClick = "green"
+                    positionedDemoGreenClicks += 1
+                    positionedDemoLastClick = "green"
                 }
             )
             positionedOverlapCard(
@@ -463,15 +535,15 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 top = 34,
                 zIndex = zRed,
                 color = CARD_RED,
-                onHover = { window.positionedDemoLastHover = "red" },
+                onHover = { positionedDemoLastHover = "red" },
                 onClick = {
-                    window.positionedDemoRedClicks += 1
-                    window.positionedDemoLastClick = "red"
+                    positionedDemoRedClicks += 1
+                    positionedDemoLastClick = "red"
                 }
             )
         }
         text(
-            "clicks blue=${window.positionedDemoBlueClicks}, green=${window.positionedDemoGreenClicks}, red=${window.positionedDemoRedClicks}",
+            "clicks blue=${positionedDemoBlueClicks}, green=${positionedDemoGreenClicks}, red=${positionedDemoRedClicks}",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -483,9 +555,9 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             }
         }) {
             button(
-                if (window.positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second",
+                if (positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second",
                 {
-                    onMouseClick = { window.positionedDemoTieSwap = !window.positionedDemoTieSwap }
+                    onMouseClick = { positionedDemoTieSwap = !positionedDemoTieSwap }
                 }
             )
             text(
@@ -502,16 +574,60 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
                 backgroundColor = 0xFF283440.toInt()
             }
         }) {
-            if (window.positionedDemoTieSwap) {
-                positionedTieCard(window, "second", 28, 16, 3, 0xFF54718F.toInt())
-                positionedTieCard(window, "first", 16, 8, 3, 0xFF6B8CB0.toInt())
+            if (positionedDemoTieSwap) {
+                positionedTieCard(
+                    label = "second",
+                    left = 28,
+                    top = 16,
+                    zIndex = 3,
+                    color = 0xFF54718F.toInt(),
+                    onSetLastHover = { positionedDemoLastHover = it },
+                    onTieClick = {
+                        positionedDemoTieSecondClicks += 1
+                        positionedDemoLastClick = it
+                    }
+                )
+                positionedTieCard(
+                    label = "first",
+                    left = 16,
+                    top = 8,
+                    zIndex = 3,
+                    color = 0xFF6B8CB0.toInt(),
+                    onSetLastHover = { positionedDemoLastHover = it },
+                    onTieClick = {
+                        positionedDemoTieFirstClicks += 1
+                        positionedDemoLastClick = it
+                    }
+                )
             } else {
-                positionedTieCard(window, "first", 16, 8, 3, 0xFF6B8CB0.toInt())
-                positionedTieCard(window, "second", 28, 16, 3, 0xFF54718F.toInt())
+                positionedTieCard(
+                    label = "first",
+                    left = 16,
+                    top = 8,
+                    zIndex = 3,
+                    color = 0xFF6B8CB0.toInt(),
+                    onSetLastHover = { positionedDemoLastHover = it },
+                    onTieClick = {
+                        positionedDemoTieFirstClicks += 1
+                        positionedDemoLastClick = it
+                    }
+                )
+                positionedTieCard(
+                    label = "second",
+                    left = 28,
+                    top = 16,
+                    zIndex = 3,
+                    color = 0xFF54718F.toInt(),
+                    onSetLastHover = { positionedDemoLastHover = it },
+                    onTieClick = {
+                        positionedDemoTieSecondClicks += 1
+                        positionedDemoLastClick = it
+                    }
+                )
             }
         }
         text(
-            "tie clicks first=${window.positionedDemoTieFirstClicks}, second=${window.positionedDemoTieSecondClicks}",
+            "tie clicks first=${positionedDemoTieFirstClicks}, second=${positionedDemoTieSecondClicks}",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -526,10 +642,10 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
         }) {
             div({
                 key = "positioned.mixed.static"
-                onMouseEnter = { window.positionedDemoLastHover = "mixed-static" }
+                onMouseEnter = { positionedDemoLastHover = "mixed-static" }
                 onMouseClick = {
-                    window.positionedDemoMixedStaticClicks += 1
-                    window.positionedDemoLastClick = "mixed-static"
+                    positionedDemoMixedStaticClicks += 1
+                    positionedDemoLastClick = "mixed-static"
                 }
                 style = {
                     position = PositionMode.Static
@@ -543,10 +659,10 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             }
             div({
                 key = "positioned.mixed.positioned"
-                onMouseEnter = { window.positionedDemoLastHover = "mixed-positioned" }
+                onMouseEnter = { positionedDemoLastHover = "mixed-positioned" }
                 onMouseClick = {
-                    window.positionedDemoMixedPositionedClicks += 1
-                    window.positionedDemoLastClick = "mixed-positioned"
+                    positionedDemoMixedPositionedClicks += 1
+                    positionedDemoLastClick = "mixed-positioned"
                 }
                 style = {
                     position = PositionMode.Relative
@@ -562,7 +678,7 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
             }
         }
         text(
-            "mixed clicks static=${window.positionedDemoMixedStaticClicks}, positioned=${window.positionedDemoMixedPositionedClicks}",
+            "mixed clicks static=${positionedDemoMixedStaticClicks}, positioned=${positionedDemoMixedPositionedClicks}",
             { style = { color = DEMO_MUTED; minHeight = 1.em } }
         )
         repeat(40) {
@@ -578,7 +694,12 @@ fun UiScope.positionedLayoutSection(window: ShowcaseWindow) {
     }
 }
 
-private fun UiScope.stickyVerticalGroup(window: ShowcaseWindow) {
+private fun UiScope.stickyVerticalGroup(
+    onSetLastHover: (String) -> Unit,
+    onSetLastClick: (String) -> Unit,
+    stickyTopClicks: Int,
+    onStickyTopClick: () -> Unit
+) {
     div({
         key = "positioned.sticky.vertical.group"
         style = {
@@ -619,10 +740,10 @@ private fun UiScope.stickyVerticalGroup(window: ShowcaseWindow) {
                 }) {
                     button("sticky top action", {
                         key = "positioned.sticky.vertical.top.target"
-                        onMouseEnter = { window.positionedDemoLastHover = "sticky-top" }
+                        onMouseEnter = { onSetLastHover("sticky-top") }
                         onMouseClick = {
-                            window.positionedDemoStickyTopClicks += 1
-                            window.positionedDemoLastClick = "sticky-top"
+                            onStickyTopClick()
+                            onSetLastClick("sticky-top")
                         }
                         style = {
                             position = PositionMode.Sticky
@@ -704,7 +825,7 @@ private fun UiScope.stickyVerticalGroup(window: ShowcaseWindow) {
             repeat(10) { line -> text("precedence line ${line + 1}") }
         }
         text(
-            "sticky top clicks=${window.positionedDemoStickyTopClicks}",
+            "sticky top clicks=$stickyTopClicks",
             { style = { color = DEMO_MUTED } }
         )
     }
@@ -808,7 +929,12 @@ private fun UiScope.stickyHorizontalGroup() {
 
 }
 
-private fun UiScope.stickyXYGroup(window: ShowcaseWindow) {
+private fun UiScope.stickyXYGroup(
+    onSetLastHover: (String) -> Unit,
+    onSetLastClick: (String) -> Unit,
+    stickyCombinedClicks: Int,
+    onStickyCombinedClick: () -> Unit
+) {
     div({
         key = "positioned.sticky.xy.group"
         style = {
@@ -835,10 +961,10 @@ private fun UiScope.stickyXYGroup(window: ShowcaseWindow) {
         }) {
             button("sticky x+y target", {
                 key = "positioned.sticky.xy.target"
-                onMouseEnter = { window.positionedDemoLastHover = "sticky-xy" }
+                onMouseEnter = { onSetLastHover("sticky-xy") }
                 onMouseClick = {
-                    window.positionedDemoStickyCombinedClicks += 1
-                    window.positionedDemoLastClick = "sticky-xy"
+                    onStickyCombinedClick()
+                    onSetLastClick("sticky-xy")
                 }
                 style = {
                     position = PositionMode.Sticky
@@ -852,7 +978,7 @@ private fun UiScope.stickyXYGroup(window: ShowcaseWindow) {
             }
         }
         text(
-            "sticky x+y clicks=${window.positionedDemoStickyCombinedClicks}",
+            "sticky x+y clicks=$stickyCombinedClicks",
             { style = { color = DEMO_MUTED } }
         )
     }
@@ -956,9 +1082,10 @@ private fun UiScope.stickyClamp() {
 }
 
 data class ControlsProps(
-    val window: ShowcaseWindow,
     val modeIndex: Int,
     val demoMode: PositionMode,
+    val useLeft: Boolean,
+    val useTop: Boolean,
     val leftOffset: Int,
     val rightOffset: Int,
     val topOffset: Int,
@@ -966,35 +1093,22 @@ data class ControlsProps(
     val zBlue: Int,
     val zGreen: Int,
     val zRed: Int,
+    val lastHover: String,
+    val lastClick: String,
+    val onModeCycle: () -> Unit,
+    val onToggleUseLeft: () -> Unit,
+    val onToggleUseTop: () -> Unit,
+    val onSetLeft: (Long) -> Unit,
+    val onSetRight: (Long) -> Unit,
+    val onSetTop: (Long) -> Unit,
+    val onSetBottom: (Long) -> Unit,
+    val onSetZBlue: (Long) -> Unit,
+    val onSetZGreen: (Long) -> Unit,
+    val onSetZRed: (Long) -> Unit,
+    val onReset: () -> Unit
 )
 
 private fun UiScope.controls(props: ControlsProps) {
-    val resetPositions = { _: MouseClickEvent ->
-        props.window.positionedDemoModeIndex = 1L
-        props.window.positionedDemoUseLeft = true
-        props.window.positionedDemoUseTop = true
-        props.window.positionedDemoLeft = 24L
-        props.window.positionedDemoTop = 14L
-        props.window.positionedDemoRight = 26L
-        props.window.positionedDemoBottom = 18L
-        props.window.positionedDemoZBlue = 1L
-        props.window.positionedDemoZGreen = 4L
-        props.window.positionedDemoZRed = 2L
-        props.window.positionedDemoTieSwap = false
-        props.window.positionedDemoLastHover = "none"
-        props.window.positionedDemoLastClick = "none"
-        props.window.positionedDemoBlueClicks = 0
-        props.window.positionedDemoGreenClicks = 0
-        props.window.positionedDemoRedClicks = 0
-        props.window.positionedDemoTieFirstClicks = 0
-        props.window.positionedDemoTieSecondClicks = 0
-        props.window.positionedDemoMixedStaticClicks = 0
-        props.window.positionedDemoMixedPositionedClicks = 0
-        props.window.positionedDemoScrollClicks = 0
-        props.window.positionedDemoStickyTopClicks = 0
-        props.window.positionedDemoStickyCombinedClicks = 0
-    }
-
     div({
         key = "positioned.controls"
         style = {
@@ -1017,24 +1131,22 @@ private fun UiScope.controls(props: ControlsProps) {
             }
         }) {
             button("mode=${props.demoMode.name.lowercase()}", {
-                onMouseClick = {
-                    props.window.positionedDemoModeIndex = ((props.modeIndex + 1) % POSITION_MODE_OPTIONS.size).toLong()
-                }
+                onMouseClick = { props.onModeCycle() }
             })
             button(
-                if (props.window.positionedDemoUseLeft) "h: left first" else "h: right fallback",
+                if (props.useLeft) "h: left first" else "h: right fallback",
                 {
-                    onMouseClick = { props.window.positionedDemoUseLeft = !props.window.positionedDemoUseLeft }
+                    onMouseClick = { props.onToggleUseLeft() }
                 }
             )
             button(
-                if (props.window.positionedDemoUseTop) "v: top first" else "v: bottom fallback",
+                if (props.useTop) "v: top first" else "v: bottom fallback",
                 {
-                    onMouseClick = { props.window.positionedDemoUseTop = !props.window.positionedDemoUseTop }
+                    onMouseClick = { props.onToggleUseTop() }
                 }
             )
             button("Reset", {
-                onMouseClick = resetPositions
+                onMouseClick = { props.onReset() }
             })
             select {
                 for (i in 0..5) {
@@ -1053,7 +1165,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.leftOffset.toLong(),
             min = OFFSET_MIN.toLong(),
             max = OFFSET_MAX.toLong(),
-            onChange = { props.window.positionedDemoLeft = it }
+            onChange = props.onSetLeft
         )
         positionedRangeControl(
             label = "right",
@@ -1061,7 +1173,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.rightOffset.toLong(),
             min = 0,
             max = OFFSET_MAX.toLong(),
-            onChange = { props.window.positionedDemoRight = it }
+            onChange = props.onSetRight
         )
         positionedRangeControl(
             label = "top",
@@ -1069,7 +1181,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.topOffset.toLong(),
             min = OFFSET_MIN.toLong(),
             max = OFFSET_MAX.toLong(),
-            onChange = { props.window.positionedDemoTop = it }
+            onChange = props.onSetTop
         )
         positionedRangeControl(
             label = "bottom",
@@ -1077,7 +1189,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.bottomOffset.toLong(),
             min = 0,
             max = OFFSET_MAX.toLong(),
-            onChange = { props.window.positionedDemoBottom = it }
+            onChange = props.onSetBottom
         )
         positionedRangeControl(
             label = "z blue",
@@ -1085,7 +1197,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zBlue.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = { props.window.positionedDemoZBlue = it }
+            onChange = props.onSetZBlue
         )
         positionedRangeControl(
             label = "z green",
@@ -1093,7 +1205,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zGreen.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = { props.window.positionedDemoZGreen = it }
+            onChange = props.onSetZGreen
         )
         positionedRangeControl(
             label = "z red",
@@ -1101,10 +1213,10 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zRed.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = { props.window.positionedDemoZRed = it }
+            onChange = props.onSetZRed
         )
         text(
-            "hover=${props.window.positionedDemoLastHover} click=${props.window.positionedDemoLastClick}",
+            "hover=${props.lastHover} click=${props.lastClick}",
             { style = { color = DEMO_MUTED } }
         )
     }
@@ -1183,24 +1295,18 @@ private fun UiScope.positionedOverlapCard(
 }
 
 private fun UiScope.positionedTieCard(
-    window: ShowcaseWindow,
     label: String,
     left: Int,
     top: Int,
     zIndex: Int,
-    color: Int
+    color: Int,
+    onSetLastHover: (String) -> Unit,
+    onTieClick: (String) -> Unit
 ) {
     div({
         key = "positioned.tie.$label"
-        onMouseEnter = { window.positionedDemoLastHover = "tie-$label" }
-        onMouseClick = {
-            if (label == "first") {
-                window.positionedDemoTieFirstClicks += 1
-            } else {
-                window.positionedDemoTieSecondClicks += 1
-            }
-            window.positionedDemoLastClick = "tie-$label"
-        }
+        onMouseEnter = { onSetLastHover("tie-$label") }
+        onMouseClick = { onTieClick("tie-$label") }
         style = {
             position = PositionMode.Absolute
             this.left = left.px
@@ -1214,5 +1320,6 @@ private fun UiScope.positionedTieCard(
         text("$label z=$zIndex")
     }
 }
+
 
 

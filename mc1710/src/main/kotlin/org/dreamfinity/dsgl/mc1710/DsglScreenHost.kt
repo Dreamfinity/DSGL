@@ -25,6 +25,8 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
+import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
@@ -392,6 +394,7 @@ abstract class DsglScreenHost(
         hoverTarget = null
         releaseDragCapture()
         lastFrameNanos = 0L
+        window.disposeHookRuntime()
         window.onClose()
         super.onGuiClosed()
     }
@@ -437,8 +440,7 @@ abstract class DsglScreenHost(
         return try {
             tracePhase("rebuild.start")
             rendersCount++
-            window.beginRenderBuild()
-            val nextTree = window.render()
+            val nextTree = renderWithHookSession(hotSwapped)
             val currentTree = domTree
             if (currentTree == null) {
                 domTree = nextTree
@@ -460,15 +462,49 @@ abstract class DsglScreenHost(
                 restoreDragCapture(root)
                 DndRuntime.engine.rebindAfterReconcile(root)
             }
+            window.commitRenderBuild()
             tracePhase("rebuild.end")
             true
         } catch (error: Throwable) {
+            window.discardRenderBuild()
             logPipelineError(
                 key = "rebuild",
                 message = "[DSGL] Rebuild failed; keeping previous committed frame/tree: ${error.message}"
             )
             false
         }
+    }
+
+    private fun renderWithHookSession(hotSwapped: Boolean): DomTree {
+        val mode = if (hotSwapped) HookRenderSessionMode.HotReload else HookRenderSessionMode.Normal
+        val maxAttempts = if (hotSwapped) 8 else 1
+        var attempt = 0
+        var lastRemountRequest: HookHotReloadRemountException? = null
+
+        while (attempt < maxAttempts) {
+            attempt += 1
+            window.beginRenderBuild(mode)
+            var remountRequested = false
+            try {
+                return window.render()
+            } catch (remount: HookHotReloadRemountException) {
+                if (!hotSwapped) {
+                    throw remount
+                }
+                remountRequested = true
+                lastRemountRequest = remount
+                println(remount.message)
+            } finally {
+                window.endRenderBuild()
+                if (remountRequested) {
+                    window.discardRenderBuild()
+                }
+            }
+        }
+
+        throw IllegalStateException(
+            "Hot-reload hook remount recovery exceeded $maxAttempts attempts: ${lastRemountRequest?.message}"
+        )
     }
 
     override fun handleKeyboardInput() {

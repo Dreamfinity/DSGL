@@ -1,27 +1,73 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.style.Overflow
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_SURFACE_ALT
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
-fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
-    val halfWidth = ((contentWidth - 8) / 2).coerceAtLeast(90)
+private val inputEventCheckboxOptions = listOf(
+    InputOption("alpha", "Alpha"),
+    InputOption("beta", "Beta"),
+    InputOption("gamma", "Gamma")
+)
+
+private val inputEventRadioOptions = listOf(
+    InputOption("north", "North"),
+    InputOption("center", "Center"),
+    InputOption("south", "South")
+)
+
+private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+
+fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
+    var inputEventTextValue by useState("")
+    var inputEventTextareaValue by useState("Multiline event sample")
+    var inputEventCheckboxValue by useState(setOf("alpha"))
+    var inputEventRadioValue by useState<String?>("center")
+    var inputEventRangeValue by useState(35L)
+    var inputEventLogEntries by useState(emptyList<String>())
+
+    fun appendInputEvent(control: String, phase: String, value: String, event: Event) {
+        val time = LocalTime.now().format(inputEventTimeFormatter)
+        val line = "$time $control.$phase value=$value"
+        inputEventLogEntries = (listOf(line) + inputEventLogEntries).take(8)
+        onLogHook("inputEvents.$control.$phase", event, "value=$value")
+    }
+
+    fun parseCheckboxSelection(parsedValue: Any?): Set<String> {
+        val parsedSet = parsedValue as? Set<*>
+        if (parsedSet != null) {
+            return parsedSet.mapNotNull { it as? String }.toSet()
+        }
+        val parsedString = parsedValue as? String
+        if (!parsedString.isNullOrBlank()) {
+            return parsedString
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }
+        return emptySet()
+    }
+
+    fun checkboxValueString(): String = inputEventCheckboxValue.toList().sorted().joinToString(",")
 
     div({
         key = "section.inputEvents"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
-
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
@@ -42,7 +88,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
             div({
                 key = "inputEvents.left"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -50,23 +96,23 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
             }) {
                 text("Text input")
                 input(
-                    InputType.Text(value = window.inputEventTextValue, placeholder = "Type then blur"),
+                    InputType.Text(value = inputEventTextValue, placeholder = "Type then blur"),
                     {
                         key = "inputEvents.text"
-                        style = { width = (halfWidth - 6).px }
+                        style = { width = 100.percent }
                         onFocusGain = { event: FocusGainEvent ->
-                            window.recordInputEvent("text", "focus", window.inputEventTextValue, event)
+                            appendInputEvent("text", "focus", inputEventTextValue, event)
                         }
                         onFocusLose = { event: FocusLoseEvent ->
-                            window.recordInputEvent("text", "blur", window.inputEventTextValue, event)
+                            appendInputEvent("text", "blur", inputEventTextValue, event)
                         }
                         onInput = { event: InputEvent ->
-                            window.inputEventTextValue = event.value
-                            window.recordInputEvent("text", "input", event.value, event)
+                            inputEventTextValue = event.value
+                            appendInputEvent("text", "input", event.value, event)
                         }
                         onValueChange = { event: ValueChangedEvent ->
-                            window.inputEventTextValue = event.value
-                            window.recordInputEvent("text", "change", event.value, event)
+                            inputEventTextValue = event.value
+                            appendInputEvent("text", "change", event.value, event)
                         }
                     }
                 )
@@ -76,23 +122,23 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                     placeholder = "Multiline event sample"
                     key = "inputEvents.textarea"
                     style = {
-                        width = (halfWidth - 6).px
+                        width = 100.percent
                         height = 46.px
                     }
-                    value = window.inputEventTextareaValue
+                    value = inputEventTextareaValue
                     onFocusGain = { event: FocusGainEvent ->
-                        window.recordInputEvent("textarea", "focus", window.inputEventTextareaValue, event)
+                        appendInputEvent("textarea", "focus", inputEventTextareaValue, event)
                     }
                     onFocusLose = { event: FocusLoseEvent ->
-                        window.recordInputEvent("textarea", "blur", window.inputEventTextareaValue, event)
+                        appendInputEvent("textarea", "blur", inputEventTextareaValue, event)
                     }
                     onInput = { event: InputEvent ->
-                        window.inputEventTextareaValue = event.value
-                        window.recordInputEvent("textarea", "input", event.value.replace("\n", "\\n"), event)
+                        inputEventTextareaValue = event.value
+                        appendInputEvent("textarea", "input", event.value.replace("\n", "\\n"), event)
                     }
                     onValueChange = { event: ValueChangedEvent ->
-                        window.inputEventTextareaValue = event.value
-                        window.recordInputEvent("textarea", "change", event.value.replace("\n", "\\n"), event)
+                        inputEventTextareaValue = event.value
+                        appendInputEvent("textarea", "change", event.value.replace("\n", "\\n"), event)
                     }
                 })
             }
@@ -100,7 +146,7 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
             div({
                 key = "inputEvents.right"
                 style = {
-                    width = halfWidth.px
+                    flexGrow = 1f
                     gap = 3.px
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -109,27 +155,27 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 text("Checkbox")
                 input(
                     InputType.Checkbox(
-                        variants = window.checkboxOptions,
-                        selected = window.inputEventCheckboxValue,
+                        variants = inputEventCheckboxOptions,
+                        selected = inputEventCheckboxValue,
                         minSelected = 0,
                         maxSelected = 3
                     ),
                     {
                         key = "inputEvents.checkbox"
-                        style = { width = (halfWidth - 6).px }
+                        style = { width = 100.percent }
                         onFocusGain = { event: FocusGainEvent ->
-                            window.recordInputEvent("checkbox", "focus", window.checkboxValueString(), event)
+                            appendInputEvent("checkbox", "focus", checkboxValueString(), event)
                         }
                         onFocusLose = { event: FocusLoseEvent ->
-                            window.recordInputEvent("checkbox", "blur", window.checkboxValueString(), event)
+                            appendInputEvent("checkbox", "blur", checkboxValueString(), event)
                         }
                         onInput = { event: InputEvent ->
-                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
-                            window.recordInputEvent("checkbox", "input", event.value, event)
+                            inputEventCheckboxValue = parseCheckboxSelection(event.parsedValue)
+                            appendInputEvent("checkbox", "input", event.value, event)
                         }
                         onValueChange = { event: ValueChangedEvent ->
-                            window.inputEventCheckboxValue = window.parseCheckboxSelection(event.parsedValue)
-                            window.recordInputEvent("checkbox", "change", event.value, event)
+                            inputEventCheckboxValue = parseCheckboxSelection(event.parsedValue)
+                            appendInputEvent("checkbox", "change", event.value, event)
                         }
                     }
                 )
@@ -137,25 +183,25 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 text("Radio")
                 input(
                     InputType.Radio(
-                        variants = window.radioOptions,
-                        selected = window.inputEventRadioValue
+                        variants = inputEventRadioOptions,
+                        selected = inputEventRadioValue
                     ),
                     {
                         key = "inputEvents.radio"
-                        style = { width = (halfWidth - 6).px }
+                        style = { width = 100.percent }
                         onFocusGain = { event: FocusGainEvent ->
-                            window.recordInputEvent("radio", "focus", window.inputEventRadioValue ?: "", event)
+                            appendInputEvent("radio", "focus", inputEventRadioValue ?: "", event)
                         }
                         onFocusLose = { event: FocusLoseEvent ->
-                            window.recordInputEvent("radio", "blur", window.inputEventRadioValue ?: "", event)
+                            appendInputEvent("radio", "blur", inputEventRadioValue ?: "", event)
                         }
                         onInput = { event: InputEvent ->
-                            window.inputEventRadioValue = event.parsedValue as? String
-                            window.recordInputEvent("radio", "input", event.value, event)
+                            inputEventRadioValue = event.parsedValue as? String
+                            appendInputEvent("radio", "input", event.value, event)
                         }
                         onValueChange = { event: ValueChangedEvent ->
-                            window.inputEventRadioValue = event.parsedValue as? String
-                            window.recordInputEvent("radio", "change", event.value, event)
+                            inputEventRadioValue = event.parsedValue as? String
+                            appendInputEvent("radio", "change", event.value, event)
                         }
                     }
                 )
@@ -163,32 +209,32 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
                 text("Range")
                 input(
                     InputType.Range(
-                        value = window.inputEventRangeValue,
+                        value = inputEventRangeValue,
                         min = 0,
                         max = 100,
                         step = 1
                     ),
                     {
                         key = "inputEvents.range"
-                        style = { width = (halfWidth - 6).px }
+                        style = { width = 100.percent }
                         onFocusGain = { event: FocusGainEvent ->
-                            window.recordInputEvent("range", "focus", window.inputEventRangeValue.toString(), event)
+                            appendInputEvent("range", "focus", inputEventRangeValue.toString(), event)
                         }
                         onFocusLose = { event: FocusLoseEvent ->
-                            window.recordInputEvent("range", "blur", window.inputEventRangeValue.toString(), event)
+                            appendInputEvent("range", "blur", inputEventRangeValue.toString(), event)
                         }
                         onInput = { event: InputEvent ->
-                            window.inputEventRangeValue = (event.parsedValue as? Long) ?: window.inputEventRangeValue
-                            window.recordInputEvent("range", "input", event.value, event)
+                            inputEventRangeValue = (event.parsedValue as? Long) ?: inputEventRangeValue
+                            appendInputEvent("range", "input", event.value, event)
                         }
                         onValueChange = { event: ValueChangedEvent ->
-                            window.inputEventRangeValue = (event.parsedValue as? Long) ?: window.inputEventRangeValue
-                            window.recordInputEvent("range", "change", event.value, event)
+                            inputEventRangeValue = (event.parsedValue as? Long) ?: inputEventRangeValue
+                            appendInputEvent("range", "change", event.value, event)
                         }
                     }
                 )
                 text(
-                    "Range value=${window.inputEventRangeValue}",
+                    "Range value=$inputEventRangeValue",
                     { style = { color = DEMO_MUTED } }
                 )
             }
@@ -202,11 +248,10 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
             }
         }) {
             button("Clear Log", {
-                style = { width = 62.px }
-                onMouseClick = { window.clearInputEventLog() }
+                onMouseClick = { inputEventLogEntries = emptyList() }
             })
             text(
-                "Entries=${window.inputEventLogEntries.size}",
+                "Entries=${inputEventLogEntries.size}",
                 { style = { color = DEMO_MUTED } }
             )
         }
@@ -214,21 +259,23 @@ fun UiScope.inputEventsSection(window: ShowcaseWindow, contentWidth: Int, conten
         div({
             key = "inputEvents.logPanel"
             style = {
-                width = (contentWidth - 8).px
-                height = 54.px
+                width = 100.percent
+                maxHeight = 25.em
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                overflowY = Overflow.Auto
                 backgroundColor = DEMO_SURFACE_ALT
                 padding = 3.px
                 border(1.px, 0xFF6A7785.toInt())
             }
         }) {
-            if (window.inputEventLogEntries.isEmpty()) {
+            if (inputEventLogEntries.isEmpty()) {
                 text("No input events yet.", { style = { color = DEMO_MUTED } })
             } else {
-                window.inputEventLogEntries.forEach { line ->
+                inputEventLogEntries.forEach { line ->
                     text(line)
                 }
             }
         }
     }
 }
-

@@ -3,41 +3,66 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.mc1710.McItemStackRef
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
+import kotlin.math.roundToLong
 
-fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+data class McFeaturesShellProps(
+    val viewportWidthPx: Int,
+    val viewportHeightPx: Int,
+    val mediaReady: Boolean,
+    val resourceImageSource: String,
+    val fileImageSource: String,
+    val httpImageSource: String,
+    val flatItemRef: McItemStackRef,
+    val blockItemRef: McItemStackRef,
+    val clippingScrollDemoText: String,
+    val onClippingScrollDemoTextChange: (String) -> Unit,
+    val currentGuiScale: () -> Int,
+    val guiScaleLabel: (Int) -> String,
+    val setGuiScale: (Int) -> Unit,
+    val cycleGuiScale: (Int) -> Unit,
+    val onLogHook: (String, Event, String?) -> Unit
+)
+
+fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
+    var itemRotY by useState(160.0)
+    var itemRotX by useState(-11.0)
+
+    fun itemRotYLong(): Long = itemRotY.roundToLong().coerceIn(0L, 360L)
+    fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
+    fun adjustItemRotation(deltaY: Double = 0.0, deltaX: Double = 0.0) {
+        var normalized = (itemRotY + deltaY) % 360.0
+        if (normalized < 0.0) normalized += 360.0
+        itemRotY = normalized
+        itemRotX = (itemRotX + deltaX).coerceIn(-89.0, 89.0)
+    }
+
+    val guiScaleValue = props.currentGuiScale()
+
     div({
         key = "section.mcFeatures"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
-
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
     }) {
-        val guiScaleValue = window.currentGuiScale()
-        val boardWidth = (contentWidth - 10).coerceIn(220, 360)
-        val boardRightColumnWidth = (boardWidth - 168).coerceAtLeast(96)
-
         text(
-            "DSGL viewport=${window.viewportWidthPx}x${window.viewportHeightPx}px, guiScale=${
-                window.guiScaleLabel(
-                    guiScaleValue
-                )
-            }",
+            "DSGL viewport=${props.viewportWidthPx}x${props.viewportHeightPx}px, guiScale=${props.guiScaleLabel(guiScaleValue)}",
             { style = { color = DsglColors.WHITE } }
         )
         text(
             "Change guiScale below: vanilla UI changes, DSGL layout should stay pixel-stable.",
             { style = { color = DEMO_MUTED } }
         )
+
         div({
             key = "mc.guiScale.controls"
             style = {
@@ -47,47 +72,40 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             }
         }) {
             button("Auto", {
-                style = {
-                    width = 42.px
+                style {
                     backgroundColor = if (guiScaleValue == 0) 0xFF2F556E.toInt() else DsglColors.BUTTON
                 }
-                onMouseClick = { window.setGuiScale(0) }
+                onMouseClick = { props.setGuiScale(0) }
             })
             button("1x", {
-                style = {
-                    width = 30.px
+                style {
                     backgroundColor = if (guiScaleValue == 1) 0xFF2F556E.toInt() else DsglColors.BUTTON
                 }
-                onMouseClick = { window.setGuiScale(1) }
+                onMouseClick = { props.setGuiScale(1) }
             })
             button("2x", {
-                style = {
-                    width = 30.px
+                style {
                     backgroundColor = if (guiScaleValue == 2) 0xFF2F556E.toInt() else DsglColors.BUTTON
                 }
-                onMouseClick = { window.setGuiScale(2) }
+                onMouseClick = { props.setGuiScale(2) }
             })
             button("3x", {
-                style = {
-                    width = 30.px
+                style {
                     backgroundColor = if (guiScaleValue == 3) 0xFF2F556E.toInt() else DsglColors.BUTTON
                 }
-                onMouseClick = { window.setGuiScale(3) }
+                onMouseClick = { props.setGuiScale(3) }
             })
             button("4x", {
-                style = {
-                    width = 30.px
+                style {
                     backgroundColor = if (guiScaleValue == 4) 0xFF2F556E.toInt() else DsglColors.BUTTON
                 }
-                onMouseClick = { window.setGuiScale(4) }
+                onMouseClick = { props.setGuiScale(4) }
             })
             button("-", {
-                style = { width = 24.px }
-                onMouseClick = { window.cycleGuiScale(-1) }
+                onMouseClick = { props.cycleGuiScale(-1) }
             })
             button("+", {
-                style = { width = 24.px }
-                onMouseClick = { window.cycleGuiScale(1) }
+                onMouseClick = { props.cycleGuiScale(1) }
             })
         }
 
@@ -95,7 +113,8 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
         div({
             key = "mc.pixel.board"
             style = {
-                width = boardWidth.px
+                width = 100.percent
+                maxWidth = 360.px
                 padding = 4.px
                 border(1.px, 0xFF5D6A76.toInt())
                 backgroundColor = 0xFF1A222A.toInt()
@@ -120,8 +139,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                                 border(1.px, 0xFF3F4B56.toInt())
                                 backgroundColor = if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt()
                             }
-                        }) {
-                        }
+                        }) {}
                     }
                 }
             }
@@ -154,16 +172,16 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                             justifyContent = JustifyContent.SpaceBetween
                         }
                     }) {
-                        itemStack(window.flatItemRef, {
+                        itemStack(props.flatItemRef, {
                             key = "mc.pixel.item.topLeft"
                             size = 16
                             style = { width = 18.px }
                         })
-                        itemStack(window.blockItemRef, {
+                        itemStack(props.blockItemRef, {
                             key = "mc.pixel.item.topRight"
                             size = 16
-                            rotYDeg = window.itemRotY
-                            rotXDeg = window.itemRotX
+                            rotYDeg = itemRotY
+                            rotXDeg = itemRotX
                             style = { width = 18.px }
                         })
                     }
@@ -175,11 +193,11 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                             alignItems = AlignItems.Center
                         }
                     }) {
-                        itemStack(window.blockItemRef, {
+                        itemStack(props.blockItemRef, {
                             key = "mc.pixel.item.center"
                             size = 20
-                            rotYDeg = window.itemRotY
-                            rotXDeg = window.itemRotX
+                            rotYDeg = itemRotY
+                            rotXDeg = itemRotX
                             style = {
                                 width = 28.px
                                 transform {
@@ -195,12 +213,12 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                             justifyContent = JustifyContent.SpaceBetween
                         }
                     }) {
-                        itemStack(window.flatItemRef, {
+                        itemStack(props.flatItemRef, {
                             key = "mc.pixel.item.bottomLeft"
                             size = 16
                             style = { width = 18.px }
                         })
-                        itemStack(window.flatItemRef, {
+                        itemStack(props.flatItemRef, {
                             key = "mc.pixel.item.bottomRight"
                             size = 16
                             style = { width = 18.px }
@@ -210,16 +228,17 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 textarea({
                     key = "mc.pixel.clip.textarea"
                     placeholder = "Clipped/scrollable viewport check"
-                    value = window.clippingScrollDemoText
+                    value = props.clippingScrollDemoText
                     style = {
-                        width = boardRightColumnWidth.px
+                        flexGrow = 1f
+                        minWidth = 96.px
                         height = 102.px
                     }
                     onInput = { event ->
-                        window.clippingScrollDemoText = event.value
+                        props.onClippingScrollDemoTextChange(event.value)
                     }
                     onValueChange = { event ->
-                        window.clippingScrollDemoText = event.value
+                        props.onClippingScrollDemoTextChange(event.value)
                     }
                 })
             }
@@ -227,9 +246,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
 
         text("Image sources: resource + file:// + http(s):// cached path.")
         text(
-            "mediaReady=${window.mediaReady} file=${
-                if (window.mediaReady) "prepared" else "failed"
-            }",
+            "mediaReady=${props.mediaReady} file=${if (props.mediaReady) "prepared" else "failed"}",
             { style = { color = DEMO_MUTED } }
         )
 
@@ -249,7 +266,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 }
             }) {
                 text("Resource", { style = { color = DEMO_MUTED } })
-                img(window.resourceImageSource, {
+                img(props.resourceImageSource, {
                     key = "mc.image.resource"
                     style = {
                         width = 36.px
@@ -267,7 +284,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 }
             }) {
                 text("file://", { style = { color = DEMO_MUTED } })
-                img(window.fileImageSource, {
+                img(props.fileImageSource, {
                     key = "mc.image.file"
                     style = {
                         width = 36.px
@@ -285,7 +302,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 }
             }) {
                 text("http://", { style = { color = DEMO_MUTED } })
-                img(window.httpImageSource, {
+                img(props.httpImageSource, {
                     key = "mc.image.http"
                     style = {
                         width = 36.px
@@ -305,7 +322,7 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                 flexDirection = FlexDirection.Row
             }
         }) {
-            itemStack(window.flatItemRef, {
+            itemStack(props.flatItemRef, {
                 size = 18
                 key = "mc.item.2d"
                 style = {
@@ -313,10 +330,10 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
                     border(1.px, 0xFF586A7A.toInt())
                 }
             })
-            itemStack(window.blockItemRef, {
+            itemStack(props.blockItemRef, {
                 size = 20
-                rotYDeg = window.itemRotY
-                rotXDeg = window.itemRotX
+                rotYDeg = itemRotY
+                rotXDeg = itemRotX
                 key = "mc.item.3d"
                 style = {
                     width = 70.px
@@ -332,60 +349,58 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
         )
         input(
             InputType.Range(
-                value = window.itemRotYLong(),
+                value = itemRotYLong(),
                 min = 0,
                 max = 360,
                 step = 5
             ),
             {
                 key = "mc.rotation.slider.yaw"
-                style = { width = (contentWidth - 10).px }
+                style = { width = 100.percent }
                 onMouseDown = { event ->
-                    window.logHook("mc.rotY.onMouseDown", event, "capture-start")
+                    props.onLogHook("mc.rotY.onMouseDown", event, "capture-start")
                 }
                 onMouseUp = { event ->
-                    window.logHook("mc.rotY.onMouseUp", event, "capture-end rotY=${window.itemRotYLong()}")
+                    props.onLogHook("mc.rotY.onMouseUp", event, "capture-end rotY=${itemRotYLong()}")
                 }
                 onInput = { event ->
-                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotYLong()
-                    window.itemRotY = next.toDouble()
-                    window.logHook("mc.rotY.onInput", event, "rotY=${window.itemRotYLong()}")
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: itemRotYLong()
+                    itemRotY = next.toDouble()
+                    props.onLogHook("mc.rotY.onInput", event, "rotY=${itemRotYLong()}")
                 }
                 onValueChange = { event ->
-                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotYLong()
-                    window.itemRotY = next.toDouble()
-                    window.logHook("mc.rotY.onChange", event, "rotY=${window.itemRotYLong()}")
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: itemRotYLong()
+                    itemRotY = next.toDouble()
+                    props.onLogHook("mc.rotY.onChange", event, "rotY=${itemRotYLong()}")
                 }
             }
         )
 
         input(
             InputType.Range(
-                value = window.itemRotXLong(),
+                value = itemRotXLong(),
                 min = -89,
                 max = 89,
                 step = 1
             ),
             {
                 key = "mc.rotation.slider.pitch"
-                style = { width = (contentWidth - 10).px }
+                style = { width = 100.percent }
                 onMouseDown = { event ->
-                    window.logHook("mc.rotX.onMouseDown", event, "capture-start")
+                    props.onLogHook("mc.rotX.onMouseDown", event, "capture-start")
                 }
                 onMouseUp = { event ->
-                    window.logHook("mc.rotX.onMouseUp", event, "capture-end rotX=${window.itemRotXLong()}")
+                    props.onLogHook("mc.rotX.onMouseUp", event, "capture-end rotX=${itemRotXLong()}")
                 }
                 onInput = { event ->
-                    val next =
-                        (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotXLong()
-                    window.itemRotX = next.toDouble()
-                    window.logHook("mc.rotX.onInput", event, "rotX=${window.itemRotXLong()}")
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: itemRotXLong()
+                    itemRotX = next.toDouble()
+                    props.onLogHook("mc.rotX.onInput", event, "rotX=${itemRotXLong()}")
                 }
                 onValueChange = { event ->
-                    val next =
-                        (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: window.itemRotXLong()
-                    window.itemRotX = next.toDouble()
-                    window.logHook("mc.rotX.onChange", event, "rotX=${window.itemRotXLong()}")
+                    val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: itemRotXLong()
+                    itemRotX = next.toDouble()
+                    props.onLogHook("mc.rotX.onChange", event, "rotX=${itemRotXLong()}")
                 }
             }
         )
@@ -398,35 +413,28 @@ fun UiScope.mcFeaturesSection(window: ShowcaseWindow, contentWidth: Int, content
             }
         }) {
             button("Y-15", {
-                style = { width = 36.px }
-                onMouseClick = { window.adjustItemRotation(deltaY = -15.0) }
+                onMouseClick = { adjustItemRotation(deltaY = -15.0) }
             })
             button("Y+15", {
-                style = { width = 36.px }
-                onMouseClick = { window.adjustItemRotation(deltaY = 15.0) }
+                onMouseClick = { adjustItemRotation(deltaY = 15.0) }
             })
             button("X-10", {
-                style = { width = 36.px }
-                onMouseClick = { window.adjustItemRotation(deltaX = -10.0) }
+                onMouseClick = { adjustItemRotation(deltaX = -10.0) }
             })
             button("X+10", {
-                style = { width = 36.px }
-                onMouseClick = { window.adjustItemRotation(deltaX = 10.0) }
+                onMouseClick = { adjustItemRotation(deltaX = 10.0) }
             })
             button("Reset", {
-                style = { width = 42.px }
                 onMouseClick = {
-                    window.itemRotY = 160.0
-                    window.itemRotX = -11.0
+                    itemRotY = 160.0
+                    itemRotX = -11.0
                 }
             })
         }
 
         text(
-            "rotY=${window.itemRotYLong()} rotX=${window.itemRotXLong()}",
+            "rotY=${itemRotYLong()} rotX=${itemRotXLong()}",
             { style = { color = DEMO_MUTED } }
         )
     }
 }
-
-

@@ -1,0 +1,103 @@
+package org.dreamfinity.dsgl.core
+
+import org.dreamfinity.dsgl.core.hooks.createContext
+import org.dreamfinity.dsgl.core.hooks.provideContext
+import org.dreamfinity.dsgl.core.hooks.useCallback
+import org.dreamfinity.dsgl.core.hooks.useContext
+import org.dreamfinity.dsgl.core.hooks.useEffect
+import org.dreamfinity.dsgl.core.hooks.useMemo
+import org.dreamfinity.dsgl.core.hooks.useReducer
+import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.hooks.ref.useRef
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class UiScopeHookApiTests {
+    private companion object {
+        val ApiContext = createContext(defaultValue = "fallback", name = "UiScopeHookApiContext")
+    }
+
+    @Test
+    fun `hooks are callable from UiScope without window qualification`() {
+        val window = UiScopeHookWindow()
+
+        window.initial = 2
+        renderWithHookSession(window, commit = true)
+        assertEquals(2, window.stateSeen)
+        assertEquals(4, window.memoSeen)
+        assertEquals(2, window.callbackSeen)
+        assertEquals(2, window.refSeen)
+        assertEquals(10, window.reducerSeen)
+        assertEquals("provided", window.contextSeen)
+        assertEquals(listOf("run:2"), window.effectEvents)
+
+        window.initial = 7
+        renderWithHookSession(window, commit = true)
+        assertEquals(2, window.stateSeen)
+        assertEquals(4, window.memoSeen)
+        assertEquals(2, window.callbackSeen)
+        assertEquals(2, window.refSeen)
+        assertEquals(10, window.reducerSeen)
+        assertEquals("provided", window.contextSeen)
+        assertEquals(listOf("run:2"), window.effectEvents)
+    }
+
+    private fun renderWithHookSession(window: DsglWindow, commit: Boolean): DomTree {
+        window.beginRenderBuild()
+        var renderSucceeded = false
+        return try {
+            window.render().also {
+                renderSucceeded = true
+            }
+        } finally {
+            window.endRenderBuild()
+            if (commit && renderSucceeded) {
+                window.commitRenderBuild()
+            } else {
+                window.discardRenderBuild()
+            }
+        }
+    }
+
+    private class UiScopeHookWindow : DsglWindow() {
+        var initial: Int = 0
+        var stateSeen: Int? = null
+        var memoSeen: Int? = null
+        var callbackSeen: Int? = null
+        var refSeen: Int? = null
+        var reducerSeen: Int? = null
+        var contextSeen: String? = null
+        val effectEvents: MutableList<String> = arrayListOf()
+
+        override fun render(): DomTree {
+            return ui {
+                var count by useState(initial)
+                val valueRef by useRef<Int>()
+                val memoValue by useMemo(count) { count * 2 }
+                val callback by useCallback(count) {
+                    val captured = count
+                    { captured }
+                }
+                val (reducerValue, _) = useReducer(
+                    initialState = 10,
+                    reducer = { old: Int, action: Int -> old + action }
+                )
+                useEffect(count) {
+                    val captured = count
+                    effectEvents += "run:$captured"
+                    onDispose { effectEvents += "cleanup:$captured" }
+                }
+
+                valueRef.current = count
+                stateSeen = count
+                memoSeen = memoValue
+                callbackSeen = callback()
+                refSeen = valueRef.current
+                reducerSeen = reducerValue
+                provideContext(ApiContext, "provided") {
+                    contextSeen = useContext(ApiContext)
+                }
+            }
+        }
+    }
+}

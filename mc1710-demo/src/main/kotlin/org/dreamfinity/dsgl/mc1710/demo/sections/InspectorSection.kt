@@ -4,16 +4,17 @@ import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
 
 private const val INSPECTOR_MUTED_TEXT: Int = 0xFFB0B7C1.toInt()
 
-fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.inspectorSection(onInfo: (String) -> Unit) {
+    var inspectorBehindClickCounter by useState(0)
+    var inspectorInputValue by useState("")
+
     div({
         key = "section.inspector"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
 
             display = Display.Flex
@@ -52,7 +53,7 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
 
         }) {
             text("Sample subtree for inspection (hover/click with inspector ON).")
-            text("Behind-inspector click counter: ${window.inspectorBehindClickCounter}", {
+            text("Behind-inspector click counter: $inspectorBehindClickCounter", {
                 style = { color = 0xFFB6D7A8.toInt() }
             })
             div({
@@ -64,17 +65,17 @@ fun UiScope.inspectorSection(window: ShowcaseWindow, contentWidth: Int, contentH
             }) {
                 button("Behind button (+1)", {
                     onMouseClick = {
-                        window.inspectorBehindClickCounter += 1
-                        window.appendInfo("Inspector sample: behind counter=${window.inspectorBehindClickCounter}")
+                        inspectorBehindClickCounter += 1
+                        onInfo("Inspector sample: behind counter=$inspectorBehindClickCounter")
                     }
                 })
                 input(
-                    InputType.Text(window.focusStableValue, "Focusable input"),
+                    InputType.Text(inspectorInputValue, "Focusable input"),
                     {
-                        style = { width = 116.px }
+                        style = { flexGrow = 1f }
                         key = "inspector.sample.input"
                         onInput = { event ->
-                            window.focusStableValue = event.value
+                            inspectorInputValue = event.value
                         }
                     }
                 )

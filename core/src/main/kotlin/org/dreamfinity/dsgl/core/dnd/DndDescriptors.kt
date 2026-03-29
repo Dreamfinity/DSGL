@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.dnd
 
-import org.dreamfinity.dsgl.core.ref.ElementHandle
-import org.dreamfinity.dsgl.core.ref.RefTarget
+import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
+import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 
 data class Draggable(
     val id: String,

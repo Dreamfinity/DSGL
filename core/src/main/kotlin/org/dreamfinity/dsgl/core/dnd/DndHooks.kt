@@ -1,10 +1,11 @@
 package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.ref.ElementHandle
-import org.dreamfinity.dsgl.core.ref.RefTarget
-import org.dreamfinity.dsgl.core.ref.useRef
-import java.util.*
+import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.hooks.useEffect
+import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
+import org.dreamfinity.dsgl.core.hooks.ref.useRef
+import java.util.WeakHashMap
 
 private data class SortableState(
     var activeId: String? = null,
@@ -12,14 +13,76 @@ private data class SortableState(
     var insertPosition: InsertPosition = InsertPosition.APPEND
 )
 
-private val sortableStateByWindow: WeakHashMap<DsglWindow, MutableMap<String, SortableState>> = WeakHashMap()
+private data class SortableContainerRecord(
+    val state: SortableState,
+    var activeHookCount: Int = 0
+)
 
-private fun sortableState(window: DsglWindow, containerId: String): SortableState {
-    val byContainer = sortableStateByWindow.getOrPut(window) { linkedMapOf() }
-    return byContainer.getOrPut(containerId) { SortableState() }
+private data class SortableWindowState(
+    val byContainerId: MutableMap<String, SortableContainerRecord> = linkedMapOf()
+)
+
+private data class SortableBindingKey(
+    val containerId: String,
+    val nodeKey: Any
+)
+
+private val sortableStateByWindow: WeakHashMap<DsglWindow, SortableWindowState> = WeakHashMap()
+
+private fun sortableWindowState(window: DsglWindow): SortableWindowState {
+    return sortableStateByWindow.getOrPut(window) { SortableWindowState() }
 }
 
-fun DsglWindow.useDraggable(
+private fun sortableState(window: DsglWindow, containerId: String): SortableState {
+    val state = sortableWindowState(window)
+    val record = state.byContainerId.getOrPut(containerId) {
+        SortableContainerRecord(state = SortableState())
+    }
+    pruneUnboundSortableContainers(state = state, keepContainerId = containerId)
+    return record.state
+}
+
+private fun retainSortableContainer(window: DsglWindow, containerId: String, renderState: SortableState) {
+    val state = sortableWindowState(window)
+    val existing = state.byContainerId[containerId]
+    if (existing == null) {
+        state.byContainerId[containerId] = SortableContainerRecord(
+            state = renderState,
+            activeHookCount = 1
+        )
+    } else {
+        existing.activeHookCount += 1
+    }
+    pruneUnboundSortableContainers(state = state, keepContainerId = containerId)
+}
+
+private fun releaseSortableContainer(window: DsglWindow, containerId: String) {
+    val state = sortableStateByWindow[window] ?: return
+    val record = state.byContainerId[containerId] ?: return
+    record.activeHookCount = (record.activeHookCount - 1).coerceAtLeast(0)
+    if (record.activeHookCount == 0) {
+        state.byContainerId.remove(containerId)
+    }
+    pruneUnboundSortableContainers(state = state, keepContainerId = null)
+    if (state.byContainerId.isEmpty()) {
+        sortableStateByWindow.remove(window)
+    }
+}
+
+private fun pruneUnboundSortableContainers(state: SortableWindowState, keepContainerId: String?) {
+    val iterator = state.byContainerId.entries.iterator()
+    while (iterator.hasNext()) {
+        val entry = iterator.next()
+        if (entry.key == keepContainerId) {
+            continue
+        }
+        if (entry.value.activeHookCount <= 0) {
+            iterator.remove()
+        }
+    }
+}
+
+fun UiScope.useDraggable(
     id: String,
     nodeKey: Any = id,
     type: String = "default",
@@ -32,49 +95,79 @@ fun DsglWindow.useDraggable(
     onDrag: ((DragEvent) -> Unit)? = null,
     onDragEnd: ((DragEndEvent) -> Unit)? = null
 ): Draggable {
-    DndSystem.registerPayload(id, data)
-    val ref = useRef<ElementHandle>()
-    val monitor = DndSystem.monitor(nodeKey)
-    val isDragging = monitor.isDragging && monitor.sourceKey == nodeKey
-    val transform = if (isDragging) {
-        Transform(
-            x = monitor.previewX - monitor.cursorX.toDouble(),
-            y = monitor.previewY - monitor.cursorY.toDouble()
-        )
-    } else {
-        null
-    }
-
-    val listeners = DndListeners(
-        onDragStart = { event ->
-            event.dataTransfer.setData(DND_DATA_ID_MIME, id)
-            event.dataTransfer.setData(DND_DATA_TYPE_MIME, type)
-            onDragStart?.invoke(event)
-        },
-        onDrag = onDrag,
-        onDragEnd = onDragEnd
-    )
-
-    return Draggable(
+    return requireHookOwnerWindow().useDraggable(
         id = id,
         nodeKey = nodeKey,
-        attributes = mapOf(
-            "data-dnd-id" to id,
-            "data-dnd-type" to type
-        ),
-        listeners = listeners,
-        isDragging = isDragging,
-        activeTransform = transform,
-        setNodeRef = { value -> ref.current = value },
+        type = type,
         data = data,
         previewMode = previewMode,
         hideSourceWhileDragging = hideSourceWhileDragging,
         renderPreview = renderPreview,
-        renderPlaceholder = renderPlaceholder
+        renderPlaceholder = renderPlaceholder,
+        onDragStart = onDragStart,
+        onDrag = onDrag,
+        onDragEnd = onDragEnd
     )
 }
 
-fun DsglWindow.useDroppable(
+internal fun DsglWindow.useDraggable(
+    id: String,
+    nodeKey: Any = id,
+    type: String = "default",
+    data: Any? = null,
+    previewMode: DragPreviewMode = DragPreviewMode.GHOST,
+    hideSourceWhileDragging: Boolean = false,
+    renderPreview: (DragPreviewScope.() -> Unit)? = null,
+    renderPlaceholder: (PlaceholderScope.() -> Unit)? = null,
+    onDragStart: ((DragStartEvent) -> Unit)? = null,
+    onDrag: ((DragEvent) -> Unit)? = null,
+    onDragEnd: ((DragEndEvent) -> Unit)? = null
+): Draggable {
+    return hookRuntime().withComponentInstance(componentName = "useDraggable", key = nodeKey) {
+        DndSystem.registerPayload(id, data)
+        val ref by useRef<ElementHandle>()
+        val monitor = DndSystem.monitor(nodeKey)
+        val isDragging = monitor.isDragging && monitor.sourceKey == nodeKey
+        val transform = if (isDragging) {
+            Transform(
+                x = monitor.previewX - monitor.cursorX.toDouble(),
+                y = monitor.previewY - monitor.cursorY.toDouble()
+            )
+        } else {
+            null
+        }
+
+        val listeners = DndListeners(
+            onDragStart = { event ->
+                event.dataTransfer.setData(DND_DATA_ID_MIME, id)
+                event.dataTransfer.setData(DND_DATA_TYPE_MIME, type)
+                onDragStart?.invoke(event)
+            },
+            onDrag = onDrag,
+            onDragEnd = onDragEnd
+        )
+
+        Draggable(
+            id = id,
+            nodeKey = nodeKey,
+            attributes = mapOf(
+                "data-dnd-id" to id,
+                "data-dnd-type" to type
+            ),
+            listeners = listeners,
+            isDragging = isDragging,
+            activeTransform = transform,
+            setNodeRef = { value -> ref.current = value },
+            data = data,
+            previewMode = previewMode,
+            hideSourceWhileDragging = hideSourceWhileDragging,
+            renderPreview = renderPreview,
+            renderPlaceholder = renderPlaceholder
+        )
+    }
+}
+
+fun UiScope.useDroppable(
     id: String,
     nodeKey: Any = id,
     accepts: (ActiveDrag) -> Boolean = { true },
@@ -83,41 +176,83 @@ fun DsglWindow.useDroppable(
     onDragEnter: ((DragEnterEvent, ActiveDrag?) -> Unit)? = null,
     onDragLeave: ((DragLeaveEvent, ActiveDrag?) -> Unit)? = null
 ): Droppable {
-    val ref = useRef<ElementHandle>()
-    val active = DndSystem.activeDrag()
-    val isOver = active?.overKey == nodeKey
-    val listeners = DndListeners(
-        onDragEnter = { event ->
-            val snapshot = activeFromEvent(event)
-            onDragEnter?.invoke(event, snapshot)
-        },
-        onDragOver = { event ->
-            val snapshot = activeFromEvent(event)
-            if (snapshot != null && accepts(snapshot)) {
-                event.acceptDrop(snapshot.dropEffect)
-            }
-            onDragOver?.invoke(event, snapshot)
-        },
-        onDragLeave = { event ->
-            val snapshot = activeFromEvent(event)
-            onDragLeave?.invoke(event, snapshot)
-        },
-        onDrop = { event ->
-            val snapshot = activeFromEvent(event)
-            onDrop?.invoke(event, snapshot)
-        }
-    )
-    return Droppable(
+    return requireHookOwnerWindow().useDroppable(
         id = id,
         nodeKey = nodeKey,
-        isOver = isOver,
-        active = active,
-        listeners = listeners,
-        setNodeRef = RefTarget { value -> ref.current = value }
+        accepts = accepts,
+        onDragOver = onDragOver,
+        onDrop = onDrop,
+        onDragEnter = onDragEnter,
+        onDragLeave = onDragLeave
     )
 }
 
-fun DsglWindow.useSortable(
+internal fun DsglWindow.useDroppable(
+    id: String,
+    nodeKey: Any = id,
+    accepts: (ActiveDrag) -> Boolean = { true },
+    onDragOver: ((DragOverEvent, ActiveDrag?) -> Unit)? = null,
+    onDrop: ((DropEvent, ActiveDrag?) -> Unit)? = null,
+    onDragEnter: ((DragEnterEvent, ActiveDrag?) -> Unit)? = null,
+    onDragLeave: ((DragLeaveEvent, ActiveDrag?) -> Unit)? = null
+): Droppable {
+    return hookRuntime().withComponentInstance(componentName = "useDroppable", key = nodeKey) {
+        val ref by useRef<ElementHandle>()
+        val active = DndSystem.activeDrag()
+        val isOver = active?.overKey == nodeKey
+        val listeners = DndListeners(
+            onDragEnter = { event ->
+                val snapshot = activeFromEvent(event)
+                onDragEnter?.invoke(event, snapshot)
+            },
+            onDragOver = { event ->
+                val snapshot = activeFromEvent(event)
+                if (accepts(snapshot)) {
+                    event.acceptDrop(snapshot.dropEffect)
+                }
+                onDragOver?.invoke(event, snapshot)
+            },
+            onDragLeave = { event ->
+                val snapshot = activeFromEvent(event)
+                onDragLeave?.invoke(event, snapshot)
+            },
+            onDrop = { event ->
+                val snapshot = activeFromEvent(event)
+                onDrop?.invoke(event, snapshot)
+            }
+        )
+        Droppable(
+            id = id,
+            nodeKey = nodeKey,
+            isOver = isOver,
+            active = active,
+            listeners = listeners,
+            setNodeRef = { value -> ref.current = value }
+        )
+    }
+}
+
+fun UiScope.useSortable(
+    id: String,
+    nodeKey: Any = id,
+    containerId: String,
+    items: List<String>,
+    data: Any? = null,
+    previewMode: DragPreviewMode = DragPreviewMode.ORIGINAL,
+    hideSourceWhileDragging: Boolean = true
+): Sortable {
+    return requireHookOwnerWindow().useSortable(
+        id = id,
+        nodeKey = nodeKey,
+        containerId = containerId,
+        items = items,
+        data = data,
+        previewMode = previewMode,
+        hideSourceWhileDragging = hideSourceWhileDragging
+    )
+}
+
+internal fun DsglWindow.useSortable(
     id: String,
     nodeKey: Any = id,
     containerId: String,
@@ -127,6 +262,21 @@ fun DsglWindow.useSortable(
     hideSourceWhileDragging: Boolean = true
 ): Sortable {
     val state = sortableState(this, containerId)
+    hookRuntime().withComponentInstance(
+        componentName = "useSortableBinding",
+        key = SortableBindingKey(containerId = containerId, nodeKey = nodeKey)
+    ) {
+        useEffect {
+            retainSortableContainer(
+                window = this@useSortable,
+                containerId = containerId,
+                renderState = state
+            )
+            onDispose {
+                releaseSortableContainer(window = this@useSortable, containerId = containerId)
+            }
+        }
+    }
     val sortableType = "sortable:$containerId"
     val draggable = useDraggable(
         id = id,
@@ -190,32 +340,37 @@ fun DsglWindow.useSortable(
     )
 }
 
-fun DsglWindow.useDragDropMonitor(callbacks: DragDropMonitorCallbacks) {
-    val callbackRef = useRef(callbacks)
-    callbackRef.current = callbacks
-    val subscriptionRef = useRef<AutoCloseable>()
-    if (subscriptionRef.current != null) return
-    subscriptionRef.current = DndRuntime.engine.subscribe(object : DndMonitorListener {
-        override fun onDragStart(active: ActiveDrag) {
-            callbackRef.current?.onDragStart?.invoke(active)
-        }
+fun UiScope.useDragDropMonitor(callbacks: DragDropMonitorCallbacks) {
+    requireHookOwnerWindow().hookRuntime().withComponentInstance(componentName = "useDragDropMonitor") {
+        val callbackRef by useRef(callbacks)
+        callbackRef.current = callbacks
+        useEffect {
+            val subscription = DndRuntime.engine.subscribe(object : DndMonitorListener {
+                override fun onDragStart(active: ActiveDrag) {
+                    callbackRef.current?.onDragStart?.invoke(active)
+                }
 
-        override fun onDragMove(active: ActiveDrag, over: Any?) {
-            callbackRef.current?.onDragMove?.invoke(active, over)
-        }
+                override fun onDragMove(active: ActiveDrag, over: Any?) {
+                    callbackRef.current?.onDragMove?.invoke(active, over)
+                }
 
-        override fun onDragOver(active: ActiveDrag, over: Any?) {
-            callbackRef.current?.onDragOver?.invoke(active, over)
-        }
+                override fun onDragOver(active: ActiveDrag, over: Any?) {
+                    callbackRef.current?.onDragOver?.invoke(active, over)
+                }
 
-        override fun onDragEnd(active: ActiveDrag, over: Any?, dropEffect: DropEffect) {
-            callbackRef.current?.onDragEnd?.invoke(active, over, dropEffect)
-        }
+                override fun onDragEnd(active: ActiveDrag, over: Any?, dropEffect: DropEffect) {
+                    callbackRef.current?.onDragEnd?.invoke(active, over, dropEffect)
+                }
 
-        override fun onDragCancel(active: ActiveDrag) {
-            callbackRef.current?.onDragCancel?.invoke(active)
+                override fun onDragCancel(active: ActiveDrag) {
+                    callbackRef.current?.onDragCancel?.invoke(active)
+                }
+            })
+            onDispose {
+                subscription.close()
+            }
         }
-    })
+    }
 }
 
 private fun activeFromEvent(event: DragDropEvent): ActiveDrag {

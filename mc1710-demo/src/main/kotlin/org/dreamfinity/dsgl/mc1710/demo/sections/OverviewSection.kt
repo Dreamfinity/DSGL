@@ -3,18 +3,25 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityId
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityChecklistCatalog
 import org.dreamfinity.dsgl.mc1710.demo.support.CapabilityGroup
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
 
-fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.overviewSection(
+    implementedCapabilities: Set<CapabilityId>,
+    onManualInvalidate: (String) -> Unit,
+    onInfo: (String) -> Unit
+) {
+    var manualInvalidateCount by useState(0)
+    var lastManualReason by useState("none")
+    var autoRebuildCounter by useState(0)
+
     div({
         key = "section.overview"
         style = {
-//            width = contentWidth.px
-//            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -37,10 +44,10 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             style = { color = DEMO_MUTED }
         })
 
-        text("Manual invalidates: ${window.manualInvalidateCount} (last=${window.lastManualReason})", {
+        text("Manual invalidates: $manualInvalidateCount (last=$lastManualReason)", {
             style = { color = DEMO_MUTED }
         })
-        text("Auto state rebuild counter: ${window.autoRebuildCounter}", {
+        text("Auto state rebuild counter: $autoRebuildCounter", {
             style = { color = DEMO_MUTED }
         })
 
@@ -52,17 +59,18 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             }
         }) {
             button("Auto state +1", {
-                style = { width = 90.px }
                 onMouseClick = {
-                    window.bumpAutoRebuildCounter()
-                    window.appendInfo("Overview: state-driven rebuild")
+                    autoRebuildCounter += 1
+                    onInfo("Overview: state-driven rebuild")
                 }
             })
             button("Manual invalidate", {
-                style = { width = 96.px }
                 onMouseClick = {
-                    window.requestManualInvalidate("overview button")
-                    window.appendInfo("Overview: manual invalidate requested")
+                    val reason = "overview button"
+                    manualInvalidateCount += 1
+                    lastManualReason = reason
+                    onManualInvalidate(reason)
+                    onInfo("Overview: manual invalidate requested")
                 }
             })
         }
@@ -70,7 +78,7 @@ fun UiScope.overviewSection(window: ShowcaseWindow, contentWidth: Int, contentHe
         text("Checklist groups", { style = { color = DEMO_OK } })
         CapabilityGroup.entries.forEach { group ->
             val required = CapabilityChecklistCatalog.required.filter { it.group == group }.size
-            val implemented = window.implementedCapabilities.count { it.group == group }
+            val implemented = implementedCapabilities.count { it.group == group }
             val ok = implemented == required
             text(
                 "${group.title}: $implemented/$required",

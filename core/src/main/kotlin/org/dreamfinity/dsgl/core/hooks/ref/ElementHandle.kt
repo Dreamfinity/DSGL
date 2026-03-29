@@ -1,4 +1,4 @@
-package org.dreamfinity.dsgl.core.ref
+package org.dreamfinity.dsgl.core.hooks.ref
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect

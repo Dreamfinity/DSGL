@@ -2,8 +2,9 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private val JUSTIFY_OPTIONS = listOf(
@@ -22,23 +23,32 @@ private val ALIGN_OPTIONS = listOf(
     "stretch" to AlignItems.Stretch
 )
 
-fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.displaySection(
+    onInfo: (String) -> Unit,
+    onLogHook: (String, Event, String?) -> Unit
+) {
+    var displayBlockLargeGap by useState(false)
+    var displayInlineWidth by useState(132L)
+    var displayShowHidden by useState(true)
+    var displayFlexJustifyIndex by useState(0)
+    var displayFlexAlignIndex by useState(0)
+    var displayGridColumns by useState(3L)
+    var displayGridLargeGap by useState(false)
+    var displayNoneClicks by useState(0)
+
     val inlineMinWidth = 96
-    val inlineMaxWidth = (contentWidth - 8).coerceAtLeast(inlineMinWidth)
-    val inlineWidth = window.displayInlineWidth.toInt().coerceIn(inlineMinWidth, inlineMaxWidth)
-    val gridColumns = window.displayGridColumns.toInt().coerceIn(2, 6)
-    val justifyIndex = window.displayFlexJustifyIndex.mod(JUSTIFY_OPTIONS.size)
-    val alignIndex = window.displayFlexAlignIndex.mod(ALIGN_OPTIONS.size)
+    val inlineMaxWidth = 320
+    val inlineWidth = displayInlineWidth.toInt().coerceIn(inlineMinWidth, inlineMaxWidth)
+    val gridColumns = displayGridColumns.toInt().coerceIn(2, 6)
+    val justifyIndex = displayFlexJustifyIndex.mod(JUSTIFY_OPTIONS.size)
+    val alignIndex = displayFlexAlignIndex.mod(ALIGN_OPTIONS.size)
     val justify = JUSTIFY_OPTIONS[justifyIndex]
     val align = ALIGN_OPTIONS[alignIndex]
 
     div({
         key = "section.display"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
-
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
@@ -49,21 +59,20 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
         })
 
         text("Block flow (vertical stacking)")
-        button(if (window.displayBlockLargeGap) "Block gap: large" else "Block gap: compact", {
-            style = { width = 92.px }
+        button(if (displayBlockLargeGap) "Block gap: large" else "Block gap: compact", {
             onMouseClick = {
-                window.displayBlockLargeGap = !window.displayBlockLargeGap
-                window.appendInfo("Display.block gap=${if (window.displayBlockLargeGap) "large" else "compact"}")
+                displayBlockLargeGap = !displayBlockLargeGap
+                onInfo("Display.block gap=${if (displayBlockLargeGap) "large" else "compact"}")
             }
         })
         div({
             key = "display.block.container"
             style = {
-                width = (contentWidth - 8).px
+                width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF2B3542.toInt()
                 display = Display.Block
-                gap = (if (window.displayBlockLargeGap) 6 else 2).px
+                gap = (if (displayBlockLargeGap) 6 else 2).px
                 border(1.px, 0xFF657688.toInt())
             }
         }) {
@@ -75,8 +84,7 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
                         backgroundColor = (0xFF3A4B60 + index * 0x000A0A00).toInt()
                         border(1.px, 0xFF8095AA.toInt())
                     }
-                }
-                ) {
+                }) {
                     text("Block item ${index + 1}")
                 }
             }
@@ -92,10 +100,10 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             ),
             {
                 key = "display.inline.width"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: inlineWidth.toLong()
-                    window.displayInlineWidth = next.coerceIn(inlineMinWidth.toLong(), inlineMaxWidth.toLong())
+                    displayInlineWidth = next.coerceIn(inlineMinWidth.toLong(), inlineMaxWidth.toLong())
                 }
             }
         )
@@ -146,10 +154,7 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
                         display = Display.Flex
                         flexDirection = FlexDirection.Row
                         border(1.px, 0xFF5B8D73.toInt())
-                        display = Display.Flex
-                        flexDirection = FlexDirection.Row
                     }
-
                 }) {
                     div({
                         style = {
@@ -179,7 +184,6 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }) {
                 div({
                     style = {
-                        gap = 0.px
                         padding = 1.px
                         backgroundColor = 0xFF4B3B30.toInt()
                         display = Display.Block
@@ -203,17 +207,16 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }
         }) {
             button(
-                if (window.displayShowHidden) "Target visible" else "Target hidden",
+                if (displayShowHidden) "Target visible" else "Target hidden",
                 {
-                    style = { width = 86.px }
                     onMouseClick = {
-                        window.displayShowHidden = !window.displayShowHidden
-                        window.appendInfo("Display.none visible=${window.displayShowHidden}")
+                        displayShowHidden = !displayShowHidden
+                        onInfo("Display.none visible=$displayShowHidden")
                     }
                 }
             )
             text(
-                "targetClicks=${window.displayNoneClicks} (should not change while hidden)",
+                "targetClicks=$displayNoneClicks (should not change while hidden)",
                 { style = { color = DEMO_MUTED } }
             )
         }
@@ -222,28 +225,26 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                width = (contentWidth - 8).px
+                width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF303A46.toInt()
                 gap = 2.px
                 border(1.px, 0xFF64788B.toInt())
             }
-
         }) {
             div({
                 key = "display.none.target"
                 onMouseClick = {
-                    window.displayNoneClicks += 1
-                    window.logHook("display.none.onMouseClick", it)
+                    displayNoneClicks += 1
+                    onLogHook("display.none.onMouseClick", it, null)
                 }
                 style = {
                     padding = 2.px
                     backgroundColor = 0xFF5A3E3E.toInt()
-                    display = if (window.displayShowHidden) Display.Block else Display.None
+                    display = if (displayShowHidden) Display.Block else Display.None
                     border(1.px, 0xFFB07B7B.toInt())
                 }
             }) {
-
                 text("Toggle target (click me)")
             }
             text("Sibling stays and reflows when target is hidden.", { style = { color = DEMO_MUTED } })
@@ -258,22 +259,19 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }
         }) {
             button("justify=${justify.first}", {
-                style = { width = 84.px }
                 onMouseClick = {
-                    window.displayFlexJustifyIndex = (justifyIndex + 1) % JUSTIFY_OPTIONS.size
+                    displayFlexJustifyIndex = (justifyIndex + 1) % JUSTIFY_OPTIONS.size
                 }
             })
             button("align=${align.first}", {
-                style = { width = 80.px }
                 onMouseClick = {
-                    window.displayFlexAlignIndex = (alignIndex + 1) % ALIGN_OPTIONS.size
+                    displayFlexAlignIndex = (alignIndex + 1) % ALIGN_OPTIONS.size
                 }
             })
             button(
-                if (window.displayGridLargeGap) "gap: large" else "gap: compact",
+                if (displayGridLargeGap) "gap: large" else "gap: compact",
                 {
-                    style = { width = 78.px }
-                    onMouseClick = { window.displayGridLargeGap = !window.displayGridLargeGap }
+                    onMouseClick = { displayGridLargeGap = !displayGridLargeGap }
                 }
             )
         }
@@ -285,8 +283,7 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
-                width = (contentWidth - 8).px
-                height = 20.px
+                width = 100.percent
                 padding = 1.px
                 backgroundColor = 0xFF24303A.toInt()
                 justifyContent = justify.second
@@ -294,35 +291,10 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
                 gap = 0.px
                 border(1.px, 0xFF7E93A8.toInt())
             }
-
         }) {
-            div({
-                key = "display.flex.justify.dot.left"
-                style = {
-                    width = 10.px
-                    height = 10.px
-                    backgroundColor = 0xFFB3D6FF.toInt()
-                    border(1.px, 0xFFDEEFFF.toInt())
-                }
-            }) { text("A") }
-            div({
-                key = "display.flex.justify.dot.mid"
-                style = {
-                    width = 10.px
-                    height = 10.px
-                    backgroundColor = 0xFF9FE3B5.toInt()
-                    border(1.px, 0xFFD6FFE4.toInt())
-                }
-            }) { text("B") }
-            div({
-                key = "display.flex.justify.dot.right"
-                style = {
-                    width = 10.px
-                    height = 10.px
-                    backgroundColor = 0xFFFFC7A3.toInt()
-                    border(1.px, 0xFFFFE5D3.toInt())
-                }
-            }) { text("C") }
+            dot("left", "A", 0xFFB3D6FF.toInt(), 0xFFDEEFFF.toInt())
+            dot("mid", "B", 0xFF9FE3B5.toInt(), 0xFFD6FFE4.toInt())
+            dot("right", "C", 0xFFFFC7A3.toInt(), 0xFFFFE5D3.toInt())
         }
         text("Top strip isolates justify (A/B/C). Large row below combines justify + align + gap.", {
             style = { color = DEMO_MUTED }
@@ -332,55 +304,24 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             style = {
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
-                width = (contentWidth - 8).px
-                height = 36.px
+                width = 100.percent
                 padding = 2.px
                 backgroundColor = 0xFF2A343F.toInt()
                 justifyContent = justify.second
                 alignItems = align.second
-                gap = (if (window.displayGridLargeGap) 8 else 2).px
+                gap = (if (displayGridLargeGap) 8 else 2).px
                 border(1.px, 0xFF6C7E90.toInt())
             }
-
         }) {
-            div({
-                key = "display.flex.row.item.0"
-                style = {
-                    width = 14.px
-                    padding = 1.px
-                    backgroundColor = 0xFF46627C.toInt()
-                }
-            }) { text("1") }
-            div({
-                key = "display.flex.row.item.1"
-                style = {
-                    width = 20.px
-                    padding = 2.px
-                    backgroundColor = 0xFF4E7A5A.toInt()
-                }
-            }) { text("2") }
-            div({
-                key = "display.flex.row.item.2"
-                style = {
-                    width = 26.px
-                    padding = 3.px
-                    backgroundColor = 0xFF7A5B4A.toInt()
-                }
-            }) { text("3") }
-            div({
-                key = "display.flex.row.item.3"
-                style = {
-                    width = 16.px
-                    padding = 1.px
-                    backgroundColor = 0xFF6A4B78.toInt()
-                }
-            }) { text("4") }
+            flexRowCell("0", "1", 14, 1, 0xFF46627C.toInt())
+            flexRowCell("1", "2", 20, 2, 0xFF4E7A5A.toInt())
+            flexRowCell("2", "3", 26, 3, 0xFF7A5B4A.toInt())
+            flexRowCell("3", "4", 16, 1, 0xFF6A4B78.toInt())
         }
         div({
             key = "display.flex.column"
             style = {
-                width = (contentWidth - 8).px
-                height = 58.px
+                width = 100.percent
                 padding = 2.px
                 backgroundColor = 0xFF2A3340.toInt()
                 gap = 2.px
@@ -388,16 +329,16 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
-
         }) {
             div({
                 style = {
-                    height = 12.px
+                    display = Display.Inline
                     backgroundColor = 0xFF4B5C70.toInt()
                 }
             }) { text("header") }
             div({
                 style = {
+                    display = Display.Inline
                     backgroundColor = 0xFF3E6A54.toInt()
                     flexGrow = 1f
                 }
@@ -406,7 +347,7 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             }
             div({
                 style = {
-                    height = 12.px
+                    display = Display.Inline
                     backgroundColor = 0xFF66503D.toInt()
                 }
             }) { text("footer") }
@@ -422,26 +363,26 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
             ),
             {
                 key = "display.grid.columns"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: gridColumns.toLong()
-                    window.displayGridColumns = next.coerceIn(2, 6)
+                    displayGridColumns = next.coerceIn(2, 6)
                 }
             }
         )
         text(
-            "gridColumns=${window.displayGridColumns} (first tile spans 2 columns)",
+            "gridColumns=$displayGridColumns (first tile spans 2 columns)",
             { style = { color = DEMO_MUTED } }
         )
         div({
             key = "display.grid.container"
             style = {
-                width = (contentWidth - 8).px
+                width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF2B3540.toInt()
                 display = Display.Grid
                 this.gridColumns = gridColumns
-                gap = (if (window.displayGridLargeGap) 4 else 2).px
+                gap = (if (displayGridLargeGap) 4 else 2).px
                 alignItems = align.second
                 justifyItems = JustifyItems.Stretch
                 border(1.px, 0xFF70849A.toInt())
@@ -451,7 +392,6 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
                 div({
                     key = "display.grid.item.$index"
                     style = {
-                        height = (if (index % 3 == 0) 18 else 14).px
                         padding = 1.px
                         backgroundColor = (0xFF3D5873 + index * 0x00040401).toInt()
                         if (index == 0) {
@@ -467,4 +407,23 @@ fun UiScope.displaySection(window: ShowcaseWindow, contentWidth: Int, contentHei
     }
 }
 
+private fun UiScope.dot(keyPart: String, label: String, fill: Int, borderColor: Int) {
+    div({
+        key = "display.flex.justify.dot.$keyPart"
+        style = {
+            display = Display.Inline
+            backgroundColor = fill
+            border(1.px, borderColor)
+        }
+    }) { text(label) }
+}
 
+private fun UiScope.flexRowCell(keyPart: String, label: String, widthPx: Int, paddingPx: Int, color: Int) {
+    div({
+        key = "display.flex.row.item.$keyPart"
+        style = {
+            display = Display.Inline
+            backgroundColor = color
+        }
+    }) { text(label) }
+}

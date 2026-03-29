@@ -2,10 +2,12 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.event.Event
+import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_OK
 
@@ -14,12 +16,20 @@ private const val PASSWORD_KEY = "textEditing.password"
 private const val AREA_KEY = "textEditing.area"
 private const val FAIL_COLOR = 0xFFFF8A8A.toInt()
 
-fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
+    var textEditingSingleValue by useState("Edit this line")
+    var textEditingPasswordValue by useState("secret42")
+    var textEditingAreaValue by useState(
+        "Line 1: drag-select me\nLine 2: use Shift+Arrows\nLine 3: Ctrl/Cmd+C/V/X"
+    )
+    var textEditingSawSelectionDrag by useState(false)
+    var textEditingSawShiftSelection by useState(false)
+    var textEditingSawClipboardShortcut by useState(false)
+    var textEditingSawFocus by useState(false)
+
     div({
         key = "section.textEditing"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -33,94 +43,123 @@ fun UiScope.textEditingSection(window: ShowcaseWindow, contentWidth: Int, conten
         text("Single-line input")
         input(
             InputType.Text(
-                value = window.textEditingSingleValue,
+                value = textEditingSingleValue,
                 placeholder = "Type and select text"
             ),
             {
                 key = SINGLE_KEY
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onFocusGain = {
-                    window.textEditingSawFocus = true
-                    window.logHook("textEditing.single.focus", it)
+                    textEditingSawFocus = true
+                    onLogHook("textEditing.single.focus", it, null)
                 }
-                onInput = { event: InputEvent ->
-                    window.textEditingSingleValue = event.value
+                onInput = { event ->
+                    textEditingSingleValue = event.value
                 }
-                onMouseDrag = { event: MouseDragEvent ->
-                    trackSelectionDrag(window, event, SINGLE_KEY)
+                onMouseDrag = { event ->
+                    textEditingSawSelectionDrag = true
+                    onLogHook("textEditing.selection.drag", event, "key=$SINGLE_KEY")
                 }
-                onKeyDown = { event: KeyboardKeyDownEvent ->
-                    trackKeyboardEditing(window, event, SINGLE_KEY)
+                onKeyDown = { event ->
+                    if (KeyModifiers.shiftDown && isArrowLike(event.keyCode)) {
+                        textEditingSawShiftSelection = true
+                        onLogHook("textEditing.selection.shiftKey", event, "key=$SINGLE_KEY code=${event.keyCode}")
+                    }
+                    if (KeyModifiers.shortcutDown && isClipboardShortcut(event.keyCode)) {
+                        textEditingSawClipboardShortcut = true
+                        onLogHook("textEditing.clipboard", event, "key=$SINGLE_KEY code=${event.keyCode}")
+                    }
                 }
             }
         )
-        text("Single-line: caret + selection visible in control", { style = { color = DEMO_MUTED } })
+        text("Single-line: caret + selection visible in control", {
+            style = { color = DEMO_MUTED }
+        })
 
         text("Password input (copy/cut restricted, paste allowed)")
         input(
             InputType.Password(
-                value = window.textEditingPasswordValue,
+                value = textEditingPasswordValue,
                 placeholder = "password"
             ),
             {
                 key = PASSWORD_KEY
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onFocusGain = {
-                    window.textEditingSawFocus = true
-                    window.logHook("textEditing.password.focus", it)
+                    textEditingSawFocus = true
+                    onLogHook("textEditing.password.focus", it, null)
                 }
-                onInput = { event: InputEvent ->
-                    window.textEditingPasswordValue = event.value
+                onInput = { event ->
+                    textEditingPasswordValue = event.value
                 }
-                onMouseDrag = { event: MouseDragEvent ->
-                    trackSelectionDrag(window, event, PASSWORD_KEY)
+                onMouseDrag = { event ->
+                    textEditingSawSelectionDrag = true
+                    onLogHook("textEditing.selection.drag", event, "key=$PASSWORD_KEY")
                 }
-                onKeyDown = { event: KeyboardKeyDownEvent ->
-                    trackKeyboardEditing(window, event, PASSWORD_KEY)
+                onKeyDown = { event ->
+                    if (KeyModifiers.shiftDown && isArrowLike(event.keyCode)) {
+                        textEditingSawShiftSelection = true
+                        onLogHook("textEditing.selection.shiftKey", event, "key=$PASSWORD_KEY code=${event.keyCode}")
+                    }
+                    if (KeyModifiers.shortcutDown && isClipboardShortcut(event.keyCode)) {
+                        textEditingSawClipboardShortcut = true
+                        onLogHook("textEditing.clipboard", event, "key=$PASSWORD_KEY code=${event.keyCode}")
+                    }
                 }
             }
         )
-        text("Password: masked selection/caret behavior", { style = { color = DEMO_MUTED } })
+        text("Password: masked selection/caret behavior", {
+            style = { color = DEMO_MUTED }
+        })
 
         text("Textarea")
         textarea({
             placeholder = "Multiline editing"
             key = AREA_KEY
             style = {
-                width = (contentWidth - 8).px
-                height = 62.px
+                width = 100.percent
+                height = 3.em
             }
-            value = window.textEditingAreaValue
+            value = textEditingAreaValue
             onFocusGain = {
-                window.textEditingSawFocus = true
-                window.logHook("textEditing.area.focus", it)
+                textEditingSawFocus = true
+                onLogHook("textEditing.area.focus", it, null)
             }
-            onInput = { event: InputEvent ->
-                window.textEditingAreaValue = event.value
+            onInput = { event ->
+                textEditingAreaValue = event.value
             }
-            onMouseDrag = { event: MouseDragEvent ->
-                trackSelectionDrag(window, event, AREA_KEY)
+            onMouseDrag = { event ->
+                textEditingSawSelectionDrag = true
+                onLogHook("textEditing.selection.drag", event, "key=$AREA_KEY")
             }
-            onKeyDown = { event: KeyboardKeyDownEvent ->
-                trackKeyboardEditing(window, event, AREA_KEY)
+            onKeyDown = { event ->
+                if (KeyModifiers.shiftDown && isArrowLike(event.keyCode)) {
+                    textEditingSawShiftSelection = true
+                    onLogHook("textEditing.selection.shiftKey", event, "key=$AREA_KEY code=${event.keyCode}")
+                }
+                if (KeyModifiers.shortcutDown && isClipboardShortcut(event.keyCode)) {
+                    textEditingSawClipboardShortcut = true
+                    onLogHook("textEditing.clipboard", event, "key=$AREA_KEY code=${event.keyCode}")
+                }
             }
         })
-        text("Textarea: multiline selection + scroll-aware caret", { style = { color = DEMO_MUTED } })
+        text("Textarea: multiline selection + scroll-aware caret", {
+            style = { color = DEMO_MUTED }
+        })
 
         text("Checklist")
-        checklistLine("caret blinks when focused", window.textEditingSawFocus)
-        checklistLine("mouse drag selects and highlights text", window.textEditingSawSelectionDrag)
-        checklistLine("Shift + arrows extends selection", window.textEditingSawShiftSelection)
-        checklistLine("copy/cut/paste/undo/redo shortcuts are handled", window.textEditingSawClipboardShortcut)
+        checklistLine("caret blinks when focused", textEditingSawFocus)
+        checklistLine("mouse drag selects and highlights text", textEditingSawSelectionDrag)
+        checklistLine("Shift + arrows extends selection", textEditingSawShiftSelection)
+        checklistLine("copy/cut/paste/undo/redo shortcuts are handled", textEditingSawClipboardShortcut)
 
         button("Reset Checklist", {
-            style = { width = 72.px }
             onMouseClick = {
-                window.textEditingSawSelectionDrag = false
-                window.textEditingSawShiftSelection = false
-                window.textEditingSawClipboardShortcut = false
-                window.textEditingSawFocus = false
-                window.logHook("textEditing.checklist.reset", it)
+                textEditingSawSelectionDrag = false
+                textEditingSawShiftSelection = false
+                textEditingSawClipboardShortcut = false
+                textEditingSawFocus = false
+                onLogHook("textEditing.checklist.reset", it, null)
             }
         })
     }
@@ -135,24 +174,6 @@ private fun UiScope.checklistLine(textValue: String, done: Boolean) {
             foregroundColor(color)
         }
     })
-}
-
-private fun trackSelectionDrag(window: ShowcaseWindow, event: MouseDragEvent, key: Any) {
-    if (!window.textEditingSawSelectionDrag) {
-        window.textEditingSawSelectionDrag = true
-    }
-    window.logHook("textEditing.selection.drag", event, "key=$key")
-}
-
-private fun trackKeyboardEditing(window: ShowcaseWindow, event: KeyboardKeyDownEvent, key: Any) {
-    if (KeyModifiers.shiftDown && isArrowLike(event.keyCode)) {
-        window.textEditingSawShiftSelection = true
-        window.logHook("textEditing.selection.shiftKey", event, "key=$key code=${event.keyCode}")
-    }
-    if (KeyModifiers.shortcutDown && isClipboardShortcut(event.keyCode)) {
-        window.textEditingSawClipboardShortcut = true
-        window.logHook("textEditing.clipboard", event, "key=$key code=${event.keyCode}")
-    }
 }
 
 private fun isArrowLike(keyCode: Int): Boolean {
@@ -171,5 +192,3 @@ private fun isClipboardShortcut(keyCode: Int): Boolean {
             keyCode == KeyCodes.A ||
             keyCode == KeyCodes.Z
 }
-
-

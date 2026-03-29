@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.TextWrap
-import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private const val WRAP_SAMPLE_TEXT =
@@ -14,17 +14,17 @@ private const val WRAP_SAMPLE_WORD = "long_unbroken_word_to_force_hard_break_123
 private const val WRAP_TEXTAREA_SAMPLE =
     "Textarea sample: long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ\nSecond line with spaces for normal wrapping."
 
-fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHeight: Int) {
+fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
     val minWidth = 96
-    val maxWidth = (contentWidth - 8).coerceAtLeast(minWidth)
-    val panelWidth = window.textWrapWidth.toInt().coerceIn(minWidth, maxWidth)
-    val mode = if (window.textWrapNoWrap) TextWrap.NoWrap else TextWrap.Wrap
+    val maxWidth = 320
+    var textWrapNoWrap by useState(false)
+    var textWrapWidth by useState(176L)
+    val panelWidth = textWrapWidth.toInt().coerceIn(minWidth, maxWidth)
+    val mode = if (textWrapNoWrap) TextWrap.NoWrap else TextWrap.Wrap
 
     div({
         key = "section.textWrap"
         style = {
-            width = contentWidth.px
-            height = contentHeight.px
             gap = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -46,17 +46,15 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             button(
                 if (mode == TextWrap.Wrap) "Mode: wrap" else "Mode: nowrap",
                 {
-                    style = { width = 82.px }
                     onMouseClick = {
-                        window.textWrapNoWrap = !window.textWrapNoWrap
-                        window.appendInfo("TextWrap mode=${if (window.textWrapNoWrap) "nowrap" else "wrap"}")
+                        textWrapNoWrap = !textWrapNoWrap
+                        onInfo("TextWrap mode=${if (textWrapNoWrap) "nowrap" else "wrap"}")
                     }
                 }
             )
             button("Reset width", {
-                style = { width = 62.px }
                 onMouseClick = {
-                    window.textWrapWidth = ((minWidth + maxWidth) / 2).toLong()
+                    textWrapWidth = ((minWidth + maxWidth) / 2).toLong()
                 }
             })
         }
@@ -70,10 +68,10 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             ),
             {
                 key = "textWrap.width"
-                style = { width = (contentWidth - 8).px }
+                style = { width = 100.percent }
                 onInput = { event ->
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
-                    window.textWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
+                    textWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
                 }
             }
         )
@@ -101,7 +99,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
             text(WRAP_SAMPLE_WORD, { style = { textWrap = mode } })
             button("Button label: $WRAP_SAMPLE_WORD", {
                 style = {
-                    width = (panelWidth - 6).px
+                    width = 100.percent
                     textWrap = mode
                 }
             })
@@ -110,7 +108,7 @@ fun UiScope.textWrapSection(window: ShowcaseWindow, contentWidth: Int, contentHe
                 key = "textWrap.textarea"
                 value = WRAP_TEXTAREA_SAMPLE
                 style = {
-                    width = (panelWidth - 6).px
+                    width = 100.percent
                     height = 36.px
                     textWrap = mode
                 }
