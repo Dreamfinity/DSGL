@@ -1103,23 +1103,23 @@ class InspectorController(
         scrollbarTrackRect = track
         scrollbarThumbRect = Rect(track.x, thumbY, track.width, thumbHeight)
     }
-    internal fun debugPickToggleBounds(): Rect? {
+    internal fun overlayPickToggleBounds(): Rect? {
         return panelActions.lastOrNull { it.kind == ActionKind.TogglePick }?.bounds
     }
 
-    internal fun debugMinimizeBounds(): Rect? {
+    internal fun overlayMinimizeBounds(): Rect? {
         return panelActions.lastOrNull { it.kind == ActionKind.Minimize }?.bounds
     }
 
-    internal fun debugContentRect(): Rect = contentBounds
+    internal fun overlayContentRect(): Rect = contentBounds
 
-    internal fun debugScrollbarThumbRect(): Rect = if (nativeDomBodyScrollStateActive) {
+    internal fun overlayScrollbarThumbRect(): Rect = if (nativeDomBodyScrollStateActive) {
         nativeDomScrollbarThumbRectOverride ?: Rect(0, 0, 0, 0)
     } else {
         scrollbarThumbRect
     }
 
-    internal fun debugScrollbarTrackRect(): Rect = if (nativeDomBodyScrollStateActive) {
+    internal fun overlayScrollbarTrackRect(): Rect = if (nativeDomBodyScrollStateActive) {
         nativeDomScrollbarTrackRectOverride ?: Rect(0, 0, 0, 0)
     } else {
         scrollbarTrackRect
@@ -1162,21 +1162,47 @@ class InspectorController(
         minimizedBounds = Rect(minimizedPosX, minimizedPosY, minimizedWidth(), minimizedHeight())
     }
 
-    internal fun debugSelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
+    internal fun overlaySelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
 
-    internal fun debugHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
+    internal fun overlayHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
 
-    internal fun debugCursorTooltip(): InspectorTooltipSnapshot? = nativeCursorTooltip
+    internal fun overlayCursorTooltip(): InspectorTooltipSnapshot? = nativeCursorTooltip
 
-    internal fun debugVariableTooltip(): InspectorTooltipSnapshot? = nativeVariableTooltip
+    internal fun overlayVariableTooltip(): InspectorTooltipSnapshot? = nativeVariableTooltip
 
-    internal fun debugStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = nativeStyleEditorRows
+    internal fun overlayStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = nativeStyleEditorRows
 
-    internal fun debugStyleEditorResetRect(): Rect = nativeStyleEditorResetRect
+    internal fun overlayStyleEditorResetRect(): Rect = nativeStyleEditorResetRect
 
-    internal fun debugStyleEditorClearRect(): Rect = nativeStyleEditorClearRect
+    internal fun overlayStyleEditorClearRect(): Rect = nativeStyleEditorClearRect
 
-    internal fun debugStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
+    internal fun overlayStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
+
+    internal fun debugPickToggleBounds(): Rect? = overlayPickToggleBounds()
+
+    internal fun debugMinimizeBounds(): Rect? = overlayMinimizeBounds()
+
+    internal fun debugContentRect(): Rect = overlayContentRect()
+
+    internal fun debugScrollbarThumbRect(): Rect = overlayScrollbarThumbRect()
+
+    internal fun debugScrollbarTrackRect(): Rect = overlayScrollbarTrackRect()
+
+    internal fun debugSelectedHighlight(): InspectorHighlightSnapshot? = overlaySelectedHighlight()
+
+    internal fun debugHoveredHighlight(): InspectorHighlightSnapshot? = overlayHoveredHighlight()
+
+    internal fun debugCursorTooltip(): InspectorTooltipSnapshot? = overlayCursorTooltip()
+
+    internal fun debugVariableTooltip(): InspectorTooltipSnapshot? = overlayVariableTooltip()
+
+    internal fun debugStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = overlayStyleEditorRows()
+
+    internal fun debugStyleEditorResetRect(): Rect = overlayStyleEditorResetRect()
+
+    internal fun debugStyleEditorClearRect(): Rect = overlayStyleEditorClearRect()
+
+    internal fun debugStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = overlayStyleEditorDropdowns()
 
     internal fun onNativeDomDropdownSnapshots(dropdowns: List<InspectorDropdownSnapshot>) {
         nativeDropdowns.clear()
@@ -1414,7 +1440,7 @@ class InspectorController(
         return OpenStyleDropdown(unitSelect = false, optionCount = optionCount)
     }
 
-    internal fun debugApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
+    internal fun overlayApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
         val selected = selectedNode ?: return false
         val normalized = literal.trim()
         return runCatching {
@@ -1428,7 +1454,7 @@ class InspectorController(
         }
     }
 
-    internal fun debugApplyNumericOverride(property: StyleProperty, numericLiteral: String, unitToken: String?): Boolean {
+    internal fun overlayApplyNumericOverride(property: StyleProperty, numericLiteral: String, unitToken: String?): Boolean {
         val selected = selectedNode ?: return false
         val numberText = numericLiteral.trim()
         if (numberText.isEmpty() || numberText == "-" || numberText == "." || numberText == "-.") {
@@ -1444,6 +1470,14 @@ class InspectorController(
             styleEditorError = error.message?.take(96) ?: "Failed to apply style override."
             false
         }
+    }
+
+    internal fun debugApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
+        return overlayApplyLiteralOverride(property, literal)
+    }
+
+    internal fun debugApplyNumericOverride(property: StyleProperty, numericLiteral: String, unitToken: String?): Boolean {
+        return overlayApplyNumericOverride(property, numericLiteral, unitToken)
     }
 
     private fun resetNativePresentation() {
@@ -1651,7 +1685,7 @@ class InspectorController(
         }
     }
 
-    internal fun debugColorPickerActionBounds(property: StyleProperty): Rect? {
+    internal fun overlayColorPickerActionBounds(property: StyleProperty): Rect? {
         return panelActions.lastOrNull {
             it.kind == ActionKind.EditProperty &&
                     it.property == property &&
@@ -1665,15 +1699,23 @@ class InspectorController(
         return true
     }
 
-    internal fun debugPanelRect(): Rect? {
+    internal fun overlayPanelRect(): Rect? {
         if (!active) return null
         return currentInspectorRect()
     }
 
-    internal fun debugExpandedPanelRect(): Rect? {
+    internal fun overlayExpandedPanelRect(): Rect? {
         if (!active || panelState != InspectorPanelState.Expanded) return null
         return expandedRect
     }
+
+    internal fun debugColorPickerActionBounds(property: StyleProperty): Rect? {
+        return overlayColorPickerActionBounds(property)
+    }
+
+    internal fun debugPanelRect(): Rect? = overlayPanelRect()
+
+    internal fun debugExpandedPanelRect(): Rect? = overlayExpandedPanelRect()
 
     private fun performPanelAction(action: PanelAction) {
         when (action.kind) {

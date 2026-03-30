@@ -126,7 +126,7 @@ internal class SystemInspectorOverlayNode(
 
     private fun handleOverlayPanelMouseDown(event: MouseDownEvent): Boolean {
         if (event.mouseButton != MouseButton.LEFT) return false
-        val bodyRect = controller.debugContentRect()
+        val bodyRect = controller.overlayContentRect()
         val pointerInsideBody = bodyRect.width > 0 &&
             bodyRect.height > 0 &&
             bodyRect.contains(event.mouseX, event.mouseY)
@@ -188,7 +188,7 @@ internal class SystemInspectorOverlayNode(
 
     fun syncInputBounds(viewportWidth: Int, viewportHeight: Int) {
         val viewportRect = Rect(0, 0, viewportWidth.coerceAtLeast(0), viewportHeight.coerceAtLeast(0))
-        bounds = resolveInputBounds(viewportRect, controller.debugPanelRect())
+        bounds = resolveInputBounds(viewportRect, controller.overlayPanelRect())
     }
 
     override fun measure(ctx: UiMeasureContext): Size {
@@ -197,7 +197,7 @@ internal class SystemInspectorOverlayNode(
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         val viewportRect = Rect(x, y, width, height)
-        bounds = resolveInputBounds(viewportRect, controller.debugPanelRect())
+        bounds = resolveInputBounds(viewportRect, controller.overlayPanelRect())
         inspectedRoot?.let { root ->
             controller.onLayoutCommitted(root, inspectedLayoutRevision)
         }
@@ -247,7 +247,7 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun resolveRenderedDropdownInputBounds(): Rect? {
-        val dropdowns = controller.debugStyleEditorDropdowns()
+        val dropdowns = controller.overlayStyleEditorDropdowns()
         if (dropdowns.isNotEmpty()) {
             return dropdowns
                 .map { it.popupRect }
@@ -360,9 +360,9 @@ internal class SystemInspectorOverlayNode(
         renderPanelOccluder(scope, ctx, panelRect)
         panelNode.render(ctx, viewportRect.x, viewportRect.y, viewportRect.width, viewportRect.height)
 
-        val pickRect = controller.debugPickToggleBounds()
+        val pickRect = controller.overlayPickToggleBounds()
             ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
-        val minimizeRect = controller.debugMinimizeBounds()
+        val minimizeRect = controller.overlayMinimizeBounds()
             ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
 
         val pickButton = scope.button("Select Element", {
@@ -479,7 +479,7 @@ internal class SystemInspectorOverlayNode(
             Rect(contentX, y, contentW, lineHeightPx),
         )
 
-        val styleRows = controller.debugStyleEditorRows()
+        val styleRows = controller.overlayStyleEditorRows()
         reconcileActiveDomDropdown(styleRows)
         renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY, styleRows)
         y += snapshot.styleEditorHeight
@@ -512,8 +512,8 @@ internal class SystemInspectorOverlayNode(
             trackRect = bodyScrollbarVisual?.trackRect,
             thumbRect = bodyScrollbarVisual?.thumbRect
         )
-        renderTooltip(scope, ctx, "dsgl-system-inspector-variable-tooltip", controller.debugVariableTooltip(), 0xEE141A22.toInt(), 0xCC60758F.toInt())
-        renderTooltip(scope, ctx, "dsgl-system-inspector-cursor-tooltip", controller.debugCursorTooltip(), 0xDD11151A.toInt(), 0xCC3F4A57.toInt())
+        renderTooltip(scope, ctx, "dsgl-system-inspector-variable-tooltip", controller.overlayVariableTooltip(), 0xEE141A22.toInt(), 0xCC60758F.toInt())
+        renderTooltip(scope, ctx, "dsgl-system-inspector-cursor-tooltip", controller.overlayCursorTooltip(), 0xDD11151A.toInt(), 0xCC3F4A57.toInt())
     }
 
     private fun renderPanelOccluder(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
@@ -529,7 +529,7 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext) {
-        controller.debugSelectedHighlight()?.let { highlight ->
+        controller.overlaySelectedHighlight()?.let { highlight ->
             renderHighlightRect(scope, ctx, "dsgl-system-inspector-selected-margin-fill", highlight.marginRect, 0x44F3B33D, null)
             renderHighlightRect(scope, ctx, "dsgl-system-inspector-selected-padding-fill", highlight.paddingRect, 0x4426A69A, null)
             renderHighlightRect(scope, ctx, "dsgl-system-inspector-selected-content-fill", highlight.contentRect, 0x444285F4, null)
@@ -541,7 +541,7 @@ internal class SystemInspectorOverlayNode(
                 renderHighlightRect(scope, ctx, "dsgl-system-inspector-selected-parent-outline", parentRect, null, 0x66FF5252)
             }
         }
-        controller.debugHoveredHighlight()?.let { highlight ->
+        controller.overlayHoveredHighlight()?.let { highlight ->
             renderHighlightRect(scope, ctx, "dsgl-system-inspector-hovered-content-fill", highlight.contentRect, 0x3A47A0FF, null)
             renderHighlightRect(scope, ctx, "dsgl-system-inspector-hovered-border-outline", highlight.borderRect, null, 0xCC47A0FF.toInt())
         }
@@ -642,10 +642,10 @@ internal class SystemInspectorOverlayNode(
                     input.placeholderColor = 0xAA9AAFC6.toInt()
                     input.fontSize = 18
                     input.onInput = {
-                        controller.debugApplyLiteralOverride(row.property, it.value)
+                        controller.overlayApplyLiteralOverride(row.property, it.value)
                     }
                     input.onValueChange = {
-                        controller.debugApplyLiteralOverride(row.property, it.value)
+                        controller.overlayApplyLiteralOverride(row.property, it.value)
                     }
                     input.applyParent(parentNode)
                     renderNode(ctx, input, translateRectY(row.controlRect, -bodyScrollY))
@@ -691,10 +691,10 @@ internal class SystemInspectorOverlayNode(
                         input.placeholderColor = 0xAA9AAFC6.toInt()
                         input.fontSize = 18
                         input.onInput = {
-                            controller.debugApplyNumericOverride(row.property, it.value, row.unitValue)
+                            controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
                         }
                         input.onValueChange = {
-                            controller.debugApplyNumericOverride(row.property, it.value, row.unitValue)
+                            controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
                         }
                         input.applyParent(parentNode)
                         renderNode(ctx, input, translateRectY(rect, -bodyScrollY))
@@ -731,7 +731,7 @@ internal class SystemInspectorOverlayNode(
             }
         }
 
-        val resetRect = controller.debugStyleEditorResetRect()
+        val resetRect = controller.overlayStyleEditorResetRect()
         if (resetRect.width > 0 && resetRect.height > 0) {
             val resetButton = scope.button("Reset node", {
                 key = "dsgl-system-inspector-reset-node"
@@ -746,7 +746,7 @@ internal class SystemInspectorOverlayNode(
             renderNode(ctx, resetButton, translateRectY(resetRect, -bodyScrollY))
         }
 
-        val clearRect = controller.debugStyleEditorClearRect()
+        val clearRect = controller.overlayStyleEditorClearRect()
         if (clearRect.width > 0 && clearRect.height > 0) {
             val clearButton = scope.button("Clear all", {
                 key = "dsgl-system-inspector-clear-all"

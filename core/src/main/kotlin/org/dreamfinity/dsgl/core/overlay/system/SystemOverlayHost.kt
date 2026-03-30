@@ -306,10 +306,10 @@ class SystemOverlayHost(
                     style = inspectorPanelStyle(),
                     onClose = inspectorController::onPanelMinimizeTogglePressed
                 )
-                val panelRect = inspectorController.debugExpandedPanelRect()
+                val panelRect = inspectorController.overlayExpandedPanelRect()
                 if (panelRect != null) {
                     inspectorController.onOverlayPanelRectChanged(panelRect, viewportWidth, viewportHeight)
-                    overlayPanel.syncPanelRect(inspectorController.debugExpandedPanelRect())
+                    overlayPanel.syncPanelRect(inspectorController.overlayExpandedPanelRect())
                 } else {
                     state.panelState.show()
                     overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
