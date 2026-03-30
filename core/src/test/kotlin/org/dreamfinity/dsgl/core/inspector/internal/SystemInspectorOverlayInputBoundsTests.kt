@@ -18,7 +18,7 @@ class SystemInspectorOverlayInputBoundsTests {
             it.setPickMode(false)
         }
         val node = SystemInspectorOverlayNode(controller)
-        val panelRect = controller.debugPanelRect() ?: error("expected panel rect")
+        val panelRect = controller.overlayPanelRect() ?: error("expected panel rect")
 
         val popupRect = Rect(
             x = panelRect.x + panelRect.width + 32,
@@ -55,3 +55,4 @@ class SystemInspectorOverlayInputBoundsTests {
         assertFalse(node.bounds.contains(popupProbeX, popupProbeY))
     }
 }
+

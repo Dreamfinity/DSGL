@@ -41,11 +41,11 @@ class InspectorDropdownCorrectiveTests {
         scrollInspectorBodyDown(fixture, steps = 10)
 
         val (trigger, dropdown) = openInspectorSelectDropdown(fixture, requireScrollable = false)
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         var outsideX = contentRect.x + 4
         var outsideY = contentRect.y + 4
         if (dropdown.popupRect.contains(outsideX, outsideY) || trigger.contains(outsideX, outsideY)) {
-            val panelRect = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+            val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
             outsideX = panelRect.x + 8
             outsideY = panelRect.y + 8
         }
@@ -54,7 +54,7 @@ class InspectorDropdownCorrectiveTests {
         fixture.host.handleMouseUp(outsideX, outsideY, MouseButton.LEFT)
         syncAndRender(fixture, outsideX, outsideY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     @Test
@@ -64,14 +64,14 @@ class InspectorDropdownCorrectiveTests {
         settleFrames(fixture, steps = 1)
         val beforePanelScroll = fixture.inspector.panelScrollOffsetY
 
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
 
         assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
         assertEquals(beforePanelScroll, fixture.inspector.panelScrollOffsetY)
     }
 
@@ -193,7 +193,7 @@ class InspectorDropdownCorrectiveTests {
     }
 
     private fun scrollInspectorBodyDown(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         repeat(steps) {
@@ -203,7 +203,7 @@ class InspectorDropdownCorrectiveTests {
     }
 
     private fun settleFrames(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val cursorX = contentRect.x + 4
         val cursorY = contentRect.y + 10
         repeat(steps) {
@@ -214,9 +214,9 @@ class InspectorDropdownCorrectiveTests {
     private fun openVisibleInspectorSelectDropdownWithoutBodyScroll(
         fixture: Fixture
     ): Pair<Rect, org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot> {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val bodyScrollY = fixture.inspector.panelScrollOffsetY
-        val row = fixture.inspector.debugStyleEditorRows().firstOrNull { row ->
+        val row = fixture.inspector.overlayStyleEditorRows().firstOrNull { row ->
             if (row.editorKind != InspectorEditorKind.EnumSelect && row.editorKind != InspectorEditorKind.FontSelect) {
                 return@firstOrNull false
             }
@@ -243,7 +243,7 @@ class InspectorDropdownCorrectiveTests {
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
 
-        val opened = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+        val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
             ?: error("expected inspector dropdown to open from visible select row")
         return triggerRect to opened
     }
@@ -253,9 +253,9 @@ class InspectorDropdownCorrectiveTests {
         requireScrollable: Boolean
     ): Pair<Rect, org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot> {
         repeat(120) {
-            val contentRect = fixture.inspector.debugContentRect()
+            val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
-            val visibleSelectRows = fixture.inspector.debugStyleEditorRows().filter { row ->
+            val visibleSelectRows = fixture.inspector.overlayStyleEditorRows().filter { row ->
                 if (row.editorKind != InspectorEditorKind.EnumSelect && row.editorKind != InspectorEditorKind.FontSelect) {
                     return@filter false
                 }
@@ -283,7 +283,7 @@ class InspectorDropdownCorrectiveTests {
                 fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
                 syncAndRender(fixture, clickX, clickY)
 
-                val opened = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+                val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
                 if (opened != null && (!requireScrollable || opened.footerText != null)) {
                     return triggerRect to opened
                 }
@@ -331,7 +331,7 @@ class InspectorDropdownCorrectiveTests {
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
         val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
             ?: error("inspector entry missing")
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
             .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
@@ -380,4 +380,5 @@ class InspectorDropdownCorrectiveTests {
         var viewportHeight: Int
     )
 }
+
 

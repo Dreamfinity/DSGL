@@ -162,7 +162,7 @@ class SystemInspectorOverlayFocusIsolationTests {
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 40, cursorY = 30, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
 
-        val pickRect = inspector.debugPickToggleBounds() ?: error("pick toggle missing")
+        val pickRect = inspector.overlayPickToggleBounds() ?: error("pick toggle missing")
         assertTrue(host.handleMouseDown(pickRect.x + 2, pickRect.y + 2, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(pickRect.x + 2, pickRect.y + 2, MouseButton.LEFT))
         assertEquals(InspectorMode.Pick, inspector.mode)
@@ -203,3 +203,4 @@ class SystemInspectorOverlayFocusIsolationTests {
         }
     }
 }
+

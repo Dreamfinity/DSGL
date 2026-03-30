@@ -233,7 +233,7 @@ class InspectorTextEditingDomMigrationTests {
 
     private fun findVisibleInputNode(host: SystemOverlayHost, inspector: InspectorController, keyPrefix: String): TextInputNode {
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector entry missing")
-        val contentRect = inspector.debugContentRect()
+        val contentRect = inspector.overlayContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
             .filter { (it.key?.toString() ?: "").startsWith(keyPrefix) }
@@ -302,4 +302,5 @@ class InspectorTextEditingDomMigrationTests {
         }
     }
 }
+
 

@@ -115,7 +115,7 @@ class LiveLayerInteractionPathTests {
         systemHost.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
         systemHost.render(ctx, 1280, 720)
 
-        val panelRect = inspector.debugPanelRect() ?: error("inspector panel rect missing")
+        val panelRect = inspector.overlayPanelRect() ?: error("inspector panel rect missing")
         val outsideX = if (panelRect.x > 40) panelRect.x - 20 else panelRect.x + panelRect.width + 20
         val outsideY = (panelRect.y + panelRect.height / 2).coerceIn(1, 719)
         assertFalse(panelRect.contains(outsideX, outsideY))
@@ -212,3 +212,4 @@ class LiveLayerInteractionPathTests {
         }
     }
 }
+

@@ -44,7 +44,7 @@ class InspectorDragScrollDomMigrationTests {
     fun `inspector panel drag is dom-first and controller drag authority stays demoted`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = true)
 
-        val before = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+        val before = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
         val downX = before.x + 18
         val downY = before.y + 14
         val moveX = downX + 90
@@ -59,7 +59,7 @@ class InspectorDragScrollDomMigrationTests {
 
         assertTrue(fixture.host.handleMouseMove(moveX, moveY))
         syncAndRender(fixture, moveX, moveY)
-        val moved = fixture.inspector.debugPanelRect() ?: error("expected moved panel rect")
+        val moved = fixture.inspector.overlayPanelRect() ?: error("expected moved panel rect")
         assertTrue(moved.x != before.x || moved.y != before.y)
 
         assertTrue(fixture.host.handleMouseUp(moveX, moveY, MouseButton.LEFT))
@@ -75,7 +75,7 @@ class InspectorDragScrollDomMigrationTests {
         val fixture = openInspectorAndSelectTarget(withManyChildren = true)
         setViewport(fixture, 420, 280)
 
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         val before = fixture.inspector.panelScrollOffsetY
@@ -96,7 +96,7 @@ class InspectorDragScrollDomMigrationTests {
         setViewport(fixture, 420, 280)
         scrollInspectorBodyDown(fixture, steps = 2)
 
-        val thumb = fixture.inspector.debugScrollbarThumbRect()
+        val thumb = fixture.inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
 
         val dragX = thumb.x + thumb.width / 2
@@ -126,7 +126,7 @@ class InspectorDragScrollDomMigrationTests {
         setViewport(fixture, 420, 280)
         scrollInspectorBodyDown(fixture, steps = 3)
 
-        val thumb = fixture.inspector.debugScrollbarThumbRect()
+        val thumb = fixture.inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
 
         val dragX = thumb.x + thumb.width / 2
@@ -157,7 +157,7 @@ class InspectorDragScrollDomMigrationTests {
         val fixture = openInspectorAndSelectTarget(withManyChildren = true)
         setViewport(fixture, 420, 280)
 
-        val panelRect = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+        val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
         val downX = panelRect.x + 14
         val downY = panelRect.y + 12
         assertTrue(fixture.host.handleMouseDown(downX, downY, MouseButton.LEFT))
@@ -199,12 +199,12 @@ class InspectorDragScrollDomMigrationTests {
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
 
         fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     @Test
@@ -267,7 +267,7 @@ class InspectorDragScrollDomMigrationTests {
     }
 
     private fun scrollInspectorBodyDown(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         repeat(steps) {
@@ -278,10 +278,10 @@ class InspectorDragScrollDomMigrationTests {
 
     private fun findVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
-            val rows = fixture.inspector.debugStyleEditorRows().filter { row ->
+            val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
                 row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
             }
-            val contentRect = fixture.inspector.debugContentRect()
+            val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
             rows.firstOrNull { row ->
                 val rect = Rect(
@@ -331,7 +331,7 @@ class InspectorDragScrollDomMigrationTests {
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
         val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
             ?: error("inspector entry missing")
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
             .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
@@ -380,4 +380,5 @@ class InspectorDragScrollDomMigrationTests {
         var viewportHeight: Int
     )
 }
+
 

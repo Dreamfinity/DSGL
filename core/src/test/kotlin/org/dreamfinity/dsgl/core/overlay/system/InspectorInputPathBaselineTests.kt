@@ -67,20 +67,20 @@ class InspectorInputPathBaselineTests {
         fixture.host.handleMouseDown(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
         fixture.host.handleMouseUp(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
         syncAndRender(fixture, trigger.x + 2, trigger.y + 2)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     @Test
     fun `inspector dropdown opens and closes from dom interactions`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val (trigger, _) = openDropdownFromVisibleSelectRow(fixture)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
 
         fixture.host.handleMouseDown(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
         fixture.host.handleMouseUp(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
         syncAndRender(fixture, trigger.x + 2, trigger.y + 2)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     @Test
@@ -95,7 +95,7 @@ class InspectorInputPathBaselineTests {
         assertTrue(fixture.host.handleMouseUp(optionX, optionY, MouseButton.LEFT))
         syncAndRender(fixture, optionX, optionY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
 
@@ -105,7 +105,7 @@ class InspectorInputPathBaselineTests {
         val (_, opened) = openDropdownFromVisibleSelectRow(fixture)
 
         syncAndRender(fixture, opened.popupRect.x + 2, opened.popupRect.y + 2)
-        val reopened = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+        val reopened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
             ?: error("expected dropdown after rebuild")
 
         assertEquals(opened.property, reopened.property)
@@ -118,18 +118,18 @@ class InspectorInputPathBaselineTests {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         openDropdownFromVisibleSelectRow(fixture)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
         assertFalse(fixture.inspector.handleOpenStyleDropdownWheel(-120))
 
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         val beforePanelScroll = fixture.inspector.panelScrollOffsetY
         assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
         assertEquals(beforePanelScroll, fixture.inspector.panelScrollOffsetY)
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
@@ -191,17 +191,17 @@ class InspectorInputPathBaselineTests {
             .coerceIn(2, (fixture.viewportHeight - popup.bounds.height - 2).coerceAtLeast(2))
         assertEquals(expectedY, popup.bounds.y)
 
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
 
         var outsideX = contentRect.x + 4
         var outsideY = contentRect.y + 4
         if (opened.popupRect.contains(outsideX, outsideY) || trigger.contains(outsideX, outsideY)) {
-            val panelRect = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+            val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
             outsideX = panelRect.x + 8
             outsideY = panelRect.y + 8
         }
@@ -209,7 +209,7 @@ class InspectorInputPathBaselineTests {
         fixture.host.handleMouseDown(outsideX, outsideY, MouseButton.LEFT)
         fixture.host.handleMouseUp(outsideX, outsideY, MouseButton.LEFT)
         syncAndRender(fixture, outsideX, outsideY)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
@@ -259,7 +259,7 @@ class InspectorInputPathBaselineTests {
     }
 
     private fun scrollInspectorBodyDown(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         repeat(steps) {
@@ -270,10 +270,10 @@ class InspectorInputPathBaselineTests {
 
     private fun findOrScrollToVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
-            val rows = fixture.inspector.debugStyleEditorRows().filter { row ->
+            val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
                 row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
             }
-            val contentRect = fixture.inspector.debugContentRect()
+            val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
             rows.firstOrNull { row ->
                 val rect = Rect(
@@ -303,7 +303,7 @@ class InspectorInputPathBaselineTests {
     }
 
     private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot {
-        return fixture.inspector.debugStyleEditorRows().firstOrNull { it.property == property }
+        return fixture.inspector.overlayStyleEditorRows().firstOrNull { it.property == property }
             ?: error("expected row for $property")
     }
 
@@ -318,7 +318,7 @@ class InspectorInputPathBaselineTests {
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
 
-        val opened = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+        val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
             ?: error("expected opened inspector dropdown")
         return triggerRect to opened
     }
@@ -355,7 +355,7 @@ class InspectorInputPathBaselineTests {
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
         val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
             ?: error("inspector entry missing")
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val candidates = collectNodes(inspectorNode)
             .filterIsInstance<TextInputNode>()
             .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
@@ -404,4 +404,5 @@ class InspectorInputPathBaselineTests {
         var viewportHeight: Int
     )
 }
+
 

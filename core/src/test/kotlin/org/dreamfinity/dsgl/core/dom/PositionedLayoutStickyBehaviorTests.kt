@@ -642,7 +642,7 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.overlayHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(rect, highlight.borderRect)
     }
@@ -682,7 +682,7 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.overlayHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(visibleRect, highlight.borderRect)
     }
@@ -1001,3 +1001,4 @@ class PositionedLayoutStickyBehaviorTests {
         }
     }
 }
+

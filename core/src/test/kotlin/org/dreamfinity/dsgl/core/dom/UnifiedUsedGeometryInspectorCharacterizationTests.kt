@@ -267,7 +267,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         inspector.onCursorMoved(185, 25)
         inspector.buildDomSnapshot(800, 600)
-        val fixedHighlight = inspector.debugHoveredHighlight()
+        val fixedHighlight = inspector.overlayHoveredHighlight()
         assertNotNull(fixedHighlight)
         val fixedUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixed)
         assertEquals(
@@ -277,7 +277,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         inspector.onCursorMoved(145, 95)
         inspector.buildDomSnapshot(800, 600)
-        val clippedHighlight = inspector.debugHoveredHighlight()
+        val clippedHighlight = inspector.overlayHoveredHighlight()
         assertNotNull(clippedHighlight)
         val rootUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(root)
         assertEquals(
@@ -317,7 +317,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(relative.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.overlayHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(
             usedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
@@ -344,7 +344,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(fixture.fixed.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.overlayHoveredHighlight()
         assertNotNull(highlight)
         val fixedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.fixed)
         assertEquals(
@@ -449,3 +449,4 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         }
     }
 }
+

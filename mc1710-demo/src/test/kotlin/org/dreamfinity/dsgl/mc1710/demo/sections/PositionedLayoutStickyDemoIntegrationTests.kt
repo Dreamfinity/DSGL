@@ -245,9 +245,9 @@ class PositionedLayoutStickyDemoIntegrationTests {
     }
 
     private fun inspectorHoveredBorderRect(inspector: InspectorController): Rect? {
-        val debugHoveredHighlight = findMethodByNameAndArity(inspector.javaClass, "debugHoveredHighlight", 0)
-        debugHoveredHighlight.isAccessible = true
-        val snapshot = debugHoveredHighlight.invoke(inspector) ?: return null
+        val highlightMethod = findMethodByNameAndArity(inspector.javaClass, "overlayHoveredHighlight", 0)
+        highlightMethod.isAccessible = true
+        val snapshot = highlightMethod.invoke(inspector) ?: return null
         val borderRectField = findField(snapshot.javaClass, "borderRect")
         borderRectField.isAccessible = true
         return borderRectField.get(snapshot) as? Rect

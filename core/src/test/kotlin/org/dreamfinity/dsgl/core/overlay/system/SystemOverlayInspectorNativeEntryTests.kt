@@ -137,8 +137,8 @@ class SystemOverlayInspectorNativeEntryTests {
         )
         host.render(ctx, 1280, 720)
 
-        val panelRect = inspector.debugPanelRect() ?: error("panel rect missing")
-        val highlight = inspector.debugSelectedHighlight() ?: error("selected highlight missing")
+        val panelRect = inspector.overlayPanelRect() ?: error("panel rect missing")
+        val highlight = inspector.overlaySelectedHighlight() ?: error("selected highlight missing")
         assertTrue(intersects(highlight.contentRect, panelRect))
 
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
@@ -179,12 +179,12 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 80, cursorY = 52, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
 
-        val pickToggle = inspector.debugPickToggleBounds() ?: error("pick toggle missing")
+        val pickToggle = inspector.overlayPickToggleBounds() ?: error("pick toggle missing")
         assertTrue(host.handleMouseDown(pickToggle.x + 1, pickToggle.y + 1, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(pickToggle.x + 1, pickToggle.y + 1, MouseButton.LEFT))
         assertEquals(InspectorMode.Pick, inspector.mode)
 
-        val colorAction = inspector.debugColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
+        val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
         val openedByClick = if (colorAction != null) {
             host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
@@ -245,7 +245,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 1280, 720)
 
         val initialNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val minimizeRect = inspector.debugMinimizeBounds() ?: error("minimize bounds missing")
+        val minimizeRect = inspector.overlayMinimizeBounds() ?: error("minimize bounds missing")
         assertTrue(host.handleMouseDown(minimizeRect.x + 1, minimizeRect.y + 1, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(minimizeRect.x + 1, minimizeRect.y + 1, MouseButton.LEFT))
         assertEquals(InspectorPanelState.Minimized, inspector.panelState)
@@ -280,7 +280,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 40, cursorY = 30, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
 
-        val minimizeRect = inspector.debugMinimizeBounds() ?: error("minimize bounds missing")
+        val minimizeRect = inspector.overlayMinimizeBounds() ?: error("minimize bounds missing")
         assertTrue(host.handleMouseDown(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
         assertEquals(InspectorPanelState.Minimized, inspector.panelState)
@@ -312,7 +312,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 40, cursorY = 30, inspectorPointerCaptured = false)
         host.render(ctx, 1280, 720)
 
-        val minimizeRect = inspector.debugMinimizeBounds() ?: error("minimize bounds missing")
+        val minimizeRect = inspector.overlayMinimizeBounds() ?: error("minimize bounds missing")
         assertTrue(host.handleMouseDown(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
         assertEquals(InspectorPanelState.Minimized, inspector.panelState)
@@ -369,7 +369,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 420, 280)
 
-        val contentRect = inspector.debugContentRect()
+        val contentRect = inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 12
         assertTrue(host.handleMouseWheel(wheelX, wheelY, -120))
@@ -386,7 +386,7 @@ class SystemOverlayInspectorNativeEntryTests {
         val afterWheel = inspector.panelScrollOffsetY
         assertTrue(afterWheel > 0, "expected wheel scroll > 0, actual=$afterWheel")
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
         val thumbX = thumb.x + 1
         val thumbY = thumb.y + thumb.height / 2
@@ -421,9 +421,9 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 420, 280)
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
-        val pickToggle = inspector.debugPickToggleBounds() ?: error("pick toggle missing")
+        val pickToggle = inspector.overlayPickToggleBounds() ?: error("pick toggle missing")
         val modeBeforeRelease = inspector.mode
 
         val thumbX = thumb.x + thumb.width / 2
@@ -474,9 +474,9 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 420, 280)
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
-        val panelRect = inspector.debugPanelRect() ?: error("panel rect missing")
+        val panelRect = inspector.overlayPanelRect() ?: error("panel rect missing")
         val modeBeforeRelease = inspector.mode
 
         val candidatePoints = listOf(
@@ -551,7 +551,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectorPointerCaptured = false
             )
             host.render(ctx, 1280, 720)
-            val colorAction = inspector.debugColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
+            val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
             val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
             val openedByClick = if (colorAction != null) {
                 host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
@@ -615,7 +615,7 @@ class SystemOverlayInspectorNativeEntryTests {
         assertEquals("target", inspector.selectedKey)
 
         sync(revision = 2L, cursorX = 80, cursorY = 52)
-        val colorAction = inspector.debugColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
+        val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
         val openedByClick = if (colorAction != null) {
             host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
@@ -682,7 +682,7 @@ class SystemOverlayInspectorNativeEntryTests {
         val modeBeforeDropdown = inspector.mode
 
         sync(revision = 2L, cursorX = 80, cursorY = 52)
-        val colorAction = inspector.debugColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
+        val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
         val openedByClick = if (colorAction != null) {
             host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
@@ -756,7 +756,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 320, 220)
 
-        val bodyRect = inspector.debugContentRect()
+        val bodyRect = inspector.overlayContentRect()
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
         val bodyNode = collectNodes(inspectorNode)
             .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
@@ -836,7 +836,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 320, 213)
 
-        val bodyRect = inspector.debugContentRect()
+        val bodyRect = inspector.overlayContentRect()
         val wheelX = bodyRect.x + 4
         val wheelY = bodyRect.y + 12
 
@@ -983,7 +983,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
 
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val bodyRect = inspector.debugContentRect()
+        val bodyRect = inspector.overlayContentRect()
         val allNodes = collectNodes(inspectorNode)
         val interactiveNode = allNodes.firstOrNull { node ->
             val key = node.key?.toString() ?: return@firstOrNull false
@@ -1042,7 +1042,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 90, cursorY = 90, inspectorPointerCaptured = false)
         host.render(ctx, 420, 280)
 
-        val bodyRect = inspector.debugContentRect()
+        val bodyRect = inspector.overlayContentRect()
         val wheelX = bodyRect.x + 4
         val wheelY = bodyRect.y + 12
         val before = inspector.panelScrollOffsetY
@@ -1087,7 +1087,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
         host.paint(ctx)
 
-        val contentRect = inspector.debugContentRect()
+        val contentRect = inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 12
 
@@ -1177,7 +1177,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
         host.paint(ctx)
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
         val dragX = thumb.x + thumb.width / 2
         val dragStartY = thumb.y + thumb.height / 2
@@ -1375,7 +1375,7 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
         host.paint(ctx)
 
-        val contentRect = inspector.debugContentRect()
+        val contentRect = inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 14
         val before = inspector.panelScrollOffsetY
@@ -1419,14 +1419,14 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
         host.paint(ctx)
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
         val dragX = thumb.x + thumb.width / 2
         val startY = thumb.y + thumb.height / 2
 
         assertTrue(host.handleMouseDown(dragX, startY, MouseButton.LEFT))
         var previousScroll = inspector.panelScrollOffsetY
-        var previousThumbY = inspector.debugScrollbarThumbRect().y
+        var previousThumbY = inspector.overlayScrollbarThumbRect().y
 
         repeat(6) { step ->
             val nextY = startY + (step + 1) * 9
@@ -1441,7 +1441,7 @@ class SystemOverlayInspectorNativeEntryTests {
             host.render(ctx, 420, 280)
             host.paint(ctx)
             val currentScroll = inspector.panelScrollOffsetY
-            val currentThumbY = inspector.debugScrollbarThumbRect().y
+            val currentThumbY = inspector.overlayScrollbarThumbRect().y
             assertTrue(
                 currentScroll >= previousScroll,
                 "scroll regressed: prev=$previousScroll current=$currentScroll step=$step"
@@ -1456,7 +1456,7 @@ class SystemOverlayInspectorNativeEntryTests {
 
         assertTrue(host.handleMouseUp(dragX, startY + 6 * 9, MouseButton.LEFT))
         val settledScroll = inspector.panelScrollOffsetY
-        val settledThumbY = inspector.debugScrollbarThumbRect().y
+        val settledThumbY = inspector.overlayScrollbarThumbRect().y
 
         repeat(6) { idx ->
             host.syncFrame(
@@ -1469,7 +1469,7 @@ class SystemOverlayInspectorNativeEntryTests {
             host.render(ctx, 420, 280)
             host.paint(ctx)
             assertEquals(settledScroll, inspector.panelScrollOffsetY)
-            assertEquals(settledThumbY, inspector.debugScrollbarThumbRect().y)
+            assertEquals(settledThumbY, inspector.overlayScrollbarThumbRect().y)
         }
     }
 
@@ -1498,14 +1498,14 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
         host.paint(ctx)
 
-        val thumb = inspector.debugScrollbarThumbRect()
+        val thumb = inspector.overlayScrollbarThumbRect()
         assertTrue(thumb.width > 0 && thumb.height > 0)
         val dragX = thumb.x + thumb.width / 2
         val startY = thumb.y + thumb.height / 2
 
         assertTrue(host.handleMouseDown(dragX, startY, MouseButton.LEFT))
         var previousScroll = inspector.panelScrollOffsetY
-        var previousThumbY = inspector.debugScrollbarThumbRect().y
+        var previousThumbY = inspector.overlayScrollbarThumbRect().y
         repeat(7) { step ->
             val nextY = startY + (step + 1) * 120
             assertTrue(host.handleMouseMove(dragX, nextY))
@@ -1519,7 +1519,7 @@ class SystemOverlayInspectorNativeEntryTests {
             host.render(ctx, 420, 280)
             host.paint(ctx)
             val currentScroll = inspector.panelScrollOffsetY
-            val currentThumbY = inspector.debugScrollbarThumbRect().y
+            val currentThumbY = inspector.overlayScrollbarThumbRect().y
             assertTrue(
                 currentScroll >= previousScroll,
                 "scroll regressed: prev=$previousScroll current=$currentScroll step=$step"
@@ -1533,7 +1533,7 @@ class SystemOverlayInspectorNativeEntryTests {
         }
 
         val settledScroll = inspector.panelScrollOffsetY
-        val settledThumbY = inspector.debugScrollbarThumbRect().y
+        val settledThumbY = inspector.overlayScrollbarThumbRect().y
         repeat(8) { idx ->
             val boundaryY = startY + 2000
             assertTrue(host.handleMouseMove(dragX, boundaryY))
@@ -1547,12 +1547,13 @@ class SystemOverlayInspectorNativeEntryTests {
             host.render(ctx, 420, 280)
             host.paint(ctx)
             assertEquals(settledScroll, inspector.panelScrollOffsetY)
-            assertEquals(settledThumbY, inspector.debugScrollbarThumbRect().y)
+            assertEquals(settledThumbY, inspector.overlayScrollbarThumbRect().y)
         }
 
         assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
     }
 }
+
 
 
 

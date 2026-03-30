@@ -119,7 +119,7 @@ class InspectorPointerAlignmentTests {
         fixture.host.handleMouseDown(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
         fixture.host.handleMouseUp(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
         syncAndRender(fixture, triggerRect.x + 2, triggerRect.y + 2)
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
 
         val rawX = row.controlRect.x + 2
         val rawY = row.controlRect.y + (row.controlRect.height / 2).coerceAtLeast(1)
@@ -127,7 +127,7 @@ class InspectorPointerAlignmentTests {
         fixture.host.handleMouseUp(rawX, rawY, MouseButton.LEFT)
         syncAndRender(fixture, rawX, rawY)
 
-        val openedOnRaw = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+        val openedOnRaw = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
         assertTrue(openedOnRaw == null || openedOnRaw.property != property)
     }
 
@@ -139,19 +139,19 @@ class InspectorPointerAlignmentTests {
         val row = findOrScrollToVisibleSelectRow(fixture)
         val (triggerRect, dropdown) = openDropdownFromVisibleSelectRow(fixture, row)
         settleFrames(fixture, steps = 1)
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
 
         assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isNotEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
 
         var outsideX = contentRect.x + 4
         var outsideY = contentRect.y + 4
         if (dropdown.popupRect.contains(outsideX, outsideY) || triggerRect.contains(outsideX, outsideY)) {
-            val panelRect = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+            val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
             outsideX = panelRect.x + 8
             outsideY = panelRect.y + 8
         }
@@ -160,7 +160,7 @@ class InspectorPointerAlignmentTests {
         fixture.host.handleMouseUp(outsideX, outsideY, MouseButton.LEFT)
         syncAndRender(fixture, outsideX, outsideY)
 
-        assertTrue(fixture.inspector.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
@@ -210,7 +210,7 @@ class InspectorPointerAlignmentTests {
     }
 
     private fun dragInspectorPanel(fixture: Fixture, deltaX: Int, deltaY: Int) {
-        val panelRect = fixture.inspector.debugPanelRect() ?: error("expected panel rect")
+        val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
         val downX = panelRect.x + 16
         val downY = panelRect.y + 12
         val moveX = downX + deltaX
@@ -223,7 +223,7 @@ class InspectorPointerAlignmentTests {
     }
 
     private fun scrollInspectorBodyDown(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         repeat(steps) {
@@ -233,7 +233,7 @@ class InspectorPointerAlignmentTests {
     }
 
     private fun settleFrames(fixture: Fixture, steps: Int) {
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val cursorX = contentRect.x + 4
         val cursorY = contentRect.y + 10
         repeat(steps) {
@@ -242,10 +242,10 @@ class InspectorPointerAlignmentTests {
     }
 
     private fun findVisibleSelectRowWithoutScrolling(fixture: Fixture): InspectorStyleEditorRowSnapshot {
-        val rows = fixture.inspector.debugStyleEditorRows().filter { row ->
+        val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
             row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
         }
-        val contentRect = fixture.inspector.debugContentRect()
+        val contentRect = fixture.inspector.overlayContentRect()
         val bodyScrollY = fixture.inspector.panelScrollOffsetY
         return rows.firstOrNull { row ->
             val rect = Rect(
@@ -262,10 +262,10 @@ class InspectorPointerAlignmentTests {
 
     private fun findOrScrollToVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
-            val rows = fixture.inspector.debugStyleEditorRows().filter { row ->
+            val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
                 row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
             }
-            val contentRect = fixture.inspector.debugContentRect()
+            val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
             val visible = rows.firstOrNull { row ->
                 val rect = Rect(
@@ -294,13 +294,13 @@ class InspectorPointerAlignmentTests {
         fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
-        val opened = fixture.inspector.debugStyleEditorDropdowns().firstOrNull()
+        val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
         assertNotNull(opened)
         return triggerRect to opened
     }
 
     private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot {
-        return fixture.inspector.debugStyleEditorRows().firstOrNull { it.property == property }
+        return fixture.inspector.overlayStyleEditorRows().firstOrNull { it.property == property }
             ?: error("expected row for property ${property.key}")
     }
 
@@ -341,4 +341,5 @@ class InspectorPointerAlignmentTests {
         var viewportHeight: Int
     )
 }
+
 
