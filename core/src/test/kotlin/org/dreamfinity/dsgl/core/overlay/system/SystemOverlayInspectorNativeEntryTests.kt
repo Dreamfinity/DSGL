@@ -302,6 +302,36 @@ class SystemOverlayInspectorNativeEntryTests {
     }
 
     @Test
+    fun `declarative shell preserves migrated control and chip keys`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        val root = inspectedRoot()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+
+        val expandedNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
+        val expandedKeys = collectNodes(expandedNode).mapNotNull { it.key?.toString() }.toSet()
+        assertTrue(expandedKeys.contains("dsgl-system-inspector-pick-toggle"))
+        assertTrue(expandedKeys.contains("dsgl-system-inspector-minimize"))
+
+        val minimizeRect = inspector.overlayMinimizeBounds() ?: error("minimize bounds missing")
+        assertTrue(host.handleMouseDown(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(minimizeRect.x + 2, minimizeRect.y + 2, MouseButton.LEFT))
+        assertEquals(InspectorPanelState.Minimized, inspector.panelState)
+
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 48, cursorY = 36, inspectorPointerCaptured = false)
+        host.render(ctx, 1280, 720)
+
+        val minimizedNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
+        val minimizedKeys = collectNodes(minimizedNode).mapNotNull { it.key?.toString() }.toSet()
+        assertTrue(minimizedKeys.contains("dsgl-system-inspector-chip"))
+        assertTrue(minimizedKeys.any { it.startsWith("dsgl-system-inspector-chip-line-") })
+    }
+
+    @Test
     fun `minimized drag moves chip and releases pointer capture on mouse up`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
@@ -1553,7 +1583,6 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
     }
 }
-
 
 
 

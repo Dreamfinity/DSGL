@@ -20,7 +20,9 @@ import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
+import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.dreamfinity.dsgl.core.style.TextWrap
@@ -64,6 +66,11 @@ internal class SystemInspectorOverlayNode(
         val unitSelect: Boolean
     )
 
+    private enum class OverlayInspectorControl {
+        PickToggle,
+        MinimizeToggle
+    }
+
     private data class MinimizedChipDragSession(
         val startPointerX: Int,
         val startPointerY: Int,
@@ -72,6 +79,8 @@ internal class SystemInspectorOverlayNode(
         var currentPointerY: Int,
         var moved: Boolean = false
     )
+
+    private var pressedOverlayInspectorControl: OverlayInspectorControl? = null
 
     init {
         EventBus.run {
@@ -83,7 +92,12 @@ internal class SystemInspectorOverlayNode(
                 ) {
                     closeActiveDomDropdown()
                 }
-                if (handleOverlayPanelMouseDown(event)) {
+                resolvePressedOverlayChromeControl(event.mouseX, event.mouseY)?.let { pressedControl ->
+                    pressedOverlayInspectorControl = pressedControl
+                    event.cancelled = true
+                    return@addEventListener
+                }
+                if (!isOverlayChromeControlTarget(event.target) && handleOverlayPanelMouseDown(event)) {
                     event.cancelled = true
                     return@addEventListener
                 }
@@ -94,6 +108,21 @@ internal class SystemInspectorOverlayNode(
                 }
             }
             this@SystemInspectorOverlayNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
+                if (event.mouseButton == MouseButton.LEFT) {
+                    val pressedControl = pressedOverlayInspectorControl
+                    if (pressedControl != null) {
+                        val releasedControl = resolvePressedOverlayChromeControl(event.mouseX, event.mouseY)
+                        if (releasedControl == pressedControl) {
+                            when (pressedControl) {
+                                OverlayInspectorControl.PickToggle -> controller.onPickTogglePressed()
+                                OverlayInspectorControl.MinimizeToggle -> controller.onPanelMinimizeTogglePressed()
+                            }
+                        }
+                        pressedOverlayInspectorControl = null
+                        event.cancelled = true
+                        return@addEventListener
+                    }
+                }
                 if (handleOverlayPanelMouseUp(event)) {
                     event.cancelled = true
                     return@addEventListener
@@ -226,7 +255,7 @@ internal class SystemInspectorOverlayNode(
         capturePersistedScrollStateFromCurrentTree()
         clearTree()
         when (snapshot.panelState) {
-            InspectorPanelState.Minimized -> renderMinimized(ctx, snapshot)
+            InspectorPanelState.Minimized -> renderMinimized(ctx, snapshot, viewportRect)
             InspectorPanelState.Expanded -> renderExpanded(ctx, snapshot, viewportRect)
         }
         if (retainInspectorFocus) {
@@ -287,64 +316,13 @@ internal class SystemInspectorOverlayNode(
         markRenderCommandsDirty()
     }
 
-    private fun renderMinimized(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot) {
+    private fun renderMinimized(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect) {
         closeActiveDomDropdown()
         panelNode.render(ctx, 0, 0, 0, 0)
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
-        val chip = scope.div({
-            key = "dsgl-system-inspector-chip"
-            style = {
-                display = Display.Block
-            }
-        })
-        chip.backgroundColor = 0xDD1A202A.toInt()
-        chip.border = Border.all(1, 0xCC4F6076.toInt())
-        chip.onMouseDown = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                startMinimizedChipDrag(snapshot.panelRect, event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        chip.onMouseDrag = { event ->
-            val currentX = event.lastMouseX + event.dx
-            val currentY = event.lastMouseY + event.dy
-            updateMinimizedChipDragPointer(currentX, currentY)
-            event.cancelled = true
-        }
-        chip.onMouseUp = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                endMinimizedChipDrag(event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        renderNode(ctx, chip, snapshot.panelRect)
-
-        val compactLineHeight = 20
-        var lineY = snapshot.panelRect.y + ((snapshot.panelRect.height - compactLineHeight * snapshot.minimizedLines.size) / 2)
-        snapshot.minimizedLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
-                key = "dsgl-system-inspector-chip-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
-            lineNode.color = 0xFFE6EDF6.toInt()
-            lineNode.fontSize = 14
-            renderNode(
-                ctx,
-                lineNode,
-                Rect(
-                    snapshot.panelRect.x + 8,
-                    lineY,
-                    (snapshot.panelRect.width - 16).coerceAtLeast(1),
-                    compactLineHeight
-                )
-            )
-            lineY += compactLineHeight
-        }
+        renderMinimizedChipLayer(scope, ctx, snapshot, viewportRect)
     }
 
     private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect) {
@@ -360,34 +338,7 @@ internal class SystemInspectorOverlayNode(
         renderPanelOccluder(scope, ctx, panelRect)
         panelNode.render(ctx, viewportRect.x, viewportRect.y, viewportRect.width, viewportRect.height)
 
-        val pickRect = controller.overlayPickToggleBounds()
-            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
-        val minimizeRect = controller.overlayMinimizeBounds()
-            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
-
-        val pickButton = scope.button("Select Element", {
-            key = "dsgl-system-inspector-pick-toggle"
-        })
-        pickButton.backgroundColor = 0x3346596E
-        pickButton.border = Border.all(1, 0x775E738C)
-        pickButton.textColor = 0xFFE6EDF6.toInt()
-        pickButton.fontSize = 18
-        pickButton.onClick {
-            controller.onPickTogglePressed()
-        }
-        renderNode(ctx, pickButton, pickRect)
-
-        val minimizeButton = scope.button("Minimize", {
-            key = "dsgl-system-inspector-minimize"
-        })
-        minimizeButton.backgroundColor = 0x3346596E
-        minimizeButton.border = Border.all(1, 0x775E738C)
-        minimizeButton.textColor = 0xFFE6EDF6.toInt()
-        minimizeButton.fontSize = 18
-        minimizeButton.onClick {
-            controller.onPanelMinimizeTogglePressed()
-        }
-        renderNode(ctx, minimizeButton, minimizeRect)
+        renderExpandedControlsOverlay(scope, ctx, snapshot, viewportRect)
 
         val body = scope.div({
             key = "dsgl-system-inspector-body"
@@ -514,6 +465,112 @@ internal class SystemInspectorOverlayNode(
         )
         renderTooltip(scope, ctx, "dsgl-system-inspector-variable-tooltip", controller.overlayVariableTooltip(), 0xEE141A22.toInt(), 0xCC60758F.toInt())
         renderTooltip(scope, ctx, "dsgl-system-inspector-cursor-tooltip", controller.overlayCursorTooltip(), 0xDD11151A.toInt(), 0xCC3F4A57.toInt())
+    }
+
+    private fun renderMinimizedChipLayer(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        snapshot: InspectorDomSnapshot,
+        viewportRect: Rect
+    ) {
+        val chip = scope.div({
+            key = "dsgl-system-inspector-chip"
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+                justifyContent = org.dreamfinity.dsgl.core.style.JustifyContent.Center
+                padding(8.px)
+            }
+        }) {
+            snapshot.minimizedLines.forEachIndexed { index, line ->
+                val lineNode = text(props = {
+                    key = "dsgl-system-inspector-chip-line-$index"
+                    value = line
+                    style = {
+                        textWrap = TextWrap.NoWrap
+                        height = 20.px
+                        minHeight = 20.px
+                    }
+                })
+                lineNode.color = 0xFFE6EDF6.toInt()
+                lineNode.fontSize = 14
+            }
+        }
+        chip.backgroundColor = 0xDD1A202A.toInt()
+        chip.border = Border.all(1, 0xCC4F6076.toInt())
+        chip.onMouseDown = { event ->
+            if (event.mouseButton == MouseButton.LEFT) {
+                startMinimizedChipDrag(snapshot.panelRect, event.mouseX, event.mouseY)
+                event.cancelled = true
+            }
+        }
+        chip.onMouseDrag = { event ->
+            val currentX = event.lastMouseX + event.dx
+            val currentY = event.lastMouseY + event.dy
+            updateMinimizedChipDragPointer(currentX, currentY)
+            event.cancelled = true
+        }
+        chip.onMouseUp = { event ->
+            if (event.mouseButton == MouseButton.LEFT) {
+                endMinimizedChipDrag(event.mouseX, event.mouseY)
+                event.cancelled = true
+            }
+        }
+        renderNode(ctx, chip, snapshot.panelRect)
+    }
+
+    private fun renderExpandedControlsOverlay(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        snapshot: InspectorDomSnapshot,
+        viewportRect: Rect
+    ) {
+        val panelRect = snapshot.panelRect
+        val pickRect = controller.overlayPickToggleBounds()
+            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
+        val minimizeRect = controller.overlayMinimizeBounds()
+            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
+        val controlsWidth = (minimizeRect.x + minimizeRect.width - pickRect.x)
+            .coerceAtLeast(pickRect.width + 8 + minimizeRect.width)
+
+        val controlsRow = scope.div({
+            key = "dsgl-system-inspector-controls-row"
+            style = {
+                display = Display.Flex
+                flexDirection = FlexDirection.Row
+                alignItems = AlignItems.Center
+                gap = 8.px
+            }
+        }) {
+            val pickButton = button("Select Element", {
+                key = "dsgl-system-inspector-pick-toggle"
+                style = {
+                    width = pickRect.width.px
+                    height = pickRect.height.px
+                    minWidth = pickRect.width.px
+                    minHeight = pickRect.height.px
+                }
+            })
+            pickButton.backgroundColor = 0x3346596E
+            pickButton.border = Border.all(1, 0x775E738C)
+            pickButton.textColor = 0xFFE6EDF6.toInt()
+            pickButton.fontSize = 18
+
+            val minimizeButton = button("Minimize", {
+                key = "dsgl-system-inspector-minimize"
+                style = {
+                    width = minimizeRect.width.px
+                    height = minimizeRect.height.px
+                    minWidth = minimizeRect.width.px
+                    minHeight = minimizeRect.height.px
+                }
+            })
+            minimizeButton.backgroundColor = 0x3346596E
+            minimizeButton.border = Border.all(1, 0x775E738C)
+            minimizeButton.textColor = 0xFFE6EDF6.toInt()
+            minimizeButton.fontSize = 18
+        }
+        renderNode(ctx, controlsRow, Rect(pickRect.x, pickRect.y, controlsWidth, pickRect.height))
     }
 
     private fun renderPanelOccluder(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
@@ -1109,6 +1166,31 @@ internal class SystemInspectorOverlayNode(
             current = current.parent
         }
         return current === this && target !== this
+    }
+
+    private fun isOverlayChromeControlTarget(target: DOMNode?): Boolean {
+        var current = target
+        while (current != null && current !== this) {
+            when (current.key?.toString()) {
+                "dsgl-system-inspector-controls-row",
+                "dsgl-system-inspector-pick-toggle",
+                "dsgl-system-inspector-minimize" -> return true
+            }
+            current = current.parent
+        }
+        return false
+    }
+
+    private fun resolvePressedOverlayChromeControl(mouseX: Int, mouseY: Int): OverlayInspectorControl? {
+        val pickRect = controller.overlayPickToggleBounds()
+        if (pickRect != null && pickRect.contains(mouseX, mouseY)) {
+            return OverlayInspectorControl.PickToggle
+        }
+        val minimizeRect = controller.overlayMinimizeBounds()
+        if (minimizeRect != null && minimizeRect.contains(mouseX, mouseY)) {
+            return OverlayInspectorControl.MinimizeToggle
+        }
+        return null
     }
 
     private fun capturePersistedScrollStateFromCurrentTree() {
