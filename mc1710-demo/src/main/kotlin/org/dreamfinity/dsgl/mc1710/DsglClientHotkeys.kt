@@ -17,7 +17,7 @@ import org.lwjgl.input.Keyboard
 object DsglClientHotkeys {
     private val openShowcaseKey = net.minecraft.client.settings.KeyBinding(
         "key.dsgl.open_showcase",
-        Keyboard.KEY_RSHIFT,
+        Keyboard.KEY_J,
         "key.categories.dsgl"
     )
     private var registered: Boolean = false
