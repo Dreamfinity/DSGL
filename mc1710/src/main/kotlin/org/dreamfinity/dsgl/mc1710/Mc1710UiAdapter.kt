@@ -16,10 +16,36 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
 import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
 import org.lwjgl.BufferUtils
+import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.*
 import java.io.File
 import java.net.URL
+import kotlin.math.min
 import javax.imageio.ImageIO
+
+internal fun buildMc1710Viewport(
+    logicalWidth: Int,
+    logicalHeight: Int,
+    framebufferWidth: Int,
+    framebufferHeight: Int
+): Viewport {
+    val safeLogicalWidth = logicalWidth.coerceAtLeast(1)
+    val safeLogicalHeight = logicalHeight.coerceAtLeast(1)
+    val safeFramebufferWidth = framebufferWidth.coerceAtLeast(1)
+    val safeFramebufferHeight = framebufferHeight.coerceAtLeast(1)
+    val scaleX = safeFramebufferWidth.toFloat() / safeLogicalWidth.toFloat()
+    val scaleY = safeFramebufferHeight.toFloat() / safeLogicalHeight.toFloat()
+    val scale = min(scaleX, scaleY)
+    return Viewport(
+        width = safeLogicalWidth,
+        height = safeLogicalHeight,
+        scale = scale.coerceAtLeast(1f),
+        framebufferWidth = safeFramebufferWidth,
+        framebufferHeight = safeFramebufferHeight,
+        x = 0,
+        y = 0
+    )
+}
 
 /**
  * Minecraft 1.7.10 adapter that turns DSGL render commands into Minecraft calls.
@@ -120,6 +146,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private var opacityMultiplier: Float = 1f
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
     private val readbackDiagnosticsVerbose: Boolean = java.lang.Boolean.getBoolean("dsgl.readback.diagnostics.verbose")
+    private val viewportDiagnosticsVerbose: Boolean = java.lang.Boolean.getBoolean("dsgl.viewport.diagnostics.verbose")
     private val readbackApi: ReadbackApi by lazy(LazyThreadSafetyMode.NONE) { resolveReadbackApi() }
 
     private val samplePixelBuffer = BufferUtils.createByteBuffer(4)
@@ -143,6 +170,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private var cachedViewport: Viewport = Viewport(width = 1, height = 1, scale = 1f, x = 0, y = 0)
     private var cachedDisplayWidth: Int = -1
     private var cachedDisplayHeight: Int = -1
+    private var cachedLogicalWidth: Int = -1
+    private var cachedLogicalHeight: Int = -1
 
     override fun measureText(text: String): Int = textRenderer.measureText(text, null, null)
     override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
@@ -169,27 +198,64 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         return textRenderer.fontLineMetrics(fontId, fontSize)
     }
 
+    fun updateViewport(logicalWidth: Int, logicalHeight: Int) {
+        refreshViewport(logicalWidth, logicalHeight)
+    }
+
     fun viewport(): Viewport {
+        refreshViewport(cachedLogicalWidth, cachedLogicalHeight)
+        return cachedViewport
+    }
+
+    private fun refreshViewport(logicalWidth: Int, logicalHeight: Int) {
         val displayWidth = mc.displayWidth.coerceAtLeast(1)
         val displayHeight = mc.displayHeight.coerceAtLeast(1)
-        if (displayWidth != cachedDisplayWidth || displayHeight != cachedDisplayHeight) {
+        val safeLogicalWidth = logicalWidth.coerceAtLeast(1)
+        val safeLogicalHeight = logicalHeight.coerceAtLeast(1)
+        if (
+            displayWidth != cachedDisplayWidth ||
+            displayHeight != cachedDisplayHeight ||
+            safeLogicalWidth != cachedLogicalWidth ||
+            safeLogicalHeight != cachedLogicalHeight
+        ) {
             cachedDisplayWidth = displayWidth
             cachedDisplayHeight = displayHeight
-            cachedViewport = Viewport(
-                width = displayWidth,
-                height = displayHeight,
-                scale = 1f,
-                x = 0,
-                y = 0
+            cachedLogicalWidth = safeLogicalWidth
+            cachedLogicalHeight = safeLogicalHeight
+            cachedViewport = buildMc1710Viewport(
+                logicalWidth = safeLogicalWidth,
+                logicalHeight = safeLogicalHeight,
+                framebufferWidth = displayWidth,
+                framebufferHeight = displayHeight
             )
+            logViewportDiagnosticsIfEnabled()
         }
-        return cachedViewport
+    }
+
+    private fun logViewportDiagnosticsIfEnabled() {
+        if (!viewportDiagnosticsVerbose) return
+        val pixelScaleFactor = runCatching { Display.getPixelScaleFactor() }.getOrNull()
+        logRateLimited(
+            key = "viewport:contract",
+            message = buildString {
+                append("[DSGL-Viewport] logical=")
+                append(cachedViewport.logicalWidth).append('x').append(cachedViewport.logicalHeight)
+                append(" framebuffer=")
+                append(cachedViewport.framebufferWidth).append('x').append(cachedViewport.framebufferHeight)
+                append(" scale=").append(cachedViewport.scale)
+                if (pixelScaleFactor != null) {
+                    append(" displayPixelScale=").append(pixelScaleFactor)
+                }
+            }
+        )
     }
 
     fun sampleScreenColor(x: Int, y: Int): Int? {
         val viewport = viewport()
-        if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) return null
-        val readY = viewport.height - 1 - y
+        if (x < 0 || y < 0 || x >= viewport.logicalWidth || y >= viewport.logicalHeight) return null
+        val readX = (x.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferWidth - 1)
+        val readY = (viewport.framebufferHeight - 1 - (y.toFloat() * viewport.scale).toInt())
+            .coerceIn(0, viewport.framebufferHeight - 1)
         samplePixelBuffer.clear()
         return try {
             val setup = beginReadback()
@@ -204,7 +270,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 )
             }
             try {
-                GL11.glReadPixels(x, readY, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, samplePixelBuffer)
+                GL11.glReadPixels(readX, readY, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, samplePixelBuffer)
             } finally {
                 endReadback(setup)
             }
@@ -229,12 +295,20 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             i++
         }
 
-        val srcX = x.coerceIn(0, viewport.width)
-        val srcY = y.coerceIn(0, viewport.height)
-        val maxW = viewport.width - srcX
-        val maxH = viewport.height - srcY
-        val srcW = minOf(width, maxW).coerceAtLeast(0)
-        val srcH = minOf(height, maxH).coerceAtLeast(0)
+        val srcXLogical = x.coerceIn(0, viewport.logicalWidth)
+        val srcYLogical = y.coerceIn(0, viewport.logicalHeight)
+        val maxWLogical = viewport.logicalWidth - srcXLogical
+        val maxHLogical = viewport.logicalHeight - srcYLogical
+        val srcWLogical = minOf(width, maxWLogical).coerceAtLeast(0)
+        val srcHLogical = minOf(height, maxHLogical).coerceAtLeast(0)
+        val srcX = (srcXLogical.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferWidth)
+        val srcY = (srcYLogical.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferHeight)
+        val srcW = kotlin.math.ceil(srcWLogical.toDouble() * viewport.scale.toDouble()).toInt()
+            .coerceAtMost(viewport.framebufferWidth - srcX)
+            .coerceAtLeast(0)
+        val srcH = kotlin.math.ceil(srcHLogical.toDouble() * viewport.scale.toDouble()).toInt()
+            .coerceAtMost(viewport.framebufferHeight - srcY)
+            .coerceAtLeast(0)
         if (srcW <= 0 || srcH <= 0) return false
 
         val byteCount = srcW * srcH * 4
@@ -244,7 +318,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         sampleAreaBuffer.clear()
         sampleAreaBuffer.limit(byteCount)
         return try {
-            val readY = viewport.height - (srcY + srcH)
+            val readY = viewport.framebufferHeight - (srcY + srcH)
             val setup = beginReadback()
             if (readbackDiagnosticsVerbose) {
                 diagnoseReadbackSource(
@@ -889,11 +963,23 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         try {
             ScissorContext.clear()
             GL11.glDisable(GL11.GL_SCISSOR_TEST)
-            GL11.glViewport(viewport.x, viewport.y, viewport.width, viewport.height)
+            GL11.glViewport(
+                viewport.framebufferX,
+                viewport.framebufferY,
+                viewport.framebufferWidth,
+                viewport.framebufferHeight
+            )
             GL11.glMatrixMode(GL11.GL_PROJECTION)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()
-            GL11.glOrtho(0.0, viewport.width.toDouble(), viewport.height.toDouble(), 0.0, -1000.0, 1000.0)
+            GL11.glOrtho(
+                0.0,
+                viewport.logicalWidth.toDouble(),
+                viewport.logicalHeight.toDouble(),
+                0.0,
+                -1000.0,
+                1000.0
+            )
             GL11.glMatrixMode(GL11.GL_MODELVIEW)
             GL11.glPushMatrix()
             GL11.glLoadIdentity()

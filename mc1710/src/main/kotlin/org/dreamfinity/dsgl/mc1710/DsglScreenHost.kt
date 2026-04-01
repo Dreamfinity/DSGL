@@ -37,6 +37,7 @@ import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
+import org.lwjgl.opengl.Display
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -231,8 +232,8 @@ abstract class DsglScreenHost(
         if (!stylesAlreadyApplied) {
             tracePhase("style.end")
         }
-        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
-        SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, lastViewport.scale)
+        SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, lastViewport.scale)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         refreshActiveColorSamplerOwner(tree.root)
@@ -413,9 +414,12 @@ abstract class DsglScreenHost(
     }
 
     private fun updateSize(force: Boolean) {
+        val logicalWidth = currentLogicalViewportWidth()
+        val logicalHeight = currentLogicalViewportHeight()
+        adapter.updateViewport(logicalWidth = logicalWidth, logicalHeight = logicalHeight)
         val viewport = adapter.viewport()
-        val width = viewport.width
-        val height = viewport.height
+        val width = viewport.logicalWidth
+        val height = viewport.logicalHeight
         lastViewport = viewport
         if (force || width != lastWidth || height != lastHeight) {
             ContextMenuRuntime.engine.closeAll()
@@ -424,6 +428,30 @@ abstract class DsglScreenHost(
             needsLayout = true
             needsRender = true
             window.onResize(width, height)
+        }
+    }
+
+    private fun currentLogicalViewportWidth(): Int {
+        return try {
+            if (Display.isCreated()) {
+                Display.getWidth().coerceAtLeast(1)
+            } else {
+                lastViewport.logicalWidth.coerceAtLeast(1)
+            }
+        } catch (_: Throwable) {
+            lastViewport.logicalWidth.coerceAtLeast(1)
+        }
+    }
+
+    private fun currentLogicalViewportHeight(): Int {
+        return try {
+            if (Display.isCreated()) {
+                Display.getHeight().coerceAtLeast(1)
+            } else {
+                lastViewport.logicalHeight.coerceAtLeast(1)
+            }
+        } catch (_: Throwable) {
+            lastViewport.logicalHeight.coerceAtLeast(1)
         }
     }
 
@@ -616,13 +644,13 @@ abstract class DsglScreenHost(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
-            viewportScale = 1f
+            viewportScale = lastViewport.scale
         )
         SelectRuntime.engine.onFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
-            viewportScale = 1f
+            viewportScale = lastViewport.scale
         )
         systemOverlayHost.onInputFrame(lastWidth, lastHeight)
         inspectorPointerCaptured = inspector.isPointerCaptured
