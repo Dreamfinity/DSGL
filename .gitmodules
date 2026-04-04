@@ -1,3 +1,6 @@
 [submodule "dsgl-hot-reload-agent"]
 	path = dsgl-hot-reload-agent
 	url = git@github.com:Dreamfinity/dsgl-hot-reload-agent.git
+[submodule "msdf-atlas-gen"]
+	path = msdf-atlas-gen
+	url = git@github.com:Chlumsky/msdf-atlas-gen.git
