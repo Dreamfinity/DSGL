@@ -58,8 +58,10 @@ internal class RenderCommandTransformStack {
 
         val resolvedX = floor(minX.toDouble()).toInt()
         val resolvedY = floor(minY.toDouble()).toInt()
-        val resolvedWidth = ceil((maxX - minX).toDouble()).toInt().coerceAtLeast(0)
-        val resolvedHeight = ceil((maxY - minY).toDouble()).toInt().coerceAtLeast(0)
+        val resolvedRight = ceil(maxX.toDouble()).toInt()
+        val resolvedBottom = ceil(maxY.toDouble()).toInt()
+        val resolvedWidth = (resolvedRight - resolvedX).coerceAtLeast(0)
+        val resolvedHeight = (resolvedBottom - resolvedY).coerceAtLeast(0)
         return GuiClipRect(resolvedX, resolvedY, resolvedWidth, resolvedHeight)
     }
 
@@ -76,4 +78,3 @@ internal class RenderCommandTransformStack {
             .times(fromOrigin)
     }
 }
-

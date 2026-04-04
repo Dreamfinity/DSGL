@@ -174,7 +174,7 @@ class TextAreaNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
         val measure: (String) -> Int = { value -> measureText(ctx, value) }
         lastMeasureText = measure
         lastLineHeight = lineHeight
@@ -209,7 +209,8 @@ class TextAreaNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val measure: (String) -> Int = { value -> measureText(ctx, value) }
         val focused = FocusManager.isFocused(this)
         val bg = if (focused && !styleDisabled) focusedBackgroundColor else backgroundColor
@@ -265,7 +266,7 @@ class TextAreaNode(
         for (lineIndex in firstVisibleLine..lastVisibleLine) {
             val line = drawLayout.lines[lineIndex]
             val lineY = innerY - effectiveScroll + lineIndex * lastLineHeight
-            out.add(drawTextCommand(ctx, line.text, innerX, lineY, color))
+            out.add(drawTextCommand(ctx, line.text, innerX, lineY + lineTopLeading, color))
         }
 
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {

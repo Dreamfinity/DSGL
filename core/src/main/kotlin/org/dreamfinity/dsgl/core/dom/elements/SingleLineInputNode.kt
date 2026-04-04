@@ -182,7 +182,7 @@ open class SingleLineInputNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
         lastMeasureText = { value -> measureText(ctx, value) }
         val display = if (text.isNotEmpty()) displayText() else placeholder
         val contentLimit = resolvedContentLimit(availableOuterWidth)
@@ -206,7 +206,8 @@ open class SingleLineInputNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         val focused = FocusManager.isFocused(this)
         val bg = if (focused && !styleDisabled) focusedBackgroundColor else backgroundColor
         out.add(RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, bg))
@@ -219,7 +220,8 @@ open class SingleLineInputNode(
         val innerY = contentY()
         val innerWidth = contentWidth()
         val innerHeight = contentHeight()
-        val textY = innerY + (innerHeight - lineHeight) / 2
+        val lineTop = innerY + (innerHeight - lineHeight) / 2
+        val textY = lineTop + lineTopLeading
         lastMeasureText = { value -> measureText(ctx, value) }
         editState.clampToLength(text.length)
 
@@ -234,7 +236,7 @@ open class SingleLineInputNode(
                 val startX = innerX + measureText(ctx, drawText.substring(0, start))
                 val endX = innerX + measureText(ctx, drawText.substring(0, end))
                 val width = (endX - startX).coerceAtLeast(1)
-                out.add(RenderCommand.DrawRect(startX, textY, width, lineHeight, selectionColor))
+                out.add(RenderCommand.DrawRect(startX, lineTop, width, lineHeight, selectionColor))
             }
         }
 
@@ -246,7 +248,7 @@ open class SingleLineInputNode(
         if (!showPlaceholder && focused && !styleDisabled && editState.isCaretVisible(caretBlinkPeriodMs)) {
             val caretBaseText = drawText.substring(0, editState.caretIndex.coerceIn(0, drawText.length))
             val caretX = innerX + measureText(ctx, caretBaseText)
-            out.add(RenderCommand.DrawRect(caretX, textY, 1, lineHeight, textColor))
+            out.add(RenderCommand.DrawRect(caretX, lineTop, 1, lineHeight, textColor))
         }
 
         if (innerWidth > 0 && innerHeight > 0) {

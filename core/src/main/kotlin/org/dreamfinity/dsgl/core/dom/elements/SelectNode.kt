@@ -122,7 +122,7 @@ class SelectNode(
     }
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
         val displayText = selectedLabelOrPlaceholder()
         val displayWidth = if (displayText.isEmpty()) 0 else measureText(ctx, displayText)
         val arrowWidth = if (arrowGlyph.isEmpty()) 0 else measureText(ctx, arrowGlyph)
@@ -159,7 +159,8 @@ class SelectNode(
             else -> textColor
         }
         val arrowWidth = if (arrowGlyph.isEmpty()) 0 else measureText(ctx, arrowGlyph)
-        val lineHeight = resolveFontSize(ctx)
+        val lineHeight = resolveEffectiveLineHeight(ctx)
+        val lineTopLeading = resolveEffectiveLineTopLeading(ctx)
         out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, backgroundColor)
         addBackgroundImageCommand(out)
         addBorderCommands(out)
@@ -168,7 +169,8 @@ class SelectNode(
         val innerY = contentY()
         val innerWidth = contentWidth()
         val innerHeight = contentHeight()
-        val textY = innerY + (innerHeight - lineHeight) / 2
+        val lineTop = innerY + (innerHeight - lineHeight) / 2
+        val textY = lineTop + lineTopLeading
         val arrowX = innerX + innerWidth - arrowWidth
         val textClipWidth = (innerWidth - arrowWidth - arrowSpacing).coerceAtLeast(1)
 
