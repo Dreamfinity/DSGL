@@ -1,0 +1,152 @@
+import org.gradle.api.JavaVersion
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.bundling.Jar
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.File
+import java.util.Properties
+
+repositories {
+    maven(url = "https://cloudrep.veritaris.me/repos/")
+    mavenCentral()
+}
+
+plugins {
+    kotlin("jvm")
+    `java-library`
+    `maven-publish`
+    id("org.jetbrains.dokka")
+}
+
+group = property("group") as String
+
+val modulePropertiesFile = layout.projectDirectory.file("gradle.properties").asFile
+
+fun loadModulePropertiesIfPresent(file: File): Properties {
+    return Properties().apply {
+        if (file.exists()) {
+            file.inputStream().use(::load)
+        }
+    }
+}
+
+fun readRequiredTrimmedProperty(properties: Properties, key: String): String {
+    val value = properties.getProperty(key)?.trim()
+    if (value.isNullOrEmpty()) {
+        throw GradleException("Missing required property '$key' in ${modulePropertiesFile.path}.")
+    }
+    return value
+}
+
+fun readPublishEnabled(properties: Properties): Boolean {
+    val raw = properties.getProperty("publishEnabled")?.trim() ?: return true
+    return raw.toBooleanStrictOrNull()
+        ?: throw GradleException("Property 'publishEnabled' in ${modulePropertiesFile.path} must be true or false.")
+}
+
+fun computeEffectivePublishedVersion(properties: Properties): String {
+    if (!modulePropertiesFile.exists()) {
+        throw GradleException("Missing module gradle.properties at ${modulePropertiesFile.path}.")
+    }
+    val moduleVersion = readRequiredTrimmedProperty(properties, "moduleVersion")
+    val buildVersionRaw = readRequiredTrimmedProperty(properties, "buildVersion")
+    val buildVersion = buildVersionRaw.toIntOrNull()
+        ?: throw GradleException("Property 'buildVersion' in ${modulePropertiesFile.path} must be an integer.")
+    if (buildVersion < 0) {
+        throw GradleException("Property 'buildVersion' in ${modulePropertiesFile.path} must be >= 0.")
+    }
+    return if (buildVersion == 0) {
+        moduleVersion
+    } else {
+        "$moduleVersion-build-$buildVersion"
+    }
+}
+
+val moduleProperties = loadModulePropertiesIfPresent(modulePropertiesFile)
+val publishEnabled = readPublishEnabled(moduleProperties)
+val effectivePublishedVersion = if (publishEnabled) {
+    computeEffectivePublishedVersion(moduleProperties)
+} else {
+    null
+}
+
+version = effectivePublishedVersion ?: (property("version") as String)
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+    withSourcesJar()
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
+}
+
+tasks.withType<Jar>().configureEach {
+    archiveBaseName.set("dsgl-${project.name}")
+}
+
+val dokkaHtml = tasks.named("dokkaGeneratePublicationHtml")
+val dokkaJavadocJar = tasks.register<Jar>("dokkaJavadocJar") {
+    dependsOn(dokkaHtml)
+    from(dokkaHtml.map { it.outputs.files })
+    archiveClassifier.set("javadoc")
+}
+
+if (publishEnabled) {
+    val publicationVersion = requireNotNull(effectivePublishedVersion) {
+        "Expected effective published version for publish-enabled module ${project.path}."
+    }
+    publishing {
+        publications {
+            create<MavenPublication>("mavenJava") {
+                from(components["java"])
+                groupId = property("group") as String
+                artifactId = "dsgl-${project.name}"
+                version = publicationVersion
+                artifact(dokkaJavadocJar)
+            }
+        }
+
+        repositories {
+            mavenLocal()
+
+            maven {
+                name = "GitHubPackages"
+
+                val owner = providers.gradleProperty("gpr.owner").orNull
+                    ?: System.getenv("GITHUB_REPOSITORY_OWNER")
+                    ?: "developer"
+
+                val repository = providers.gradleProperty("gpr.repo").orNull
+                    ?: System.getenv("GITHUB_REPOSITORY")?.substringAfter("/")
+                    ?: rootProject.name
+
+                url = uri("https://maven.pkg.github.com/${owner.lowercase()}/$repository")
+
+                credentials {
+                    username = providers.gradleProperty("gpr.user").orNull
+                        ?: System.getenv("GITHUB_ACTOR")
+                    password = providers.gradleProperty("gpr.key").orNull
+                        ?: System.getenv("GITHUB_TOKEN")
+                }
+            }
+        }
+    }
+} else {
+    tasks.withType<PublishToMavenLocal>().configureEach {
+        enabled = false
+    }
+    tasks.withType<PublishToMavenRepository>().configureEach {
+        enabled = false
+    }
+    tasks.named("publish") {
+        enabled = false
+    }
+    tasks.named("publishToMavenLocal") {
+        enabled = false
+    }
+}
