@@ -1,11 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -15,7 +9,6 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
@@ -24,6 +17,10 @@ import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import org.dreamfinity.dsgl.core.testutil.syncNoModifiers
+import org.dreamfinity.dsgl.core.testutil.syncShiftOnly
+import org.dreamfinity.dsgl.core.testutil.syncShortcutHeld
+import kotlin.test.*
 
 class InspectorTextEditingDomMigrationTests {
     private val ctx = object : UiMeasureContext {
@@ -37,7 +34,7 @@ class InspectorTextEditingDomMigrationTests {
     @AfterTest
     fun cleanup() {
         FocusManager.clearFocus()
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         ClipboardBridge.install(null)
         ColorPickerRuntime.engine.closeAll()
         StyleEngine.clearAllInspectorOverrides()
@@ -83,7 +80,7 @@ class InspectorTextEditingDomMigrationTests {
         fixture.host.handleMouseMove(dragEndX, y)
         fixture.host.handleMouseUp(dragEndX, y, MouseButton.LEFT)
 
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         val beforeCut = input.text
         assertTrue(fixture.host.handleKeyDown(KeyCodes.X, 'x'))
         assertTrue(input.text.length <= beforeCut.length)
@@ -93,13 +90,13 @@ class InspectorTextEditingDomMigrationTests {
         fixture.host.handleMouseDown(nearEndX, y, MouseButton.LEFT)
         fixture.host.handleMouseUp(nearEndX, y, MouseButton.LEFT)
 
-        KeyModifiers.sync(shift = true, control = false, meta = false)
+        syncShiftOnly()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.LEFT, 0.toChar()))
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.C, 'c'))
         assertEquals(1, clipboard.value.length)
 
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         assertNull(fixture.inspector.debugActiveEditBuffer())
     }
 
@@ -117,7 +114,7 @@ class InspectorTextEditingDomMigrationTests {
         focusInputByClick(fixture.host, numericInput)
         assertEquals(numericInput.key, FocusManager.focusedNode()?.key)
 
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.A, 'a'))
         assertTrue(fixture.host.handleKeyDown(KeyCodes.C, 'c'))
         val copied = clipboard.value
@@ -129,7 +126,7 @@ class InspectorTextEditingDomMigrationTests {
         assertTrue(fixture.host.handleKeyDown(KeyCodes.V, 'v'))
         assertEquals(copied, numericInput.text)
 
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.BACKSPACE, 0.toChar()))
         assertTrue(fixture.host.handleKeyDown(0, '7'))
         assertTrue(numericInput.text.contains('7'))
@@ -152,9 +149,9 @@ class InspectorTextEditingDomMigrationTests {
         val focusX = focused.first
         val focusY = focused.second
 
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.A, 'a'))
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         assertTrue(fixture.host.handleKeyDown(0, '4'))
         assertTrue(fixture.host.handleKeyDown(0, '2'))
 
@@ -171,9 +168,9 @@ class InspectorTextEditingDomMigrationTests {
         assertEquals(inputKey, refreshed.key)
         assertEquals("42", refreshed.text)
 
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         assertTrue(fixture.host.handleKeyDown(KeyCodes.A, 'a'))
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         assertTrue(fixture.host.handleKeyDown(0, '3'))
         assertTrue(fixture.host.handleKeyDown(0, '7'))
 
@@ -208,13 +205,25 @@ class InspectorTextEditingDomMigrationTests {
 
         inspector.toggle()
         host.onInputFrame(1280, 720)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
         host.render(ctx, 1280, 720)
         host.handleMouseDown(984, 144, MouseButton.LEFT)
         host.handleMouseUp(984, 144, MouseButton.LEFT)
         inspector.setPickMode(false)
 
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
         host.render(ctx, 1280, 720)
 
         return Fixture(inspector, host, root, target, nextRevision = 3L)
@@ -231,7 +240,11 @@ class InspectorTextEditingDomMigrationTests {
         fixture.host.render(ctx, 1280, 720)
     }
 
-    private fun findVisibleInputNode(host: SystemOverlayHost, inspector: InspectorController, keyPrefix: String): TextInputNode {
+    private fun findVisibleInputNode(
+        host: SystemOverlayHost,
+        inspector: InspectorController,
+        keyPrefix: String
+    ): TextInputNode {
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector entry missing")
         val contentRect = inspector.overlayContentRect()
         val candidates = collectNodes(inspectorNode)
@@ -302,5 +315,4 @@ class InspectorTextEditingDomMigrationTests {
         }
     }
 }
-
 

@@ -1,10 +1,5 @@
 package org.dreamfinity.dsgl.core.inspector.internal
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -14,7 +9,6 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
@@ -25,6 +19,9 @@ import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import org.dreamfinity.dsgl.core.testutil.syncNoModifiers
+import org.dreamfinity.dsgl.core.testutil.syncShortcutHeld
+import kotlin.test.*
 
 class SystemInspectorOverlayFocusIsolationTests {
     private val ctx = object : UiMeasureContext {
@@ -38,7 +35,7 @@ class SystemInspectorOverlayFocusIsolationTests {
     @AfterTest
     fun cleanup() {
         FocusManager.clearFocus()
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         ClipboardBridge.install(null)
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
@@ -94,10 +91,10 @@ class SystemInspectorOverlayFocusIsolationTests {
         assertTrue(router.handleMouseMove(88, 30))
         assertTrue(router.handleMouseUp(88, 30, MouseButton.LEFT))
 
-        KeyModifiers.sync(shift = false, control = true, meta = false)
+        syncShortcutHeld()
         assertTrue(router.handleKeyDown(KeyCodes.C, 'c'))
         assertTrue(clipboard.value.isNotEmpty())
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
 
         assertTrue(router.handleKeyDown(KeyCodes.BACKSPACE, 0.toChar()))
         assertNotEquals("abcdef", input.text)
@@ -203,4 +200,3 @@ class SystemInspectorOverlayFocusIsolationTests {
         }
     }
 }
-

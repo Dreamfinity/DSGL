@@ -1,26 +1,20 @@
 package org.dreamfinity.dsgl.core.overlay.input
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.applyParent
-import org.dreamfinity.dsgl.core.dom.onInput
-import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
-import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
-import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
-import org.dreamfinity.dsgl.core.dom.elements.TextInputNode
-import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dom.onInput
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.style.Overflow
+import org.dreamfinity.dsgl.core.testutil.syncNoModifiers
+import org.dreamfinity.dsgl.core.testutil.syncShiftOnly
+import org.dreamfinity.dsgl.core.testutil.syncShortcutHeld
+import kotlin.test.*
 
 class LayerDomInputRouterTests {
     private val clipboard = RecordingClipboardAccess()
@@ -34,7 +28,7 @@ class LayerDomInputRouterTests {
     @AfterTest
     fun cleanup() {
         FocusManager.clearFocus()
-        KeyModifiers.sync(shift = false, control = false, meta = false)
+        syncNoModifiers()
         ClipboardBridge.install(null)
     }
 
@@ -52,9 +46,9 @@ class LayerDomInputRouterTests {
             assertTrue(router.handleMouseDown(24, 24, MouseButton.LEFT))
             assertTrue(FocusManager.isFocused(input))
 
-            KeyModifiers.sync(shift = false, control = true, meta = false)
+            syncShortcutHeld()
             assertTrue(router.handleKeyDown(KeyCodes.A, 'a'))
-            KeyModifiers.sync(shift = false, control = false, meta = false)
+            syncNoModifiers()
             assertTrue(router.handleKeyDown(KeyCodes.BACKSPACE, 0.toChar()))
             assertEquals("", input.text)
 
@@ -62,13 +56,13 @@ class LayerDomInputRouterTests {
             assertTrue(router.handleKeyDown(KeyCodes.Z, 'y'))
             assertEquals("xy", input.text)
 
-            KeyModifiers.sync(shift = true, control = false, meta = false)
+            syncShiftOnly()
             assertTrue(router.handleKeyDown(KeyCodes.LEFT, 0.toChar()))
-            KeyModifiers.sync(shift = false, control = true, meta = false)
+            syncShortcutHeld()
             assertTrue(router.handleKeyDown(KeyCodes.C, 'c'))
             assertEquals("y", clipboard.value)
 
-            KeyModifiers.sync(shift = false, control = true, meta = false)
+            syncShortcutHeld()
             assertTrue(router.handleKeyDown(KeyCodes.A, 'a'))
             assertTrue(router.handleKeyDown(KeyCodes.X, 'x'))
             assertEquals("", input.text)
@@ -79,7 +73,7 @@ class LayerDomInputRouterTests {
             assertTrue(router.handleMouseDown(22, 24, MouseButton.LEFT))
             assertTrue(router.handleMouseMove(70, 24))
             assertTrue(router.handleMouseUp(70, 24, MouseButton.LEFT))
-            KeyModifiers.sync(shift = false, control = true, meta = false)
+            syncShortcutHeld()
             assertTrue(router.handleKeyDown(KeyCodes.C, 'c'))
             assertTrue(clipboard.value.isNotEmpty())
         }
@@ -230,6 +224,7 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseUp(220, 26, MouseButton.LEFT))
         assertEquals(100L, model)
     }
+
     @Test
     fun `mouse up stays consumed after press when pointer is released outside targets`() {
         val (root, router) = createLayerRouter("outside-release")
@@ -270,6 +265,7 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseWheel(28, 28, -120))
         assertEquals(1, wheelEvents)
     }
+
     @Test
     fun `focused textarea does not steal wheel from hovered control`() {
         val (root, router) = createLayerRouter("wheel-focused-textarea")
@@ -312,6 +308,7 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseDown(28, 28, MouseButton.LEFT))
         assertFalse(router.handleMouseWheel(28, 28, -120))
     }
+
     @Test
     fun `wheel axis semantics stay consistent across layers`() {
         listOf("app-dom", "app-overlay", "system-overlay").forEach { layer ->
@@ -334,7 +331,7 @@ class LayerDomInputRouterTests {
             val wheelX = wheelTarget.bounds.x + 1
             val wheelY = wheelTarget.bounds.y + 1
 
-            KeyModifiers.sync(shift = false, control = false, meta = false)
+            syncNoModifiers()
             assertTrue(router.handleMouseWheel(wheelX, wheelY, -120))
             viewport.advanceScrollAnimationsRecursively(1.0 / 60.0)
             viewport.consumeScrollLayoutDirtyRecursively()
@@ -343,7 +340,7 @@ class LayerDomInputRouterTests {
             assertEquals(0, verticalState.scrollX)
 
             viewport.setScrollOffsets(0, 0)
-            KeyModifiers.sync(shift = true, control = false, meta = false)
+            syncShiftOnly()
             assertTrue(router.handleMouseWheel(wheelX, wheelY, -120))
             viewport.advanceScrollAnimationsRecursively(1.0 / 60.0)
             viewport.consumeScrollLayoutDirtyRecursively()
@@ -352,6 +349,7 @@ class LayerDomInputRouterTests {
             assertEquals(0, horizontalState.scrollY)
         }
     }
+
     private fun createLayerRouter(key: String): Pair<ContainerNode, LayerDomInputRouter> {
         val root = ContainerNode(key = "$key-root").apply {
             bounds = Rect(0, 0, 320, 200)
@@ -369,4 +367,3 @@ class LayerDomInputRouterTests {
         }
     }
 }
-
