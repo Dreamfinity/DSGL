@@ -12,12 +12,12 @@ plugins {
 
 
 val fontsRootDir: File = rootProject.file("fonts")
-val msdfGeneratorExe: File = rootProject.file("bin/msdf-atlas-gen.exe")
+val msdfGeneratorBinary: File = rootProject.file("msdf-atlas-gen/build/bin/msdf-atlas-gen")
 val generatedPrecompiledFontsDir: File = project.file("precompiled_fonts")
 
 tasks.register("generateMsdfAtlases") {
     group = "assets"
-    description = "Generate MTSDF atlases and metadata for fonts/**/*.ttf using bin/msdf-atlas-gen.exe."
+    description = "Generate MTSDF atlases and metadata for fonts/**/*.ttf using msdf-atlas-gen/build/bin/msdf-atlas-gen"
 
     val ttfTree = fileTree(fontsRootDir) {
         include("**/*.ttf")
@@ -36,8 +36,8 @@ tasks.register("generateMsdfAtlases") {
     }
 
     doLast {
-        if (!msdfGeneratorExe.exists()) {
-            throw GradleException("MSDF generator not found: ${msdfGeneratorExe.path}")
+        if (!msdfGeneratorBinary.exists()) {
+            throw GradleException("MSDF generator not found: ${msdfGeneratorBinary.path}")
         }
         val fonts = ttfTree.files.sortedBy { it.relativeTo(fontsRootDir).invariantSeparatorsPath }
         if (fonts.isEmpty()) {
@@ -63,7 +63,7 @@ tasks.register("generateMsdfAtlases") {
             val pxrange = 4
             val size = 32
             val commonArgs = listOf(
-                msdfGeneratorExe.absolutePath,
+                msdfGeneratorBinary.absolutePath,
                 "-font", fontArg,
                 "-allglyphs",
                 "-type", "mtsdf",
