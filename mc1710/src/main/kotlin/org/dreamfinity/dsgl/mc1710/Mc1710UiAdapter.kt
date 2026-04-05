@@ -20,6 +20,8 @@ import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.*
 import java.io.File
 import java.net.URL
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.min
 import javax.imageio.ImageIO
 
@@ -47,55 +49,168 @@ internal fun buildMc1710Viewport(
     )
 }
 
+internal data class FramebufferSamplePoint(
+    val framebufferX: Int,
+    val framebufferYTop: Int
+)
+
+internal data class LogicalFramebufferRegion(
+    val logicalX: Int,
+    val logicalY: Int,
+    val logicalWidth: Int,
+    val logicalHeight: Int,
+    val framebufferX: Int,
+    val framebufferYTop: Int,
+    val framebufferWidth: Int,
+    val framebufferHeight: Int
+)
+
+internal data class LogicalFramebufferReadbackPlan(
+    val sourceRegion: LogicalFramebufferRegion,
+    val outputOffsetX: Int,
+    val outputOffsetY: Int
+)
+
+private enum class ReadbackApi {
+    OpenGl30,
+    ArbFramebufferObject,
+    ExtFramebufferObject,
+    Legacy
+}
+
+private data class ReadbackBindingState(
+    val readFramebufferBinding: Int,
+    val drawFramebufferBinding: Int,
+    val framebufferBinding: Int,
+    val currentReadBuffer: Int
+) {
+    val usingFramebufferObject: Boolean
+        get() = readFramebufferBinding != 0
+}
+
+private data class ReadbackSetup(
+    val previousReadBuffer: Int,
+    val appliedReadBuffer: Int,
+    val shouldRestore: Boolean
+)
+
+private data class FramebufferBindingSnapshot(
+    val readFramebufferBinding: Int,
+    val drawFramebufferBinding: Int,
+    val framebufferBinding: Int
+)
+
+private data class SceneTextureSource(
+    val textureId: Int,
+    val textureWidth: Int,
+    val textureHeight: Int
+)
+
+private data class MagnifierCaptureShader(
+    val programId: Int,
+    val sourceTextureUniform: Int,
+    val sourceOriginUniform: Int,
+    val sourceSizeUniform: Int,
+    val viewportSizeUniform: Int,
+    val sourceTextureSizeUniform: Int,
+    val fallbackColorUniform: Int
+)
+
+internal fun logicalPointToFramebufferSamplePoint(
+    viewport: Viewport,
+    logicalX: Int,
+    logicalY: Int
+): FramebufferSamplePoint? {
+    if (
+        logicalX < 0 ||
+        logicalY < 0 ||
+        logicalX >= viewport.logicalWidth ||
+        logicalY >= viewport.logicalHeight
+    ) return null
+    return FramebufferSamplePoint(
+        framebufferX = floor(logicalX.toFloat() * viewport.scale).toInt()
+            .coerceIn(0, viewport.framebufferWidth - 1),
+        framebufferYTop = floor(logicalY.toFloat() * viewport.scale).toInt()
+            .coerceIn(0, viewport.framebufferHeight - 1)
+    )
+}
+
+internal fun logicalRectToFramebufferRegion(
+    viewport: Viewport,
+    logicalX: Int,
+    logicalY: Int,
+    logicalWidth: Int,
+    logicalHeight: Int
+): LogicalFramebufferRegion? {
+    if (logicalWidth <= 0 || logicalHeight <= 0) return null
+    val logicalLeft = logicalX.coerceIn(0, viewport.logicalWidth)
+    val logicalTop = logicalY.coerceIn(0, viewport.logicalHeight)
+    val logicalRight = (logicalX.toLong() + logicalWidth.toLong())
+        .coerceIn(0L, viewport.logicalWidth.toLong())
+        .toInt()
+    val logicalBottom = (logicalY.toLong() + logicalHeight.toLong())
+        .coerceIn(0L, viewport.logicalHeight.toLong())
+        .toInt()
+    if (logicalRight <= logicalLeft || logicalBottom <= logicalTop) return null
+
+    val framebufferLeft = floor(logicalLeft.toFloat() * viewport.scale).toInt()
+        .coerceIn(0, viewport.framebufferWidth)
+    val framebufferTop = floor(logicalTop.toFloat() * viewport.scale).toInt()
+        .coerceIn(0, viewport.framebufferHeight)
+    val framebufferRight = ceil(logicalRight.toFloat() * viewport.scale).toInt()
+        .coerceIn(framebufferLeft, viewport.framebufferWidth)
+    val framebufferBottom = ceil(logicalBottom.toFloat() * viewport.scale).toInt()
+        .coerceIn(framebufferTop, viewport.framebufferHeight)
+    if (framebufferRight <= framebufferLeft || framebufferBottom <= framebufferTop) return null
+
+    return LogicalFramebufferRegion(
+        logicalX = logicalLeft,
+        logicalY = logicalTop,
+        logicalWidth = logicalRight - logicalLeft,
+        logicalHeight = logicalBottom - logicalTop,
+        framebufferX = framebufferLeft,
+        framebufferYTop = framebufferTop,
+        framebufferWidth = framebufferRight - framebufferLeft,
+        framebufferHeight = framebufferBottom - framebufferTop
+    )
+}
+
+internal fun planLogicalFramebufferReadback(
+    viewport: Viewport,
+    logicalX: Int,
+    logicalY: Int,
+    logicalWidth: Int,
+    logicalHeight: Int
+): LogicalFramebufferReadbackPlan? {
+    val sourceRegion = logicalRectToFramebufferRegion(
+        viewport = viewport,
+        logicalX = logicalX,
+        logicalY = logicalY,
+        logicalWidth = logicalWidth,
+        logicalHeight = logicalHeight
+    ) ?: return null
+    return LogicalFramebufferReadbackPlan(
+        sourceRegion = sourceRegion,
+        outputOffsetX = sourceRegion.logicalX - logicalX,
+        outputOffsetY = sourceRegion.logicalY - logicalY
+    )
+}
+
+internal fun framebufferOffsetForLogicalCoordinate(
+    logicalCoordinate: Int,
+    framebufferStart: Int,
+    framebufferLimitExclusive: Int,
+    scale: Float
+): Int {
+    val framebufferCoordinate = floor(logicalCoordinate.toFloat() * scale).toInt()
+    return (framebufferCoordinate - framebufferStart)
+        .coerceIn(0, (framebufferLimitExclusive - framebufferStart - 1).coerceAtLeast(0))
+}
+
 /**
  * Minecraft 1.7.10 adapter that turns DSGL render commands into Minecraft calls.
  */
 class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : UiMeasureContext {
-    private enum class ReadbackApi {
-        OpenGl30,
-        ArbFramebufferObject,
-        ExtFramebufferObject,
-        Legacy
-    }
-
-    private data class ReadbackBindingState(
-        val readFramebufferBinding: Int,
-        val drawFramebufferBinding: Int,
-        val framebufferBinding: Int,
-        val currentReadBuffer: Int
-    ) {
-        val usingFramebufferObject: Boolean
-            get() = readFramebufferBinding != 0
-    }
-
-    private data class ReadbackSetup(
-        val previousReadBuffer: Int,
-        val appliedReadBuffer: Int,
-        val shouldRestore: Boolean
-    )
-
-    private data class FramebufferBindingSnapshot(
-        val readFramebufferBinding: Int,
-        val drawFramebufferBinding: Int,
-        val framebufferBinding: Int
-    )
-
-    private data class SceneTextureSource(
-        val textureId: Int,
-        val textureWidth: Int,
-        val textureHeight: Int
-    )
-
-    private data class MagnifierCaptureShader(
-        val programId: Int,
-        val sourceTextureUniform: Int,
-        val sourceOriginUniform: Int,
-        val sourceSizeUniform: Int,
-        val viewportSizeUniform: Int,
-        val sourceTextureSizeUniform: Int,
-        val fallbackColorUniform: Int
-    )
-
     companion object {
         private val imageCache: MutableMap<String, ResourceLocation> = HashMap()
         private val dynamicTexturesCache: MutableMap<String, DynamicTexture> = HashMap()
@@ -110,29 +225,29 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         private val MAGNIFIER_CAPTURE_FRAGMENT_SHADER: String = """
             #version 120
             uniform sampler2D uSourceTexture;
-            uniform vec2 uSourceOriginTopLeft;
-            uniform vec2 uSourceSize;
-            uniform vec2 uViewportSize;
-            uniform vec2 uSourceTextureSize;
+            uniform vec2 uSourceOriginTopLeftPx;
+            uniform vec2 uSourceSizePx;
+            uniform vec2 uViewportSizePx;
+            uniform vec2 uSourceTextureSizePx;
             uniform vec4 uFallbackColor;
             varying vec2 vUv;
             void main() {
-                vec2 dstPixel = floor(vUv * uSourceSize);
-                float sourceX = uSourceOriginTopLeft.x + dstPixel.x;
-                float sourceYTop = uSourceOriginTopLeft.y + (uSourceSize.y - 1.0 - dstPixel.y);
+                vec2 dstPixel = floor(vUv * uSourceSizePx);
+                float sourceX = uSourceOriginTopLeftPx.x + dstPixel.x;
+                float sourceYTop = uSourceOriginTopLeftPx.y + (uSourceSizePx.y - 1.0 - dstPixel.y);
                 bool inside =
                     sourceX >= 0.0 &&
                     sourceYTop >= 0.0 &&
-                    sourceX < uViewportSize.x &&
-                    sourceYTop < uViewportSize.y;
+                    sourceX < uViewportSizePx.x &&
+                    sourceYTop < uViewportSizePx.y;
                 if (!inside) {
                     gl_FragColor = uFallbackColor;
                     return;
                 }
-                float sourceYBottom = (uViewportSize.y - 1.0) - sourceYTop;
+                float sourceYBottom = (uViewportSizePx.y - 1.0) - sourceYTop;
                 vec2 sourceUv = vec2(
-                    (sourceX + 0.5) / uSourceTextureSize.x,
-                    (sourceYBottom + 0.5) / uSourceTextureSize.y
+                    (sourceX + 0.5) / uSourceTextureSizePx.x,
+                    (sourceYBottom + 0.5) / uSourceTextureSizePx.y
                 );
                 vec4 sampled = texture2D(uSourceTexture, sourceUv);
                 gl_FragColor = vec4(sampled.rgb, 1.0);
@@ -252,9 +367,9 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
     fun sampleScreenColor(x: Int, y: Int): Int? {
         val viewport = viewport()
-        if (x < 0 || y < 0 || x >= viewport.logicalWidth || y >= viewport.logicalHeight) return null
-        val readX = (x.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferWidth - 1)
-        val readY = (viewport.framebufferHeight - 1 - (y.toFloat() * viewport.scale).toInt())
+        val samplePoint = logicalPointToFramebufferSamplePoint(viewport, x, y) ?: return null
+        val readX = samplePoint.framebufferX
+        val readY = (viewport.framebufferHeight - 1 - samplePoint.framebufferYTop)
             .coerceIn(0, viewport.framebufferHeight - 1)
         samplePixelBuffer.clear()
         return try {
@@ -294,65 +409,74 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             outArgb[i] = 0
             i++
         }
-
-        val srcXLogical = x.coerceIn(0, viewport.logicalWidth)
-        val srcYLogical = y.coerceIn(0, viewport.logicalHeight)
-        val maxWLogical = viewport.logicalWidth - srcXLogical
-        val maxHLogical = viewport.logicalHeight - srcYLogical
-        val srcWLogical = minOf(width, maxWLogical).coerceAtLeast(0)
-        val srcHLogical = minOf(height, maxHLogical).coerceAtLeast(0)
-        val srcX = (srcXLogical.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferWidth)
-        val srcY = (srcYLogical.toFloat() * viewport.scale).toInt().coerceIn(0, viewport.framebufferHeight)
-        val srcW = kotlin.math.ceil(srcWLogical.toDouble() * viewport.scale.toDouble()).toInt()
-            .coerceAtMost(viewport.framebufferWidth - srcX)
-            .coerceAtLeast(0)
-        val srcH = kotlin.math.ceil(srcHLogical.toDouble() * viewport.scale.toDouble()).toInt()
-            .coerceAtMost(viewport.framebufferHeight - srcY)
-            .coerceAtLeast(0)
-        if (srcW <= 0 || srcH <= 0) return false
-
-        val byteCount = srcW * srcH * 4
+        val readbackPlan = planLogicalFramebufferReadback(viewport, x, y, width, height) ?: return false
+        val sourceRegion = readbackPlan.sourceRegion
+        val byteCount = sourceRegion.framebufferWidth * sourceRegion.framebufferHeight * 4
         if (sampleAreaBuffer.capacity() < byteCount) {
             sampleAreaBuffer = BufferUtils.createByteBuffer(byteCount)
         }
         sampleAreaBuffer.clear()
         sampleAreaBuffer.limit(byteCount)
         return try {
-            val readY = viewport.framebufferHeight - (srcY + srcH)
+            val readY = viewport.framebufferHeight - (
+                sourceRegion.framebufferYTop + sourceRegion.framebufferHeight
+            )
             val setup = beginReadback()
             if (readbackDiagnosticsVerbose) {
                 diagnoseReadbackSource(
                     path = "sampleScreenArea",
-                    sourceX = srcX,
-                    sourceY = srcY,
-                    sourceWidth = srcW,
-                    sourceHeight = srcH,
+                    sourceX = sourceRegion.framebufferX,
+                    sourceY = sourceRegion.framebufferYTop,
+                    sourceWidth = sourceRegion.framebufferWidth,
+                    sourceHeight = sourceRegion.framebufferHeight,
                     setup = setup
                 )
             }
             try {
-                GL11.glReadPixels(srcX, readY, srcW, srcH, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, sampleAreaBuffer)
+                GL11.glReadPixels(
+                    sourceRegion.framebufferX,
+                    readY,
+                    sourceRegion.framebufferWidth,
+                    sourceRegion.framebufferHeight,
+                    GL11.GL_RGBA,
+                    GL11.GL_UNSIGNED_BYTE,
+                    sampleAreaBuffer
+                )
             } finally {
                 endReadback(setup)
             }
-            val dstOffsetX = (srcX - x).coerceAtLeast(0)
-            val dstOffsetY = (srcY - y).coerceAtLeast(0)
-            var row = 0
-            while (row < srcH) {
-                val glRow = srcH - 1 - row
-                var col = 0
-                while (col < srcW) {
-                    val srcIndex = (glRow * srcW + col) * 4
+            val dstOffsetX = readbackPlan.outputOffsetX
+            val dstOffsetY = readbackPlan.outputOffsetY
+            var logicalRow = 0
+            while (logicalRow < sourceRegion.logicalHeight) {
+                val absoluteLogicalY = sourceRegion.logicalY + logicalRow
+                val framebufferLocalY = framebufferOffsetForLogicalCoordinate(
+                    logicalCoordinate = absoluteLogicalY,
+                    framebufferStart = sourceRegion.framebufferYTop,
+                    framebufferLimitExclusive = sourceRegion.framebufferYTop + sourceRegion.framebufferHeight,
+                    scale = viewport.scale
+                )
+                val glRow = sourceRegion.framebufferHeight - 1 - framebufferLocalY
+                var logicalCol = 0
+                while (logicalCol < sourceRegion.logicalWidth) {
+                    val absoluteLogicalX = sourceRegion.logicalX + logicalCol
+                    val framebufferLocalX = framebufferOffsetForLogicalCoordinate(
+                        logicalCoordinate = absoluteLogicalX,
+                        framebufferStart = sourceRegion.framebufferX,
+                        framebufferLimitExclusive = sourceRegion.framebufferX + sourceRegion.framebufferWidth,
+                        scale = viewport.scale
+                    )
+                    val srcIndex = (glRow * sourceRegion.framebufferWidth + framebufferLocalX) * 4
                     val r = sampleAreaBuffer.get(srcIndex).toInt() and 0xFF
                     val g = sampleAreaBuffer.get(srcIndex + 1).toInt() and 0xFF
                     val b = sampleAreaBuffer.get(srcIndex + 2).toInt() and 0xFF
                     val a = sampleAreaBuffer.get(srcIndex + 3).toInt() and 0xFF
-                    val dstX = dstOffsetX + col
-                    val dstY = dstOffsetY + row
+                    val dstX = dstOffsetX + logicalCol
+                    val dstY = dstOffsetY + logicalRow
                     outArgb[dstY * width + dstX] = (a shl 24) or (r shl 16) or (g shl 8) or b
-                    col++
+                    logicalCol++
                 }
-                row++
+                logicalRow++
             }
             true
         } catch (_: Throwable) {
@@ -361,10 +485,19 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     private fun captureScreenRegion(command: RenderCommand.CaptureScreenRegion, viewport: Viewport) {
-        val sourceWidth = command.sourceWidth.coerceAtLeast(1)
-        val sourceHeight = command.sourceHeight.coerceAtLeast(1)
+        val sourceRegion = logicalRectToFramebufferRegion(
+            viewport = viewport,
+            logicalX = command.sourceX,
+            logicalY = command.sourceY,
+            logicalWidth = command.sourceWidth.coerceAtLeast(1),
+            logicalHeight = command.sourceHeight.coerceAtLeast(1)
+        )
         capturedRegionFallbackColor = command.fallbackColor
-        ensureCapturedRegionTexture(sourceWidth, sourceHeight)
+        if (sourceRegion == null) {
+            capturedRegionValid = false
+            return
+        }
+        ensureCapturedRegionTexture(sourceRegion.framebufferWidth, sourceRegion.framebufferHeight)
         if (capturedRegionTextureId == 0) {
             capturedRegionValid = false
             return
@@ -372,7 +505,11 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val sceneTextureSource = resolveActiveSceneTextureSource()
         val shader = ensureMagnifierCaptureShader()
         if (sceneTextureSource == null || shader == null || sceneTextureSource.textureId == capturedRegionTextureId) {
-            capturedRegionValid = fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
+            capturedRegionValid = fillCapturedRegionFallbackTexture(
+                command.fallbackColor,
+                sourceRegion.framebufferWidth,
+                sourceRegion.framebufferHeight
+            )
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
                     key = "magnifier:capture:fallback",
@@ -403,7 +540,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             val attachment = defaultColorAttachmentReadBuffer()
             GL11.glDrawBuffer(attachment)
             GL11.glReadBuffer(attachment)
-            GL11.glViewport(0, 0, sourceWidth, sourceHeight)
+            GL11.glViewport(0, 0, sourceRegion.framebufferWidth, sourceRegion.framebufferHeight)
             GL11.glDisable(GL11.GL_SCISSOR_TEST)
             GL11.glDisable(GL11.GL_BLEND)
             GL11.glDisable(GL11.GL_CULL_FACE)
@@ -415,14 +552,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             ARBShaderObjects.glUniform1iARB(shader.sourceTextureUniform, 0)
             ARBShaderObjects.glUniform2fARB(
                 shader.sourceOriginUniform,
-                command.sourceX.toFloat(),
-                command.sourceY.toFloat()
+                sourceRegion.framebufferX.toFloat(),
+                sourceRegion.framebufferYTop.toFloat()
             )
-            ARBShaderObjects.glUniform2fARB(shader.sourceSizeUniform, sourceWidth.toFloat(), sourceHeight.toFloat())
+            ARBShaderObjects.glUniform2fARB(
+                shader.sourceSizeUniform,
+                sourceRegion.framebufferWidth.toFloat(),
+                sourceRegion.framebufferHeight.toFloat()
+            )
             ARBShaderObjects.glUniform2fARB(
                 shader.viewportSizeUniform,
-                viewport.width.toFloat(),
-                viewport.height.toFloat()
+                viewport.framebufferWidth.toFloat(),
+                viewport.framebufferHeight.toFloat()
             )
             ARBShaderObjects.glUniform2fARB(
                 shader.sourceTextureSizeUniform,
@@ -473,7 +614,11 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             )
         }
         capturedRegionValid =
-            renderingSucceeded || fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
+            renderingSucceeded || fillCapturedRegionFallbackTexture(
+                command.fallbackColor,
+                sourceRegion.framebufferWidth,
+                sourceRegion.framebufferHeight
+            )
     }
 
     private fun drawCapturedScreenRegion(command: RenderCommand.DrawCapturedScreenRegion) {
@@ -726,10 +871,10 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             val shader = MagnifierCaptureShader(
                 programId = program,
                 sourceTextureUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTexture"),
-                sourceOriginUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceOriginTopLeft"),
-                sourceSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceSize"),
-                viewportSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uViewportSize"),
-                sourceTextureSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTextureSize"),
+                sourceOriginUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceOriginTopLeftPx"),
+                sourceSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceSizePx"),
+                viewportSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uViewportSizePx"),
+                sourceTextureSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTextureSizePx"),
                 fallbackColorUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uFallbackColor")
             )
             magnifierCaptureShader = shader
