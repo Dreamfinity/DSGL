@@ -1,7 +1,7 @@
 ﻿package org.dreamfinity.dsgl.mc1710.text
 
-import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.text.*
@@ -11,125 +11,125 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
-internal class MsdfTextRenderer {
-    private data class PreparedText(
-        val text: String,
-        val styleSpans: List<RenderCommand.TextStyleSpan>
-    )
+private data class PreparedText(
+    val text: String,
+    val styleSpans: List<RenderCommand.TextStyleSpan>
+)
 
-    private data class LayoutCacheKey(
-        val text: String,
-        val primaryFontId: String,
-        val fontSize: Int,
-        val textFormatting: TextFormatting,
-        val baseFlagsMask: Int,
-        val styleSpansHash: Int
-    )
+private data class LayoutCacheKey(
+    val text: String,
+    val primaryFontId: String,
+    val fontSize: Int,
+    val textFormatting: TextFormatting,
+    val baseFlagsMask: Int,
+    val styleSpansHash: Int
+)
 
-    private data class CachedLineLayout(
-        val start: Int,
-        val shaped: ShapedText
-    )
+private data class CachedLineLayout(
+    val start: Int,
+    val shaped: ShapedText
+)
 
-    private data class LayoutCacheEntry(val lines: List<CachedLineLayout>)
+private data class LayoutCacheEntry(val lines: List<CachedLineLayout>)
 
-    private class SegmentBuffer(initialCapacity: Int = 64) {
-        private var startX = FloatArray(initialCapacity)
-        private var endX = FloatArray(initialCapacity)
-        private var y = FloatArray(initialCapacity)
-        private var thickness = FloatArray(initialCapacity)
-        private var color = IntArray(initialCapacity)
-        private var kind = IntArray(initialCapacity)
+private class SegmentBuffer(initialCapacity: Int = 64) {
+    private var startX = FloatArray(initialCapacity)
+    private var endX = FloatArray(initialCapacity)
+    private var y = FloatArray(initialCapacity)
+    private var thickness = FloatArray(initialCapacity)
+    private var color = IntArray(initialCapacity)
+    private var kind = IntArray(initialCapacity)
 
-        var size: Int = 0
-            private set
+    var size: Int = 0
+        private set
 
-        fun clear() {
-            size = 0
-        }
-
-        fun appendMerged(
-            segmentKind: Int,
-            segmentStartX: Float,
-            segmentEndX: Float,
-            segmentY: Float,
-            segmentThickness: Float,
-            segmentColor: Int
-        ) {
-            if (segmentEndX <= segmentStartX) return
-            val last = size - 1
-            if (last >= 0 &&
-                kind[last] == segmentKind &&
-                color[last] == segmentColor &&
-                kotlin.math.abs(endX[last] - segmentStartX) <= 0.51f &&
-                kotlin.math.abs(y[last] - segmentY) <= 0.51f &&
-                kotlin.math.abs(thickness[last] - segmentThickness) <= 0.1f
-            ) {
-                endX[last] = segmentEndX
-                return
-            }
-            ensureCapacity(size + 1)
-            kind[size] = segmentKind
-            startX[size] = segmentStartX
-            endX[size] = segmentEndX
-            y[size] = segmentY
-            thickness[size] = segmentThickness
-            color[size] = segmentColor
-            size += 1
-        }
-
-        fun kindAt(index: Int): Int = kind[index]
-        fun startXAt(index: Int): Float = startX[index]
-        fun endXAt(index: Int): Float = endX[index]
-        fun yAt(index: Int): Float = y[index]
-        fun thicknessAt(index: Int): Float = thickness[index]
-        fun colorAt(index: Int): Int = color[index]
-
-        private fun ensureCapacity(required: Int) {
-            if (required <= startX.size) return
-            var next = startX.size
-            while (next < required) {
-                next = (next * 2).coerceAtLeast(required)
-            }
-            startX = startX.copyOf(next)
-            endX = endX.copyOf(next)
-            y = y.copyOf(next)
-            thickness = thickness.copyOf(next)
-            color = color.copyOf(next)
-            kind = kind.copyOf(next)
-        }
+    fun clear() {
+        size = 0
     }
 
-    private data class RendererDebugCounters(
-        var drawCalls: Long = 0L,
-        var layoutCacheHits: Long = 0L,
-        var layoutCacheMisses: Long = 0L,
-        var glyphVectorRequests: Long = 0L,
-        var glyphResolutionRequests: Long = 0L,
-        var textureUploads: Long = 0L,
-        var textureUploadBytes: Long = 0L
-    )
+    fun appendMerged(
+        segmentKind: Int,
+        segmentStartX: Float,
+        segmentEndX: Float,
+        segmentY: Float,
+        segmentThickness: Float,
+        segmentColor: Int
+    ) {
+        if (segmentEndX <= segmentStartX) return
+        val last = size - 1
+        if (last >= 0 &&
+            kind[last] == segmentKind &&
+            color[last] == segmentColor &&
+            kotlin.math.abs(endX[last] - segmentStartX) <= 0.51f &&
+            kotlin.math.abs(y[last] - segmentY) <= 0.51f &&
+            kotlin.math.abs(thickness[last] - segmentThickness) <= 0.1f
+        ) {
+            endX[last] = segmentEndX
+            return
+        }
+        ensureCapacity(size + 1)
+        kind[size] = segmentKind
+        startX[size] = segmentStartX
+        endX[size] = segmentEndX
+        y[size] = segmentY
+        thickness[size] = segmentThickness
+        color[size] = segmentColor
+        size += 1
+    }
 
-    private data class DecorationSegment(
-        var startX: Float,
-        var endX: Float,
-        val y: Float,
-        val thickness: Float,
-        val color: Int
-    )
+    fun kindAt(index: Int): Int = kind[index]
+    fun startXAt(index: Int): Float = startX[index]
+    fun endXAt(index: Int): Float = endX[index]
+    fun yAt(index: Int): Float = y[index]
+    fun thicknessAt(index: Int): Float = thickness[index]
+    fun colorAt(index: Int): Int = color[index]
 
-    private data class ObfuscationBuckets(
-        val byAdvanceBucket: Map<Int, List<MsdfGlyph>>,
-        val expandedByAdvanceBucket: Map<Int, List<MsdfGlyph>>,
-        val sortedKeys: List<Int>,
-        val allGlyphs: List<MsdfGlyph>
-    )
+    private fun ensureCapacity(required: Int) {
+        if (required <= startX.size) return
+        var next = startX.size
+        while (next < required) {
+            next = (next * 2).coerceAtLeast(required)
+        }
+        startX = startX.copyOf(next)
+        endX = endX.copyOf(next)
+        y = y.copyOf(next)
+        thickness = thickness.copyOf(next)
+        color = color.copyOf(next)
+        kind = kind.copyOf(next)
+    }
+}
 
-    private data class LineSlice(
-        val start: Int,
-        val endExclusive: Int
-    )
+private data class RendererDebugCounters(
+    var drawCalls: Long = 0L,
+    var layoutCacheHits: Long = 0L,
+    var layoutCacheMisses: Long = 0L,
+    var glyphVectorRequests: Long = 0L,
+    var glyphResolutionRequests: Long = 0L,
+    var textureUploads: Long = 0L,
+    var textureUploadBytes: Long = 0L
+)
 
+private data class DecorationSegment(
+    var startX: Float,
+    var endX: Float,
+    val y: Float,
+    val thickness: Float,
+    val color: Int
+)
+
+private data class ObfuscationBuckets(
+    val byAdvanceBucket: Map<Int, List<MsdfGlyph>>,
+    val expandedByAdvanceBucket: Map<Int, List<MsdfGlyph>>,
+    val sortedKeys: List<Int>,
+    val allGlyphs: List<MsdfGlyph>
+)
+
+private data class LineSlice(
+    val start: Int,
+    val endExclusive: Int
+)
+
+internal class MsdfTextRenderer {
     private val textures: MutableMap<String, FontTextureHandle> = linkedMapOf()
     private val layoutCache: MutableMap<LayoutCacheKey, LayoutCacheEntry> =
         object : LinkedHashMap<LayoutCacheKey, LayoutCacheEntry>(64, 0.75f, true) {
@@ -140,6 +140,7 @@ internal class MsdfTextRenderer {
     private var programId: Int = 0
     private var uniformAtlas: Int = -1
     private var uniformPxRange: Int = -1
+    private var uniformAtlasSize: Int = -1
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
     private val debugLogKeys: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
     private val debugGlyphResolutionEnabled: Boolean by lazy(mode = LazyThreadSafetyMode.NONE) {

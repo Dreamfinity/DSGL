@@ -16,14 +16,13 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.mc1710.scissorsHelper.ScissorContext
 import org.dreamfinity.dsgl.mc1710.text.MsdfTextRenderer
 import org.lwjgl.BufferUtils
-import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.*
 import java.io.File
 import java.net.URL
+import javax.imageio.ImageIO
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.min
-import javax.imageio.ImageIO
 
 internal fun buildMc1710Viewport(
     logicalWidth: Int,
@@ -292,6 +291,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
         return textRenderer.measureText(text, fontId, fontSize)
     }
+
     override fun measureTextRange(
         text: String,
         startIndex: Int,
@@ -419,8 +419,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         sampleAreaBuffer.limit(byteCount)
         return try {
             val readY = viewport.framebufferHeight - (
-                sourceRegion.framebufferYTop + sourceRegion.framebufferHeight
-            )
+                    sourceRegion.framebufferYTop + sourceRegion.framebufferHeight
+                    )
             val setup = beginReadback()
             if (readbackDiagnosticsVerbose) {
                 diagnoseReadbackSource(
@@ -1654,6 +1654,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL30.GL_COLOR_ATTACHMENT0,
             ARBFramebufferObject.GL_COLOR_ATTACHMENT0,
             EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT -> "GL_COLOR_ATTACHMENT0"
+
             else -> {
                 val hex = Integer.toHexString(value).uppercase()
                 "0x$hex"
