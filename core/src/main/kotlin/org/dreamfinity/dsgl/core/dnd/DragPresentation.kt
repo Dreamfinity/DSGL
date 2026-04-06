@@ -2,7 +2,11 @@ package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 enum class DragPreviewMode {
     ORIGINAL,
@@ -65,6 +69,7 @@ class PlaceholderScope internal constructor() {
 class DragPreviewScope internal constructor(
     val dataTransfer: DataTransfer,
     val sourceBounds: Rect,
+    private val ctx: UiMeasureContext,
     private val anchorX: Int,
     private val anchorY: Int
 ) {
@@ -83,7 +88,19 @@ class DragPreviewScope internal constructor(
     }
 
     fun text(value: String, x: Int, y: Int, color: Int = DsglColors.WHITE) {
-        commands.add(RenderCommand.DrawText(value, anchorX + x, anchorY + y, color))
+        commands.add(
+            RenderCommand.DrawText(
+                text = value,
+                x = anchorX + x,
+                y = anchorY + y,
+                metrics = TextMetricsResolver.resolve(
+                    ctx = ctx,
+                    fontId = null,
+                    fontSizePx = FontRegistry.resolveFontSize(null)
+                ),
+                baseStyle = TextRenderStyle(color = color)
+            )
+        )
     }
 
     fun image(resource: String, x: Int, y: Int, width: Int, height: Int) {

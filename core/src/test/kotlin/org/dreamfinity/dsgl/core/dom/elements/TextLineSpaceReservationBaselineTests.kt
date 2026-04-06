@@ -454,7 +454,7 @@ class TextLineSpaceReservationBaselineTests {
 
         assertEquals(160, computedFontSize)
         assertEquals(resolvedLineHeight, measured.height)
-        assertEquals(computedFontSize, draw.fontSize)
+        assertEquals(computedFontSize, draw.metrics.fontSizePx)
     }
 
     @Test
@@ -478,7 +478,7 @@ class TextLineSpaceReservationBaselineTests {
             return Snapshot(
                 width = measured.width,
                 height = measured.height,
-                renderFontSize = draw.fontSize ?: -1
+                renderFontSize = draw.metrics.fontSizePx
             )
         }
 
@@ -514,7 +514,7 @@ class TextLineSpaceReservationBaselineTests {
         val expectedGlyphWidth = ((expectedFontSize * 0.5f).roundToInt().coerceAtLeast(1))
 
         assertEquals(expectedFontSize, textNode.appliedComputedStyleSnapshot()?.fontSize)
-        assertEquals(expectedFontSize, draw.fontSize)
+        assertEquals(expectedFontSize, draw.metrics.fontSizePx)
         assertEquals(expectedGlyphWidth * 4, measuredWidth)
     }
 

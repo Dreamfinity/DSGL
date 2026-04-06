@@ -6,7 +6,10 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.exp
 
@@ -523,6 +526,7 @@ object DefaultDndEngine : DndEngine {
             val scope = DragPreviewScope(
                 dataTransfer = active.dataTransfer,
                 sourceBounds = sourceBounds,
+                ctx = ctx,
                 anchorX = anchorX,
                 anchorY = anchorY
             )
@@ -593,7 +597,19 @@ object DefaultDndEngine : DndEngine {
         out.add(RenderCommand.DrawRect(x, y + height - 1, width, 1, 0xFF7F8C99.toInt()))
         out.add(RenderCommand.DrawRect(x, y, 1, height, 0xFF7F8C99.toInt()))
         out.add(RenderCommand.DrawRect(x + width - 1, y, 1, height, 0xFF7F8C99.toInt()))
-        out.add(RenderCommand.DrawText(label, x + 6, y + 4, DsglColors.WHITE))
+        out.add(
+            RenderCommand.DrawText(
+                text = label,
+                x = x + 6,
+                y = y + 4,
+                metrics = TextMetricsResolver.resolve(
+                    ctx = ctx,
+                    fontId = null,
+                    fontSizePx = FontRegistry.resolveFontSize(null)
+                ),
+                baseStyle = TextRenderStyle(color = DsglColors.WHITE)
+            )
+        )
     }
 
     private fun shiftCommand(command: RenderCommand, dx: Int, dy: Int): RenderCommand {
@@ -757,4 +773,3 @@ object DefaultDndEngine : DndEngine {
         )
     }
 }
-

@@ -14,11 +14,18 @@ import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextDecorations
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.render.TextStyleSpan
+import org.dreamfinity.dsgl.core.render.TextWeight
 import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 import org.dreamfinity.dsgl.core.text.ParsedText
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import org.dreamfinity.dsgl.core.text.TextStyleMetrics
+import org.dreamfinity.dsgl.core.text.toResolvedTextMetrics
+import org.dreamfinity.dsgl.core.text.toTextRenderMetrics
 import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
 import kotlin.math.roundToInt
 
@@ -115,12 +122,6 @@ private data class ScrollbarResolution(
     val verticalGutter: Int,
     val viewportWidth: Int,
     val viewportHeight: Int
-)
-
-private data class NativeFontMetricsPx(
-    val lineHeightPx: Int,
-    val ascenderPx: Float,
-    val descenderPx: Float
 )
 
 private data class ScrollbarDragSession(
@@ -1908,61 +1909,30 @@ abstract class DOMNode(
 
     protected fun resolveTextMetrics(ctx: UiMeasureContext): ResolvedTextMetrics {
         val fontSizePx = resolveComputedFontSizePx().coerceAtLeast(1)
-        val nativeMetrics = resolveNativeFontMetrics(ctx, fontSizePx)
-        val fallbackFontHeightPx = resolveFontSize(ctx).coerceAtLeast(1)
-        val fallbackNormalLineHeightPx = (fallbackFontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
-            .roundToInt()
-            .coerceAtLeast(fallbackFontHeightPx)
-            .coerceAtLeast(1)
-
-        val nativeLineHeightPx = nativeMetrics?.lineHeightPx ?: fallbackNormalLineHeightPx
-        val ascenderPx = nativeMetrics?.ascenderPx ?: (fallbackFontHeightPx * 0.8f)
-        val descenderPx = nativeMetrics?.descenderPx
-            ?: (nativeLineHeightPx - ascenderPx).coerceAtLeast(0f)
-
-        val computedLineHeight =
-            when (val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal) {
-                LineHeightValue.Normal -> nativeLineHeightPx
-                is LineHeightValue.Length -> {
-                    val currentFontSizePx = fontSizePx.toFloat()
-                    val context = LengthResolveContext(
-                        rootFontSizePx = currentFontSizePx,
-                        currentFontSizePx = currentFontSizePx,
-                        inheritedFontSizePx = currentFontSizePx
-                    )
-                    computedLineHeight.value
-                        .resolvePx(context, LengthPercentBase.CurrentFontSize)
-                        .roundToInt()
-                        .coerceAtLeast(1)
-                }
-            }
-
-        val extraLeadingPx = (computedLineHeight - nativeLineHeightPx).coerceAtLeast(0).toFloat()
-        val topLeadingPx = extraLeadingPx / 2f
-        val bottomLeadingPx = extraLeadingPx - topLeadingPx
-        return ResolvedTextMetrics(
+        return TextMetricsResolver.resolve(
+            ctx = ctx,
+            fontId = fontId,
             fontSizePx = fontSizePx,
-            lineHeightPx = computedLineHeight,
-            nativeLineHeightPx = nativeLineHeightPx,
-            ascenderPx = ascenderPx,
-            descenderPx = descenderPx,
-            topLeadingPx = topLeadingPx,
-            bottomLeadingPx = bottomLeadingPx
-        )
+            explicitLineHeightPx = resolveExplicitLineHeightPx(fontSizePx)
+        ).toResolvedTextMetrics()
     }
 
-    private fun resolveNativeFontMetrics(ctx: UiMeasureContext, fontSizePx: Int): NativeFontMetricsPx? {
-        val metrics = ctx.fontLineMetrics(fontId, fontSizePx) ?: return null
-        if (metrics.emSize <= 0f || metrics.lineHeightEm <= 0f) return null
-        val scalePx = fontSizePx / metrics.emSize
-        val lineHeightPx = kotlin.math.ceil(metrics.lineHeightEm * scalePx).toInt().coerceAtLeast(1)
-        val ascenderPx = (metrics.ascenderEm * scalePx).coerceAtLeast(0f)
-        val descenderPx = kotlin.math.abs(metrics.descenderEm * scalePx)
-        return NativeFontMetricsPx(
-            lineHeightPx = lineHeightPx,
-            ascenderPx = ascenderPx,
-            descenderPx = descenderPx
-        )
+    private fun resolveExplicitLineHeightPx(fontSizePx: Int): Int? {
+        return when (val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal) {
+            LineHeightValue.Normal -> null
+            is LineHeightValue.Length -> {
+                val currentFontSizePx = fontSizePx.toFloat()
+                val context = LengthResolveContext(
+                    rootFontSizePx = currentFontSizePx,
+                    currentFontSizePx = currentFontSizePx,
+                    inheritedFontSizePx = currentFontSizePx
+                )
+                computedLineHeight.value
+                    .resolvePx(context, LengthPercentBase.CurrentFontSize)
+                    .roundToInt()
+                    .coerceAtLeast(1)
+            }
+        }
     }
 
     protected fun parseTextForFormatting(rawText: String): ParsedText {
@@ -2000,25 +1970,33 @@ abstract class DOMNode(
         x: Int,
         y: Int,
         color: Int,
-        styleSpans: List<RenderCommand.TextStyleSpan> = emptyList()
+        styleSpans: List<TextStyleSpan> = emptyList()
     ): RenderCommand.DrawText {
         val metrics = resolveTextMetrics(ctx)
-        val baseFlags = baseTextStyleFlags()
         return RenderCommand.DrawText(
             text = text,
             x = x,
             y = y,
-            color = color,
             fontId = fontId,
-            fontSize = metrics.fontSizePx,
             textFormatting = textFormatting,
-            bold = baseFlags.bold,
-            italic = baseFlags.italic,
-            underline = baseFlags.underline,
-            strikethrough = baseFlags.strikethrough,
-            obfuscated = baseFlags.obfuscated,
-            textStyleSpans = styleSpans,
+            metrics = metrics.toTextRenderMetrics(),
+            baseStyle = baseTextRenderStyle(color),
+            styleSpans = styleSpans,
             sourceKey = key?.toString()
+        )
+    }
+
+    protected fun baseTextRenderStyle(color: Int = defaultForegroundColor()): TextRenderStyle {
+        val baseFlags = baseTextStyleFlags()
+        return TextRenderStyle(
+            color = color,
+            weight = if (baseFlags.bold) TextWeight.Bold else TextWeight.Normal,
+            italic = baseFlags.italic,
+            decorations = TextDecorations(
+                underline = baseFlags.underline,
+                strikethrough = baseFlags.strikethrough
+            ),
+            obfuscated = baseFlags.obfuscated
         )
     }
 
@@ -3283,4 +3261,3 @@ fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     }
     return this
 }
-

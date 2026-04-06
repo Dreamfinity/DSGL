@@ -5,8 +5,11 @@ import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 internal class SystemOverlayPanelDemoNode(
     private val overlayPanel: OverlayPanel,
@@ -60,19 +63,24 @@ internal class SystemOverlayPanelDemoNode(
             bounds = Rect(x, y, width, height)
             commandBuffer.clear()
             actionButtonRect = null
+            val textMetrics = TextMetricsResolver.resolve(
+                ctx = ctx,
+                fontId = null,
+                fontSizePx = FontRegistry.resolveFontSize(16)
+            )
             commandBuffer += RenderCommand.DrawText(
                 text = "Reusable panel demo",
                 x = bounds.x + 6,
                 y = bounds.y + 4,
-                color = 0xFFFFFFFF.toInt(),
-                fontSize = 16
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = 0xFFFFFFFF.toInt())
             )
             commandBuffer += RenderCommand.DrawText(
                 text = "Button clicks: $buttonClicks",
                 x = bounds.x + 6,
                 y = bounds.y + 22,
-                color = 0xFFB8C9DA.toInt(),
-                fontSize = 16
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = 0xFFB8C9DA.toInt())
             )
             val buttonRect = Rect(bounds.x + 6, bounds.y + 44, 120, 24)
             actionButtonRect = buttonRect
@@ -88,8 +96,8 @@ internal class SystemOverlayPanelDemoNode(
                 text = "Click me",
                 x = buttonRect.x + 8,
                 y = buttonRect.y + 4,
-                color = 0xFFFFFFFF.toInt(),
-                fontSize = 16
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = 0xFFFFFFFF.toInt())
             )
             commandBuffer += RenderCommand.DrawImage(
                 resource = "minecraft:textures/gui/options_background.png",
@@ -102,8 +110,8 @@ internal class SystemOverlayPanelDemoNode(
                 text = "Drag the title bar to move.",
                 x = bounds.x + 6,
                 y = bounds.y + 78,
-                color = 0xFFB8C9DA.toInt(),
-                fontSize = 16
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = 0xFFB8C9DA.toInt())
             )
             if (SystemOverlayCommandDslRenderer.rebuildInto(this, commandBuffer, "system-panel-panel-demo-body")) {
                 renderCommandsRevision += 1L

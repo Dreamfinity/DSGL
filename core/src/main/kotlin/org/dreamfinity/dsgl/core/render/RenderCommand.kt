@@ -3,6 +3,75 @@ package org.dreamfinity.dsgl.core.render
 import org.dreamfinity.dsgl.core.ItemStackRef
 import org.dreamfinity.dsgl.core.style.TextFormatting
 
+enum class TextRenderMode {
+    Auto,
+    Mtsdf2D,
+    Raster2D
+}
+
+enum class TextWeight {
+    Normal,
+    Bold
+}
+
+data class TextDecorations(
+    val underline: Boolean = false,
+    val strikethrough: Boolean = false
+) {
+    companion object {
+        val None = TextDecorations()
+    }
+}
+
+data class TextRenderStyle(
+    val color: Int,
+    val weight: TextWeight = TextWeight.Normal,
+    val italic: Boolean = false,
+    val decorations: TextDecorations = TextDecorations.None,
+    val obfuscated: Boolean = false
+)
+
+data class TextStyleOverride(
+    val color: Int? = null,
+    val weight: TextWeight? = null,
+    val italic: Boolean? = null,
+    val decorations: TextDecorations? = null,
+    val obfuscated: Boolean? = null
+)
+
+data class TextStyleSpan(
+    val start: Int,
+    val end: Int,
+    val style: TextStyleOverride
+)
+
+data class TextRenderMetrics(
+    val fontSizePx: Int,
+    val lineHeightPx: Int,
+    val nativeLineHeightPx: Int,
+    val ascenderPx: Float,
+    val descenderPx: Float,
+    val topLeadingPx: Float,
+    val bottomLeadingPx: Float
+)
+
+enum class TextBackendKind {
+    Mtsdf2D,
+    Raster2D
+}
+
+data class TextBackendSelectionInput(
+    val requestedMode: TextRenderMode,
+    val fontId: String?,
+    val metrics: TextRenderMetrics,
+    val deviceScale: Float
+)
+
+data class TextBackendSelection(
+    val backend: TextBackendKind,
+    val effectivePixelSize: Float
+)
+
 /**
  * Platform-agnostic render commands emitted by the UI tree.
  */
@@ -60,16 +129,12 @@ sealed class RenderCommand {
         val text: String,
         val x: Int,
         val y: Int,
-        val color: Int,
         val fontId: String? = null,
-        val fontSize: Int? = null,
         val textFormatting: TextFormatting = TextFormatting.None,
-        val bold: Boolean = false,
-        val italic: Boolean = false,
-        val underline: Boolean = false,
-        val strikethrough: Boolean = false,
-        val obfuscated: Boolean = false,
-        val textStyleSpans: List<TextStyleSpan> = emptyList(),
+        val renderMode: TextRenderMode = TextRenderMode.Auto,
+        val metrics: TextRenderMetrics,
+        val baseStyle: TextRenderStyle,
+        val styleSpans: List<TextStyleSpan> = emptyList(),
         val sourceKey: String? = null
     ) : RenderCommand() {
         /**
@@ -81,31 +146,16 @@ sealed class RenderCommand {
                 text = text,
                 x = x,
                 y = y,
-                color = newColor,
                 fontId = fontId,
-                fontSize = fontSize,
                 textFormatting = textFormatting,
-                bold = bold,
-                italic = italic,
-                underline = underline,
-                strikethrough = strikethrough,
-                obfuscated = obfuscated,
-                textStyleSpans = textStyleSpans,
+                renderMode = renderMode,
+                metrics = metrics,
+                baseStyle = baseStyle.copy(color = newColor),
+                styleSpans = styleSpans,
                 sourceKey = sourceKey
             )
         }
     }
-
-    data class TextStyleSpan(
-        val start: Int,
-        val end: Int,
-        val color: Int,
-        val bold: Boolean,
-        val italic: Boolean,
-        val underline: Boolean,
-        val strikethrough: Boolean,
-        val obfuscated: Boolean
-    )
 
     /** Image draw command. */
     data class DrawImage(

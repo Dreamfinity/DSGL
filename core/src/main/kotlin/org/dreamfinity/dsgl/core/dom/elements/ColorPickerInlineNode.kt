@@ -127,11 +127,13 @@ class ColorPickerInlineNode(
     fun wantsGlobalPointerInput(): Boolean = controller.isEyedropperActive()
 
     fun appendEyedropperOverlayCommands(
+        ctx: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
         out: MutableList<RenderCommand>
     ) {
         controller.appendEyedropperOverlay(
+            ctx = ctx,
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out
@@ -181,7 +183,7 @@ class ColorPickerInlineNode(
         syncControllerStateIfNeeded()
         refreshLayout()
         val currentLayout = layout ?: return
-        controller.appendCommands(currentLayout, out)
+        controller.appendCommands(ctx, currentLayout, out)
         addBorderCommands(out)
     }
 

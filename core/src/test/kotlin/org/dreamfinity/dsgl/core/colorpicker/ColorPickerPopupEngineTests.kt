@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
@@ -16,6 +17,12 @@ import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class ColorPickerPopupEngineTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
+
     @Test
     fun `outside click does not close popup by default`() {
         val engine = ColorPickerPopupEngine()
@@ -435,7 +442,7 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
 
         val overlay = mutableListOf<RenderCommand>()
-        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+        engine.appendEyedropperOverlayCommands(ctx, 900, 700, overlay)
 
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.Application, engine.debugActiveOwnerScope())
@@ -460,7 +467,7 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
 
         val overlay = mutableListOf<RenderCommand>()
-        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+        engine.appendEyedropperOverlayCommands(ctx, 900, 700, overlay)
 
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.System, engine.debugActiveOwnerScope())
@@ -554,7 +561,7 @@ class ColorPickerPopupEngineTests {
         engine.onFrame(900, 700)
 
         val out = ArrayList<RenderCommand>()
-        engine.appendOverlayCommands(out)
+        engine.appendOverlayCommands(ctx, out)
 
         assertTrue(out.isNotEmpty())
         assertTrue(out.any { it is RenderCommand.DrawText && it.text == "Popup Test" })
@@ -713,5 +720,3 @@ class ColorPickerPopupEngineTests {
         override fun isOpen(): Boolean = false
     }
 }
-
-

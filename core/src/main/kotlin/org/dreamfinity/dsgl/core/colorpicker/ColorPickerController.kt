@@ -1,11 +1,16 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderMetrics
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 import kotlin.math.roundToInt
 
 data class ColorPickerInputSlot(
@@ -366,16 +371,18 @@ class ColorPickerController(
     }
 
     fun appendCommands(
+        ctx: UiMeasureContext,
         layout: ColorPickerLayout,
         out: MutableList<RenderCommand>,
         nowMs: Long = System.currentTimeMillis()
     ) {
+        val textMetrics = textRenderMetrics(ctx)
         val bounds = layout.bounds
         out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, style.panelBackgroundColor)
         drawBorder(out, bounds, style.panelBorderColor)
 
-        drawModeSelect(layout, out)
-        drawRgbOrderSwitch(layout, out)
+        drawModeSelect(layout, out, textMetrics)
+        drawRgbOrderSwitch(layout, out, textMetrics)
 
         drawColorField(layout.colorFieldRect, out)
         drawFieldThumb(layout.colorFieldRect, out)
@@ -388,10 +395,10 @@ class ColorPickerController(
 
         drawSwatch(layout.previousSwatchRect, state.previous, out)
         drawSwatch(layout.currentSwatchRect, state.color, out)
-        drawButton(layout.copyRect, "Copy", layout.copyRect.contains(hoverX, hoverY), out)
-        drawButton(layout.pasteRect, "Paste", layout.pasteRect.contains(hoverX, hoverY), out)
+        drawButton(layout.copyRect, "Copy", layout.copyRect.contains(hoverX, hoverY), out, textMetrics)
+        drawButton(layout.pasteRect, "Paste", layout.pasteRect.contains(hoverX, hoverY), out, textMetrics)
         val pipetteLabel = if (eyedropperActive) "Pick..." else "Pipette"
-        drawButton(layout.pipetteRect, pipetteLabel, layout.pipetteRect.contains(hoverX, hoverY), out)
+        drawButton(layout.pipetteRect, pipetteLabel, layout.pipetteRect.contains(hoverX, hoverY), out, textMetrics)
 
         val inputValues = inputValues()
         layout.inputSlots.forEach { slot ->
@@ -406,8 +413,8 @@ class ColorPickerController(
                 text = slot.label,
                 x = slot.labelRect.x + 2,
                 y = slot.labelRect.y + 2,
-                color = style.mutedTextColor,
-                fontSize = style.fontSize
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = style.mutedTextColor)
             )
             out += RenderCommand.DrawRect(
                 slot.inputRect.x,
@@ -422,8 +429,8 @@ class ColorPickerController(
                 text = truncate(value, 12),
                 x = slot.inputRect.x + 4,
                 y = slot.inputRect.y + 2,
-                color = style.textColor,
-                fontSize = style.fontSize
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = style.textColor)
             )
         }
 
@@ -441,16 +448,18 @@ class ColorPickerController(
                 drawBorder(out, rect, style.inputActiveBorderColor)
             }
         }
-        drawModeOptions(layout, out)
+        drawModeOptions(layout, out, textMetrics)
     }
 
     fun appendEyedropperOverlay(
+        ctx: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
         out: MutableList<RenderCommand>
     ) {
         if (!eyedropperActive) return
         if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return
+        val textMetrics = textRenderMetrics(ctx)
 
         val gridSize = normalizedEyedropperGridSize()
         val cell = style.eyedropperCellSize.coerceAtLeast(2)
@@ -539,15 +548,15 @@ class ColorPickerController(
             text = modeText,
             x = swatchRect.x + swatchRect.width + 8,
             y = tooltipY + 6,
-            color = style.mutedTextColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.mutedTextColor)
         )
         out += RenderCommand.DrawText(
             text = valueText,
             x = swatchRect.x + swatchRect.width + 8,
             y = tooltipY + 6 + style.fontSize,
-            color = style.textColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.textColor)
         )
     }
 
@@ -1100,7 +1109,11 @@ class ColorPickerController(
         onCommit?.invoke(state.color)
     }
 
-    private fun drawModeSelect(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
+    private fun drawModeSelect(
+        layout: ColorPickerLayout,
+        out: MutableList<RenderCommand>,
+        textMetrics: TextRenderMetrics
+    ) {
         val rect = layout.modeSelectRect
         val hovered = rect.contains(hoverX, hoverY)
         val fill = if (hovered || modeDropdownOpen) style.buttonHoverColor else style.buttonBackgroundColor
@@ -1110,19 +1123,23 @@ class ColorPickerController(
             text = state.mode.name,
             x = rect.x + 6,
             y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.textColor)
         )
         out += RenderCommand.DrawText(
             text = if (modeDropdownOpen) "^" else "v",
             x = rect.x + rect.width - 12,
             y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.textColor)
         )
     }
 
-    private fun drawRgbOrderSwitch(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
+    private fun drawRgbOrderSwitch(
+        layout: ColorPickerLayout,
+        out: MutableList<RenderCommand>,
+        textMetrics: TextRenderMetrics
+    ) {
         val rgbaRect = layout.rgbaOrderRect ?: return
         val argbRect = layout.argbOrderRect ?: return
         drawOrderLabel(
@@ -1130,14 +1147,16 @@ class ColorPickerController(
             label = "RGBA",
             active = state.rgbOrder == RgbChannelOrder.RGBA,
             hovered = rgbaRect.contains(hoverX, hoverY),
-            out = out
+            out = out,
+            textMetrics = textMetrics
         )
         drawOrderLabel(
             rect = argbRect,
             label = "ARGB",
             active = state.rgbOrder == RgbChannelOrder.ARGB,
             hovered = argbRect.contains(hoverX, hoverY),
-            out = out
+            out = out,
+            textMetrics = textMetrics
         )
     }
 
@@ -1146,7 +1165,8 @@ class ColorPickerController(
         label: String,
         active: Boolean,
         hovered: Boolean,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
+        textMetrics: TextRenderMetrics
     ) {
         val fill = when {
             active -> style.buttonActiveColor
@@ -1159,12 +1179,16 @@ class ColorPickerController(
             text = label,
             x = rect.x + 6,
             y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.textColor)
         )
     }
 
-    private fun drawModeOptions(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
+    private fun drawModeOptions(
+        layout: ColorPickerLayout,
+        out: MutableList<RenderCommand>,
+        textMetrics: TextRenderMetrics
+    ) {
         val popupRect = layout.modeOptionsRect ?: return
         out += RenderCommand.DrawRect(popupRect.x, popupRect.y, popupRect.width, popupRect.height, style.inputBackgroundColor)
         drawBorder(out, popupRect, style.inputActiveBorderColor)
@@ -1184,13 +1208,19 @@ class ColorPickerController(
                 text = option.mode.name,
                 x = option.rect.x + 6,
                 y = option.rect.y + 2,
-                color = style.textColor,
-                fontSize = style.fontSize
+                metrics = textMetrics,
+                baseStyle = TextRenderStyle(color = style.textColor)
             )
         }
     }
 
-    private fun drawButton(rect: Rect, label: String, hovered: Boolean, out: MutableList<RenderCommand>) {
+    private fun drawButton(
+        rect: Rect,
+        label: String,
+        hovered: Boolean,
+        out: MutableList<RenderCommand>,
+        textMetrics: TextRenderMetrics
+    ) {
         out += RenderCommand.DrawRect(
             rect.x,
             rect.y,
@@ -1203,8 +1233,16 @@ class ColorPickerController(
             text = label,
             x = rect.x + 4,
             y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = style.textColor)
+        )
+    }
+
+    private fun textRenderMetrics(ctx: UiMeasureContext): TextRenderMetrics {
+        return TextMetricsResolver.resolve(
+            ctx = ctx,
+            fontId = null,
+            fontSizePx = FontRegistry.resolveFontSize(style.fontSize)
         )
     }
 
@@ -1339,4 +1377,3 @@ class ColorPickerController(
         val label: String
     )
 }
-

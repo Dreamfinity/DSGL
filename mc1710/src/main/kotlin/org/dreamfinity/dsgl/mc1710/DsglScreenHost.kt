@@ -328,7 +328,7 @@ abstract class DsglScreenHost(
                 lastHeight,
                 applicationOverlayCommandsBuffer
             )
-            ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
+            ColorPickerRuntime.engine.appendOverlayCommands(adapter, applicationOverlayCommandsBuffer)
             appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
         }
         OverlayLayerContracts.composePaintCommands(
@@ -1070,6 +1070,7 @@ abstract class DsglScreenHost(
             val inline = activeInlineColorSamplerNode ?: return
             if (!inline.wantsGlobalPointerInput()) return
             inline.appendEyedropperOverlayCommands(
+                ctx = adapter,
                 viewportWidth = lastWidth.coerceAtLeast(1),
                 viewportHeight = lastHeight.coerceAtLeast(1),
                 out = out

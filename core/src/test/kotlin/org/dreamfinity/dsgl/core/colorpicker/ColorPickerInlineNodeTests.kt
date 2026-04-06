@@ -293,6 +293,7 @@ class ColorPickerInlineNodeTests {
     private fun buildGlobalEyedropperCommands(picker: ColorPickerInlineNode): List<RenderCommand> {
         val out = ArrayList<RenderCommand>()
         picker.appendEyedropperOverlayCommands(
+            ctx = ctx,
             viewportWidth = 1920,
             viewportHeight = 1080,
             out = out

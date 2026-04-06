@@ -175,7 +175,7 @@ class ContextMenuEngineTests {
 
         val textCommand = commands.filterIsInstance<RenderCommand.DrawText>().firstOrNull()
         assertNotNull(textCommand)
-        assertEquals(24, textCommand.fontSize)
+        assertEquals(24, textCommand.metrics.fontSizePx)
     }
 
     private fun requireEntryRect(engine: ContextMenuEngine, level: Int, index: Int): Rect {

@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
@@ -8,6 +9,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ColorPickerControllerTests {
+    private val ctx = object : UiMeasureContext {
+        override val fontHeight: Int = 9
+        override fun measureText(text: String): Int = text.length * 6
+        override fun paint(commands: List<RenderCommand>) = Unit
+    }
+
     @Test
     fun `mode switch keeps selected color`() {
         val initial = RgbaColor(0.25f, 0.5f, 0.75f, 0.6f)
@@ -137,7 +144,7 @@ class ColorPickerControllerTests {
         controller.handleMouseMove(120, 160, layout)
         controller.sampleEyedropperAtHover()
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(800, 600, out)
+        controller.appendEyedropperOverlay(ctx, 800, 600, out)
 
         val textCommands = out.filterIsInstance<RenderCommand.DrawText>()
         assertTrue(textCommands.any { it.text.contains("Mode: RGB (ARGB)") })
@@ -166,7 +173,7 @@ class ColorPickerControllerTests {
         controller.handleMouseMove(80, 90, layout)
         controller.sampleEyedropperAtHover()
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperOverlay(ctx, 640, 480, out)
 
         assertEquals(0, sampler.areaCalls)
         assertTrue(sampler.colorCalls > 0)
@@ -187,7 +194,7 @@ class ColorPickerControllerTests {
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperOverlay(ctx, 640, 480, out)
 
         assertTrue(out.any { it is RenderCommand.CaptureScreenRegion })
         assertTrue(out.any { it is RenderCommand.DrawCapturedScreenRegion })
@@ -215,7 +222,7 @@ class ColorPickerControllerTests {
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperOverlay(ctx, 640, 480, out)
 
         val magnifier = out.filterIsInstance<RenderCommand.DrawCapturedScreenRegion>().single()
         val gridLines = out.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }
@@ -258,7 +265,7 @@ class ColorPickerControllerTests {
         )
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
         val out = ArrayList<RenderCommand>()
-        controller.appendCommands(layout, out)
+        controller.appendCommands(ctx, layout, out)
 
         assertTrue(out.any { it is RenderCommand.DrawColorField })
         assertTrue(out.any { it is RenderCommand.DrawHueBar })
@@ -282,7 +289,7 @@ class ColorPickerControllerTests {
         )
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
         val out = ArrayList<RenderCommand>()
-        controller.appendCommands(layout, out)
+        controller.appendCommands(ctx, layout, out)
 
         assertTrue(out.any { it is RenderCommand.DrawCheckerboard })
         assertTrue(out.none { command ->
@@ -313,4 +320,3 @@ class ColorPickerControllerTests {
         return kotlin.math.abs(a - b) <= 0.01f
     }
 }
-

@@ -8,7 +8,10 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 class SelectEngine(
     private val clock: SelectClock = SystemSelectClock,
@@ -210,6 +213,11 @@ class SelectEngine(
         val fontId = current.fontId ?: style.fontId
         val fontSize = current.fontSize ?: style.fontSize
         val fontHeight = measureContext.fontHeight(fontId, fontSize)
+        val textMetrics = TextMetricsResolver.resolve(
+            ctx = measureContext,
+            fontId = fontId,
+            fontSizePx = FontRegistry.resolveFontSize(fontSize)
+        )
 
         out += RenderCommand.PushClip(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1))
         if (progress < 0.999f) {
@@ -293,9 +301,9 @@ class SelectEngine(
                             text = style.checkGlyph,
                             x = markerX,
                             y = textY,
-                            color = style.markerColor,
                             fontId = fontId,
-                            fontSize = fontSize
+                            metrics = textMetrics,
+                            baseStyle = TextRenderStyle(color = style.markerColor)
                         )
                     }
                     val labelX = markerX +
@@ -307,9 +315,9 @@ class SelectEngine(
                         text = snapshot.label,
                         x = labelX,
                         y = textY,
-                        color = color,
                         fontId = fontId,
-                        fontSize = fontSize
+                        metrics = textMetrics,
+                        baseStyle = TextRenderStyle(color = color)
                     )
                 } else if (snapshot.kind == SelectMeasurementCache.KIND_GROUP) {
                     val labelX = rowRect.x + style.rowPaddingX + snapshot.depth * style.groupIndentX
@@ -317,9 +325,9 @@ class SelectEngine(
                         text = snapshot.label,
                         x = labelX,
                         y = textY,
-                        color = style.groupTextColor,
                         fontId = fontId,
-                        fontSize = fontSize
+                        metrics = textMetrics,
+                        baseStyle = TextRenderStyle(color = style.groupTextColor)
                     )
                 }
             }

@@ -1277,8 +1277,8 @@ class SystemOverlayInspectorNativeEntryTests {
             .filter { it.text.startsWith("Inspector") }
 
         assertTrue(headerTexts.isNotEmpty())
-        assertTrue(headerTexts.none { it.color == 0xFF00FF00.toInt() })
-        assertTrue(headerTexts.any { it.color == 0xFFE6EDF6.toInt() })
+        assertTrue(headerTexts.none { it.baseStyle.color == 0xFF00FF00.toInt() })
+        assertTrue(headerTexts.any { it.baseStyle.color == 0xFFE6EDF6.toInt() })
     }
 
     private fun inspectedRoot(): ContainerNode {
@@ -1583,7 +1583,3 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
     }
 }
-
-
-
-

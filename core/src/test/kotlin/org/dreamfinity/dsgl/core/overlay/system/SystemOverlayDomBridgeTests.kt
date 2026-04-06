@@ -12,10 +12,13 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 class SystemOverlayDomBridgeTests {
     private val ctx = object : UiMeasureContext {
@@ -29,7 +32,7 @@ class SystemOverlayDomBridgeTests {
         val host = ContainerNode(stackLayout = true, key = "host")
         val commands = listOf(
             RenderCommand.DrawRect(10, 12, 30, 14, 0xFF112233.toInt()),
-            RenderCommand.DrawText("Hello", 18, 20, 0xFFEEDDCC.toInt())
+            drawText("Hello", 18, 20, 0xFFEEDDCC.toInt())
         )
 
         SystemOverlayCommandDslRenderer.rebuildInto(host, commands, "test")
@@ -43,11 +46,11 @@ class SystemOverlayDomBridgeTests {
         val host = ContainerNode(stackLayout = true, key = "host")
         val first = listOf(
             RenderCommand.DrawRect(2, 4, 12, 10, 0xFF223344.toInt()),
-            RenderCommand.DrawText("A", 6, 7, 0xFFFFFFFF.toInt())
+            drawText("A", 6, 7, 0xFFFFFFFF.toInt())
         )
         val second = listOf(
             RenderCommand.DrawRect(2, 4, 12, 10, 0xFF556677.toInt()),
-            RenderCommand.DrawText("B", 6, 7, 0xFFFFFFFF.toInt())
+            drawText("B", 6, 7, 0xFFFFFFFF.toInt())
         )
 
         SystemOverlayCommandDslRenderer.rebuildInto(host, first, "reuse")
@@ -151,8 +154,21 @@ class SystemOverlayDomBridgeTests {
         overlay.render(ctx, 0, 0, 420, 280)
         assertTrue(overlay.children.isEmpty())
     }
-}
 
+    private fun drawText(text: String, x: Int, y: Int, color: Int): RenderCommand.DrawText {
+        return RenderCommand.DrawText(
+            text = text,
+            x = x,
+            y = y,
+            metrics = TextMetricsResolver.resolve(
+                ctx = ctx,
+                fontId = null,
+                fontSizePx = FontRegistry.resolveFontSize(null)
+            ),
+            baseStyle = TextRenderStyle(color = color)
+        )
+    }
+}
 
 
 

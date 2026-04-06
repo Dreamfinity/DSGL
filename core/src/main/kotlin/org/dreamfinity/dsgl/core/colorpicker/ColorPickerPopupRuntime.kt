@@ -1,11 +1,15 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 interface ColorPickerPopupHost {
     fun open(request: ColorPickerPopupRequest)
@@ -263,9 +267,14 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return popup?.controller?.isEyedropperActive() == true
     }
 
-    fun appendOverlayCommands(out: MutableList<RenderCommand>) {
+    fun appendOverlayCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val current = popup ?: return
         refreshLayout(current)
+        val textMetrics = TextMetricsResolver.resolve(
+            ctx = ctx,
+            fontId = null,
+            fontSizePx = FontRegistry.resolveFontSize(current.request.style.fontSize)
+        )
         val panel = current.panelRect
         out += RenderCommand.PushClip(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1))
         out += RenderCommand.DrawRect(panel.x + 2, panel.y + 2, panel.width, panel.height, current.request.style.panelShadowColor)
@@ -284,8 +293,8 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             text = current.request.title,
             x = current.headerRect.x + 6,
             y = current.headerRect.y + 3,
-            color = current.request.style.textColor,
-            fontSize = current.request.style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = current.request.style.textColor)
         )
         out += RenderCommand.DrawRect(
             current.closeRect.x,
@@ -299,14 +308,15 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             text = "x",
             x = current.closeRect.x + 5,
             y = current.closeRect.y + 2,
-            color = current.request.style.textColor,
-            fontSize = current.request.style.fontSize
+            metrics = textMetrics,
+            baseStyle = TextRenderStyle(color = current.request.style.textColor)
         )
 
         out += RenderCommand.PushClip(current.bodyRect.x, current.bodyRect.y, current.bodyRect.width, current.bodyRect.height)
-        appendOverlayBodyCommands(out)
+        appendOverlayBodyCommands(ctx, out)
         out += RenderCommand.PopClip
         appendEyedropperOverlayCommands(
+            ctx = ctx,
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out
@@ -314,18 +324,20 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         out += RenderCommand.PopClip
     }
 
-    internal fun appendOverlayBodyCommands(out: MutableList<RenderCommand>) {
+    internal fun appendOverlayBodyCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val current = popup ?: return
-        current.controller.appendCommands(current.layout, out)
+        current.controller.appendCommands(ctx, current.layout, out)
     }
 
     internal fun appendEyedropperOverlayCommands(
+        ctx: UiMeasureContext,
         viewportWidth: Int = this.viewportWidth.coerceAtLeast(1),
         viewportHeight: Int = this.viewportHeight.coerceAtLeast(1),
         out: MutableList<RenderCommand>
     ) {
         val current = popup ?: return
         current.controller.appendEyedropperOverlay(
+            ctx = ctx,
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out
@@ -517,4 +529,3 @@ object ColorPickerRuntime {
     val engine: ColorPickerPopupEngine = ColorPickerPopupEngine()
     val host: ColorPickerPopupHost = engine
 }
-

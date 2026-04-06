@@ -3,6 +3,11 @@
 import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
 import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextDecorations
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
+import org.dreamfinity.dsgl.core.render.TextStyleOverride
+import org.dreamfinity.dsgl.core.render.TextStyleSpan
+import org.dreamfinity.dsgl.core.render.TextWeight
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.text.*
 import org.lwjgl.BufferUtils
@@ -13,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 private data class PreparedText(
     val text: String,
-    val styleSpans: List<RenderCommand.TextStyleSpan>
+    val styleSpans: List<TextStyleSpan>
 )
 
 private data class LayoutCacheKey(
@@ -202,7 +207,7 @@ internal class MsdfTextRenderer {
             ?.takeIf { it.descriptor.fontId != primaryFont.descriptor.fontId }
         val missingGlyphFont = FontRegistry.get(FontRegistry.FALLBACK_FONT_ID)
             ?: FontRegistry.get(FontRegistry.DEFAULT_FONT_ID)
-        val fontSize = FontRegistry.resolveFontSize(command.fontSize)
+        val fontSize = command.metrics.fontSizePx.coerceAtLeast(1)
         val prepared = prepareText(command)
         val layoutEntry = getOrBuildLayoutCacheEntry(
             command = command,
@@ -223,7 +228,7 @@ internal class MsdfTextRenderer {
 
         try {
             val primaryScalePx = TextDecorationLayout.scalePx(fontSize, primaryFont.meta.metrics.emSize)
-            val lineHeight = primaryFont.meta.lineHeightPx(fontSize).toFloat().coerceAtLeast(1f)
+            val lineHeight = command.metrics.lineHeightPx.toFloat().coerceAtLeast(1f)
             val fontDecorationMetrics = DecorationFontMetrics(
                 emSize = primaryFont.meta.metrics.emSize,
                 lineHeightEm = primaryFont.meta.metrics.lineHeight,
@@ -248,8 +253,8 @@ internal class MsdfTextRenderer {
             var glBegun = false
             var currentDrawColor: Int = Int.MIN_VALUE
             var activeResolvedSpanIndex = Int.MIN_VALUE
-            var activeStyleColor = withOpacity(command.color, opacityMultiplier)
-            var activeStyleFlags = baseFlagsMask(command)
+            var activeStyleColor = withOpacity(command.baseStyle.color, opacityMultiplier)
+            var activeStyleFlags = baseFlagsMask(command.baseStyle)
 
             fun beginForFont(font: LoadedMsdfFont): FontTextureHandle? {
                 if (activeFontId == font.descriptor.fontId && activeTexture != null && glBegun) {
@@ -275,11 +280,7 @@ internal class MsdfTextRenderer {
 
             try {
                 layoutEntry.lines.forEach { line ->
-                    val baselineY = TextDecorationLayout.baselineY(
-                        lineTopY = lineTop,
-                        ascenderEm = primaryFont.meta.metrics.ascender,
-                        scalePx = primaryScalePx
-                    )
+                    val baselineY = lineTop + command.metrics.ascenderPx
                     val shaped = line.shaped
                     val lineRecord = TextVisualLine(
                         lineIndex = lineIndex,
@@ -318,18 +319,18 @@ internal class MsdfTextRenderer {
                         if (resolvedSpanIndex != activeResolvedSpanIndex) {
                             activeResolvedSpanIndex = resolvedSpanIndex
                             if (resolvedSpanIndex >= 0) {
-                                val span = prepared.styleSpans[resolvedSpanIndex]
+                                val span = resolvedStyle(command.baseStyle, prepared.styleSpans[resolvedSpanIndex].style)
                                 activeStyleColor = withOpacity(span.color, opacityMultiplier)
                                 activeStyleFlags = flagsMask(
-                                    bold = span.bold,
+                                    bold = span.weight == TextWeight.Bold,
                                     italic = span.italic,
-                                    underline = span.underline,
-                                    strikethrough = span.strikethrough,
+                                    underline = span.decorations.underline,
+                                    strikethrough = span.decorations.strikethrough,
                                     obfuscated = span.obfuscated
                                 )
                             } else {
-                                activeStyleColor = withOpacity(command.color, opacityMultiplier)
-                                activeStyleFlags = baseFlagsMask(command)
+                                activeStyleColor = withOpacity(command.baseStyle.color, opacityMultiplier)
+                                activeStyleFlags = baseFlagsMask(command.baseStyle)
                             }
                         }
 
@@ -529,38 +530,42 @@ internal class MsdfTextRenderer {
         if (command.textFormatting != TextFormatting.Minecraft) {
             return PreparedText(
                 text = command.text,
-                styleSpans = command.textStyleSpans
+                styleSpans = command.styleSpans
             )
         }
 
-        if (command.textStyleSpans.isNotEmpty()) {
+        if (command.styleSpans.isNotEmpty()) {
             return PreparedText(
                 text = command.text,
-                styleSpans = command.textStyleSpans
+                styleSpans = command.styleSpans
             )
         }
 
         val parsed = MinecraftFormattingParser.parse(command.text, TextFormatting.Minecraft)
         val spans = MinecraftFormattingParser.resolveStyleSpans(
             parsed = parsed,
-            baseColor = command.color,
+            baseColor = command.baseStyle.color,
             baseFlags = TextStyleFlags(
-                bold = command.bold,
-                italic = command.italic,
-                underline = command.underline,
-                strikethrough = command.strikethrough,
-                obfuscated = command.obfuscated
+                bold = command.baseStyle.weight == TextWeight.Bold,
+                italic = command.baseStyle.italic,
+                underline = command.baseStyle.decorations.underline,
+                strikethrough = command.baseStyle.decorations.strikethrough,
+                obfuscated = command.baseStyle.obfuscated
             )
         ).map { span ->
-            RenderCommand.TextStyleSpan(
+            TextStyleSpan(
                 start = span.start,
                 end = span.end,
-                color = span.color,
-                bold = span.flags.bold,
-                italic = span.flags.italic,
-                underline = span.flags.underline,
-                strikethrough = span.flags.strikethrough,
-                obfuscated = span.flags.obfuscated
+                style = TextStyleOverride(
+                    color = span.color,
+                    weight = if (span.flags.bold) TextWeight.Bold else TextWeight.Normal,
+                    italic = span.flags.italic,
+                    decorations = TextDecorations(
+                        underline = span.flags.underline,
+                        strikethrough = span.flags.strikethrough
+                    ),
+                    obfuscated = span.flags.obfuscated
+                )
             )
         }
         return PreparedText(
@@ -693,7 +698,7 @@ internal class MsdfTextRenderer {
             primaryFontId = primaryFont.descriptor.fontId,
             fontSize = fontSize,
             textFormatting = command.textFormatting,
-            baseFlagsMask = baseFlagsMask(command),
+            baseFlagsMask = baseFlagsMask(command.baseStyle),
             styleSpansHash = styleSpansFingerprint(prepared.styleSpans)
         )
         synchronized(layoutCache) {
@@ -784,13 +789,13 @@ internal class MsdfTextRenderer {
         }
     }
 
-    private fun baseFlagsMask(command: RenderCommand.DrawText): Int {
+    private fun baseFlagsMask(style: TextRenderStyle): Int {
         return flagsMask(
-            bold = command.bold,
-            italic = command.italic,
-            underline = command.underline,
-            strikethrough = command.strikethrough,
-            obfuscated = command.obfuscated
+            bold = style.weight == TextWeight.Bold,
+            italic = style.italic,
+            underline = style.decorations.underline,
+            strikethrough = style.decorations.strikethrough,
+            obfuscated = style.obfuscated
         )
     }
 
@@ -810,19 +815,41 @@ internal class MsdfTextRenderer {
         return mask
     }
 
-    private fun styleSpansFingerprint(spans: List<RenderCommand.TextStyleSpan>): Int {
+    private fun styleSpansFingerprint(spans: List<TextStyleSpan>): Int {
         if (spans.isEmpty()) return 0
         var hash = 1
         spans.forEach { span ->
             hash = 31 * hash + span.start
             hash = 31 * hash + span.end
-            hash = 31 * hash + if (span.bold) 1 else 0
-            hash = 31 * hash + if (span.italic) 1 else 0
-            hash = 31 * hash + if (span.underline) 1 else 0
-            hash = 31 * hash + if (span.strikethrough) 1 else 0
-            hash = 31 * hash + if (span.obfuscated) 1 else 0
+            hash = 31 * hash + (span.style.color ?: Int.MIN_VALUE)
+            hash = 31 * hash + when (span.style.weight) {
+                null -> 0
+                TextWeight.Normal -> 1
+                TextWeight.Bold -> 2
+            }
+            hash = 31 * hash + when (span.style.italic) {
+                null -> 0
+                false -> 1
+                true -> 2
+            }
+            hash = 31 * hash + (span.style.decorations?.hashCode() ?: 0)
+            hash = 31 * hash + when (span.style.obfuscated) {
+                null -> 0
+                false -> 1
+                true -> 2
+            }
         }
         return hash
+    }
+
+    private fun resolvedStyle(baseStyle: TextRenderStyle, override: TextStyleOverride): TextRenderStyle {
+        return TextRenderStyle(
+            color = override.color ?: baseStyle.color,
+            weight = override.weight ?: baseStyle.weight,
+            italic = override.italic ?: baseStyle.italic,
+            decorations = override.decorations ?: baseStyle.decorations,
+            obfuscated = override.obfuscated ?: baseStyle.obfuscated
+        )
     }
 
     private fun resolveObfuscatedGlyph(

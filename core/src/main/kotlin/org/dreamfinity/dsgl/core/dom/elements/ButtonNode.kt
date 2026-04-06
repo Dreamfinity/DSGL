@@ -11,6 +11,10 @@ import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextDecorations
+import org.dreamfinity.dsgl.core.render.TextStyleOverride
+import org.dreamfinity.dsgl.core.render.TextStyleSpan
+import org.dreamfinity.dsgl.core.render.TextWeight
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
 
@@ -131,15 +135,19 @@ class ButtonNode(
                 rangeStart = line.startIndex,
                 rangeEnd = line.endIndexExclusive
             ).map { span ->
-                RenderCommand.TextStyleSpan(
+                TextStyleSpan(
                     start = span.start,
                     end = span.end,
-                    color = span.color,
-                    bold = span.flags.bold,
-                    italic = span.flags.italic,
-                    underline = span.flags.underline,
-                    strikethrough = span.flags.strikethrough,
-                    obfuscated = span.flags.obfuscated
+                    style = TextStyleOverride(
+                        color = span.color,
+                        weight = if (span.flags.bold) TextWeight.Bold else TextWeight.Normal,
+                        italic = span.flags.italic,
+                        decorations = TextDecorations(
+                            underline = span.flags.underline,
+                            strikethrough = span.flags.strikethrough
+                        ),
+                        obfuscated = span.flags.obfuscated
+                    )
                 )
             }
             out.add(drawTextCommand(ctx, line.text, lineX, lineY, textColor, spans))

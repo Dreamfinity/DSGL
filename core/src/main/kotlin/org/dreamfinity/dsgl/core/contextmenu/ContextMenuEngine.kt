@@ -5,8 +5,11 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.render.TextRenderStyle
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.text.TextMetricsResolver
 
 class ContextMenuEngine(
     private val clock: ContextMenuClock = SystemContextMenuClock,
@@ -198,6 +201,11 @@ class ContextMenuEngine(
             out += RenderCommand.PushClip(clipX, clipY, clipW, clipH)
 
             val fontHeight = measureContext.fontHeight(fontId, fontSize)
+            val textMetrics = TextMetricsResolver.resolve(
+                ctx = measureContext,
+                fontId = fontId,
+                fontSizePx = FontRegistry.resolveFontSize(fontSize)
+            )
             measurement.snapshots.indices.forEach { index ->
                 val rowRect = entryRect(level, index) ?: return@forEach
                 if (rowRect.y + rowRect.height < clipY || rowRect.y > clipY + clipH) {
@@ -243,9 +251,9 @@ class ContextMenuEngine(
                         text = indicatorText,
                         x = indicatorX,
                         y = textY,
-                        color = indicatorColor,
                         fontId = fontId,
-                        fontSize = fontSize
+                        metrics = textMetrics,
+                        baseStyle = TextRenderStyle(color = indicatorColor)
                     )
                 }
 
@@ -253,9 +261,9 @@ class ContextMenuEngine(
                     text = snapshot.label,
                     x = labelX,
                     y = textY,
-                    color = textColor,
                     fontId = fontId,
-                    fontSize = fontSize
+                    metrics = textMetrics,
+                    baseStyle = TextRenderStyle(color = textColor)
                 )
 
                 val hintText = when {
@@ -276,9 +284,9 @@ class ContextMenuEngine(
                         text = hintText,
                         x = hintX,
                         y = textY,
-                        color = hintColor,
                         fontId = fontId,
-                        fontSize = fontSize
+                        metrics = textMetrics,
+                        baseStyle = TextRenderStyle(color = hintColor)
                     )
                 }
             }
@@ -770,4 +778,3 @@ class ContextMenuEngine(
         private const val PLACEMENT_SUBMENU: Int = 3
     }
 }
-
