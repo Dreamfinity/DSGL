@@ -101,7 +101,7 @@ abstract class DsglReleaseTask : DefaultTask() {
         return if (buildVersion == 0) {
             semanticVersion
         } else {
-            "$semanticVersion-build-$buildVersion"
+            "$semanticVersion-build-$buildVersion-SNAPSHOT"
         }
     }
 

@@ -1,12 +1,6 @@
-import org.gradle.api.JavaVersion
-import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
-import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
-import org.gradle.api.tasks.bundling.Jar
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.io.File
-import java.util.Properties
+import java.util.*
 
 repositories {
     maven(url = "https://cloudrep.veritaris.me/repos/")
@@ -60,7 +54,7 @@ fun computeEffectivePublishedVersion(properties: Properties): String {
     return if (buildVersion == 0) {
         moduleVersion
     } else {
-        "$moduleVersion-build-$buildVersion"
+        "$moduleVersion-build-$buildVersion-SNAPSHOT"
     }
 }
 
@@ -96,10 +90,8 @@ val dokkaJavadocJar = tasks.register<Jar>("dokkaJavadocJar") {
     archiveClassifier.set("javadoc")
 }
 
-if (publishEnabled) {
-    val publicationVersion = requireNotNull(effectivePublishedVersion) {
-        "Expected effective published version for publish-enabled module ${project.path}."
-    }
+fun configurePublishing(publicationVersion: String) {
+    val isSnapshotPublication = publicationVersion.endsWith("-SNAPSHOT")
     publishing {
         publications {
             create<MavenPublication>("mavenJava") {
@@ -114,29 +106,55 @@ if (publishEnabled) {
         repositories {
             mavenLocal()
 
-            maven {
-                name = "GitHubPackages"
+            fun configureGitHubPackagesRepository() {
+                maven {
+                    name = "GitHubPackages"
 
-                val owner = providers.gradleProperty("gpr.owner").orNull
-                    ?: System.getenv("GITHUB_REPOSITORY_OWNER")
-                    ?: "developer"
+                    val owner = providers.gradleProperty("gpr.owner").orNull
+                        ?: System.getenv("GITHUB_REPOSITORY_OWNER")
+                        ?: "developer"
 
-                val repository = providers.gradleProperty("gpr.repo").orNull
-                    ?: System.getenv("GITHUB_REPOSITORY")?.substringAfter("/")
-                    ?: rootProject.name
+                    val repository = providers.gradleProperty("gpr.repo").orNull
+                        ?: System.getenv("GITHUB_REPOSITORY")?.substringAfter("/")
+                        ?: rootProject.name
 
-                url = uri("https://maven.pkg.github.com/${owner.lowercase()}/$repository")
+                    url = uri("https://maven.pkg.github.com/${owner.lowercase()}/$repository")
 
-                credentials {
-                    username = providers.gradleProperty("gpr.user").orNull
-                        ?: System.getenv("GITHUB_ACTOR")
-                    password = providers.gradleProperty("gpr.key").orNull
-                        ?: System.getenv("GITHUB_TOKEN")
+                    credentials {
+                        username = providers.gradleProperty("gpr.user").orNull
+                            ?: System.getenv("GITHUB_ACTOR")
+                        password = providers.gradleProperty("gpr.key").orNull
+                            ?: System.getenv("GITHUB_TOKEN")
+                    }
                 }
             }
+
+            fun configureDreamfinityNexusRepository() {
+                maven {
+                    name = "DreamfinityNexus"
+                    val releasesUrl = uri("https://nexus.dreamfinity.org/repository/maven-releases/")
+                    val snapshotsUrl = uri("https://nexus.dreamfinity.org/repository/maven-snapshots/")
+
+                    url = if (isSnapshotPublication) snapshotsUrl else releasesUrl
+
+                    credentials {
+                        username = providers.gradleProperty("nexus.user").orNull
+                            ?: System.getenv("NEXUS_USERNAME")
+                        password = providers.gradleProperty("nexus.password").orNull
+                            ?: System.getenv("NEXUS_PASSWORD")
+                    }
+                }
+            }
+
+            if (!isSnapshotPublication) {
+                configureGitHubPackagesRepository()
+            }
+            configureDreamfinityNexusRepository()
         }
     }
-} else {
+}
+
+fun disablePublishingTasks() {
     tasks.withType<PublishToMavenLocal>().configureEach {
         enabled = false
     }
@@ -149,4 +167,13 @@ if (publishEnabled) {
     tasks.named("publishToMavenLocal") {
         enabled = false
     }
+}
+
+if (publishEnabled) {
+    val publicationVersion = requireNotNull(effectivePublishedVersion) {
+        "Expected effective published version for publish-enabled module ${project.path}."
+    }
+    configurePublishing(publicationVersion)
+} else {
+    disablePublishingTasks()
 }
