@@ -264,6 +264,7 @@ internal class MsdfTextRenderer {
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture.textureId)
                 ARBShaderObjects.glUniform1iARB(uniformAtlas, 0)
                 ARBShaderObjects.glUniform1fARB(uniformPxRange, font.meta.atlas.distanceRange)
+                ARBShaderObjects.glUniform2fARB(uniformAtlasSize, texture.width.toFloat(), texture.height.toFloat())
                 GL11.glBegin(GL11.GL_QUADS)
                 glBegun = true
                 activeFontId = font.descriptor.fontId
@@ -1038,6 +1039,7 @@ internal class MsdfTextRenderer {
             programId = loaded
             uniformAtlas = ARBShaderObjects.glGetUniformLocationARB(programId, "uAtlas")
             uniformPxRange = ARBShaderObjects.glGetUniformLocationARB(programId, "uPxRange")
+            uniformAtlasSize = ARBShaderObjects.glGetUniformLocationARB(programId, "uAtlasSizePx")
         }
         ARBShaderObjects.glUseProgramObjectARB(programId)
         return true
@@ -1170,18 +1172,38 @@ internal class MsdfTextRenderer {
             #version 120
             uniform sampler2D uAtlas;
             uniform float uPxRange;
+            uniform vec2 uAtlasSizePx;
+            
             varying vec2 vTexCoord;
             varying vec4 vColor;
-
-            float median(float a, float b, float c) {
+            
+            float median3(float a, float b, float c) {
                 return max(min(a, b), min(max(a, b), c));
             }
-
+            
+            float screenPxRange() {
+                vec2 unitRange = vec2(uPxRange) / uAtlasSizePx;
+                vec2 screenTexSize = vec2(1.0) / fwidth(vTexCoord);
+                return max(0.5 * dot(unitRange, screenTexSize), 1.0);
+            }
+            
             void main() {
-                vec4 sample = texture2D(uAtlas, vTexCoord);
-                float dist = max(median(sample.r, sample.g, sample.b), sample.a) - 0.5;
-                float w = 0.5 / max(uPxRange, 0.0001);
-                float alpha = smoothstep(-w, w, dist);
+                vec4 atlas = texture2D(uAtlas, vTexCoord);
+            
+                float sdMsdf = median3(atlas.r, atlas.g, atlas.b);
+                float sdSdf = atlas.a;
+            
+                float pxRange = screenPxRange();
+            
+                float msdfPxDist = pxRange * (sdMsdf - 0.5);
+                float sdfPxDist  = pxRange * (sdSdf  - 0.5);
+            
+                float alphaMsdf = clamp(msdfPxDist + 0.5, 0.0, 1.0);
+                float alphaSdf  = clamp(sdfPxDist  + 0.5, 0.0, 1.0);
+            
+                float smallTextMix = clamp((1.5 - pxRange) / 0.75, 0.0, 1.0);
+                float alpha = mix(alphaMsdf, alphaSdf, smallTextMix);
+            
                 gl_FragColor = vec4(vColor.rgb, vColor.a * alpha);
             }
         """
