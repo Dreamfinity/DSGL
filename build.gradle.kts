@@ -10,10 +10,11 @@ plugins {
     `java-library`
 }
 
-
 val fontsRootDir: File = rootProject.file("fonts")
 val msdfGeneratorBinary: File = rootProject.file("msdf-atlas-gen/build/bin/msdf-atlas-gen")
 val generatedPrecompiledFontsDir: File = project.file("precompiled_fonts")
+val glyphPxRange: Int by project
+val glyphSize: Int by project
 
 tasks.register("generateMsdfAtlases") {
     group = "assets"
@@ -60,15 +61,13 @@ tasks.register("generateMsdfAtlases") {
             val jsonOutArg = "precompiled_fonts/${base}-meta.json"
             val fontArg = "./fonts/$relative"
             val charsetFile = "./fonts/charset.txt"
-            val pxrange = 4
-            val size = 32
             val commonArgs = listOf(
                 msdfGeneratorBinary.absolutePath,
                 "-font", fontArg,
                 "-allglyphs",
                 "-type", "mtsdf",
-                "-size", "$size",
-                "-pxrange", "$pxrange",
+                "-size", "$glyphSize",
+                "-pxrange", "$glyphPxRange",
             )
             val pngArgs = commonArgs + listOf(
                 "-format", "png",
@@ -79,6 +78,7 @@ tasks.register("generateMsdfAtlases") {
                 "-imageout", rgbaAtlasOutArg,
                 "-json", jsonOutArg
             )
+            "msdf-atlas-gen/build/bin/msdf-atlas-gen -font './fonts/MinecraftDefault-Regular.ttf' -allglyphs -type mtsdf -size 32 -pxrange 6 -format png -imageout 'MinecraftDefault-Regular.ttf-mtsdf.png' -json 'MinecraftDefault-Regular.ttf-meta.json'"
 
             println("Generating png atlas for $fontArg")
             println("Command is: '${pngArgs.joinToString(" ")}'")
