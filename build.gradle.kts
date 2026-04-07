@@ -13,8 +13,8 @@ plugins {
 val fontsRootDir: File = rootProject.file("fonts")
 val msdfGeneratorBinary: File = rootProject.file("msdf-atlas-gen/build/bin/msdf-atlas-gen")
 val generatedPrecompiledFontsDir: File = project.file("precompiled_fonts")
-val glyphPxRange: Int by project
-val glyphSize: Int by project
+val glyphPxRange: String by project
+val glyphSize: String by project
 
 tasks.register("generateMsdfAtlases") {
     group = "assets"
