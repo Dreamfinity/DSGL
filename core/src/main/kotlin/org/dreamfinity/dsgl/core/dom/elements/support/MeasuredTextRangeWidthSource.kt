@@ -4,7 +4,6 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.text.ParsedTextSpan
 import org.dreamfinity.dsgl.core.text.TextFormattingFlags
 import org.dreamfinity.dsgl.core.text.TextStyleFlags
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
 
 internal class MeasuredTextRangeWidthSource(
     private val plainText: String,
@@ -29,8 +28,6 @@ internal class MeasuredTextRangeWidthSource(
     )
 
     private val rangeWidthCache: MutableMap<Long, Int> = HashMap()
-    private val hasBoldContribution: Boolean = baseFlags.bold || spans.any { it.flags.bold }
-
     val cacheKey: CacheKey = CacheKey(
         backendFingerprint = backendFingerprint(ctx, fontId, fontSizePx),
         fontId = fontId,
@@ -51,25 +48,13 @@ internal class MeasuredTextRangeWidthSource(
         if (safeEnd <= safeStart) return 0
         val key = packRange(safeStart, safeEnd)
         return rangeWidthCache.getOrPut(key) {
-            val baseWidth = ctx.measureTextRange(
+            ctx.measureTextRange(
                 text = plainText,
                 startIndex = safeStart,
                 endIndexExclusive = safeEnd,
                 fontId = fontId,
                 fontSize = fontSizePx
             )
-            if (!hasBoldContribution) {
-                baseWidth
-            } else {
-                val boldExtra = TextStyleMetrics.boldExtraPxForRangeInText(
-                    plainText = plainText,
-                    spans = spans,
-                    baseFlags = baseFlags,
-                    rangeStart = safeStart,
-                    rangeEnd = safeEnd
-                )
-                baseWidth + boldExtra
-            }
         }
     }
 

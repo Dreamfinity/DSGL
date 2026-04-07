@@ -1179,7 +1179,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                             try {
                                 textRenderer.draw(
                                     command = command,
-                                    opacityMultiplier = opacityMultiplier
+                                    opacityMultiplier = opacityMultiplier,
+                                    deviceScale = viewport.scale
                                 )
                             } catch (error: LinkageError) {
                                 logRateLimited(

@@ -200,7 +200,7 @@ object FontRegistry {
         val glyphIndexVectorBuildCalls: Long
     )
 
-    private val catalog: DefaultFontCatalog by lazy {
+    private val catalog: FontCatalog by lazy {
         DefaultFontCatalog(
             pathIdResolver = ::fontIdFromTtfPath,
             onCatalogChanged = { shaper.clearCaches() }

@@ -150,7 +150,7 @@ internal class DefaultFontCatalog(
     }
 
     @Synchronized
-    fun preloadRegisteredFonts(): Int {
+    override fun preloadRegisteredFonts(): Int {
         ensureDefaults()
         descriptors.keys.sortedBy { it.lowercase() }.forEach { fontId ->
             val descriptor = descriptors[fontId] ?: return@forEach

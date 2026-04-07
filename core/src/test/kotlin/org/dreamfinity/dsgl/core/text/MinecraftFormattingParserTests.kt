@@ -109,7 +109,7 @@ class MinecraftFormattingParserTests {
     }
 
     @Test
-    fun `bold advance extra is applied deterministically`() {
+    fun `synthetic bold advance extra is no longer added`() {
         val rawMeta = loadResource("fonts/ubuntu/Ubuntu-Regular-meta.json")
         val meta = MsdfFontMetaParser.parse(rawMeta)
         val parsed = MinecraftFormattingParser.parse("A\u00A7lB\u00A7rC", TextFormatting.Minecraft)
@@ -122,8 +122,8 @@ class MinecraftFormattingParserTests {
             spans = parsed.spans,
             baseFlags = TextStyleFlags.NONE
         )
-        assertEquals(BOLD_ADVANCE_EXTRA_PX, extra)
-        assertEquals(baseWidth + BOLD_ADVANCE_EXTRA_PX, baseWidth + extra)
+        assertEquals(0, extra)
+        assertEquals(baseWidth, baseWidth + extra)
     }
 
     @Test
@@ -221,4 +221,3 @@ class MinecraftFormattingParserTests {
         return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
     }
 }
-

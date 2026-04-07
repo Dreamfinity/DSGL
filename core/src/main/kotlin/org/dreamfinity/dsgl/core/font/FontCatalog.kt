@@ -26,6 +26,8 @@ internal interface FontCatalog {
         classLoader: ClassLoader = FontRegistry::class.java.classLoader
     ): FontPreloadSummary
 
+    fun preloadRegisteredFonts(): Int
+
     fun get(fontId: FontId?): LoadedMsdfFont?
 
     fun getExact(fontId: FontId): LoadedMsdfFont?

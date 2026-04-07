@@ -1955,13 +1955,7 @@ abstract class DOMNode(
         val metrics = resolveTextMetrics(ctx)
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
-        val base = ctx.measureText(plainText, fontId, metrics.fontSizePx)
-        val extraBold = TextStyleMetrics.boldExtraPxForRange(
-            plainText = plainText,
-            spans = parsed.spans,
-            baseFlags = baseTextStyleFlags()
-        )
-        return base + extraBold
+        return ctx.measureText(plainText, fontId, metrics.fontSizePx)
     }
 
     protected fun drawTextCommand(

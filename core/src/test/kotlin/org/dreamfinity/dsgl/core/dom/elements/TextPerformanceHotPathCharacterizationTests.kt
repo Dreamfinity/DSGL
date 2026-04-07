@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import java.awt.Font
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -257,6 +258,30 @@ class TextPerformanceHotPathCharacterizationTests {
             stats.finalLineTextSubstringCalls + stats.probeMeasureSubstringCalls + stats.temporarySegmentSubstringCalls,
             stats.substringSliceCalls
         )
+    }
+
+    @Test
+    fun `measured text range source does not inflate bold width synthetically`() {
+        val text = "Bold width"
+        val source = MeasuredTextRangeWidthSource(
+            plainText = text,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSizePx = 16,
+            baseFlags = TextStyleFlags(bold = true),
+            spans = emptyList(),
+            ctx = ctx
+        )
+
+        val measured = source.measureRange(0, text.length)
+        val shapedWidth = ctx.measureTextRange(
+            text = text,
+            startIndex = 0,
+            endIndexExclusive = text.length,
+            fontId = FontRegistry.FONT_MINECRAFT,
+            fontSize = 16
+        )
+
+        assertEquals(shapedWidth, measured)
     }
 
     @Test
