@@ -78,7 +78,6 @@ tasks.register("generateMsdfAtlases") {
                 "-imageout", rgbaAtlasOutArg,
                 "-json", jsonOutArg
             )
-            "msdf-atlas-gen/build/bin/msdf-atlas-gen -font './fonts/MinecraftDefault-Regular.ttf' -allglyphs -type mtsdf -size 32 -pxrange 6 -format png -imageout 'MinecraftDefault-Regular.ttf-mtsdf.png' -json 'MinecraftDefault-Regular.ttf-meta.json'"
 
             println("Generating png atlas for $fontArg")
             println("Command is: '${pngArgs.joinToString(" ")}'")
