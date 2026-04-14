@@ -1,6 +1,4 @@
-import org.gradle.kotlin.dsl.the
 import org.gradle.kotlin.dsl.withGroovyBuilder
-import org.gradle.api.tasks.SourceSetContainer
 
 repositories {
     gradlePluginPortal()
@@ -26,11 +24,8 @@ repositories {
 }
 
 plugins {
-    kotlin("jvm")
-    id("dsgl-core.conventions")
-    id("java")
+    id("dsgl-mc-adapter.conventions")
     id("forge")
-    id("maven-publish")
 }
 
 val gameVersion: String by project
@@ -45,24 +40,4 @@ extensions.getByName("minecraft").withGroovyBuilder {
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
-}
-
-val sourceSets = the<SourceSetContainer>()
-val devJar = tasks.register<Jar>("devJar") {
-    from(sourceSets["main"].output)
-    archiveClassifier.set("dev")
-}
-
-val devSourcesJar = tasks.register<Jar>("devSourcesJar") {
-    from(sourceSets["main"].allSource)
-    archiveClassifier.set("dev-sources")
-}
-
-publishing {
-    publications {
-        named<MavenPublication>("mavenJava") {
-            artifact(devJar)
-            artifact(devSourcesJar)
-        }
-    }
 }

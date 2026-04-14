@@ -239,15 +239,15 @@ val semVerRegex = Regex("""^(\d+)\.(\d+)\.(\d+)$""")
 val coreBumpConfig = BumpConfig(
     target = BumpTarget.CORE,
     projectPath = ":core",
-    versionFile = rootProject.file("gradle.properties"),
-    versionKey = "version",
+    versionFile = rootProject.file("core/gradle.properties"),
+    versionKey = "moduleVersion",
     publishTaskPath = ":core:publishToMavenLocal"
 )
 val mc1710BumpConfig = BumpConfig(
     target = BumpTarget.MC1710,
     projectPath = ":mc1710",
     versionFile = rootProject.file("mc1710/gradle.properties"),
-    versionKey = "version",
+    versionKey = "moduleVersion",
     syncedKeys = listOf("modVersion"),
     publishTaskPath = ":mc1710:publishToMavenLocal"
 )

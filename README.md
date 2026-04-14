@@ -1,4 +1,4 @@
-# Dreamfinity Superior GUI Library (DSGL)
+# Dreamfinity Simple GUI Library (DSGL)
 
 DSGL is a retained-mode UI DSL written in Kotlin. It renders a DOM-like tree into
 platform-specific render commands, with Minecraft 1.7.10 support provided by the

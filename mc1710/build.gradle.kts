@@ -1,5 +1,10 @@
 plugins {
     id("dsgl-mc1710.conventions")
+    id("dsgl-releaseable-module.conventions")
+}
+
+dsglRelease {
+    syncKeys.add("modVersion")
 }
 
 dependencies {

@@ -20,6 +20,7 @@ val rebuildTrace: String by project
 val perfDebug: String by project
 val dsglOverlayDebug: String by project
 val dsglOverlayControls: String by project
+val hotReloadAgentLibraryName: String? by project
 
 val baseModMetadataTokens = mapOf(
     "modId" to modId,
@@ -41,6 +42,24 @@ fun currentModVersion(): String {
 
 fun currentModMetadataTokens(): Map<String, String> {
     return baseModMetadataTokens + ("modVersion" to currentModVersion())
+}
+
+fun hotReloadAgentLibraryFile(): File {
+    val explicitLibraryName = hotReloadAgentLibraryName?.trim()?.takeIf { it.isNotEmpty() }
+    val osName = System.getProperty("os.name")?.lowercase()
+    val libraryName = explicitLibraryName ?: when {
+        osName == null -> throw GradleException(
+            "Unable to determine current operating system for DSGL hot-reload agent, and 'hotReloadAgentLibraryName' is not set."
+        )
+        osName.startsWith("windows") -> "dsgl_hot_reload_agent.dll"
+        osName.startsWith("linux") -> "libdsgl_hot_reload_agent.so"
+        osName.startsWith("mac") || osName.startsWith("darwin") -> "libdsgl_hot_reload_agent.dylib"
+        else -> throw GradleException(
+            "Unsupported operating system for DSGL hot-reload agent: $osName, and 'hotReloadAgentLibraryName' is not set."
+        )
+    }
+
+    return project.rootDir.resolve("dsgl-hot-reload-agent/target/release/$libraryName")
 }
 
 val generatedModMetadataDir: Provider<Directory> = layout.buildDirectory.dir("generated/sources/modMetadata/kotlin")
@@ -90,8 +109,7 @@ tasks {
         )
 
         if (hotReload.toBoolean()) {
-            jvmArgs =
-                jvmArgs + listOf("-agentpath:${project.rootDir}/dsgl-hot-reload-agent/target/debug/dsgl_hot_reload_agent.dll")
+            jvmArgs = jvmArgs + listOf("-agentpath:${hotReloadAgentLibraryFile().absolutePath}")
         }
 
         jvmArgs(jvmArgs)
