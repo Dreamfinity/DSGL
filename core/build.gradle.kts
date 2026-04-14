@@ -48,3 +48,18 @@ tasks.jacocoTestCoverageVerification {
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
 }
+
+tasks.processResources {
+    eachFile {
+        if (!path.startsWith("fonts/")) {
+            return@eachFile
+        }
+        val allowedFontArtifact =
+            path.endsWith(".ttf") ||
+            path.endsWith(".json") ||
+            path.endsWith(".rgba.deflate")
+        if (!allowedFontArtifact) {
+            exclude()
+        }
+    }
+}
