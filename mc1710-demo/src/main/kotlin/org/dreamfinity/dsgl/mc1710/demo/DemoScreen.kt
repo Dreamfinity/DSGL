@@ -13,4 +13,6 @@ class DemoScreen : DsglScreenHost(ShowcaseWindow()) {
             Minecraft.getMinecraft().displayGuiScreen(DemoScreen())
         }
     }
+
+    override fun doesGuiPauseGame() = false
 }
