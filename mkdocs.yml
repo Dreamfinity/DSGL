@@ -1,0 +1,60 @@
+site_name: DSGL documentation
+site_url: https://guides.dreamfinity.org
+docs_dir: docs
+site_author: <Georgii Imeshkenov aka @Veritaris, georgiiimeshkenov@gmail.com>
+
+nav:
+  - Main page: index.md
+
+plugins:
+  - search:
+      lang:
+        - ru
+        - en
+
+  - glightbox:
+
+theme:
+  name: material
+  custom_dir: theme
+
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+
+  language: ru
+
+  features:
+    - navigation.top
+    - navigation.path
+    - toc.integrate
+    - navigation.sections
+    - navigation.tabs
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: dreamfinity
+      accent: dreamfinity
+      toggle:
+        icon: material/brightness-7
+        name: Темная тема
+
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: dreamfinity
+      accent: dreamfinity
+      toggle:
+        icon: material/brightness-4
+        name: Светлая тема
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
