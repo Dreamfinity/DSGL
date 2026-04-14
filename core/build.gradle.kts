@@ -51,15 +51,32 @@ tasks.check {
 }
 
 tasks.processResources {
+    val allowedCoreFontBases = setOf(
+        "fonts/minecraft/MinecraftDefault-Regular",
+        "fonts/ubuntu/Ubuntu-Regular",
+        "fonts/noto/Noto_Sans/NotoSans-Regular",
+        "fonts/jetbrains_mono/JetBrainsMono-Regular",
+        "fonts/telegrafico/telegrafico"
+    )
+
     eachFile {
-        if (!path.startsWith("fonts/")) {
+        if (isDirectory || !path.startsWith("fonts/")) {
             return@eachFile
         }
-        val allowedFontArtifact =
+        val isAllowedFontArtifact =
             path.endsWith(".ttf") ||
-            path.endsWith(".json") ||
-            path.endsWith(".rgba.deflate")
-        if (!allowedFontArtifact) {
+                    path.endsWith(".json") ||
+                    path.endsWith(".rgba.deflate")
+        if (!isAllowedFontArtifact) {
+            exclude()
+            return@eachFile
+        }
+        val isAllowedCoreFontArtifact = allowedCoreFontBases.any { base ->
+            path == "$base.ttf" ||
+                    path == "$base-meta.json" ||
+                    path == "$base-mtsdf.rgba.deflate"
+        }
+        if (!isAllowedCoreFontArtifact) {
             exclude()
         }
     }
