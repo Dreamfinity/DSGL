@@ -1,23 +1,17 @@
 package org.dreamfinity.dsgl.core.colorpicker.internal
 
-import org.dreamfinity.dsgl.core.UiScope
-import org.dreamfinity.dsgl.core.colorpicker.ColorConversions
-import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
-import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
-import org.dreamfinity.dsgl.core.colorpicker.RgbChannelOrder
+import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
-import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
-import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
-import org.dreamfinity.dsgl.core.dom.elements.TextInputNode
-import org.dreamfinity.dsgl.core.dom.elements.TextNode
-import org.dreamfinity.dsgl.core.dom.elements.TextSource
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.UiScope
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.TextWrap
@@ -166,8 +160,16 @@ internal class SystemColorPickerPopupBodyNode(
             renderNode(ctx, alphaSliderNode, null)
         }
 
-        previousSwatchNode.bind(style = style, color = state.previous, highlighted = layout.previousSwatchRect.contains(hoverX, hoverY))
-        currentSwatchNode.bind(style = style, color = state.color, highlighted = layout.currentSwatchRect.contains(hoverX, hoverY))
+        previousSwatchNode.bind(
+            style = style,
+            color = state.previous,
+            highlighted = layout.previousSwatchRect.contains(hoverX, hoverY)
+        )
+        currentSwatchNode.bind(
+            style = style,
+            color = state.color,
+            highlighted = layout.currentSwatchRect.contains(hoverX, hoverY)
+        )
         renderNode(ctx, previousSwatchNode, layout.previousSwatchRect)
         renderNode(ctx, currentSwatchNode, layout.currentSwatchRect)
 
@@ -711,7 +713,8 @@ private class ColorFieldSurfaceNode(
         )
         drawBorder(out, bounds, style.inputBorderColor)
         val thumbX = bounds.x + (saturation * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
-        val thumbY = bounds.y + ((1f - brightness) * bounds.height.toFloat()).roundToInt().coerceIn(0, bounds.height - 1)
+        val thumbY =
+            bounds.y + ((1f - brightness) * bounds.height.toFloat()).roundToInt().coerceIn(0, bounds.height - 1)
         out += RenderCommand.DrawRect(thumbX - 3, thumbY - 3, 7, 7, style.thumbShadowColor)
         drawBorder(out, Rect(thumbX - 2, thumbY - 2, 5, 5), style.thumbOutlineColor)
     }
@@ -822,7 +825,13 @@ private class ColorSwatchSurfaceNode(
             return
         }
         drawChecker(out, bounds, style)
-        out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, (localColor ?: RgbaColor.WHITE).toArgbInt())
+        out += RenderCommand.DrawRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            (localColor ?: RgbaColor.WHITE).toArgbInt()
+        )
         drawBorder(out, bounds, if (highlighted) style.inputActiveBorderColor else style.inputBorderColor)
     }
 }

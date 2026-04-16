@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.hooks.createContext
 import org.dreamfinity.dsgl.core.hooks.provideContext

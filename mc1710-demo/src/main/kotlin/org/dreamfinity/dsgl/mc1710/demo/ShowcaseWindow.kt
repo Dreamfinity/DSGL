@@ -17,6 +17,7 @@ import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.McItemStackRef
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.mc1710.demo.sections.*
 import org.dreamfinity.dsgl.mc1710.demo.support.*
 import java.awt.image.BufferedImage

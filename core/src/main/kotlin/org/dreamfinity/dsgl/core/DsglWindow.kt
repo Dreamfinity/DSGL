@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
@@ -12,7 +13,7 @@ import java.time.ZoneId
  *
  * Implement [render] to return a [DomTree].
  *
- * Use [state] for window-owned state and [UiScope] hooks for component-local state.
+ * Use [state] for window-owned state and [org.dreamfinity.dsgl.core.dsl.UiScope] hooks for component-local state.
  * This class is expected to be used on the client/UI thread of the host platform.
  */
 abstract class DsglWindow {
@@ -51,14 +52,14 @@ abstract class DsglWindow {
      * Builds a tree bound to this window so UiScope hook APIs can resolve the owning runtime.
      */
     protected fun ui(block: UiScope.() -> Unit): DomTree {
-        return ui(this, block)
+        return org.dreamfinity.dsgl.core.dsl.ui(this, block)
     }
 
     /**
      * Builds a tree from a custom root bound to this window.
      */
     protected fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
-        return ui(this, root, block)
+        return org.dreamfinity.dsgl.core.dsl.ui(this, root, block)
     }
 
     /** Lifecycle callback when the UI is opened by the host. */

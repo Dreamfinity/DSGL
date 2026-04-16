@@ -1,7 +1,10 @@
 package org.dreamfinity.dsgl.mc1710.demo.support
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 

@@ -1,7 +1,7 @@
 
 package org.dreamfinity.dsgl.mc1710.demo.sections
 
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuStyle
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu

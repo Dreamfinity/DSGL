@@ -1,8 +1,8 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.dsl.ComponentProps
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.StyleScope
+import org.dreamfinity.dsgl.core.dsl.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec

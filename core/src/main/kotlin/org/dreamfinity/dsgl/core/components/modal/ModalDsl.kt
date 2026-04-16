@@ -1,10 +1,10 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.UiScope
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget

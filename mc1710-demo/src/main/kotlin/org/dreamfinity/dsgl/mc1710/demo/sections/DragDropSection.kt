@@ -2,7 +2,7 @@ package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import net.minecraft.init.Items
 import net.minecraft.item.ItemStack
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.event.Event

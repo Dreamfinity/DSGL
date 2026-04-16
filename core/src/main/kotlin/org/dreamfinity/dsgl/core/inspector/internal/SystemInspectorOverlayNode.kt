@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.inspector.internal
 
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.ScrollSessionSnapshot
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -9,6 +9,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorDomSnapshot
