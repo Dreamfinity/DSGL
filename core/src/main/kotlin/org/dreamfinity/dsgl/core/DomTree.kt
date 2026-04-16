@@ -15,6 +15,7 @@ import org.dreamfinity.dsgl.core.hooks.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.PositionMode
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.util.Collections
@@ -318,7 +319,7 @@ class DomTree(
         ScrollPerformanceCounters.incrementChunkTraversalCalls()
         chunkNodesVisitedLastFrame += 1
         val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
-        val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
+        val nodeHidden = node.dragRenderHidden || node.display == Display.None
 
         val childSignature = if (nodeHidden) {
             if (chunk.children.isNotEmpty()) {

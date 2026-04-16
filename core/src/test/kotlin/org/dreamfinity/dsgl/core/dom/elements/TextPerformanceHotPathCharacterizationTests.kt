@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.core.text.TextStyleFlags
 import java.awt.Font
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -676,7 +677,7 @@ class TextPerformanceHotPathCharacterizationTests {
         )
     }
 
-    private fun baseTextFlags() = org.dreamfinity.dsgl.core.text.TextStyleFlags(
+    private fun baseTextFlags() = TextStyleFlags(
         bold = false,
         italic = false,
         underline = false,

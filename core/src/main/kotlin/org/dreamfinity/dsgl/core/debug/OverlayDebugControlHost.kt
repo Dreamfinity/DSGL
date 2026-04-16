@@ -19,6 +19,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.TextWrap
+import java.util.Locale
 
 internal data class OverlayDebugControlLayout(
     val panelRect: Rect,
@@ -274,8 +275,8 @@ private class OverlayDebugControlRootNode(
         val statusTextValue =
             "R:${if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"}  " +
                 "I:${if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayInputEnabled) "S1" else "S0"}  " +
-                "FPS:${snapshot.frameFps} (${String.format(java.util.Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
-                "AvgFPS:${snapshot.frameFpsWindow} (${String.format(java.util.Locale.US, "%.1f", snapshot.frameTimeWindowMs)}ms)"
+                "FPS:${snapshot.frameFps} (${String.format(Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
+                "AvgFPS:${snapshot.frameFpsWindow} (${String.format(Locale.US, "%.1f", snapshot.frameTimeWindowMs)}ms)"
         statusNode.setText(statusTextValue)
         statusNode.color = 0xFFBAC7D6.toInt()
         statusNode.fontSize = 14

@@ -1,7 +1,8 @@
-﻿package org.dreamfinity.dsgl.core.font
+package org.dreamfinity.dsgl.core.font
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -10,6 +11,7 @@ import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -100,7 +102,7 @@ internal data class MsdfKerningJson(
     val advance: Float = 0f
 )
 
-internal object NumberAsFloatSerializer : kotlinx.serialization.KSerializer<Float> {
+internal object NumberAsFloatSerializer : KSerializer<Float> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("NumberAsFloat", PrimitiveKind.FLOAT)
 
@@ -115,7 +117,7 @@ internal object NumberAsFloatSerializer : kotlinx.serialization.KSerializer<Floa
     }
 }
 
-internal object NumberAsIntSerializer : kotlinx.serialization.KSerializer<Int> {
+internal object NumberAsIntSerializer : KSerializer<Int> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("NumberAsInt", PrimitiveKind.INT)
 
@@ -138,7 +140,7 @@ private fun JsonPrimitive.toFloatStrict(): Float {
     throw IllegalArgumentException("Expected numeric float, got '$content'")
 }
 
-internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<MsdfGlyphJson> {
+internal object MsdfGlyphJsonSerializer : KSerializer<MsdfGlyphJson> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("MsdfGlyphJson") {
         element<Int>("glyphIndex", isOptional = true)
         element<Int>("unicodeCodepoint", isOptional = true)
@@ -170,7 +172,7 @@ internal object MsdfGlyphJsonSerializer : kotlinx.serialization.KSerializer<Msdf
     }
 
     override fun serialize(encoder: Encoder, value: MsdfGlyphJson) {
-        val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
+        val jsonEncoder = encoder as? JsonEncoder
             ?: throw IllegalArgumentException("MsdfGlyphJsonSerializer requires JsonEncoder")
         val map = linkedMapOf<String, JsonElement>()
         if (value.glyphIndex >= 0) {

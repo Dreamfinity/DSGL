@@ -3,13 +3,17 @@ package org.dreamfinity.dsgl.core.dom.elements
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
+import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.LineHeightValue
 import org.dreamfinity.dsgl.core.style.Overflow
+import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -279,8 +283,8 @@ class TextLineSpaceReservationBaselineTests {
         val baselineWidth = node.measure(ctx).width
 
         node.inlineStyleDeclarations.set(
-            org.dreamfinity.dsgl.core.style.StyleProperty.LINE_HEIGHT,
-            org.dreamfinity.dsgl.core.style.StyleExpression.Literal("32px")
+            StyleProperty.LINE_HEIGHT,
+            StyleExpression.Literal("32px")
         )
         StyleEngine.clearCache()
         StyleEngine.applyStylesRecursively(node)
@@ -302,7 +306,7 @@ class TextLineSpaceReservationBaselineTests {
         val baselineHeight = node.measure(ctx).height
         assertEquals(expectedNormalLineHeightPx(16), baselineHeight)
 
-        StyleEngine.setInspectorOverrideLiteral(node, org.dreamfinity.dsgl.core.style.StyleProperty.LINE_HEIGHT, "22px")
+        StyleEngine.setInspectorOverrideLiteral(node, StyleProperty.LINE_HEIGHT, "22px")
             .getOrThrow()
         StyleEngine.applyStylesRecursively(root)
         val overriddenHeight = node.measure(ctx).height
@@ -362,8 +366,8 @@ class TextLineSpaceReservationBaselineTests {
             }
             val row = ContainerNode(key = "font-size.grow.row.$emValue").apply {
                 display = Display.Block
-                padding = org.dreamfinity.dsgl.core.dom.layout.Insets.all(1)
-                border = org.dreamfinity.dsgl.core.dom.layout.Border.all(1, 0xFF617A90.toInt())
+                padding = Insets.all(1)
+                border = Border.all(1, 0xFF617A90.toInt())
             }.applyParent(root)
             TextNode(TextSource.Static("grow"), key = "font-size.grow.text.$emValue").apply {
                 applyStyle {
@@ -396,8 +400,8 @@ class TextLineSpaceReservationBaselineTests {
         repeat(20) { index ->
             val row = ContainerNode(key = "demo.audit.row.$index").apply {
                 display = Display.Block
-                padding = org.dreamfinity.dsgl.core.dom.layout.Insets.all(1)
-                border = org.dreamfinity.dsgl.core.dom.layout.Border.all(1, 0xFF617A90.toInt())
+                padding = Insets.all(1)
+                border = Border.all(1, 0xFF617A90.toInt())
             }.applyParent(root)
             TextNode(TextSource.Static("Hi there, #$index"), key = "demo.audit.text.$index").apply {
                 applyStyle {

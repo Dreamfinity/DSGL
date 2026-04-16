@@ -258,7 +258,7 @@ abstract class DOMNode(
     var textWrap: TextWrap = TextWrap.Wrap
     var textFormatting: TextFormatting = TextFormatting.None
     var fontWeight: FontWeight = FontWeight.Normal
-    var fontStyle: org.dreamfinity.dsgl.core.style.FontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Normal
+    var fontStyle: FontStyle = FontStyle.Normal
     var textDecoration: TextDecoration = TextDecoration.None
     var textObfuscated: Boolean = false
     var fontId: String? = FontRegistry.DEFAULT_FONT_ID

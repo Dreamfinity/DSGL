@@ -5,6 +5,9 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.FontStyle
+import org.dreamfinity.dsgl.core.style.FontWeight
+import org.dreamfinity.dsgl.core.style.TextDecoration
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.core.hooks.useState
@@ -229,8 +232,8 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     this.fontSize = fontSize.px
                     foregroundColor = textColor
                     this.opacity = textOpacity
-                    fontWeight = org.dreamfinity.dsgl.core.style.FontWeight.Bold
-                    fontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Italic
+                    fontWeight = FontWeight.Bold
+                    fontStyle = FontStyle.Italic
                 }
             })
             text("Style only: underline + strikethrough", {
@@ -239,7 +242,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     this.fontSize = fontSize.px
                     foregroundColor = textColor
                     this.opacity = textOpacity
-                    textDecoration = org.dreamfinity.dsgl.core.style.TextDecoration.UnderlineStrikethrough
+                    textDecoration = TextDecoration.UnderlineStrikethrough
                 }
             })
             text("Style only: obfuscated text sample 12345", {

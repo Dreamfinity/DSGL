@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mc1710.text
+package org.dreamfinity.dsgl.mc1710.text
 
 import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics

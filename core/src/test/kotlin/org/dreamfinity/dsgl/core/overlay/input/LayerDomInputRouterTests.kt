@@ -20,6 +20,7 @@ import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 
 class LayerDomInputRouterTests {
@@ -27,7 +28,7 @@ class LayerDomInputRouterTests {
     private val ctx = object : UiMeasureContext {
         override val fontHeight: Int = 9
         override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<org.dreamfinity.dsgl.core.render.RenderCommand>) {}
+        override fun paint(commands: List<RenderCommand>) {}
     }
 
 

@@ -20,6 +20,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
+import org.dreamfinity.dsgl.core.inspector.InspectorTooltipSnapshot
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -1120,7 +1121,7 @@ internal class SystemInspectorOverlayNode(
         scope: UiScope,
         ctx: UiMeasureContext,
         keyPrefix: String,
-        tooltip: org.dreamfinity.dsgl.core.inspector.InspectorTooltipSnapshot?,
+        tooltip: InspectorTooltipSnapshot?,
         backgroundColor: Int,
         borderColor: Int
     ) {

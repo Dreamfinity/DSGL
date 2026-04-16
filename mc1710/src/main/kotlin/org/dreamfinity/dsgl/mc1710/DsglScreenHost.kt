@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.mc1710
 
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
@@ -27,6 +28,7 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.inspector.InspectorMode
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
@@ -34,6 +36,7 @@ import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
@@ -578,7 +581,7 @@ abstract class DsglScreenHost(
         } else {
             val keyboardBlocked = inspector.active && (
                     inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
-                            inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
+                            inspector.mode == InspectorMode.Locked
                     )
             if (keyboardBlocked) {
                 pressedKeys.remove(keyCode)
@@ -647,7 +650,7 @@ abstract class DsglScreenHost(
 
         if (Mouse.getEventButtonState()) {
             eventButton = mouseButton
-            lastMouseEvent = net.minecraft.client.Minecraft.getSystemTime()
+            lastMouseEvent = Minecraft.getSystemTime()
             mapButton(mouseButton)?.let { mappedButton ->
                 val event = MouseDownEvent(mouseX, mouseY, mappedButton)
                 event.target = resolvePointerDownTarget()
@@ -763,7 +766,7 @@ abstract class DsglScreenHost(
         }
         val keyboardBlocked = inspector.active && (
                 inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
-                        inspector.mode == org.dreamfinity.dsgl.core.inspector.InspectorMode.Locked
+                        inspector.mode == InspectorMode.Locked
                 )
         if (keyboardBlocked) {
             logInspectorInput("keyboard down consumed keyCode=$keyCode")
@@ -1362,7 +1365,7 @@ abstract class DsglScreenHost(
     }
 
     private fun hasRenderableNodes(node: DOMNode): Boolean {
-        if (node.display != org.dreamfinity.dsgl.core.style.Display.None && node.children.isNotEmpty()) {
+        if (node.display != Display.None && node.children.isNotEmpty()) {
             return true
         }
         node.children.forEach { child ->

@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.dom
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
@@ -120,7 +121,7 @@ class PositionedLayoutFixedBehaviorTests {
         val ancestor = ContainerNode(key = "fixed-ancestor").apply {
             width = 120
             height = 80
-            margin = org.dreamfinity.dsgl.core.dom.layout.Insets(top = 40, right = 0, bottom = 0, left = 60)
+            margin = Insets(top = 40, right = 0, bottom = 0, left = 60)
             inlineStyleDeclarations = styleDeclarations(
                 StyleProperty.POSITION to "relative"
             )

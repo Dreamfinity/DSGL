@@ -191,7 +191,7 @@ class StyleInsetBuilder : CssLengthUnitsDsl {
 
 @DsglDsl
 /**
- * Styling DSL attached to a [org.dreamfinity.dsgl.core.dom.DOMNode].
+ * Styling DSL attached to a [DOMNode].
  */
 class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnitsDsl {
 

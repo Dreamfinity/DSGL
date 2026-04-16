@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mc1710.demo.sections
+package org.dreamfinity.dsgl.mc1710.demo.sections
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -11,6 +11,8 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.dreamfinity.dsgl.mc1710.demo.support.DemoSection
+import java.lang.reflect.Field
+import java.lang.reflect.Method
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -263,7 +265,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         return method.invoke(inspector, *args)
     }
 
-    private fun findField(clazz: Class<*>, fieldName: String): java.lang.reflect.Field {
+    private fun findField(clazz: Class<*>, fieldName: String): Field {
         var current: Class<*>? = clazz
         while (current != null) {
             val field = current.declaredFields.firstOrNull { it.name == fieldName }
@@ -277,7 +279,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         clazz: Class<*>,
         methodName: String,
         parameterTypes: Array<Class<*>>
-    ): java.lang.reflect.Method {
+    ): Method {
         var current: Class<*>? = clazz
         while (current != null) {
             val method = current.declaredMethods.firstOrNull {
@@ -293,7 +295,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         clazz: Class<*>,
         methodName: String,
         arity: Int
-    ): java.lang.reflect.Method {
+    ): Method {
         var current: Class<*>? = clazz
         while (current != null) {
             val method = current.declaredMethods.firstOrNull {

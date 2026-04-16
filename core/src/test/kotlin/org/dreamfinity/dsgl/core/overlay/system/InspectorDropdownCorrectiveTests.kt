@@ -17,6 +17,7 @@ import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -212,7 +213,7 @@ class InspectorDropdownCorrectiveTests {
 
     private fun openVisibleInspectorSelectDropdownWithoutBodyScroll(
         fixture: Fixture
-    ): Pair<Rect, org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot> {
+    ): Pair<Rect, InspectorDropdownSnapshot> {
         val contentRect = fixture.inspector.debugContentRect()
         val bodyScrollY = fixture.inspector.panelScrollOffsetY
         val row = fixture.inspector.debugStyleEditorRows().firstOrNull { row ->
@@ -250,7 +251,7 @@ class InspectorDropdownCorrectiveTests {
     private fun openInspectorSelectDropdown(
         fixture: Fixture,
         requireScrollable: Boolean
-    ): Pair<Rect, org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot> {
+    ): Pair<Rect, InspectorDropdownSnapshot> {
         repeat(120) {
             val contentRect = fixture.inspector.debugContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
