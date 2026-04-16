@@ -8,6 +8,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.LineHeightValue
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.math.ceil
@@ -86,7 +87,7 @@ class TextLineSpaceReservationBaselineTests {
             display = Display.Block
             width = 320
             applyStyle {
-                fontSize(20.px)
+                fontSize = 20.px
             }
         }
         val span = ContainerNode(key = "span.inline").apply {
@@ -94,7 +95,7 @@ class TextLineSpaceReservationBaselineTests {
         }.applyParent(div)
         TextNode(TextSource.Static("row"), key = "span.text").apply {
             applyStyle {
-                fontSize(12.px)
+                fontSize = 12.px
             }
         }.applyParent(span)
 
@@ -125,12 +126,12 @@ class TextLineSpaceReservationBaselineTests {
             val row = ContainerNode(key = "row.$index").apply {
                 display = Display.Block
                 applyStyle {
-                    fontSize(containerFontSize.px)
+                    fontSize = containerFontSize.px
                 }
             }.applyParent(root)
             TextNode(TextSource.Static("row $index"), key = "row.$index.text").apply {
                 applyStyle {
-                    fontSize(textFontSize.px)
+                    fontSize = textFontSize.px
                 }
             }.applyParent(row)
         }
@@ -156,12 +157,12 @@ class TextLineSpaceReservationBaselineTests {
         val ordinaryRow = ContainerNode(key = "row.ordinary").apply {
             display = Display.Block
             applyStyle {
-                fontSize(20.px)
+                fontSize = 20.px
             }
         }
         TextNode(TextSource.Static("row"), key = "row.ordinary.text").apply {
             applyStyle {
-                fontSize(12.px)
+                fontSize = 12.px
             }
         }.applyParent(ordinaryRow)
         ordinaryRow.applyParent(root)
@@ -169,13 +170,13 @@ class TextLineSpaceReservationBaselineTests {
         val withWorkaround = ContainerNode(key = "row.with").apply {
             display = Display.Block
             applyStyle {
-                fontSize(20.px)
+                fontSize = 20.px
                 minHeight = 1.em
             }
         }.applyParent(root)
         TextNode(TextSource.Static("row"), key = "row.with.text").apply {
             applyStyle {
-                fontSize(12.px)
+                fontSize = 12.px
             }
         }.applyParent(withWorkaround)
 
@@ -213,7 +214,7 @@ class TextLineSpaceReservationBaselineTests {
             val row = ContainerNode(key = "scroll.row.$index").apply {
                 display = Display.Block
                 applyStyle {
-                    fontSize(rowFontSize.px)
+                    fontSize = rowFontSize.px
                 }
             }.applyParent(list)
             TextNode(TextSource.Static("item $index"), key = "scroll.row.$index.text").applyParent(row)
@@ -233,7 +234,7 @@ class TextLineSpaceReservationBaselineTests {
         val node = TextNode(TextSource.Static("single line"), key = "text.override").apply {
             fontSize = 16
             applyStyle {
-                lineHeight(24.px)
+                lineHeight = LineHeightValue.Length(24.px)
             }
         }
         StyleEngine.applyStylesRecursively(node)
@@ -252,13 +253,13 @@ class TextLineSpaceReservationBaselineTests {
         val row = ContainerNode(key = "line-height.row").apply {
             display = Display.Block
             applyStyle {
-                fontSize(20.px)
-                lineHeight(26.px)
+                fontSize = 20.px
+                lineHeight = LineHeightValue.Length(26.px)
             }
         }.applyParent(root)
         TextNode(TextSource.Static("row"), key = "line-height.text").apply {
             applyStyle {
-                fontSize(12.px)
+                fontSize = 12.px
             }
         }.applyParent(row)
 
@@ -319,7 +320,7 @@ class TextLineSpaceReservationBaselineTests {
         val row = ContainerNode(key = "non-text.row").apply {
             display = Display.Block
             applyStyle {
-                fontSize(20.px)
+                fontSize = 20.px
             }
         }.applyParent(root)
         ImageNode(url = "minecraft:textures/blocks/stone.png", imageWidth = 40, imageHeight = 30, key = "non-text.image")
@@ -336,12 +337,12 @@ class TextLineSpaceReservationBaselineTests {
         val root = ContainerNode(key = "font-size.base.root").apply {
             display = Display.Block
             applyStyle {
-                fontSize(20.px)
+                fontSize = 20.px
             }
         }
         val text = TextNode(TextSource.Static("em"), key = "font-size.base.text").apply {
             applyStyle {
-                fontSize(2.em)
+                fontSize = 2.em
             }
         }.applyParent(root)
 
@@ -366,7 +367,7 @@ class TextLineSpaceReservationBaselineTests {
             }.applyParent(root)
             TextNode(TextSource.Static("grow"), key = "font-size.grow.text.$emValue").apply {
                 applyStyle {
-                    fontSize(emValue.em)
+                    fontSize = emValue.em
                 }
             }.applyParent(row)
             val tree = DomTree(root)
@@ -400,7 +401,7 @@ class TextLineSpaceReservationBaselineTests {
             }.applyParent(root)
             TextNode(TextSource.Static("Hi there, #$index"), key = "demo.audit.text.$index").apply {
                 applyStyle {
-                    fontSize(10.em)
+                    fontSize = 10.em
                 }
             }.applyParent(row)
         }
@@ -436,10 +437,10 @@ class TextLineSpaceReservationBaselineTests {
     fun `single source of truth keeps effective font size consistent across layout measurement and render command`() {
         val root = ContainerNode(key = "single.source.root").apply {
             display = Display.Block
-            applyStyle { fontSize(16.px) }
+            applyStyle { fontSize = 16.px }
         }
         val textNode = TextNode(TextSource.Static("sync"), key = "single.source.text").apply {
-            applyStyle { fontSize(10.em) }
+            applyStyle { fontSize = 10.em }
         }.applyParent(root)
 
         val tree = DomTree(root)
@@ -464,10 +465,10 @@ class TextLineSpaceReservationBaselineTests {
         fun snapshotFor(emValue: Float): Snapshot {
             val root = ContainerNode(key = "single.source.growth.root.$emValue").apply {
                 display = Display.Block
-                applyStyle { fontSize(16.px) }
+                applyStyle { fontSize = 16.px }
             }
             val textNode = TextNode(TextSource.Static("MMMM"), key = "single.source.growth.text.$emValue").apply {
-                applyStyle { fontSize(emValue.em) }
+                applyStyle { fontSize = emValue.em }
             }.applyParent(root)
             val tree = DomTree(root)
             tree.render(ctx, 400, 200)
@@ -497,10 +498,10 @@ class TextLineSpaceReservationBaselineTests {
     fun `no hidden clamp on authoritative text path for large computed font size`() {
         val root = ContainerNode(key = "single.source.noclamp.root").apply {
             display = Display.Block
-            applyStyle { fontSize(16.px) }
+            applyStyle { fontSize = 16.px }
         }
         val textNode = TextNode(TextSource.Static("MMMM"), key = "single.source.noclamp.text").apply {
-            applyStyle { fontSize(20.em) }
+            applyStyle { fontSize = 20.em }
         }.applyParent(root)
 
         val tree = DomTree(root)
@@ -567,7 +568,7 @@ class TextLineSpaceReservationBaselineTests {
         val node = TextNode(TextSource.Static("lead"), key = "native.leading.text").apply {
             fontSize = 16
             applyStyle {
-                lineHeight(24.px)
+                lineHeight = LineHeightValue.Length(24.px)
             }
         }.applyParent(root)
 
@@ -593,7 +594,7 @@ class TextLineSpaceReservationBaselineTests {
         val node = TextNode(TextSource.Static("a\nb\nc"), key = "native.coherence.text").apply {
             fontSize = 16
             applyStyle {
-                lineHeight(24.px)
+                lineHeight = LineHeightValue.Length(24.px)
             }
         }.applyParent(root)
         val tree = DomTree(root)
@@ -621,7 +622,7 @@ class TextLineSpaceReservationBaselineTests {
         }.applyParent(root)
         TextNode(TextSource.Static("row"), key = "native.reservation.text").apply {
             applyStyle {
-                fontSize(10.em)
+                fontSize = 10.em
             }
         }.applyParent(row)
 

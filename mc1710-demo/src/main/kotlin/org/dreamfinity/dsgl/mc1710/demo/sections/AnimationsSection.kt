@@ -8,6 +8,7 @@ import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
+import org.dreamfinity.dsgl.core.style.TransformOrigin
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private val easingOptions: List<Pair<String, Easing>> = listOf(
@@ -199,9 +200,9 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         scale(scale)
                         rotate(if (animationsToggle) 8f else 0f)
                     }
-                    transformOrigin(0.5f, 0.5f)
+                    transformOrigin = TransformOrigin(0.5f, 0.5f)
                     opacity = if (animationsToggle) 0.65f else 1f
-                    foregroundColor(if (animationsToggle) 0xFFA4F0C2.toInt() else 0xFFEAF3FF.toInt())
+                    foregroundColor = if (animationsToggle) 0xFFA4F0C2.toInt() else 0xFFEAF3FF.toInt()
                     border(1.px, 0xFF56677A.toInt())
                     padding(4.px)
                 }
@@ -229,7 +230,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                             playState = playState
                         )
                     }
-                    transformOrigin(0.5f, 0.5f)
+                    transformOrigin = TransformOrigin(0.5f, 0.5f)
                     border(1.px, 0xFF5F5F72.toInt())
                     padding(4.px)
                 }
@@ -248,7 +249,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                     transform {
                         rotate(if (animationsToggle) 12f else 0f)
                     }
-                    transformOrigin(0.5f, 0.5f)
+                    transformOrigin = TransformOrigin(0.5f, 0.5f)
                     transition {
                         property(StyleAnimProps.transform, 260, easing = Easings.EASE_IN_OUT)
                     }

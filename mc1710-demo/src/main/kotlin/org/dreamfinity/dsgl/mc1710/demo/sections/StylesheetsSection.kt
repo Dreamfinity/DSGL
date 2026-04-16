@@ -193,10 +193,10 @@ fun UiScope.stylesheetsSection(
                     key = "styles.selector.inline"
                     className = "primary"
                     style = {
-                        backgroundColor(0xFF7A3A3A.toInt())
-                        foregroundColor(0xFFFFFFFF.toInt())
-                        borderColor(0xFFAA6666.toInt())
-                        borderWidth(1.px)
+                        backgroundColor = 0xFF7A3A3A.toInt()
+                        foregroundColor = 0xFFFFFFFF.toInt()
+                        borderColor = 0xFFAA6666.toInt()
+                        borderWidth = 1.px
                     }
                     onMouseClick = { event ->
                         stylesheetDemoClickCount += 1

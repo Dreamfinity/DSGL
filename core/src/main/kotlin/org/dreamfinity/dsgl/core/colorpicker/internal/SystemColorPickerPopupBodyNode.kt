@@ -266,20 +266,20 @@ internal class SystemColorPickerPopupBodyNode(
             button.textColor = style.textColor
             button.applyStyle {
                 border(1.px, style.inputBorderColor)
-                fontSize(style.fontSize.px)
+                fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap
             }
         }
         inputLabelNodes.forEach { label ->
             label.applyStyle {
-                fontSize(style.fontSize.px)
+                fontSize = style.fontSize.px
                 textWrap = TextWrap.NoWrap
             }
         }
         inputValueNodes.forEach { input ->
             input.applyStyle {
-                fontSize(style.fontSize.px)
+                fontSize = style.fontSize.px
                 textWrap = TextWrap.NoWrap
             }
         }
@@ -416,7 +416,7 @@ internal class SystemColorPickerModeDropdownOverlayNode(
         modeOptionButtons.values.forEach { button ->
             button.applyStyle {
                 border(1.px, style.inputBorderColor)
-                fontSize(style.fontSize.px)
+                fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap
             }

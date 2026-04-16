@@ -171,7 +171,7 @@ private fun UiScope.checklistLine(textValue: String, done: Boolean) {
     text("$mark $textValue", {
         style = {
             this.color = color
-            foregroundColor(color)
+            foregroundColor = color
         }
     })
 }

@@ -688,7 +688,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     border(1.px, 0xFF617A90.toInt())
                 }
             }) {
-                text("Hi there, #$it pyj", { style { fontSize(it.px) } })
+                text("Hi there, #$it pyj", { style { fontSize = it.px } })
             }
         }
     }

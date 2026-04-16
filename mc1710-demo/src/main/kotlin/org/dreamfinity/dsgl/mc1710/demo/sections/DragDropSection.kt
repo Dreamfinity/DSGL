@@ -655,7 +655,7 @@ private fun UiScope.originalModeReorder(
                         style = {
                             backgroundColor = 0x2A9EC4E3
                             border(1.px, 0xFF9EC4E3.toInt())
-                            borderRadius(3.px)
+                            borderRadius = 3.px
                             display = Display.Flex
                             flexDirection = FlexDirection.Column
                             alignItems = AlignItems.Center
@@ -779,7 +779,7 @@ private fun UiScope.cardWithItem(
                 else -> base
             }
             border(1.px, accent)
-            borderRadius(3.px)
+            borderRadius = 3.px
             when (insertionIndicator) {
                 DndLaneIndicator.BEFORE -> margin(insertionGap.px, 0.px, 0.px, 0.px)
                 DndLaneIndicator.AFTER -> margin(0.px, 0.px, insertionGap.px, 0.px)
@@ -800,7 +800,7 @@ private fun UiScope.cardWithItem(
             key = "$cardKey.accent"
             style = {
                 backgroundColor = lighten(accent, 12)
-                borderRadius(2.px)
+                borderRadius = 2.px
             }
         })
         itemStack(item.stack, {
@@ -856,7 +856,7 @@ private fun UiScope.dropBox(
             gap = 2.px
             backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
             border(1.px, 0xFF8A94A2.toInt())
-            borderRadius(3.px)
+            borderRadius = 3.px
         }
         applyDroppable(dropDescriptor)
     }) {

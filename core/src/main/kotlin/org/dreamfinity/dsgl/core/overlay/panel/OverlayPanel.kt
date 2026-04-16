@@ -287,14 +287,14 @@ class OverlayPanel(
         }
         titleNode.applyStyle {
             color = style.textColor
-            fontSize(style.fontSize.px)
+            fontSize = style.fontSize.px
             textWrap = TextWrap.NoWrap
         }
         closeButtonNode.applyStyle {
             backgroundColor = style.closeButtonBackgroundColor
             border(1.px, style.closeButtonBorderColor)
             color = style.textColor
-            fontSize(style.fontSize.px)
+            fontSize = style.fontSize.px
             width = style.closeButtonWidth.px
             height = style.closeButtonHeight.px
             padding = 0.px

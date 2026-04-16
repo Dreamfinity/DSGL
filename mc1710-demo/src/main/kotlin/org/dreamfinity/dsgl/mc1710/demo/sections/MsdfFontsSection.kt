@@ -65,7 +65,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             "All DSGL DrawText commands go through MSDF/MTSDF rendering. Switch font/size/color/opacity and verify wrapping.",
             { style = { color = DEMO_MUTED } }
         )
-        text("DREAMFINITY", { style = { fontId("telegrafico") } })
+        text("DREAMFINITY", { style = { fontId = "telegrafico" } })
 
         div({
             style = {
@@ -215,9 +215,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
         }) {
             text("Header text", {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -225,9 +225,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text("Style only: bold + italic", {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     fontWeight = org.dreamfinity.dsgl.core.style.FontWeight.Bold
                     fontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Italic
@@ -235,63 +235,63 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text("Style only: underline + strikethrough", {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textDecoration = org.dreamfinity.dsgl.core.style.TextDecoration.UnderlineStrikethrough
                 }
             })
             text("Style only: obfuscated text sample 12345", {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     obfuscated = true
                 }
             })
             text(LONG_CH_SENTENCE, {
                 style = {
-                    fontId("Noto_Sans_SC/NotoSansSC")
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = "Noto_Sans_SC/NotoSansSC"
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_CH_SENTENCE, {
                 style = {
-                    fontId("Noto_Sans_TC/NotoSansTC")
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = "Noto_Sans_TC/NotoSansTC"
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_JP_SENTENCE, {
                 style = {
-                    fontId("Noto_Sans_JP/NotoSansJP")
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = "Noto_Sans_JP/NotoSansJP"
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(LONG_KR_SENTENCE, {
                 style = {
-                    fontId("Noto_Sans_KR/NotoSansKR")
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = "Noto_Sans_KR/NotoSansKR"
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                 }
             })
             text(SAMPLE_PARAGRAPH, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -299,9 +299,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text(SAMPLE_WORD, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -309,9 +309,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text(SAMPLE_SPACES_A, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -319,9 +319,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text(SAMPLE_SPACES_B, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -332,9 +332,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text(SAMPLE_MC_COLORS, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode
@@ -342,9 +342,9 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
             })
             text(SAMPLE_MC_FLAGS, {
                 style = {
-                    fontId(selectedFont.fontId)
-                    fontSize(fontSize.px)
-                    foregroundColor(textColor)
+                    fontId = selectedFont.fontId
+                    this.fontSize = fontSize.px
+                    foregroundColor = textColor
                     this.opacity = textOpacity
                     textWrap = TextWrap.Wrap
                     textFormatting = formattingMode

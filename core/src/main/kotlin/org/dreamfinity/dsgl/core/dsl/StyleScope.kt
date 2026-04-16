@@ -1,7 +1,9 @@
 package org.dreamfinity.dsgl.core.dsl
 
 import org.dreamfinity.dsgl.core.DsglColors
+import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.AnimationListBuilder
+import org.dreamfinity.dsgl.core.animation.TransitionSpec
 import org.dreamfinity.dsgl.core.animation.TransitionBuilder
 import org.dreamfinity.dsgl.core.animation.UiTransformBuilder
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -24,6 +26,7 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 import org.dreamfinity.dsgl.core.style.TextDecoration
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.core.style.TransformOrigin
 import org.dreamfinity.dsgl.core.style.UiTransform
 import org.dreamfinity.dsgl.core.style.toCssLiteral
 
@@ -224,6 +227,12 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.FOREGROUND_COLOR, toColorLiteral(value))
         }
 
+    var foregroundColor: Int
+        get() = DsglColors.TEXT
+        set(value) {
+            setLiteral(StyleProperty.FOREGROUND_COLOR, toColorLiteral(value))
+        }
+
     var backgroundColor: Int?
         get() = null
         set(value) {
@@ -232,6 +241,75 @@ class StyleScope internal constructor(private val node: DOMNode) {
             } else {
                 setLiteral(StyleProperty.BACKGROUND_COLOR, toColorLiteral(value))
             }
+        }
+
+    var backgroundImage: String
+        get() = ""
+        set(value) {
+            setLiteral(StyleProperty.BACKGROUND_IMAGE, "\"$value\"")
+        }
+
+    var borderColor: Int
+        get() = DsglColors.BORDER
+        set(value) {
+            setLiteral(StyleProperty.BORDER_COLOR, toColorLiteral(value))
+        }
+
+    var borderWidth: CssLength
+        get() = CssLength.ZERO_PX
+        set(value) {
+            requireNonNegative(value, "border-width")
+            setLiteral(StyleProperty.BORDER_WIDTH, value.toCssLiteral())
+        }
+
+    var borderRadius: CssLength
+        get() = CssLength.ZERO_PX
+        set(value) {
+            requireNonNegative(value, "border-radius")
+            setLiteral(StyleProperty.BORDER_RADIUS, value.toCssLiteral())
+        }
+
+    var fontId: String
+        get() = ""
+        set(value) {
+            setLiteral(StyleProperty.FONT_ID, "\"${value.trim()}\"")
+        }
+
+    var fontSize: CssLength
+        get() = CssLength.ZERO_PX
+        set(value) {
+            requireNonNegative(value, "font-size")
+            setLiteral(StyleProperty.FONT_SIZE, value.toCssLiteral())
+        }
+
+    var align: StyleAlign
+        get() = StyleAlign.START
+        set(value) {
+            setLiteral(StyleProperty.ALIGN, value.name.lowercase())
+        }
+
+    var transform: UiTransform
+        get() = UiTransform.IDENTITY
+        set(value) {
+            setLiteral(StyleProperty.TRANSFORM, value.toCssLiteral())
+        }
+
+    var transformOrigin: TransformOrigin
+        get() = TransformOrigin.CENTER
+        set(value) {
+            setLiteral(StyleProperty.TRANSFORM_ORIGIN, "${value.originX} ${value.originY}")
+        }
+
+    var transition: TransitionSpec
+        get() = TransitionSpec.NONE
+        set(value) {
+            node.transitionSpec = value
+        }
+
+    var animations: List<AnimationSpec>
+        get() = emptyList()
+        set(value) {
+            node.animationSpecs = value
         }
 
     var gap: CssLength
@@ -351,26 +429,16 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.OPACITY, value.coerceIn(0f, 1f).toString())
         }
 
-    fun transform(value: UiTransform) {
-        setLiteral(StyleProperty.TRANSFORM, value.toCssLiteral())
-    }
-
     fun transform(block: UiTransformBuilder.() -> Unit) {
-        transform(UiTransformBuilder().apply(block).build())
-    }
-
-    fun transformOrigin(originX: Float, originY: Float) {
-        val x = originX.coerceIn(0f, 1f)
-        val y = originY.coerceIn(0f, 1f)
-        setLiteral(StyleProperty.TRANSFORM_ORIGIN, "$x $y")
+        transform = UiTransformBuilder().apply(block).build()
     }
 
     fun transition(block: TransitionBuilder.() -> Unit) {
-        node.transitionSpec = TransitionBuilder().apply(block).build()
+        transition = TransitionBuilder().apply(block).build()
     }
 
     fun animation(block: AnimationListBuilder.() -> Unit) {
-        node.animationSpecs = AnimationListBuilder().apply(block).build()
+        animations = AnimationListBuilder().apply(block).build()
     }
 
     fun margin(all: CssLength) {
@@ -406,14 +474,14 @@ class StyleScope internal constructor(private val node: DOMNode) {
 
     fun border(width: CssLength) {
         requireNonNegative(width, "border-width")
-        borderWidth(width)
-        borderColor(DsglColors.BORDER)
+        borderWidth = width
+        borderColor = DsglColors.BORDER
     }
 
     fun border(width: CssLength, color: Int) {
         requireNonNegative(width, "border-width")
-        borderWidth(width)
-        borderColor(color)
+        borderWidth = width
+        borderColor = color
     }
 
     fun border(horizontal: CssLength, vertical: CssLength, color: Int = DsglColors.BORDER) {
@@ -424,106 +492,48 @@ class StyleScope internal constructor(private val node: DOMNode) {
         border(maxLength(top, right, bottom, left), color)
     }
 
-    fun backgroundColor(color: Int) {
-        setLiteral(StyleProperty.BACKGROUND_COLOR, toColorLiteral(color))
-    }
-
     fun backgroundColor(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BACKGROUND_COLOR, variable)
-    }
-
-    fun backgroundImage(path: String) {
-        setLiteral(StyleProperty.BACKGROUND_IMAGE, "\"$path\"")
     }
 
     fun backgroundImage(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BACKGROUND_IMAGE, variable)
     }
 
-    fun borderColor(color: Int) {
-        setLiteral(StyleProperty.BORDER_COLOR, toColorLiteral(color))
-    }
-
     fun borderColor(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BORDER_COLOR, variable)
-    }
-
-    fun borderWidth(value: CssLength) {
-        requireNonNegative(value, "border-width")
-        setLiteral(StyleProperty.BORDER_WIDTH, value.toCssLiteral())
     }
 
     fun borderWidth(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BORDER_WIDTH, variable)
     }
 
-    fun borderRadius(value: CssLength) {
-        requireNonNegative(value, "border-radius")
-        setLiteral(StyleProperty.BORDER_RADIUS, value.toCssLiteral())
-    }
-
     fun borderRadius(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.BORDER_RADIUS, variable)
-    }
-
-    fun foregroundColor(color: Int) {
-        setLiteral(StyleProperty.FOREGROUND_COLOR, toColorLiteral(color))
     }
 
     fun foregroundColor(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.FOREGROUND_COLOR, variable)
     }
 
-    fun fontId(value: String) {
-        setLiteral(StyleProperty.FONT_ID, "\"${value.trim()}\"")
-    }
-
     fun fontId(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.FONT_ID, variable)
-    }
-
-    fun fontSize(value: CssLength) {
-        requireNonNegative(value, "font-size")
-        setLiteral(StyleProperty.FONT_SIZE, value.toCssLiteral())
     }
 
     fun fontSize(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.FONT_SIZE, variable)
     }
 
-    fun lineHeightNormal() {
-        setLiteral(StyleProperty.LINE_HEIGHT, "normal")
-    }
-
-    fun lineHeight(value: CssLength) {
-        requireNonNegative(value, "line-height")
-        setLiteral(StyleProperty.LINE_HEIGHT, value.toCssLiteral())
-    }
-
     fun lineHeight(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.LINE_HEIGHT, variable)
-    }
-
-    fun width(value: CssLength) {
-        requireNonNegative(value, "width")
-        setLiteral(StyleProperty.WIDTH, value.toCssLiteral())
     }
 
     fun width(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.WIDTH, variable)
     }
 
-    fun height(value: CssLength) {
-        requireNonNegative(value, "height")
-        setLiteral(StyleProperty.HEIGHT, value.toCssLiteral())
-    }
-
     fun height(variable: StyleExpression.VariableRef) {
         setExpression(StyleProperty.HEIGHT, variable)
-    }
-
-    fun align(value: StyleAlign) {
-        setLiteral(StyleProperty.ALIGN, value.name.lowercase())
     }
 
     fun align(variable: StyleExpression.VariableRef) {
