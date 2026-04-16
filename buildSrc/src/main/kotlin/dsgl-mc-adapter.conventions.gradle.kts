@@ -4,6 +4,7 @@ import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.GradleException
 import org.gradle.kotlin.dsl.the
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+import org.dreamfinity.buildlogic.toKotlinPackageSegmentFromProjectName
 import java.io.File
 import java.util.Properties
 
@@ -14,14 +15,6 @@ plugins {
 val sourceSets = the<SourceSetContainer>()
 val metadataGeneratedSourcesDir = layout.buildDirectory.dir("generated/sources/dsglMetadata/main/kotlin")
 val modulePropertiesFile = layout.projectDirectory.file("gradle.properties").asFile
-
-fun sanitizeKotlinPackageSegment(value: String): String {
-    val sanitized = value
-        .trim()
-        .replace(Regex("[^A-Za-z0-9_]"), "_")
-        .ifBlank { "_" }
-    return if (sanitized.first().isDigit()) "_$sanitized" else sanitized
-}
 
 fun readRequiredModuleVersion(file: File): String {
     if (!file.exists()) {
@@ -65,7 +58,7 @@ val generateDsglAdapterMetadata = tasks.register("generateDsglAdapterMetadata") 
         val packageName = buildString {
             append(project.group.toString())
             append(".dsgl.")
-            append(sanitizeKotlinPackageSegment(project.name))
+            append(toKotlinPackageSegmentFromProjectName(project.name))
         }
         val outputRoot = metadataGeneratedSourcesDir.get().asFile
         val outputFile = outputRoot.resolve(
@@ -116,6 +109,18 @@ publishing {
                 artifact(devJar)
                 artifact(devSourcesJar)
             }
+        }
+    }
+}
+
+if (project.name == "mc-forge-1-7-10") {
+    tasks.matching { it.name == "reobf" }.all {
+        val reobfTask = this
+        tasks.withType<PublishToMavenRepository>().configureEach {
+            dependsOn(reobfTask)
+        }
+        tasks.withType<PublishToMavenLocal>().configureEach {
+            dependsOn(reobfTask)
         }
     }
 }

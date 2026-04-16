@@ -1,6 +1,7 @@
 import java.util.Properties
 import org.gradle.api.GradleException
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+import org.dreamfinity.buildlogic.toKotlinPackageSegmentFromProjectName
 
 plugins {
     id("dsgl-jvm-publish.conventions")
@@ -8,14 +9,6 @@ plugins {
 
 val metadataGeneratedSourcesDir = layout.buildDirectory.dir("generated/sources/dsglMetadata/main/kotlin")
 val modulePropertiesFile = layout.projectDirectory.file("gradle.properties").asFile
-
-fun sanitizeKotlinPackageSegment(value: String): String {
-    val sanitized = value
-        .trim()
-        .replace(Regex("[^A-Za-z0-9_]"), "_")
-        .ifBlank { "_" }
-    return if (sanitized.first().isDigit()) "_$sanitized" else sanitized
-}
 
 fun readRequiredModuleVersion(file: File): String {
     if (!file.exists()) {
@@ -39,7 +32,7 @@ val generateDsglCoreMetadata = tasks.register("generateDsglCoreMetadata") {
         val packageName = buildString {
             append(project.group.toString())
             append(".dsgl.")
-            append(sanitizeKotlinPackageSegment(project.name))
+            append(toKotlinPackageSegmentFromProjectName(project.name))
         }
         val outputRoot = metadataGeneratedSourcesDir.get().asFile
         val outputFile = outputRoot.resolve(
@@ -69,5 +62,9 @@ tasks.named("compileKotlin") {
 }
 
 tasks.named("sourcesJar") {
+    dependsOn(generateDsglCoreMetadata)
+}
+
+tasks.named("dokkaGeneratePublicationHtml") {
     dependsOn(generateDsglCoreMetadata)
 }
