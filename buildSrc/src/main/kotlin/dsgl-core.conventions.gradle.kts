@@ -67,3 +67,7 @@ extensions.configure<KotlinJvmProjectExtension> {
 tasks.named("compileKotlin") {
     dependsOn(generateDsglCoreMetadata)
 }
+
+tasks.named("sourcesJar") {
+    dependsOn(generateDsglCoreMetadata)
+}

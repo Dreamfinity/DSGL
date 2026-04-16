@@ -94,12 +94,17 @@ tasks.named("compileKotlin") {
     dependsOn(generateDsglAdapterMetadata)
 }
 
+tasks.named("sourcesJar") {
+    dependsOn(generateDsglAdapterMetadata)
+}
+
 val devJar = tasks.register<Jar>("devJar") {
     from(sourceSets["main"].output)
     archiveClassifier.set("dev")
 }
 
 val devSourcesJar = tasks.register<Jar>("devSourcesJar") {
+    dependsOn(generateDsglAdapterMetadata)
     from(sourceSets["main"].allSource)
     archiveClassifier.set("dev-sources")
 }
