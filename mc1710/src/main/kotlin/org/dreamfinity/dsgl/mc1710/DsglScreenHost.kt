@@ -18,6 +18,8 @@ import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
+import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.host.rawMouseToDsglX
@@ -25,8 +27,6 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
-import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
@@ -40,8 +40,7 @@ import org.lwjgl.input.Mouse
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Collections
-import java.util.IdentityHashMap
+import java.util.*
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.

@@ -7,7 +7,8 @@ import cpw.mods.fml.common.gameevent.InputEvent
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.Minecraft
-import org.dreamfinity.dsgl.mc1710.demo.DemoScreen
+import net.minecraft.client.settings.KeyBinding
+import org.dreamfinity.dsgl.mc1710.demo.ShowcaseWindow
 import org.lwjgl.input.Keyboard
 
 /**
@@ -17,7 +18,7 @@ import org.lwjgl.input.Keyboard
 object DsglClientHotkeys {
     private val openShowcaseKey = net.minecraft.client.settings.KeyBinding(
         "key.dsgl.open_showcase",
-        Keyboard.KEY_RSHIFT,
+        Keyboard.KEY_J,
         "key.categories.dsgl"
     )
     private var registered: Boolean = false
@@ -31,10 +32,12 @@ object DsglClientHotkeys {
 
     @SubscribeEvent
     fun onKeyInput(event: InputEvent.KeyInputEvent) {
-        if (!openShowcaseKey.isPressed) return
-        val mc = Minecraft.getMinecraft()
-        if (mc.currentScreen !is DemoScreen) {
-            DemoScreen.open()
+        when {
+            openShowcaseKey.isPressed -> Minecraft
+                .getMinecraft()
+                .displayGuiScreen(object : DsglScreenHost({ ShowcaseWindow() }) {
+                    override fun doesGuiPauseGame() = false
+                })
         }
     }
 }

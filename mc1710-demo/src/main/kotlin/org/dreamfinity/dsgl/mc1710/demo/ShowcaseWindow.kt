@@ -210,7 +210,12 @@ class ShowcaseWindow : DsglWindow() {
                                     onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
                                     onInfo = ::appendInfo,
                                     loadStylesheetText = { loadStylesheetEditorFromFile("styles section load") },
-                                    saveStylesheetText = { content -> saveStylesheetEditorToFile(content, "styles section save") },
+                                    saveStylesheetText = { content ->
+                                        saveStylesheetEditorToFile(
+                                            content,
+                                            "styles section save"
+                                        )
+                                    },
                                     onReloadStylesheets = { reloadStylesheetsProgrammatically("styles section button") }
                                 )
 
