@@ -24,7 +24,7 @@ fun UiScope.renderEventInspectorPanel(
             padding = 20.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border(1.px, DsglColors.BORDER)
+            border { width = 1.px; color = DsglColors.BORDER }
         }
 
     }) {
@@ -81,7 +81,7 @@ fun UiScope.renderChecklistPanel(
             gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border(1.px, DsglColors.BORDER)
+            border { width = 1.px; color = DsglColors.BORDER }
         }
 
     }) {

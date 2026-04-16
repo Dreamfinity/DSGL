@@ -251,7 +251,7 @@ private fun UiScope.overflowDemoCard(
             gap = 2.px
             padding = 2.px
             backgroundColor = 0xFF2B3440.toInt()
-            border(1.px, 0xFF5E7286.toInt())
+            border { width = 1.px; color = 0xFF5E7286.toInt() }
         }
     }) {
         text(title)
@@ -268,7 +268,7 @@ private fun UiScope.overflowDemoCard(
                 height = viewportHeight.px
                 this.overflowX = overflowX
                 this.overflowY = overflowY
-                border(1.px, 0xFF8AA0B5.toInt())
+                border { width = 1.px; color = 0xFF8AA0B5.toInt() }
                 backgroundColor = 0xFF23303D.toInt()
                 padding = 2.px
             }
@@ -281,7 +281,7 @@ private fun UiScope.overflowDemoCard(
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                     gap = 1.px
-                    border(1.px, 0xFF7992AA.toInt())
+                    border { width = 1.px; color = 0xFF7992AA.toInt() }
                     backgroundColor = 0xFF384C60.toInt()
                     padding = 2.px
                 }

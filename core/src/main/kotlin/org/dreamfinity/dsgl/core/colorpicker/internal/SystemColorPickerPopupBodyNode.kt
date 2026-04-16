@@ -265,7 +265,7 @@ internal class SystemColorPickerPopupBodyNode(
         buttons.forEach { button ->
             button.textColor = style.textColor
             button.applyStyle {
-                border(1.px, style.inputBorderColor)
+                border { width = 1.px; color = style.inputBorderColor }
                 fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap
@@ -415,7 +415,7 @@ internal class SystemColorPickerModeDropdownOverlayNode(
     private fun applyStaticStyle(style: ColorPickerStyle) {
         modeOptionButtons.values.forEach { button ->
             button.applyStyle {
-                border(1.px, style.inputBorderColor)
+                border { width = 1.px; color = style.inputBorderColor }
                 fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap

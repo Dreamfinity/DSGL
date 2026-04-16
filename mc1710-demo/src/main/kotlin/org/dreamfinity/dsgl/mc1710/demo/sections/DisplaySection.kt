@@ -73,7 +73,7 @@ fun UiScope.displaySection(
                 backgroundColor = 0xFF2B3542.toInt()
                 display = Display.Block
                 gap = (if (displayBlockLargeGap) 6 else 2).px
-                border(1.px, 0xFF657688.toInt())
+                border { width = 1.px; color = 0xFF657688.toInt() }
             }
         }) {
             repeat(3) { index ->
@@ -82,7 +82,7 @@ fun UiScope.displaySection(
                     style = {
                         padding = 2.px
                         backgroundColor = (0xFF3A4B60 + index * 0x000A0A00).toInt()
-                        border(1.px, 0xFF8095AA.toInt())
+                        border { width = 1.px; color = 0xFF8095AA.toInt() }
                     }
                 }) {
                     text("Block item ${index + 1}")
@@ -117,7 +117,7 @@ fun UiScope.displaySection(
                 padding = 3.px
                 backgroundColor = 0xFF2E3946.toInt()
                 display = Display.Inline
-                border(1.px, 0xFF607181.toInt())
+                border { width = 1.px; color = 0xFF607181.toInt() }
                 gap = 2.px
             }
         }) {
@@ -128,8 +128,8 @@ fun UiScope.displaySection(
                         padding = 2.px
                         backgroundColor = 0xFF40556B.toInt()
                         display = Display.Inline
-                        margin(1.px, 2.px, 1.px, 1.px)
-                        border(1.px, 0xFF90A7BE.toInt())
+                        margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
+                        border { width = 1.px; color = 0xFF90A7BE.toInt() }
                     }
                 }) {
                     text(label)
@@ -141,8 +141,8 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF3C5D4A.toInt()
                     display = Display.Inline
-                    margin(1.px, 2.px, 1.px, 1.px)
-                    border(1.px, 0xFF86B197.toInt())
+                    margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
+                    border { width = 1.px; color = 0xFF86B197.toInt() }
                 }
             }) {
                 text("flex")
@@ -153,7 +153,7 @@ fun UiScope.displaySection(
                         backgroundColor = 0xFF2E4739.toInt()
                         display = Display.Flex
                         flexDirection = FlexDirection.Row
-                        border(1.px, 0xFF5B8D73.toInt())
+                        border { width = 1.px; color = 0xFF5B8D73.toInt() }
                     }
                 }) {
                     div({
@@ -178,8 +178,8 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF5E4B3C.toInt()
                     display = Display.Inline
-                    margin(1.px, 2.px, 1.px, 1.px)
-                    border(1.px, 0xFFB58E6A.toInt())
+                    margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
+                    border { width = 1.px; color = 0xFFB58E6A.toInt() }
                 }
             }) {
                 div({
@@ -187,7 +187,7 @@ fun UiScope.displaySection(
                         padding = 1.px
                         backgroundColor = 0xFF4B3B30.toInt()
                         display = Display.Block
-                        border(1.px, 0xFF8B6A51.toInt())
+                        border { width = 1.px; color = 0xFF8B6A51.toInt() }
                         gap = 1.px
                     }
                 }) {
@@ -229,7 +229,7 @@ fun UiScope.displaySection(
                 padding = 3.px
                 backgroundColor = 0xFF303A46.toInt()
                 gap = 2.px
-                border(1.px, 0xFF64788B.toInt())
+                border { width = 1.px; color = 0xFF64788B.toInt() }
             }
         }) {
             div({
@@ -242,7 +242,7 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF5A3E3E.toInt()
                     display = if (displayShowHidden) Display.Block else Display.None
-                    border(1.px, 0xFFB07B7B.toInt())
+                    border { width = 1.px; color = 0xFFB07B7B.toInt() }
                 }
             }) {
                 text("Toggle target (click me)")
@@ -289,7 +289,7 @@ fun UiScope.displaySection(
                 justifyContent = justify.second
                 alignItems = AlignItems.Center
                 gap = 0.px
-                border(1.px, 0xFF7E93A8.toInt())
+                border { width = 1.px; color = 0xFF7E93A8.toInt() }
             }
         }) {
             dot("left", "A", 0xFFB3D6FF.toInt(), 0xFFDEEFFF.toInt())
@@ -310,7 +310,7 @@ fun UiScope.displaySection(
                 justifyContent = justify.second
                 alignItems = align.second
                 gap = (if (displayGridLargeGap) 8 else 2).px
-                border(1.px, 0xFF6C7E90.toInt())
+                border { width = 1.px; color = 0xFF6C7E90.toInt() }
             }
         }) {
             flexRowCell("0", "1", 14, 1, 0xFF46627C.toInt())
@@ -325,7 +325,7 @@ fun UiScope.displaySection(
                 padding = 2.px
                 backgroundColor = 0xFF2A3340.toInt()
                 gap = 2.px
-                border(1.px, 0xFF6B7E92.toInt())
+                border { width = 1.px; color = 0xFF6B7E92.toInt() }
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -385,7 +385,7 @@ fun UiScope.displaySection(
                 gap = (if (displayGridLargeGap) 4 else 2).px
                 alignItems = align.second
                 justifyItems = JustifyItems.Stretch
-                border(1.px, 0xFF70849A.toInt())
+                border { width = 1.px; color = 0xFF70849A.toInt() }
             }
         }) {
             repeat(10) { index ->
@@ -397,7 +397,7 @@ fun UiScope.displaySection(
                         if (index == 0) {
                             gridColumnSpan = 2
                         }
-                        border(1.px, 0xFF93AACC.toInt())
+                        border { width = 1.px; color = 0xFF93AACC.toInt() }
                     }
                 }) {
                     text("Cell ${index + 1}")
@@ -413,7 +413,7 @@ private fun UiScope.dot(keyPart: String, label: String, fill: Int, borderColor: 
         style = {
             display = Display.Inline
             backgroundColor = fill
-            border(1.px, borderColor)
+            border { width = 1.px; color = borderColor }
         }
     }) { text(label) }
 }

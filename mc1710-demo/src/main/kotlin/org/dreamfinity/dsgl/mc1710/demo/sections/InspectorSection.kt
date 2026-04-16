@@ -46,7 +46,7 @@ fun UiScope.inspectorSection(onInfo: (String) -> Unit) {
                 gap = 4.px
                 padding = 4.px
                 backgroundColor = 0x3338424F
-                border(1.px, 0xFF5F6E80.toInt())
+                border { width = 1.px; color = 0xFF5F6E80.toInt() }
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -94,7 +94,7 @@ fun UiScope.inspectorSection(onInfo: (String) -> Unit) {
                         style = {
                             padding = 2.px
                             backgroundColor = 0x22496699
-                            border(1.px, 0x665A9CE0)
+                            border { width = 1.px; color = 0x665A9CE0 }
                         }
 
                     }) {

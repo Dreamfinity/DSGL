@@ -210,7 +210,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                 backgroundColor = 0xFF233040.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1.px, 0xFF5F7288.toInt())
+                border { width = 1.px; color = 0xFF5F7288.toInt() }
             }
         }) {
             text("Header text", {

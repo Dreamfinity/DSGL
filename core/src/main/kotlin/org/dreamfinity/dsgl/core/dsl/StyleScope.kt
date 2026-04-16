@@ -1,40 +1,28 @@
 package org.dreamfinity.dsgl.core.dsl
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.animation.AnimationSpec
-import org.dreamfinity.dsgl.core.animation.AnimationListBuilder
-import org.dreamfinity.dsgl.core.animation.TransitionSpec
-import org.dreamfinity.dsgl.core.animation.TransitionBuilder
-import org.dreamfinity.dsgl.core.animation.UiTransformBuilder
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.style.AlignItems
-import org.dreamfinity.dsgl.core.style.CssLength
-import org.dreamfinity.dsgl.core.style.CssUnit
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.style.FontStyle
-import org.dreamfinity.dsgl.core.style.FontWeight
-import org.dreamfinity.dsgl.core.style.GridAutoFlow
-import org.dreamfinity.dsgl.core.style.JustifyContent
-import org.dreamfinity.dsgl.core.style.JustifyItems
-import org.dreamfinity.dsgl.core.style.LineHeightValue
-import org.dreamfinity.dsgl.core.style.Overflow
-import org.dreamfinity.dsgl.core.style.PositionMode
-import org.dreamfinity.dsgl.core.style.StyleAlign
-import org.dreamfinity.dsgl.core.style.StyleExpression
-import org.dreamfinity.dsgl.core.style.StyleProperty
-import org.dreamfinity.dsgl.core.style.TextDecoration
-import org.dreamfinity.dsgl.core.style.TextFormatting
-import org.dreamfinity.dsgl.core.style.TextWrap
-import org.dreamfinity.dsgl.core.style.TransformOrigin
-import org.dreamfinity.dsgl.core.style.UiTransform
-import org.dreamfinity.dsgl.core.style.toCssLiteral
+import org.dreamfinity.dsgl.core.style.*
 
-@DsglDsl
-/**
- * Styling DSL attached to a [org.dreamfinity.dsgl.core.dom.DOMNode].
- */
-class StyleScope internal constructor(private val node: DOMNode) {
+data class StyleBorder(
+    val width: CssLength,
+    val color: Int = DsglColors.BORDER
+)
+
+data class StyleSpacing(
+    val top: CssLength,
+    val right: CssLength,
+    val bottom: CssLength,
+    val left: CssLength
+)
+
+data class StyleOverflowAxes(
+    val x: Overflow,
+    val y: Overflow
+)
+
+interface CssLengthUnitsDsl {
     val Number.px: CssLength
         get() = CssLength(value = this.toFloat(), unit = CssUnit.Px)
     val Number.rem: CssLength
@@ -47,6 +35,165 @@ class StyleScope internal constructor(private val node: DOMNode) {
         get() = CssLength(value = this.toFloat(), unit = CssUnit.Vh)
     val Number.percent: CssLength
         get() = CssLength(value = this.toFloat(), unit = CssUnit.Percent)
+}
+
+@DsglDsl
+class StyleBorderBuilder : CssLengthUnitsDsl {
+    var width: CssLength = CssLength.ZERO_PX
+    var color: Int = DsglColors.BORDER
+
+    internal fun build(): StyleBorder = StyleBorder(width = width, color = color)
+}
+
+@DsglDsl
+class StyleTransformOriginBuilder : CssLengthUnitsDsl {
+    var x: Float = 0.5f
+    var y: Float = 0.5f
+
+    var originX: Float
+        get() = x
+        set(value) {
+            x = value
+        }
+
+    var originY: Float
+        get() = y
+        set(value) {
+            y = value
+        }
+
+    internal fun build(): TransformOrigin {
+        return TransformOrigin(
+            originX = x.coerceIn(0f, 1f),
+            originY = y.coerceIn(0f, 1f)
+        )
+    }
+}
+
+@DsglDsl
+class StyleSpacingBuilder : CssLengthUnitsDsl {
+    var top: CssLength = CssLength.ZERO_PX
+    var right: CssLength = CssLength.ZERO_PX
+    var bottom: CssLength = CssLength.ZERO_PX
+    var left: CssLength = CssLength.ZERO_PX
+
+    fun all(value: CssLength) {
+        top = value
+        right = value
+        bottom = value
+        left = value
+    }
+
+    fun horizontal(value: CssLength) {
+        left = value
+        right = value
+    }
+
+    fun vertical(value: CssLength) {
+        top = value
+        bottom = value
+    }
+
+    internal fun build(): StyleSpacing {
+        return StyleSpacing(
+            top = top,
+            right = right,
+            bottom = bottom,
+            left = left
+        )
+    }
+}
+
+@DsglDsl
+class StyleLineHeightBuilder : CssLengthUnitsDsl {
+    private var useNormal: Boolean = false
+    private var length: CssLength? = null
+
+    fun normal() {
+        useNormal = true
+        length = null
+    }
+
+    fun length(value: CssLength) {
+        useNormal = false
+        length = value
+    }
+
+    var value: CssLength?
+        get() = length
+        set(newValue) {
+            if (newValue == null) {
+                normal()
+            } else {
+                length(newValue)
+            }
+        }
+
+    internal fun build(): LineHeightValue {
+        val currentLength = length
+        return when {
+            currentLength != null -> LineHeightValue.Length(currentLength)
+            useNormal -> LineHeightValue.Normal
+            else -> LineHeightValue.Normal
+        }
+    }
+}
+
+@DsglDsl
+class StyleOverflowBuilder : CssLengthUnitsDsl {
+    var x: Overflow = Overflow.Visible
+    var y: Overflow = Overflow.Visible
+
+    fun all(value: Overflow) {
+        x = value
+        y = value
+    }
+
+    internal fun build(): StyleOverflowAxes = StyleOverflowAxes(x = x, y = y)
+}
+
+@DsglDsl
+class StyleInsetBuilder : CssLengthUnitsDsl {
+    private var leftAssigned: Boolean = false
+    private var topAssigned: Boolean = false
+    private var rightAssigned: Boolean = false
+    private var bottomAssigned: Boolean = false
+
+    var left: CssLength? = null
+        set(value) {
+            leftAssigned = true
+            field = value
+        }
+
+    var top: CssLength? = null
+        set(value) {
+            topAssigned = true
+            field = value
+        }
+
+    var right: CssLength? = null
+        set(value) {
+            rightAssigned = true
+            field = value
+        }
+
+    var bottom: CssLength? = null
+        set(value) {
+            bottomAssigned = true
+            field = value
+        }
+
+    internal fun hasLeft(): Boolean = leftAssigned
+    internal fun hasTop(): Boolean = topAssigned
+    internal fun hasRight(): Boolean = rightAssigned
+    internal fun hasBottom(): Boolean = bottomAssigned
+}
+
+@DsglDsl
+/**
+ * Styling DSL attached to a [org.dreamfinity.dsgl.core.dom.DOMNode].
+ */
+class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnitsDsl {
 
     var display: Display
         get() = Display.Block
@@ -269,6 +416,14 @@ class StyleScope internal constructor(private val node: DOMNode) {
             setLiteral(StyleProperty.BORDER_RADIUS, value.toCssLiteral())
         }
 
+    var border: StyleBorder
+        get() = StyleBorder(width = CssLength.ZERO_PX)
+        set(value) {
+            requireNonNegative(value.width, "border-width")
+            borderWidth = value.width
+            borderColor = value.color
+        }
+
     var fontId: String
         get() = ""
         set(value) {
@@ -433,6 +588,21 @@ class StyleScope internal constructor(private val node: DOMNode) {
         transform = UiTransformBuilder().apply(block).build()
     }
 
+    fun transformOrigin(value: TransformOrigin) {
+        transformOrigin = value
+    }
+
+    fun transformOrigin(originX: Float, originY: Float) {
+        transformOrigin = TransformOrigin(
+            originX = originX.coerceIn(0f, 1f),
+            originY = originY.coerceIn(0f, 1f)
+        )
+    }
+
+    fun transformOrigin(block: StyleTransformOriginBuilder.() -> Unit) {
+        transformOrigin = StyleTransformOriginBuilder().apply(block).build()
+    }
+
     fun transition(block: TransitionBuilder.() -> Unit) {
         transition = TransitionBuilder().apply(block).build()
     }
@@ -451,6 +621,11 @@ class StyleScope internal constructor(private val node: DOMNode) {
 
     fun margin(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength) {
         setSpacing(StyleProperty.MARGIN, top, right, bottom, left)
+    }
+
+    fun margin(block: StyleSpacingBuilder.() -> Unit) {
+        val spacing = StyleSpacingBuilder().apply(block).build()
+        setSpacing(StyleProperty.MARGIN, spacing.top, spacing.right, spacing.bottom, spacing.left)
     }
 
     fun padding(all: CssLength) {
@@ -472,16 +647,29 @@ class StyleScope internal constructor(private val node: DOMNode) {
         setSpacing(StyleProperty.PADDING, top, right, bottom, left)
     }
 
+    fun padding(block: StyleSpacingBuilder.() -> Unit) {
+        val spacing = StyleSpacingBuilder().apply(block).build()
+        requireNonNegative(spacing.top, "padding")
+        requireNonNegative(spacing.right, "padding")
+        requireNonNegative(spacing.bottom, "padding")
+        requireNonNegative(spacing.left, "padding")
+        setSpacing(StyleProperty.PADDING, spacing.top, spacing.right, spacing.bottom, spacing.left)
+    }
+
+    fun border(value: StyleBorder) {
+        border = value
+    }
+
+    fun border(block: StyleBorderBuilder.() -> Unit) {
+        border = StyleBorderBuilder().apply(block).build()
+    }
+
     fun border(width: CssLength) {
-        requireNonNegative(width, "border-width")
-        borderWidth = width
-        borderColor = DsglColors.BORDER
+        border = StyleBorder(width = width)
     }
 
     fun border(width: CssLength, color: Int) {
-        requireNonNegative(width, "border-width")
-        borderWidth = width
-        borderColor = color
+        border = StyleBorder(width = width, color = color)
     }
 
     fun border(horizontal: CssLength, vertical: CssLength, color: Int = DsglColors.BORDER) {
@@ -490,6 +678,32 @@ class StyleScope internal constructor(private val node: DOMNode) {
 
     fun border(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength, color: Int = DsglColors.BORDER) {
         border(maxLength(top, right, bottom, left), color)
+    }
+
+    fun lineHeight(block: StyleLineHeightBuilder.() -> Unit) {
+        lineHeight = StyleLineHeightBuilder().apply(block).build()
+    }
+
+    fun overflow(block: StyleOverflowBuilder.() -> Unit) {
+        val axes = StyleOverflowBuilder().apply(block).build()
+        overflowX = axes.x
+        overflowY = axes.y
+    }
+
+    fun inset(block: StyleInsetBuilder.() -> Unit) {
+        val inset = StyleInsetBuilder().apply(block)
+        if (inset.hasLeft()) {
+            left = inset.left
+        }
+        if (inset.hasTop()) {
+            top = inset.top
+        }
+        if (inset.hasRight()) {
+            right = inset.right
+        }
+        if (inset.hasBottom()) {
+            bottom = inset.bottom
+        }
     }
 
     fun backgroundColor(variable: StyleExpression.VariableRef) {
@@ -610,6 +824,7 @@ class StyleScope internal constructor(private val node: DOMNode) {
         Overflow.Scroll -> "scroll"
         Overflow.Auto -> "auto"
     }
+
     private fun FlexDirection.toCssLiteral(): String = when (this) {
         FlexDirection.Row -> "row"
         FlexDirection.Column -> "column"

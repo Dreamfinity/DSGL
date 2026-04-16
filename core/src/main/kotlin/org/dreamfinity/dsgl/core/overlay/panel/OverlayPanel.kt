@@ -275,15 +275,15 @@ class OverlayPanel(
     private fun applyStyleToNodes(style: OverlayPanelStyle) {
         shadowNode.applyStyle {
             backgroundColor = style.panelShadowColor
-            border(0.px)
+            border { width = 0.px }
         }
         panelNode.applyStyle {
             backgroundColor = style.panelBackgroundColor
-            border(1.px, style.panelBorderColor)
+            border { width = 1.px; color = style.panelBorderColor }
         }
         headerNode.applyStyle {
             backgroundColor = style.headerBackgroundColor
-            border(1.px, style.headerBorderColor)
+            border { width = 1.px; color = style.headerBorderColor }
         }
         titleNode.applyStyle {
             color = style.textColor
@@ -292,7 +292,7 @@ class OverlayPanel(
         }
         closeButtonNode.applyStyle {
             backgroundColor = style.closeButtonBackgroundColor
-            border(1.px, style.closeButtonBorderColor)
+            border { width = 1.px; color = style.closeButtonBorderColor }
             color = style.textColor
             fontSize = style.fontSize.px
             width = style.closeButtonWidth.px

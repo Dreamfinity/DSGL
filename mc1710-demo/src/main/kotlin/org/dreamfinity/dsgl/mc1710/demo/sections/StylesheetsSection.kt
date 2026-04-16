@@ -51,7 +51,7 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border(1.px, 0xFF5E6A77.toInt())
+                border { width = 1.px; color = 0xFF5E6A77.toInt() }
             }
         }) {
             text("Demo stylesheet editor: showcase_styles.dss")
@@ -132,7 +132,7 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border(1.px, 0xFF5E6A77.toInt())
+                border { width = 1.px; color = 0xFF5E6A77.toInt() }
             }
         }) {
             text("Selector matrix", {
@@ -213,7 +213,7 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border(1.px, 0xFF5E6A77.toInt())
+                border { width = 1.px; color = 0xFF5E6A77.toInt() }
             }
         }) {
             text("Pseudo-states: :hover, :active, :focus, :disabled")
@@ -265,7 +265,7 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 2.px
-                border(1.px, 0xFF5E6A77.toInt())
+                border { width = 1.px; color = 0xFF5E6A77.toInt() }
             }
         }) {
             text("Variable demo uses :root { --primary: ... } and var(--primary)")
@@ -284,7 +284,7 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border(1.px, 0xFF5E6A77.toInt())
+                border { width = 1.px; color = 0xFF5E6A77.toInt() }
             }
         }) {
             text("CSS units demo: px, em, %, vw, vh")

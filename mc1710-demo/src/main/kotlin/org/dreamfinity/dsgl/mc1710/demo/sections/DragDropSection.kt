@@ -575,7 +575,7 @@ private fun UiScope.originalModeReorder(
             gap = 3.px
             padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
-            border(1.px, 0xFF6B7785.toInt())
+            border { width = 1.px; color = 0xFF6B7785.toInt() }
             display = Display.Flex
             flexDirection = FlexDirection.Column
             flexGrow = 1.0f
@@ -605,7 +605,7 @@ private fun UiScope.originalModeReorder(
                 style = {
                     gap = 6.px
                     backgroundColor = if (state.reorderHoverLaneAppend) 0x2A9EC4E3 else 0x00000000
-                    border(1.px, if (state.reorderHoverLaneAppend) 0xFF9EC4E3.toInt() else 0x44405058)
+                    border { width = 1.px; color = if (state.reorderHoverLaneAppend) 0xFF9EC4E3.toInt() else 0x44405058 }
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                 }
@@ -654,7 +654,7 @@ private fun UiScope.originalModeReorder(
                         key = "dnd.lane.append.gap"
                         style = {
                             backgroundColor = 0x2A9EC4E3
-                            border(1.px, 0xFF9EC4E3.toInt())
+                            border { width = 1.px; color = 0xFF9EC4E3.toInt() }
                             borderRadius = 3.px
                             display = Display.Flex
                             flexDirection = FlexDirection.Column
@@ -688,7 +688,7 @@ private fun UiScope.renderGhostModeBoxes(
             gap = 4.px
             padding = 3.px
             backgroundColor = 0xFF2D333B.toInt()
-            border(1.px, 0xFF6B7785.toInt())
+            border { width = 1.px; color = 0xFF6B7785.toInt() }
             display = Display.Flex
             flexDirection = FlexDirection.Column
         }
@@ -778,11 +778,11 @@ private fun UiScope.cardWithItem(
                 highlighted -> lighten(base, HIGHLIGHT_DELTA)
                 else -> base
             }
-            border(1.px, accent)
+            border { width = 1.px; color = accent }
             borderRadius = 3.px
             when (insertionIndicator) {
-                DndLaneIndicator.BEFORE -> margin(insertionGap.px, 0.px, 0.px, 0.px)
-                DndLaneIndicator.AFTER -> margin(0.px, 0.px, insertionGap.px, 0.px)
+                DndLaneIndicator.BEFORE -> margin { top = insertionGap.px; right = 0.px; bottom = 0.px; left = 0.px }
+                DndLaneIndicator.AFTER -> margin { top = 0.px; right = 0.px; bottom = insertionGap.px; left = 0.px }
                 DndLaneIndicator.NONE -> Unit
             }
         }
@@ -806,7 +806,7 @@ private fun UiScope.cardWithItem(
         itemStack(item.stack, {
             key = "dnd.stack.${item.id}"
             style = {
-                border(1.px, 0x553A4452)
+                border { width = 1.px; color = 0x553A4452 }
                 backgroundColor = 0x2219222B
             }
         })
@@ -855,7 +855,7 @@ private fun UiScope.dropBox(
             padding = 4.px
             gap = 2.px
             backgroundColor = if (highlighted) lighten(color, HIGHLIGHT_DELTA) else color
-            border(1.px, 0xFF8A94A2.toInt())
+            border { width = 1.px; this.color = 0xFF8A94A2.toInt() }
             borderRadius = 3.px
         }
         applyDroppable(dropDescriptor)

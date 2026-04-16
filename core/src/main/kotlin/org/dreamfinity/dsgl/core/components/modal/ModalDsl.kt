@@ -89,7 +89,7 @@ fun UiScope.modalHost(
                 flexDirection = FlexDirection.Column
                 alignItems = AlignItems.Center
                 justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
-                padding((if (spec.centered) 6 else 10).px)
+                padding { all((if (spec.centered) 6 else 10).px) }
             }
 
         }) {
@@ -159,9 +159,9 @@ fun UiScope.modalDialog(
             gap = 0.px
             backgroundColor = 0xFF2F3A46.toInt()
             if (!centered) {
-                margin(6.px, 0.px, 0.px, 0.px)
+                margin { top = 6.px; right = 0.px; bottom = 0.px; left = 0.px }
             }
-            border(1.px, 0xFF6E7D8C.toInt())
+            border { width = 1.px; color = 0xFF6E7D8C.toInt() }
         }
 
     }) {

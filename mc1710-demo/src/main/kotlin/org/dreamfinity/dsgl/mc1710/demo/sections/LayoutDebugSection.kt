@@ -102,7 +102,7 @@ fun UiScope.layoutDebugSection(
                 backgroundColor = 0xFF2D3745.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border(1.px, 0xFF70859C.toInt())
+                border { width = 1.px; color = 0xFF70859C.toInt() }
             }
 
         }) {

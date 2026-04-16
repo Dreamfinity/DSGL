@@ -102,7 +102,7 @@ fun UiScope.layoutStyleSection(
                             height = fixedSize?.px
                             padding = 2.px
                             backgroundColor = 0xFF3A4A5A.toInt()
-                            border(1.px, 0xFF5E89B5.toInt())
+                            border { width = 1.px; color = 0xFF5E89B5.toInt() }
                         }
                     }) {
                         text("R${index + 1}")
@@ -128,7 +128,7 @@ fun UiScope.layoutStyleSection(
                             width = if (styleFixedSize) 72.px else null
                             padding = 2.px
                             backgroundColor = 0xFF43404F.toInt()
-                            border(1.px, 0xFF786AA6.toInt())
+                            border { width = 1.px; color = 0xFF786AA6.toInt() }
                         }
                     }) {
                         text("Column box ${index + 1}")
@@ -171,9 +171,9 @@ fun UiScope.layoutStyleSection(
                 style = {
                     width = 100.percent
                     backgroundColor = DEMO_SURFACE_ALT
-                    if (styleUseMargin) margin(4.px, 0.px, 0.px, 8.px)
-                    if (styleUsePadding) padding(4.px)
-                    if (styleUseBorder) border(1.px, 0xFF90A4AE.toInt())
+                    if (styleUseMargin) margin { top = 4.px; right = 0.px; bottom = 0.px; left = 8.px }
+                    if (styleUsePadding) padding { all(4.px) }
+                    if (styleUseBorder) border { width = 1.px; color = 0xFF90A4AE.toInt() }
                 }
             }) {
                 text("Style target (margin/padding/border)")
@@ -263,9 +263,9 @@ fun UiScope.layoutStyleSection(
                     width = overlayWidth.px
                     height = overlayHeight.px
                     backgroundColor = 0xCC5A3131.toInt()
-                    margin(layoutOverlayY.px, 0.px, 0.px, layoutOverlayX.px)
-                    padding(4.px)
-                    border(1.px, 0xFF8D4848.toInt())
+                    margin { top = layoutOverlayY.px; right = 0.px; bottom = 0.px; left = layoutOverlayX.px }
+                    padding { all(4.px) }
+                    border { width = 1.px; color = 0xFF8D4848.toInt() }
                 }
             }) {
                 text(

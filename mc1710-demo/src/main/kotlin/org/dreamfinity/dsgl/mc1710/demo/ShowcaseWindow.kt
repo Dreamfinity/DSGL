@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mc1710.demo
+package org.dreamfinity.dsgl.mc1710.demo
 
 import net.minecraft.client.Minecraft
 import net.minecraft.init.Blocks
@@ -117,7 +117,7 @@ class ShowcaseWindow : DsglWindow() {
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border(1.px, DsglColors.BORDER)
+                                border { width = 1.px; color = DsglColors.BORDER }
                             }
 
                         }) {
@@ -143,7 +143,7 @@ class ShowcaseWindow : DsglWindow() {
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border(1.px, DsglColors.BORDER)
+                                border { width = 1.px; color = DsglColors.BORDER }
                             }
                         }) {
                             text(selectedSection.title, { style = { color = DsglColors.WHITE } })

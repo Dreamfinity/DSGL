@@ -658,7 +658,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
                     isSelected -> 0xFF3A5168.toInt()
                     else -> 0xFF33414E.toInt()
                 }
-                border(1.px, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt())
+                border { width = 1.px; color = if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF596B7D.toInt() }
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
                 alignItems = AlignItems.Center
@@ -785,7 +785,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
                 padding = 3.px
                 gap = 2.px
                 backgroundColor = 0xFF2A313B.toInt()
-                border(1.px, 0xFF5B6A7A.toInt())
+                border { width = 1.px; color = 0xFF5B6A7A.toInt() }
             }
         }) {
             div({
@@ -796,7 +796,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
                     backgroundColor = 0xFF25303A.toInt()
                     display = Display.Flex
                     flexDirection = FlexDirection.Row
-                    border(1.px, 0xFF4F6175.toInt())
+                    border { width = 1.px; color = 0xFF4F6175.toInt() }
                 }
             }) {
                 button("<", {
@@ -865,7 +865,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
                                 isCurrent -> 0xFF364A5E.toInt()
                                 else -> 0xFF2B3A4A.toInt()
                             }
-                            border(1.px, if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt())
+                            border { width = 1.px; color = if (isDropHover) 0xFF9BC2E9.toInt() else 0xFF5B6F84.toInt() }
                         }
                         applyDroppable(breadcrumbDrop)
                     })
@@ -912,7 +912,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
                     gap = 4.px
                     padding = 4.px
                     backgroundColor = if (state.dragHoverDirectoryId == state.currentDirectoryId) 0xFF2F4358.toInt() else 0xFF2B343F.toInt()
-                    border(1.px, 0xFF4F6175.toInt())
+                    border { width = 1.px; color = 0xFF4F6175.toInt() }
                     display = Display.Grid
                     gridColumns = 4
                     flexGrow = 1f

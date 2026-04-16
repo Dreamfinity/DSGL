@@ -8,7 +8,6 @@ import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
-import org.dreamfinity.dsgl.core.style.TransformOrigin
 import org.dreamfinity.dsgl.mc1710.demo.support.DEMO_MUTED
 
 private val easingOptions: List<Pair<String, Easing>> = listOf(
@@ -174,7 +173,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                 flexDirection = FlexDirection.Row
                 alignItems = AlignItems.Center
                 justifyContent = JustifyContent.Start
-                border(1.px, 0xFF3F4D5E.toInt())
+                border { width = 1.px; color = 0xFF3F4D5E.toInt() }
             }
         }) {
             div({
@@ -200,11 +199,11 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         scale(scale)
                         rotate(if (animationsToggle) 8f else 0f)
                     }
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
+                    transformOrigin { x = 0.5f; y = 0.5f }
                     opacity = if (animationsToggle) 0.65f else 1f
                     foregroundColor = if (animationsToggle) 0xFFA4F0C2.toInt() else 0xFFEAF3FF.toInt()
-                    border(1.px, 0xFF56677A.toInt())
-                    padding(4.px)
+                    border { width = 1.px; color = 0xFF56677A.toInt() }
+                    padding { all(4.px) }
                 }
             }) {
                 text("Transition card")
@@ -230,9 +229,9 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                             playState = playState
                         )
                     }
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
-                    border(1.px, 0xFF5F5F72.toInt())
-                    padding(4.px)
+                    transformOrigin { x = 0.5f; y = 0.5f }
+                    border { width = 1.px; color = 0xFF5F5F72.toInt() }
+                    padding { all(4.px) }
                 }
             }) {
                 text("Keyframes card")
@@ -249,11 +248,11 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                     transform {
                         rotate(if (animationsToggle) 12f else 0f)
                     }
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
+                    transformOrigin { x = 0.5f; y = 0.5f }
                     transition {
                         property(StyleAnimProps.transform, 260, easing = Easings.EASE_IN_OUT)
                     }
-                    border(1.px, 0xFF4C6077.toInt())
+                    border { width = 1.px; color = 0xFF4C6077.toInt() }
                 }
             }) {
                 div({
@@ -271,7 +270,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         transition {
                             property(StyleAnimProps.transform, 220, easing = Easings.EASE_OUT)
                         }
-                        border(1.px, 0xFF7593B8.toInt())
+                        border { width = 1.px; color = 0xFF7593B8.toInt() }
                     }
                 }) {
                     text("Nested", { style = { color = 0xFFEAF3FF.toInt() } })

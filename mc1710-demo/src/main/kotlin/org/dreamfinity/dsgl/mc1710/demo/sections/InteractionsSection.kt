@@ -127,7 +127,7 @@ fun UiScope.interactionsSection(
                 height = 52.px
                 padding = 4.px
                 backgroundColor = DEMO_SURFACE_ALT
-                border(1.px, 0xFF6E7A89.toInt())
+                border { width = 1.px; color = 0xFF6E7A89.toInt() }
             }
         }) {
             text("Move, click, drag and wheel here")
@@ -216,7 +216,7 @@ fun UiScope.interactionsSection(
                 width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF353D46.toInt()
-                border(1.px, 0xFF708090.toInt())
+                border { width = 1.px; color = 0xFF708090.toInt() }
             }
         }) {
             text("Parent click area")
@@ -236,7 +236,7 @@ fun UiScope.interactionsSection(
                 style = {
                     padding = 3.px
                     backgroundColor = 0xFF4D5560.toInt()
-                    border(1.px, 0xFF9AA5B1.toInt())
+                    border { width = 1.px; color = 0xFF9AA5B1.toInt() }
                 }
             }) {
                 text("Child area")

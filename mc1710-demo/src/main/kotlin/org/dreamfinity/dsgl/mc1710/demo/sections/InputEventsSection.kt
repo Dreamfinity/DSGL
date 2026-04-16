@@ -266,7 +266,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                 overflowY = Overflow.Auto
                 backgroundColor = DEMO_SURFACE_ALT
                 padding = 3.px
-                border(1.px, 0xFF6A7785.toInt())
+                border { width = 1.px; color = 0xFF6A7785.toInt() }
             }
         }) {
             if (inputEventLogEntries.isEmpty()) {
