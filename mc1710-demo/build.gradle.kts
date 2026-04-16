@@ -164,6 +164,22 @@ tasks.named<Jar>("jar") {
     exclude("META-INF/MANIFEST.MF")
 }
 
+tasks.named("reobf") {
+    dependsOn(":mc1710:reobf")
+}
+
+listOf(
+    "extractMcpData",
+    "getVersionJsonIndex",
+    "getVersionJson",
+    "extractUserDev",
+    "genSrgs",
+).forEach { taskName ->
+    tasks.named(taskName) {
+        mustRunAfter(":mc1710:reobf")
+    }
+}
+
 tasks.withType<PublishToMavenLocal>().configureEach {
     enabled = false
 }
