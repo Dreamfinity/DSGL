@@ -35,6 +35,15 @@ internal data class OverlayDebugControlLayout(
 class OverlayDebugControlHost(
     private val state: OverlayLayerDebugState = OverlayLayerDebugState
 ) {
+    private data class ToggleSnapshot(
+        val applicationOverlayRenderEnabled: Boolean,
+        val applicationOverlayTintEnabled: Boolean,
+        val applicationOverlayInputEnabled: Boolean,
+        val systemOverlayRenderEnabled: Boolean,
+        val systemOverlayTintEnabled: Boolean,
+        val systemOverlayInputEnabled: Boolean
+    )
+
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1
     private var layout: OverlayDebugControlLayout? = null
@@ -43,12 +52,14 @@ class OverlayDebugControlHost(
         root = rootNode,
         styleScope = StyleApplicationScope.SystemOverlay
     )
+    private var lastToggleSnapshot: ToggleSnapshot? = null
 
     fun render(viewportWidth: Int, viewportHeight: Int) {
         this.viewportWidth = viewportWidth.coerceAtLeast(1)
         this.viewportHeight = viewportHeight.coerceAtLeast(1)
         if (!state.controlsEnabled) {
             layout = null
+            lastToggleSnapshot = null
             return
         }
         layout = buildLayout(this.viewportWidth, this.viewportHeight)
@@ -56,7 +67,13 @@ class OverlayDebugControlHost(
 
     fun paint(ctx: UiMeasureContext): List<RenderCommand> {
         val currentLayout = layout ?: return emptyList()
-        rootNode.bind(currentLayout, state.snapshot())
+        val snapshot = state.snapshot()
+        val toggleSnapshot = snapshot.toggleSnapshot()
+        if (lastToggleSnapshot != toggleSnapshot) {
+            tree.invalidateRenderCommandChunks()
+            lastToggleSnapshot = toggleSnapshot
+        }
+        rootNode.bind(currentLayout, snapshot)
         tree.render(ctx, viewportWidth, viewportHeight)
         return tree.paint(ctx, applyStyles = true)
     }
@@ -122,6 +139,7 @@ class OverlayDebugControlHost(
 
     fun clearRefs() {
         layout = null
+        lastToggleSnapshot = null
         tree.clearRefs()
     }
 
@@ -158,6 +176,17 @@ class OverlayDebugControlHost(
                 width = panelRect.width - 20,
                 height = 20
             )
+        )
+    }
+
+    private fun OverlayLayerDebugSnapshot.toggleSnapshot(): ToggleSnapshot {
+        return ToggleSnapshot(
+            applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
+            applicationOverlayTintEnabled = applicationOverlayTintEnabled,
+            applicationOverlayInputEnabled = applicationOverlayInputEnabled,
+            systemOverlayRenderEnabled = systemOverlayRenderEnabled,
+            systemOverlayTintEnabled = systemOverlayTintEnabled,
+            systemOverlayInputEnabled = systemOverlayInputEnabled
         )
     }
 }

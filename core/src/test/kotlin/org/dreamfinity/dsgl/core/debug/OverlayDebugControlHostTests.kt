@@ -111,6 +111,30 @@ class OverlayDebugControlHostTests {
     }
 
     @Test
+    fun `toggle button label updates immediately after state change`() {
+        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
+        OverlayLayerDebugState.resetAll()
+        val host = OverlayDebugControlHost()
+
+        host.render(960, 540)
+        val layout = host.debugLayout() ?: error("layout missing")
+        val initialText = host.paint(ctx)
+            .filterIsInstance<RenderCommand.DrawText>()
+            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+            ?.text
+        assertEquals("ON", initialText)
+
+        assertTrue(host.handleMouseDown(layout.appOverlayRenderRect.x + 2, layout.appOverlayRenderRect.y + 2, MouseButton.LEFT))
+
+        host.render(960, 540)
+        val updatedText = host.paint(ctx)
+            .filterIsInstance<RenderCommand.DrawText>()
+            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+            ?.text
+        assertEquals("OFF", updatedText)
+    }
+
+    @Test
     fun `sliding window fps smooths immediate fps`() {
         OverlayLayerDebugState.updateFrameTiming(0.010)
         OverlayLayerDebugState.updateFrameTiming(0.030)
