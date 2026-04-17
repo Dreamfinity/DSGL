@@ -11,7 +11,7 @@ Modules:
 
 ## Quick Start
 
-See the [Docs](docs/index.md)
+See the [repo docs](docs/index.md) or [online docs](https://guides.dreamfinity.org/DSGL/docs/)
 
 ## What is this
 
