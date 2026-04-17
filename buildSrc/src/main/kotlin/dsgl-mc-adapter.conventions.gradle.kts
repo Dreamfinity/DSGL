@@ -91,6 +91,10 @@ tasks.named("sourcesJar") {
     dependsOn(generateDsglAdapterMetadata)
 }
 
+tasks.named("dokkaGeneratePublicationHtml") {
+    dependsOn(generateDsglAdapterMetadata)
+}
+
 val devJar = tasks.register<Jar>("devJar") {
     from(sourceSets["main"].output)
     archiveClassifier.set("dev")
@@ -116,6 +120,9 @@ publishing {
 if (project.name == "mc-forge-1-7-10") {
     tasks.matching { it.name == "reobf" }.all {
         val reobfTask = this
+        tasks.matching { it.name == "generateMetadataFileForMavenJavaPublication" }.configureEach {
+            dependsOn(reobfTask)
+        }
         tasks.withType<PublishToMavenRepository>().configureEach {
             dependsOn(reobfTask)
         }

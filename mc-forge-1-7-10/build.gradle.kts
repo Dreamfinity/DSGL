@@ -11,7 +11,7 @@ dependencies {
     val coreProject = findProject(":core")
         ?: findProject(":dsgl:core")
         ?: error("DSGL core project not found (expected :core or :dsgl:core).")
-    api(coreProject)
+    implementation(coreProject)
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))
 }

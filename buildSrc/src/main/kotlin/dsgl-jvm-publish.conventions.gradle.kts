@@ -1,3 +1,4 @@
+import groovy.util.Node
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
@@ -58,7 +59,17 @@ fun computeEffectivePublishedVersion(properties: Properties): String {
     }
 }
 
+
+fun readPublishProjectDepsOnly(properties: Properties): Boolean {
+    val raw = properties.getProperty("publishProjectDepsOnly")?.trim() ?: return false
+    return raw.toBooleanStrictOrNull()
+        ?: throw GradleException(
+            "Property 'publishProjectDepsOnly' in ${modulePropertiesFile.path} must be true or false."
+        )
+}
+
 val moduleProperties = loadModulePropertiesIfPresent(modulePropertiesFile)
+val publishProjectDepsOnly = readPublishProjectDepsOnly(moduleProperties)
 val publishEnabled = readPublishEnabled(moduleProperties)
 val effectivePublishedVersion = if (publishEnabled) {
     computeEffectivePublishedVersion(moduleProperties)
@@ -92,14 +103,68 @@ val dokkaJavadocJar = tasks.register<Jar>("dokkaJavadocJar") {
 
 fun configurePublishing(publicationVersion: String) {
     val isSnapshotPublication = publicationVersion.endsWith("-SNAPSHOT")
+    val moduleGroup = project.group.toString()
+
     publishing {
         publications {
             create<MavenPublication>("mavenJava") {
-                from(components["java"])
-                groupId = property("group") as String
+                groupId = moduleGroup
                 artifactId = "dsgl-${project.name}"
                 version = publicationVersion
-                artifact(dokkaJavadocJar)
+
+                if (!publishProjectDepsOnly) {
+                    from(components["java"])
+                    artifact(dokkaJavadocJar)
+                } else {
+                    artifact(tasks.named("jar"))
+                    artifact(tasks.named("sourcesJar"))
+                    artifact(dokkaJavadocJar)
+
+                    pom.withXml {
+                        val root = asNode()
+
+                        @Suppress("UNCHECKED_CAST")
+                        val existingDeps = root.children()
+                            .filterIsInstance<Node>()
+                            .filter { it.name().toString() == "dependencies" }
+                            .toList()
+                        existingDeps.forEach { root.remove(it) }
+
+                        val depsNode = root.appendNode("dependencies")
+
+                        fun addDependency(
+                            group: String,
+                            artifact: String,
+                            version: String,
+                            scope: String
+                        ) {
+                            val dep = depsNode.appendNode("dependency")
+                            dep.appendNode("groupId", group)
+                            dep.appendNode("artifactId", artifact)
+                            dep.appendNode("version", version)
+                            dep.appendNode("scope", scope)
+                        }
+
+                        fun addProjectDependencies(
+                            configurationName: String,
+                            scope: String
+                        ) {
+                            val cfg = configurations.findByName(configurationName) ?: return
+                            cfg.dependencies.withType(ProjectDependency::class.java).forEach { dep ->
+                                val target = project.project(dep.path)
+                                addDependency(
+                                    target.group.toString(),
+                                    "dsgl-${target.name}",
+                                    target.version.toString(),
+                                    scope
+                                )
+                            }
+                        }
+
+                        addProjectDependencies("api", "compile")
+                        addProjectDependencies("implementation", "runtime")
+                    }
+                }
             }
         }
 

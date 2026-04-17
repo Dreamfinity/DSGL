@@ -51,6 +51,7 @@ fun hotReloadAgentLibraryFile(): File {
         osName == null -> throw GradleException(
             "Unable to determine current operating system for DSGL hot-reload agent, and 'hotReloadAgentLibraryName' is not set."
         )
+
         osName.startsWith("windows") -> "dsgl_hot_reload_agent.dll"
         osName.startsWith("linux") -> "libdsgl_hot_reload_agent.so"
         osName.startsWith("mac") || osName.startsWith("darwin") -> "libdsgl_hot_reload_agent.dylib"
@@ -193,8 +194,20 @@ tasks.named("publishToMavenLocal") {
     enabled = false
 }
 
+repositories {
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/Dreamfinity/DSGL")
+        credentials {
+            username = providers.gradleProperty("gpr.user").get()
+            password = providers.gradleProperty("gpr.key").get()
+        }
+    }
+}
+
 dependencies {
-    implementation(project(":mc-forge-1-7-10"))
+    implementation("org.dreamfinity:dsgl-core:0.0.1")
+    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1")
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))
 }
