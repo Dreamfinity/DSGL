@@ -1,8 +1,9 @@
 package org.dreamfinity.dsgl.core.dom.reconcile
 
-import org.dreamfinity.dsgl.core.TextProps
+import org.dreamfinity.dsgl.core.dsl.TextProps
 import org.dreamfinity.dsgl.core.dom.elements.TextNode
-import org.dreamfinity.dsgl.core.ui
+import org.dreamfinity.dsgl.core.dsl.text
+import org.dreamfinity.dsgl.core.dsl.ui
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

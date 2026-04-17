@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.hooks
 
 import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import kotlin.reflect.KClass
 
 fun <S, A> UiScope.useReducer(

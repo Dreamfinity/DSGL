@@ -11,6 +11,7 @@ import org.dreamfinity.dsgl.core.dom.UsedInteractionGeometryResolver
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
@@ -3655,7 +3656,7 @@ class InspectorController(
         return "${rect.x},${rect.y},${rect.width}x${rect.height}"
     }
 
-    private fun spacingLabel(value: org.dreamfinity.dsgl.core.dom.layout.Insets): String {
+    private fun spacingLabel(value: Insets): String {
         return "${value.top}/${value.right}/${value.bottom}/${value.left}"
     }
 

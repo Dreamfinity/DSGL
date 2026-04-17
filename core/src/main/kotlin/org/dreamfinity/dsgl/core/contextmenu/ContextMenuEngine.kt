@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.core.contextmenu
+package org.dreamfinity.dsgl.core.contextmenu
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size

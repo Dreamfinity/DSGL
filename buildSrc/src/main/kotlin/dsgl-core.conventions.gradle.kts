@@ -1,54 +1,70 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
-repositories {
-    maven(url = "https://cloudrep.veritaris.me/repos/")
-    mavenCentral()
-}
+import java.util.Properties
+import org.gradle.api.GradleException
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+import org.dreamfinity.buildlogic.toKotlinPackageSegmentFromProjectName
 
 plugins {
-    kotlin("jvm")
-    `java-library`
-    `maven-publish`
-    id("org.jetbrains.dokka")
+    id("dsgl-jvm-publish.conventions")
 }
 
-group = property("group") as String
-version = property("version") as String
+val metadataGeneratedSourcesDir = layout.buildDirectory.dir("generated/sources/dsglMetadata/main/kotlin")
+val modulePropertiesFile = layout.projectDirectory.file("gradle.properties").asFile
 
-java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-    withSourcesJar()
+fun readRequiredModuleVersion(file: File): String {
+    if (!file.exists()) {
+        throw GradleException("Missing module gradle.properties at ${file.path}.")
+    }
+    val properties = Properties().apply {
+        file.inputStream().use(::load)
+    }
+    return properties.getProperty("moduleVersion")?.trim().takeUnless { it.isNullOrEmpty() }
+        ?: throw GradleException("Missing required property 'moduleVersion' in ${file.path}.")
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
-}
+val generateDsglCoreMetadata = tasks.register("generateDsglCoreMetadata") {
+    group = "build setup"
+    description = "Generate DsglCoreMetadata.kt from module gradle.properties."
+    inputs.file(modulePropertiesFile)
+    outputs.dir(metadataGeneratedSourcesDir)
 
-tasks.withType<Jar> {
-    archiveBaseName.set("dsgl-${project.name}")
-}
-
-val dokkaHtml = tasks.named("dokkaGeneratePublicationHtml")
-val dokkaJavadocJar = tasks.register<Jar>("dokkaJavadocJar") {
-    dependsOn(dokkaHtml)
-    from(dokkaHtml.map { it.outputs.files })
-    archiveClassifier.set("javadoc")
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-            groupId = property("group") as String
-            artifactId = "dsgl-${project.name}"
-            version = property("version") as String
-            artifact(dokkaJavadocJar)
+    doLast {
+        val moduleVersion = readRequiredModuleVersion(modulePropertiesFile)
+        val packageName = buildString {
+            append(project.group.toString())
+            append(".dsgl.")
+            append(toKotlinPackageSegmentFromProjectName(project.name))
         }
+        val outputRoot = metadataGeneratedSourcesDir.get().asFile
+        val outputFile = outputRoot.resolve(
+            packageName.replace('.', '/') + "/DsglCoreMetadata.kt"
+        )
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(
+            """
+            package $packageName
+
+            object DsglCoreMetadata {
+                const val VERSION: String = "$moduleVersion"
+            }
+            """.trimIndent() + System.lineSeparator()
+        )
     }
-    repositories {
-        mavenLocal()
+}
+
+extensions.configure<KotlinJvmProjectExtension> {
+    sourceSets.named("main") {
+        kotlin.srcDir(metadataGeneratedSourcesDir)
     }
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(generateDsglCoreMetadata)
+}
+
+tasks.named("sourcesJar") {
+    dependsOn(generateDsglCoreMetadata)
+}
+
+tasks.named("dokkaGeneratePublicationHtml") {
+    dependsOn(generateDsglCoreMetadata)
 }

@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 
 enum class BackdropMode {
     True,

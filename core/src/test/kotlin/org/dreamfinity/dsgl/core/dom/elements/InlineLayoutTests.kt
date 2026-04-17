@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -357,7 +358,7 @@ class InlineLayoutTests {
         )
     }
 
-    private fun assertNoVerticalOverlapBetweenSiblings(children: List<org.dreamfinity.dsgl.core.dom.DOMNode>) {
+    private fun assertNoVerticalOverlapBetweenSiblings(children: List<DOMNode>) {
         for (i in children.indices) {
             val a = children[i]
             val aTop = a.bounds.y - a.margin.top

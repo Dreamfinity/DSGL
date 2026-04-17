@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.hooks.ref
 
 import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.hooks.HookEntryKind
 import org.dreamfinity.dsgl.core.hooks.HookSignature
 import org.dreamfinity.dsgl.core.hooks.HookSignatures

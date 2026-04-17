@@ -9,6 +9,8 @@ import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import java.util.Locale
 
 class OverlayDebugControlHostTests {
     private val ctx = object : UiMeasureContext {
@@ -99,13 +101,37 @@ class OverlayDebugControlHostTests {
             "draw texts: ${drawTexts.joinToString { "${it.sourceKey}:${it.text}" }}"
         )
         val expectedFps = OverlayLayerDebugState.frameFps
-        val expectedFrameMs = String.format(java.util.Locale.US, "%.1f", OverlayLayerDebugState.frameTimeMs)
+        val expectedFrameMs = String.format(Locale.US, "%.1f", OverlayLayerDebugState.frameTimeMs)
         val expectedWindowFps = OverlayLayerDebugState.frameFpsWindow
-        val expectedWindowFrameMs = String.format(java.util.Locale.US, "%.1f", OverlayLayerDebugState.frameTimeWindowMs)
+        val expectedWindowFrameMs = String.format(Locale.US, "%.1f", OverlayLayerDebugState.frameTimeWindowMs)
         assertTrue(statusTextValue.contains("FPS:$expectedFps"), "statusText='$statusTextValue'")
         assertTrue(statusTextValue.contains("(${expectedFrameMs}ms)"), "statusText='$statusTextValue'")
         assertTrue(statusTextValue.contains("AvgFPS:$expectedWindowFps"), "statusText='$statusTextValue'")
         assertTrue(statusTextValue.contains("(${expectedWindowFrameMs}ms)"), "statusText='$statusTextValue'")
+    }
+
+    @Test
+    fun `toggle button label updates immediately after state change`() {
+        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
+        OverlayLayerDebugState.resetAll()
+        val host = OverlayDebugControlHost()
+
+        host.render(960, 540)
+        val layout = host.debugLayout() ?: error("layout missing")
+        val initialText = host.paint(ctx)
+            .filterIsInstance<RenderCommand.DrawText>()
+            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+            ?.text
+        assertEquals("ON", initialText)
+
+        assertTrue(host.handleMouseDown(layout.appOverlayRenderRect.x + 2, layout.appOverlayRenderRect.y + 2, MouseButton.LEFT))
+
+        host.render(960, 540)
+        val updatedText = host.paint(ctx)
+            .filterIsInstance<RenderCommand.DrawText>()
+            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+            ?.text
+        assertEquals("OFF", updatedText)
     }
 
     @Test
@@ -141,8 +167,8 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.systemOverlayTintEnabled = false
         OverlayLayerDebugState.systemOverlayInputEnabled = false
 
-        assertTrue(OverlayLayerDebugState.isRenderEnabled(org.dreamfinity.dsgl.core.overlay.UiLayerId.Debug))
-        assertTrue(OverlayLayerDebugState.isInputEnabled(org.dreamfinity.dsgl.core.overlay.UiLayerId.Debug))
+        assertTrue(OverlayLayerDebugState.isRenderEnabled(UiLayerId.Debug))
+        assertTrue(OverlayLayerDebugState.isInputEnabled(UiLayerId.Debug))
         assertEquals(
             OverlayLayerDebugSnapshot(
                 applicationOverlayRenderEnabled = false,

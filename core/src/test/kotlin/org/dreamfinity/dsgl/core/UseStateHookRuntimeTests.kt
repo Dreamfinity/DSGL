@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import kotlin.test.Test
@@ -41,6 +42,65 @@ class UseStateHookRuntimeTests {
         window.showState = true
         renderWithHookSession(window)
         assertEquals(0, window.lastSeen)
+    }
+
+    @Test
+    fun `adjacent sibling custom component calls keep independent local state`() {
+        val window = SiblingComponentStateWindow()
+        window.order = listOf("Left panel", "Right panel")
+
+        window.enqueueIncrement("Left panel")
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("Left panel" to 1, "Right panel" to 0),
+            window.observedCountsSnapshot()
+        )
+
+        window.enqueueIncrement("Right panel")
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("Left panel" to 1, "Right panel" to 1),
+            window.observedCountsSnapshot()
+        )
+    }
+
+    @Test
+    fun `repeated unkeyed sibling component calls from same invocation site preserve by ordinal`() {
+        val window = SiblingComponentStateWindow()
+        window.order = listOf("A", "B", "C")
+
+        window.enqueueIncrement("B")
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("A" to 0, "B" to 1, "C" to 0),
+            window.observedCountsSnapshot()
+        )
+
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("A" to 0, "B" to 1, "C" to 0),
+            window.observedCountsSnapshot()
+        )
+    }
+
+    @Test
+    fun `reordering unkeyed sibling custom components rebinds state by position`() {
+        val window = SiblingComponentStateWindow()
+        window.order = listOf("A", "B", "C")
+
+        window.enqueueIncrement("B")
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("A" to 0, "B" to 1, "C" to 0),
+            window.observedCountsSnapshot()
+        )
+
+        window.order = listOf("B", "A", "C")
+        renderWithHookSession(window)
+        assertEquals(
+            linkedMapOf("B" to 0, "A" to 1, "C" to 0),
+            window.observedCountsSnapshot()
+        )
     }
 
     @Test
@@ -206,6 +266,37 @@ class UseStateHookRuntimeTests {
                 error("unreachable")
             }
             return DomTree(ContainerNode(key = "state.invalid.root"))
+        }
+    }
+
+    private class SiblingComponentStateWindow : DsglWindow() {
+        var order: List<String> = listOf("Left panel", "Right panel")
+        private val pendingIncrements: MutableSet<String> = linkedSetOf()
+        private val observedCounts: LinkedHashMap<String, Int> = linkedMapOf()
+
+        fun enqueueIncrement(label: String) {
+            pendingIncrements += label
+        }
+
+        fun observedCountsSnapshot(): LinkedHashMap<String, Int> {
+            return LinkedHashMap(observedCounts)
+        }
+
+        override fun render(): DomTree {
+            observedCounts.clear()
+            return ui {
+                order.forEach { label ->
+                    counterCard(label)
+                }
+            }
+        }
+
+        private fun UiScope.counterCard(label: String) {
+            var count by useState(0)
+            if (pendingIncrements.remove(label)) {
+                count += 1
+            }
+            observedCounts[label] = count
         }
     }
 

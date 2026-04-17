@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.style.Display
 
 /**
  * Tracks and restores focused nodes between rebuilds.
@@ -163,7 +164,7 @@ object FocusManager {
     }
 
     private fun findFirstFocusable(node: DOMNode): DOMNode? {
-        if (node.focusable && !node.styleDisabled && node.display != org.dreamfinity.dsgl.core.style.Display.None) {
+        if (node.focusable && !node.styleDisabled && node.display != Display.None) {
             return node
         }
         for (child in node.children) {

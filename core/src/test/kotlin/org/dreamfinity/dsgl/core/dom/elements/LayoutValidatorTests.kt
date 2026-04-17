@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.debug.LayoutValidator
 import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Insets
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -107,7 +108,7 @@ class LayoutValidatorTests {
         override fun measure(ctx: UiMeasureContext): Size = Size(6, 4)
 
         override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-            bounds = org.dreamfinity.dsgl.core.dom.layout.Rect(x + 100, y, width, height)
+            bounds = Rect(x + 100, y, width, height)
         }
     }
 }

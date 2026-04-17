@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.style
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import java.io.File
 import java.util.Collections
 import java.util.EnumMap
 import java.util.WeakHashMap
@@ -147,7 +148,7 @@ object StyleEngine {
 
     internal fun viewportHeightPx(): Int = viewportHeightPx
 
-    fun setStylesDirectory(directory: java.io.File?) {
+    fun setStylesDirectory(directory: File?) {
         StylesheetManager.setStylesDirectory(directory)
         cache.clear()
     }

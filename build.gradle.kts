@@ -60,7 +60,7 @@ tasks.register("generateMsdfAtlases") {
             val jsonOutArg = "precompiled_fonts/${base}-meta.json"
             val fontArg = "./fonts/$relative"
             val charsetFile = "./fonts/charset.txt"
-            val pxrange = 4
+            val pxrange = 6
             val size = 32
             val commonArgs = listOf(
                 msdfGeneratorExe.absolutePath,
@@ -239,17 +239,17 @@ val semVerRegex = Regex("""^(\d+)\.(\d+)\.(\d+)$""")
 val coreBumpConfig = BumpConfig(
     target = BumpTarget.CORE,
     projectPath = ":core",
-    versionFile = rootProject.file("gradle.properties"),
-    versionKey = "version",
+    versionFile = rootProject.file("core/gradle.properties"),
+    versionKey = "moduleVersion",
     publishTaskPath = ":core:publishToMavenLocal"
 )
 val mc1710BumpConfig = BumpConfig(
     target = BumpTarget.MC1710,
-    projectPath = ":mc1710",
-    versionFile = rootProject.file("mc1710/gradle.properties"),
-    versionKey = "version",
+    projectPath = ":mc-forge-1-7-10",
+    versionFile = rootProject.file("mc-forge-1-7-10/gradle.properties"),
+    versionKey = "moduleVersion",
     syncedKeys = listOf("modVersion"),
-    publishTaskPath = ":mc1710:publishToMavenLocal"
+    publishTaskPath = ":mc-forge-1-7-10:publishToMavenLocal"
 )
 
 fun parseVersion(version: String): Triple<Int, Int, Int> {
@@ -444,5 +444,5 @@ tasks.register("bumpPatch") {
 tasks.register("runDemoClient") {
     group = "application"
     description = "Run Minecraft client with DSGL showcase demo module."
-    dependsOn(":mc1710-demo:runClient")
+    dependsOn(":mc-forge-1-7-10-demo:runClient")
 }

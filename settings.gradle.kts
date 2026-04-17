@@ -17,6 +17,6 @@ rootProject.name = "dsgl"
 
 include(
     ":core",
-    ":mc1710",
-    ":mc1710-demo",
+    ":mc-forge-1-7-10",
+    ":mc-forge-1-7-10-demo",
 )

@@ -6,8 +6,9 @@ import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.ui
+import org.dreamfinity.dsgl.core.dsl.ui
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

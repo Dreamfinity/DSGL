@@ -8,6 +8,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayRootNode
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import java.io.File
@@ -88,7 +89,7 @@ class SystemOverlayStyleIsolationTests {
 
         override fun buildRenderCommands(
             ctx: UiMeasureContext,
-            out: MutableList<org.dreamfinity.dsgl.core.render.RenderCommand>
+            out: MutableList<RenderCommand>
         ) = Unit
 
         override fun defaultForegroundColor(): Int = defaultColor

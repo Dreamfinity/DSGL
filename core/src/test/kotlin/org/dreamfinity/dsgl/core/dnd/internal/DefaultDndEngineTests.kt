@@ -2,6 +2,7 @@ package org.dreamfinity.dsgl.core.dnd.internal
 
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
@@ -89,7 +90,7 @@ class DefaultDndEngineTests {
         }.applyParent(parent)
 
         root.render(
-            ctx = object : org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext {
+            ctx = object : UiMeasureContext {
                 override val fontHeight: Int = 9
                 override fun measureText(text: String): Int = text.length * 6
                 override fun paint(commands: List<RenderCommand>) = Unit

@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
 import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -47,7 +48,7 @@ class DateInputNode(
         }
     }
 
-    override fun handleKey(event: org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent) {
+    override fun handleKey(event: KeyboardKeyDownEvent) {
         if (event.keyCode == KeyCodes.ENTER) {
             commitCurrentValueChange()
             return

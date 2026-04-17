@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
@@ -93,13 +94,13 @@ class SystemOverlayDomBridgeTests {
         val overlay = SystemInspectorOverlayNode(controller)
         controller.onLayoutCommitted(root, 1L)
         controller.onCursorMoved(984, 144)
-        controller.handleMouseDown(984, 144, org.dreamfinity.dsgl.core.event.MouseButton.LEFT)
+        controller.handleMouseDown(984, 144, MouseButton.LEFT)
 
         overlay.bindInspectedTree(root, layoutRevision = 2L)
         overlay.updateCursor(mouseX = 984, mouseY = 144, pointerCaptured = false)
         overlay.render(ctx, 0, 0, 1280, 720)
 
-        fun findFirstInput(node: org.dreamfinity.dsgl.core.dom.DOMNode): SingleLineInputNode? {
+        fun findFirstInput(node: DOMNode): SingleLineInputNode? {
             if (node is SingleLineInputNode) return node
             node.children.forEach { child ->
                 val found = findFirstInput(child)
