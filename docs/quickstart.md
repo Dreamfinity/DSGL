@@ -37,7 +37,7 @@ Example:
 ```kotlin { .kotlin .copy .select }
 dependencies {
     implementation("org.dreamfinity:dsgl-core:0.0.1")
-    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1")
+    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1:dev")
 }
 ```
 
