@@ -46,3 +46,6 @@ build
 # ignore full precompiled fonts folder
 /precompiled_fonts/*
 !/precompiled_fonts/.gitkeep
+
+# docs generated folder
+/site/

@@ -3,7 +3,6 @@ package org.dreamfinity.dsgl.mcForge1710
 import cpw.mods.fml.common.FMLCommonHandler
 import cpw.mods.fml.common.Mod
 import cpw.mods.fml.common.event.FMLInitializationEvent
-import cpw.mods.fml.common.event.FMLPreInitializationEvent
 import net.minecraft.client.Minecraft
 
 /**
@@ -17,11 +16,6 @@ import net.minecraft.client.Minecraft
     useMetadata = true
 )
 class DsglMc1710ModContainer {
-    @Mod.EventHandler
-    fun onPreInit(event: FMLPreInitializationEvent) {
-
-    }
-
     @Mod.EventHandler
     fun onInit(event: FMLInitializationEvent) {
         if (FMLCommonHandler.instance().side.isClient) {

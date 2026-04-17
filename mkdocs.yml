@@ -5,6 +5,21 @@ site_author: <Georgii Imeshkenov aka @Veritaris, georgiiimeshkenov@gmail.com>
 
 nav:
   - Main page: index.md
+  - Quickstart: quickstart.md
+  - Core concepts:
+      - State and reactivity: state-reactivity.md
+      - Custom components: custom-components.md
+      - Hot-reload agent setup: hot-reload-agent.md
+      - Cookbook: cookbook.md
+      - Troubleshooting: troubleshooting.md
+      - Status and limitations: status-limitations.md
+      - Architecture overview: architecture.md
+      - Project structure: project-structure.md
+  - Reference:
+      - Elements overview: elements-overview.md
+      - Styling: styling.md
+      - Layout model: layout-model.md
+      - Hooks: hooks.md
 
 plugins:
   - search:
@@ -30,6 +45,8 @@ theme:
     - navigation.sections
     - navigation.tabs
     - search.suggest
+    - content.code.select
+    - content.code.copy
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -58,3 +75,6 @@ markdown_extensions:
       custom_checkbox: true
   - attr_list
   - md_in_html
+
+watch:
+  - docs

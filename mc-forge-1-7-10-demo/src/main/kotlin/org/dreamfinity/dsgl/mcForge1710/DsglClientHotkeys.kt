@@ -8,7 +8,7 @@ import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import net.minecraft.client.Minecraft
 import net.minecraft.client.settings.KeyBinding
-import org.dreamfinity.dsgl.mcForge1710.demo.ShowcaseWindow
+import org.dreamfinity.dsgl.mcForge1710.demo.examples.quickstart.HelloWindow
 import org.lwjgl.input.Keyboard
 
 /**
@@ -35,9 +35,7 @@ object DsglClientHotkeys {
         when {
             openShowcaseKey.isPressed -> Minecraft
                 .getMinecraft()
-                .displayGuiScreen(object : DsglScreenHost({ ShowcaseWindow() }) {
-                    override fun doesGuiPauseGame() = false
-                })
+                .displayGuiScreen(object : DsglScreenHost({ HelloWindow() }) {})
         }
     }
 }

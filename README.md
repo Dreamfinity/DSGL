@@ -2,19 +2,19 @@
 
 DSGL is a retained-mode UI DSL written in Kotlin. It renders a DOM-like tree into
 platform-specific render commands, with Minecraft 1.7.10 support provided by the
-`mc1710` module.
+`mc-forge-1-7-10` module.
 
 Modules:
 
 - `core`: Platform-agnostic UI tree, layout, events, and render commands.
-- `mc1710`: Minecraft 1.7.10 host and renderer that turns render commands into MC calls.
+- `mc-forge-1-7-10`: Minecraft 1.7.10 host and renderer that turns render commands into MC calls.
 
 ## Quick Start
 
 1. Publish to Maven Local:
 
 ```shell
-.\gradlew :core:publishToMavenLocal :mc1710:publishToMavenLocal
+.\gradlew :core:publishToMavenLocal :mc-forge-1-7-10:publishToMavenLocal
 ```
 
 2. Add dependencies in your mod:
@@ -22,7 +22,7 @@ Modules:
 ```kotlin
 dependencies {
     implementation("org.dreamfinity:dsgl-core:0.0.1-beta")
-    implementation("org.dreamfinity:dsgl-mc1710:0.0.1-beta")
+    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1-beta")
 }
 ```
 
@@ -35,7 +35,7 @@ class MyScreen : DsglScreenHost(MyWindow())
 Minecraft.getMinecraft().displayGuiScreen(MyScreen())
 ```
 
-For a complete example, see `mc1710/src/main/kotlin/org/dreamfinity/dsgl/mc1710/demo/DemoScreen.kt`.
+For a complete example, see `mc-forge-1-7-10/src/main/kotlin/org/dreamfinity/dsgl/mc1710/demo/DemoScreen.kt`.
 
 ## What is this
 
@@ -81,5 +81,6 @@ Run your mod as usual with ForgeGradle. For UI usage, open a screen derived from
 
 ## More Docs
 
+- [Documentation index](docs/index.md)
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
