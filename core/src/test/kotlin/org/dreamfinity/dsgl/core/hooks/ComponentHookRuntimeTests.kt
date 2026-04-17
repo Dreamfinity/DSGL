@@ -126,6 +126,46 @@ class ComponentHookRuntimeTests {
     }
 
     @Test
+    fun `inferred fallback does not silence duplicate hook path inside one component body`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+
+        render(runtime, owner) {
+            val error = assertFailsWith<HookUsageException> {
+                resolveDuplicateHookPathProbe()
+            }
+            assertEquals(error.message?.contains("Duplicate hook path"), true)
+        }
+    }
+
+    @Test
+    fun `explicit component scope takes precedence over inferred fallback`() {
+        val runtime = ComponentHookRuntime()
+        val owner = Any()
+
+        render(runtime, owner) {
+            withComponentInstance("explicitScope", key = "alpha") {
+                val first = resolveStateHookFromHelper("count")
+                assertTrue(first.created)
+                first.entry.value = 5
+
+                val error = assertFailsWith<HookUsageException> {
+                    resolveStateHookFromHelper("count")
+                }
+                assertEquals(error.message?.contains("Duplicate hook path"), true)
+            }
+        }
+
+        render(runtime, owner) {
+            withComponentInstance("explicitScope", key = "alpha") {
+                val value = resolveStateHookFromHelper("count")
+                assertFalse(value.created)
+                assertEquals(5, value.entry.value)
+            }
+        }
+    }
+
+    @Test
     fun `kind mismatch for same path fails loudly`() {
         val runtime = ComponentHookRuntime()
         val owner = Any()
@@ -428,4 +468,13 @@ class ComponentHookRuntimeTests {
     private class AlphaRefTarget
 
     private class BetaRefTarget
+
+    private fun ComponentHookRuntime.resolveDuplicateHookPathProbe() {
+        resolveNamedEntry(HookEntryKind.State, "count") { 0 }
+        resolveNamedEntry(HookEntryKind.State, "count") { 0 }
+    }
+
+    private fun ComponentHookRuntime.resolveStateHookFromHelper(name: String): ResolvedHookEntry {
+        return resolveNamedEntry(HookEntryKind.State, name) { 0 }
+    }
 }
