@@ -22,7 +22,7 @@ DSGL-side reaction is in `DsglScreenHost`: it checks `HotReloadBridge.consumeHot
 
 ## Platform/version assumptions
 
-- DSGL host path here is Minecraft 1.7.10 (`mc-forge-1-7-10` / `DsglScreenHost`).
+- DSGL host path here is Minecraft 1.7.10 (`adapters/mc-forge-1-7-10` / `DsglScreenHost`).
 - Agent is a native JVMTI library (`cdylib`) and must match your OS.
 - Expected default binary names:
     - Windows: `dsgl_hot_reload_agent.dll`
@@ -33,8 +33,8 @@ DSGL-side reaction is in `DsglScreenHost`: it checks `HotReloadBridge.consumeHot
 
 - Agent project: `dsgl-hot-reload-agent/` (Cargo, not a Gradle module)
 - DSGL bridge flag: `core/src/main/kotlin/org/dreamfinity/dsgl/core/HotReloadBridge.kt`
-- Host rebuild integration: `mc-forge-1-7-10/src/main/kotlin/org/dreamfinity/dsgl/mc1710/DsglScreenHost.kt`
-- Demo run wiring: `mc-forge-1-7-10-demo/build.gradle.kts`
+- Host rebuild integration: `adapters/mc-forge-1-7-10/src/main/kotlin/org/dreamfinity/dsgl/mcForge1710/DsglScreenHost.kt`
+- Demo run wiring: `adapters/mc-forge-1-7-10/demo/build.gradle.kts`
 
 ## Installing
 
@@ -53,7 +53,7 @@ can extract it directly into your project.
 
 ### 1) Enable hot reload for demo run
 
-In `mc-forge-1-7-10-demo/gradle.properties`:
+In `adapters/mc-forge-1-7-10/demo/gradle.properties`:
 
 ```properties { .properties .copy .select }
 hotReload=true
@@ -67,12 +67,12 @@ If your binary name does not match OS defaults, set:
 hotReloadAgentLibraryName=<your-library-file-name>
 ```
 
-`mc-forge-1-7-10-demo/build.gradle.kts` uses this to build `-agentpath:...` for `runClient`.
+`adapters/mc-forge-1-7-10/demo/build.gradle.kts` uses this to build `-agentpath:...` for `runClient`.
 
 ### 3) Start a demo client
 
 ```shell { .shell .copy .select }
-.\gradlew :mc-forge-1-7-10-demo:runClient
+.\gradlew :adapters:mc-forge-1-7-10:demo:runClient
 ```
 
 When `hotReload=true`, run config adds:
@@ -103,20 +103,20 @@ At runtime:
 
 This behaviour is intentionally runtime-managed by host + hook runtime; apps should not call bridge internals directly.
 
-## Using the agent outside `mc-forge-1-7-10-demo`
+## Using the agent outside `adapters/mc-forge-1-7-10/demo`
 
 If you run another client configuration, you still need JVM `-agentpath` pointing to the native library.
 
-The automatic `-agentpath` wiring in this repo is implemented in `:mc-forge-1-7-10-demo:runClient` task, not globally
+The automatic `-agentpath` wiring in this repo is implemented in `:adapters:mc-forge-1-7-10:demo:runClient` task, not globally
 for every run target.
 
-Look demo example [buildscript](https://github.com/Dreamfinity/DSGL/blob/master/mc1710-demo/build.gradle.kts) to see
+Look demo example [buildscript](https://github.com/Dreamfinity/DSGL/blob/master/adapters/mc-forge-1-7-10/demo/build.gradle.kts) to see
 how to wire the agent with your Gradle run config.
 
 ## Troubleshooting
 
 - `Unsupported operating system ... and 'hotReloadAgentLibraryName' is not set`
-  Set `hotReloadAgentLibraryName` in `mc-forge-1-7-10-demo/gradle.properties`.
+  Set `hotReloadAgentLibraryName` in `adapters/mc-forge-1-7-10/demo/gradle.properties`.
 
 - No rebuilds after class redefined
   Check that:

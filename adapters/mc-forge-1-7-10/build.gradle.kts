@@ -1,4 +1,5 @@
 plugins {
+    id("dsgl-mc-adapter.conventions")
     id("dsgl-mc-forge-1-7-10.conventions")
     id("dsgl-releaseable-module.conventions")
 }

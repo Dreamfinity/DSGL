@@ -8,6 +8,9 @@ import java.util.zip.DeflaterOutputStream
 
 plugins {
     `java-library`
+    kotlin("jvm") version "2.3.10" apply false
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10" apply false
+    id("org.jetbrains.dokka") version "2.1.0" apply false
 }
 
 
@@ -245,11 +248,11 @@ val coreBumpConfig = BumpConfig(
 )
 val mc1710BumpConfig = BumpConfig(
     target = BumpTarget.MC1710,
-    projectPath = ":mc-forge-1-7-10",
-    versionFile = rootProject.file("mc-forge-1-7-10/gradle.properties"),
+    projectPath = ":adapters:mc-forge-1-7-10",
+    versionFile = rootProject.file("adapters/mc-forge-1-7-10/gradle.properties"),
     versionKey = "moduleVersion",
     syncedKeys = listOf("modVersion"),
-    publishTaskPath = ":mc-forge-1-7-10:publishToMavenLocal"
+    publishTaskPath = ":adapters:mc-forge-1-7-10:publishToMavenLocal"
 )
 
 fun parseVersion(version: String): Triple<Int, Int, Int> {
@@ -444,5 +447,5 @@ tasks.register("bumpPatch") {
 tasks.register("runDemoClient") {
     group = "application"
     description = "Run Minecraft client with DSGL showcase demo module."
-    dependsOn(":mc-forge-1-7-10-demo:runClient")
+    dependsOn(":adapters:mc-forge-1-7-10:demo:runClient")
 }
