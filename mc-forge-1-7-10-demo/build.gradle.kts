@@ -198,10 +198,6 @@ repositories {
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/Dreamfinity/DSGL")
-        credentials {
-            username = providers.gradleProperty("gpr.user").get()
-            password = providers.gradleProperty("gpr.key").get()
-        }
     }
 }
 
