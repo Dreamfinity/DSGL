@@ -24,7 +24,6 @@ repositories {
 }
 
 plugins {
-    id("dsgl-mc-adapter.conventions")
     id("forge")
 }
 

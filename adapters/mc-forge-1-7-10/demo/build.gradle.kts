@@ -1,4 +1,5 @@
 plugins {
+    id("dsgl-mc-adapter.conventions")
     id("dsgl-mc-forge-1-7-10.conventions")
 }
 
@@ -166,7 +167,7 @@ tasks.named<Jar>("jar") {
 }
 
 tasks.named("reobf") {
-    dependsOn(":mc-forge-1-7-10:reobf")
+    dependsOn(":adapters:mc-forge-1-7-10:reobf")
 }
 
 listOf(
@@ -177,7 +178,7 @@ listOf(
     "genSrgs",
 ).forEach { taskName ->
     tasks.named(taskName) {
-        mustRunAfter(":mc-forge-1-7-10:reobf")
+        mustRunAfter(":adapters:mc-forge-1-7-10:reobf")
     }
 }
 
@@ -203,7 +204,7 @@ repositories {
 
 dependencies {
     implementation("org.dreamfinity:dsgl-core:0.0.1")
-    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1")
+    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1:dev")
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))
 }

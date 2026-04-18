@@ -1,5 +1,7 @@
-import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.register
+import org.dreamfinity.buildlogic.BumpModuleVersionTask
+import org.dreamfinity.buildlogic.DsglReleaseExtension
+import org.dreamfinity.buildlogic.DsglReleaseVersionPart
+import org.dreamfinity.buildlogic.PrintReleaseVersionTask
 
 val dsglRelease = extensions.create<DsglReleaseExtension>("dsglRelease")
 
