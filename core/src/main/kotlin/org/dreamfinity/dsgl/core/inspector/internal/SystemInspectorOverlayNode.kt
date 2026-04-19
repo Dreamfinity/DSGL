@@ -354,56 +354,31 @@ internal class SystemInspectorOverlayNode(
             lineHeightPx = lineHeightPx
         )
 
-        snapshot.parentLabel?.let { label ->
-            val parentButton = bodyScope.button(label, {
-                key = "dsgl-system-inspector-parent-row"
-            })
-            parentButton.backgroundColor = 0x1E263241
-            parentButton.border = Border.all(1, 0x55394654)
-            parentButton.textColor = 0xFFDCE5EF.toInt()
-            parentButton.fontSize = 22
-            parentButton.onClick {
-                controller.onSelectParentPressed()
-            }
-            renderNode(
-                ctx,
-                parentButton,
-                Rect(contentX, y, contentW, rowHeightPx),
-            )
-            y += rowHeightPx + 2
-        }
-
-        snapshot.childLabels.forEachIndexed { index, label ->
-            val childButton = bodyScope.button(label, {
-                key = "dsgl-system-inspector-child-row-$index"
-            })
-            childButton.backgroundColor = 0x1E263241
-            childButton.border = Border.all(1, 0x55394654)
-            childButton.textColor = 0xFFDCE5EF.toInt()
-            childButton.fontSize = 22
-            childButton.onClick {
-                controller.onSelectChildPressed(index)
-            }
-            renderNode(
-                ctx,
-                childButton,
-                Rect(contentX, y, contentW, rowHeightPx),
-            )
-            y += rowHeightPx + 2
-        }
-        val styleEditorHeader = bodyScope.text(props = {
-            key = "dsgl-system-inspector-editor-header"
-            value = "Style editor (live overrides):"
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
-        })
-        styleEditorHeader.color = 0xFFDCE5EF.toInt()
-        styleEditorHeader.fontSize = 24
-        renderNode(
-            ctx,
-            styleEditorHeader,
-            Rect(contentX, y, contentW, lineHeightPx),
+        y = renderParentRow(
+            scope = bodyScope,
+            ctx = ctx,
+            parentLabel = snapshot.parentLabel,
+            contentX = contentX,
+            contentW = contentW,
+            startY = y,
+            rowHeightPx = rowHeightPx
+        )
+        y = renderChildRows(
+            scope = bodyScope,
+            ctx = ctx,
+            childLabels = snapshot.childLabels,
+            contentX = contentX,
+            contentW = contentW,
+            startY = y,
+            rowHeightPx = rowHeightPx
+        )
+        renderStyleEditorHeading(
+            scope = bodyScope,
+            ctx = ctx,
+            contentX = contentX,
+            contentW = contentW,
+            y = y,
+            lineHeightPx = lineHeightPx
         )
 
         val styleRows = controller.overlayStyleEditorRows()
@@ -411,23 +386,15 @@ internal class SystemInspectorOverlayNode(
         renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY, styleRows)
         y += snapshot.styleEditorHeight
 
-        snapshot.styleLines.forEachIndexed { index, line ->
-            val lineNode = bodyScope.text(props = {
-                key = "dsgl-system-inspector-style-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
-            lineNode.color = 0xFFDCE5EF.toInt()
-            lineNode.fontSize = 24
-            renderNode(
-                ctx,
-                lineNode,
-                Rect(contentX, y, contentW, lineHeightPx),
-            )
-            y += lineHeightPx
-        }
+        y = renderComputedStyleLines(
+            scope = bodyScope,
+            ctx = ctx,
+            styleLines = snapshot.styleLines,
+            contentX = contentX,
+            contentW = contentW,
+            startY = y,
+            lineHeightPx = lineHeightPx
+        )
 
         renderDropdowns(scope, ctx, styleRows, bodyScrollY, viewportWidth, viewportHeight)
         body.restoreScrollSessionSnapshot(persistedBodyScrollSession)
@@ -556,6 +523,122 @@ internal class SystemInspectorOverlayNode(
         infoLines.forEachIndexed { index, line ->
             val lineNode = scope.text(props = {
                 key = "dsgl-system-inspector-info-line-$index"
+                value = line
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
+            lineNode.color = 0xFFDCE5EF.toInt()
+            lineNode.fontSize = 24
+            renderNode(
+                ctx,
+                lineNode,
+                Rect(contentX, y, contentW, lineHeightPx),
+            )
+            y += lineHeightPx
+        }
+        return y
+    }
+
+    private fun renderParentRow(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        parentLabel: String?,
+        contentX: Int,
+        contentW: Int,
+        startY: Int,
+        rowHeightPx: Int
+    ): Int {
+        var y = startY
+        parentLabel?.let { label ->
+            val parentButton = scope.button(label, {
+                key = "dsgl-system-inspector-parent-row"
+            })
+            parentButton.backgroundColor = 0x1E263241
+            parentButton.border = Border.all(1, 0x55394654)
+            parentButton.textColor = 0xFFDCE5EF.toInt()
+            parentButton.fontSize = 22
+            parentButton.onClick {
+                controller.onSelectParentPressed()
+            }
+            renderNode(
+                ctx,
+                parentButton,
+                Rect(contentX, y, contentW, rowHeightPx),
+            )
+            y += rowHeightPx + 2
+        }
+        return y
+    }
+
+    private fun renderChildRows(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        childLabels: List<String>,
+        contentX: Int,
+        contentW: Int,
+        startY: Int,
+        rowHeightPx: Int
+    ): Int {
+        var y = startY
+        childLabels.forEachIndexed { index, label ->
+            val childButton = scope.button(label, {
+                key = "dsgl-system-inspector-child-row-$index"
+            })
+            childButton.backgroundColor = 0x1E263241
+            childButton.border = Border.all(1, 0x55394654)
+            childButton.textColor = 0xFFDCE5EF.toInt()
+            childButton.fontSize = 22
+            childButton.onClick {
+                controller.onSelectChildPressed(index)
+            }
+            renderNode(
+                ctx,
+                childButton,
+                Rect(contentX, y, contentW, rowHeightPx),
+            )
+            y += rowHeightPx + 2
+        }
+        return y
+    }
+
+    private fun renderStyleEditorHeading(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        contentX: Int,
+        contentW: Int,
+        y: Int,
+        lineHeightPx: Int
+    ) {
+        val styleEditorHeader = scope.text(props = {
+            key = "dsgl-system-inspector-editor-header"
+            value = "Style editor (live overrides):"
+            style = {
+                textWrap = TextWrap.NoWrap
+            }
+        })
+        styleEditorHeader.color = 0xFFDCE5EF.toInt()
+        styleEditorHeader.fontSize = 24
+        renderNode(
+            ctx,
+            styleEditorHeader,
+            Rect(contentX, y, contentW, lineHeightPx),
+        )
+    }
+
+    private fun renderComputedStyleLines(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        styleLines: List<String>,
+        contentX: Int,
+        contentW: Int,
+        startY: Int,
+        lineHeightPx: Int
+    ): Int {
+        var y = startY
+        styleLines.forEachIndexed { index, line ->
+            val lineNode = scope.text(props = {
+                key = "dsgl-system-inspector-style-line-$index"
                 value = line
                 style = {
                     textWrap = TextWrap.NoWrap
