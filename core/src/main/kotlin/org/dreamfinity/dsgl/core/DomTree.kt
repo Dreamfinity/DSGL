@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core
 
+import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.debug.LayoutValidator
@@ -7,19 +8,17 @@ import org.dreamfinity.dsgl.core.dom.debug.LayoutViolation
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconcileResult
 import org.dreamfinity.dsgl.core.dom.reconcile.DomReconciler
-import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.hooks.ref.RefManager
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
-import java.util.Collections
-import java.util.IdentityHashMap
-import java.util.WeakHashMap
+import java.util.*
 
 /**
  * Retained DOM tree. Render phase builds this tree, paint phase draws it.
@@ -117,13 +116,13 @@ class DomTree(
             }
             val canUseGuardedScrollVisualFastPath =
                 laidOut &&
-                    lastWidth > 0 &&
-                    lastHeight > 0 &&
-                    styleScope != StyleApplicationScope.SystemOverlay &&
-                    !styleReport.layoutDirty &&
-                    !styleReport.visualDirty &&
-                    scrollInvalidation.visualDirty &&
-                    !scrollInvalidation.layoutDirty
+                        lastWidth > 0 &&
+                        lastHeight > 0 &&
+                        styleScope != StyleApplicationScope.SystemOverlay &&
+                        !styleReport.layoutDirty &&
+                        !styleReport.visualDirty &&
+                        scrollInvalidation.visualDirty &&
+                        !scrollInvalidation.layoutDirty
             val stickyLayoutInvalidated = styleReport.layoutDirty || scrollInvalidation.layoutDirty
             if (stickyLayoutInvalidated) {
                 root.invalidateStickyVisualOffsetsRecursively()
@@ -202,6 +201,11 @@ class DomTree(
     }
 
     fun markVisualDirty() {
+        commandsDirty = true
+    }
+
+    fun invalidateRenderCommandChunks() {
+        chunksByNode.clear()
         commandsDirty = true
     }
 
@@ -296,16 +300,19 @@ class DomTree(
                     clipDepth -= 1
                     require(clipDepth >= 0) { "clip stack underflow" }
                 }
+
                 is RenderCommand.PushTransform -> transformDepth += 1
                 RenderCommand.PopTransform -> {
                     transformDepth -= 1
                     require(transformDepth >= 0) { "transform stack underflow" }
                 }
+
                 is RenderCommand.PushOpacity -> opacityDepth += 1
                 RenderCommand.PopOpacity -> {
                     opacityDepth -= 1
                     require(opacityDepth >= 0) { "opacity stack underflow" }
                 }
+
                 else -> Unit
             }
         }
@@ -318,7 +325,7 @@ class DomTree(
         ScrollPerformanceCounters.incrementChunkTraversalCalls()
         chunkNodesVisitedLastFrame += 1
         val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
-        val nodeHidden = node.dragRenderHidden || node.display == org.dreamfinity.dsgl.core.style.Display.None
+        val nodeHidden = node.dragRenderHidden || node.display == Display.None
 
         val childSignature = if (nodeHidden) {
             if (chunk.children.isNotEmpty()) {
@@ -354,8 +361,8 @@ class DomTree(
 
         val nodeSignature = node.renderCommandsSignature(nowMs)
         val rebuildSelf = chunk.lastNodeSignature != nodeSignature ||
-            chunk.lastChildrenSignature != childSignature ||
-            chunk.lastNodeSignature == Long.MIN_VALUE
+                chunk.lastChildrenSignature != childSignature ||
+                chunk.lastNodeSignature == Long.MIN_VALUE
 
         if (rebuildSelf) {
             ScrollPerformanceCounters.incrementChunkRebuildCalls()
@@ -492,7 +499,7 @@ class DomTree(
             val first = violations.first()
             println(
                 "[DSGL-Layout] strict mode invalidated paint/hit-test due to ${first.code} " +
-                    "key=${first.nodeKey} parent=${first.parentKey}: ${first.message}"
+                        "key=${first.nodeKey} parent=${first.parentKey}: ${first.message}"
             )
         }
     }

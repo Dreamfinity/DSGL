@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.inspector.internal
 
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.ScrollSessionSnapshot
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -9,6 +9,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorDomSnapshot
@@ -17,6 +20,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
+import org.dreamfinity.dsgl.core.inspector.InspectorTooltipSnapshot
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
@@ -1057,7 +1061,7 @@ internal class SystemInspectorOverlayNode(
         scope: UiScope,
         ctx: UiMeasureContext,
         keyPrefix: String,
-        tooltip: org.dreamfinity.dsgl.core.inspector.InspectorTooltipSnapshot?,
+        tooltip: InspectorTooltipSnapshot?,
         backgroundColor: Int,
         borderColor: Int
     ) {

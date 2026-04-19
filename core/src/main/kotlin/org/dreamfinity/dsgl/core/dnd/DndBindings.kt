@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.dnd
 
-import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.dsl.ComponentProps
 
 data class DndListeners(
     val onDragStart: ((DragStartEvent) -> Unit)? = null,

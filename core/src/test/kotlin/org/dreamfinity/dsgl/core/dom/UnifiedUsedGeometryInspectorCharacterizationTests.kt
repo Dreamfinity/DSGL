@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.dom
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
@@ -10,6 +11,7 @@ import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
@@ -176,7 +178,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val overflowParent = ContainerNode(key = "clip-parent").apply {
             width = 80
             height = 40
-            overflowY = org.dreamfinity.dsgl.core.style.Overflow.Hidden
+            overflowY = Overflow.Hidden
             inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
         }.applyParent(root)
         val fixed = ButtonNode("fixed", key = "clip-fixed").apply {
@@ -219,7 +221,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         val inspector = InspectorController().also { it.toggle() }
         inspector.onLayoutCommitted(root, 31L)
-        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+        inspector.onNativeDomExpandedPanelRect(Rect(260, 20, 300, 220), 800, 600)
         inspector.onCursorMoved(185, 25)
         assertEquals(fixed.key?.toString(), inspector.hoveredKey, "Inspector picks fixed inside root viewport")
         inspector.onCursorMoved(145, 95)
@@ -237,7 +239,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val overflowParent = ContainerNode(key = "highlight-parent").apply {
             width = 80
             height = 40
-            overflowY = org.dreamfinity.dsgl.core.style.Overflow.Hidden
+            overflowY = Overflow.Hidden
             inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
         }.applyParent(root)
         val fixed = ButtonNode("fixed", key = "highlight-fixed").apply {
@@ -263,7 +265,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         tree.render(ctx, width = 200, height = 120)
         val inspector = InspectorController().also { it.toggle() }
         inspector.onLayoutCommitted(root, 41L)
-        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+        inspector.onNativeDomExpandedPanelRect(Rect(260, 20, 300, 220), 800, 600)
 
         inspector.onCursorMoved(185, 25)
         inspector.buildDomSnapshot(800, 600)
@@ -271,7 +273,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         assertNotNull(fixedHighlight)
         val fixedUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixed)
         assertEquals(
-            fixedUsedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            fixedUsedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             fixedHighlight.borderRect
         )
 
@@ -281,7 +283,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         assertNotNull(clippedHighlight)
         val rootUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(root)
         assertEquals(
-            rootUsedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            rootUsedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             clippedHighlight.borderRect,
             "Non-fixed clipped case highlights resolved fallback target with shared used geometry"
         )
@@ -308,7 +310,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         tree.render(ctx, width = 260, height = 140)
         val inspector = InspectorController().also { it.toggle() }
         inspector.onLayoutCommitted(root, 51L)
-        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+        inspector.onNativeDomExpandedPanelRect(Rect(260, 20, 300, 220), 800, 600)
 
         val usedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(relative)
         val pickPointX = usedGeometry.usedBorderRect.x + 4
@@ -320,7 +322,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val highlight = inspector.overlayHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(
-            usedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            usedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             highlight.borderRect,
             "Relative highlight must use final rendered geometry, not original layout slot"
         )
@@ -338,7 +340,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         fixture.tree.render(ctx, width = 220, height = 140)
         val inspector = InspectorController().also { it.toggle() }
         inspector.onLayoutCommitted(fixture.root, 61L)
-        inspector.onNativeDomExpandedPanelRect(org.dreamfinity.dsgl.core.dom.layout.Rect(260, 20, 300, 220), 800, 600)
+        inspector.onNativeDomExpandedPanelRect(Rect(260, 20, 300, 220), 800, 600)
 
         inspector.onCursorMoved(10, 10)
         inspector.buildDomSnapshot(800, 600)
@@ -348,7 +350,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         assertNotNull(highlight)
         val fixedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.fixed)
         assertEquals(
-            fixedGeometry.visibleBorderRect ?: org.dreamfinity.dsgl.core.dom.layout.Rect(0, 0, 0, 0),
+            fixedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             highlight.borderRect,
             "Inspector highlight must match picked node final used geometry in overlap cases"
         )

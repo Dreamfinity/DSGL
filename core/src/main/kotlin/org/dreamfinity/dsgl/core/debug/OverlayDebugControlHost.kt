@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.debug
 
 import org.dreamfinity.dsgl.core.DomTree
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -11,11 +11,15 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.TextWrap
+import java.util.Locale
 
 internal data class OverlayDebugControlLayout(
     val panelRect: Rect,
@@ -31,6 +35,15 @@ internal data class OverlayDebugControlLayout(
 class OverlayDebugControlHost(
     private val state: OverlayLayerDebugState = OverlayLayerDebugState
 ) {
+    private data class ToggleSnapshot(
+        val applicationOverlayRenderEnabled: Boolean,
+        val applicationOverlayTintEnabled: Boolean,
+        val applicationOverlayInputEnabled: Boolean,
+        val systemOverlayRenderEnabled: Boolean,
+        val systemOverlayTintEnabled: Boolean,
+        val systemOverlayInputEnabled: Boolean
+    )
+
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1
     private var layout: OverlayDebugControlLayout? = null
@@ -39,12 +52,14 @@ class OverlayDebugControlHost(
         root = rootNode,
         styleScope = StyleApplicationScope.SystemOverlay
     )
+    private var lastToggleSnapshot: ToggleSnapshot? = null
 
     fun render(viewportWidth: Int, viewportHeight: Int) {
         this.viewportWidth = viewportWidth.coerceAtLeast(1)
         this.viewportHeight = viewportHeight.coerceAtLeast(1)
         if (!state.controlsEnabled) {
             layout = null
+            lastToggleSnapshot = null
             return
         }
         layout = buildLayout(this.viewportWidth, this.viewportHeight)
@@ -52,7 +67,13 @@ class OverlayDebugControlHost(
 
     fun paint(ctx: UiMeasureContext): List<RenderCommand> {
         val currentLayout = layout ?: return emptyList()
-        rootNode.bind(currentLayout, state.snapshot())
+        val snapshot = state.snapshot()
+        val toggleSnapshot = snapshot.toggleSnapshot()
+        if (lastToggleSnapshot != toggleSnapshot) {
+            tree.invalidateRenderCommandChunks()
+            lastToggleSnapshot = toggleSnapshot
+        }
+        rootNode.bind(currentLayout, snapshot)
         tree.render(ctx, viewportWidth, viewportHeight)
         return tree.paint(ctx, applyStyles = true)
     }
@@ -118,6 +139,7 @@ class OverlayDebugControlHost(
 
     fun clearRefs() {
         layout = null
+        lastToggleSnapshot = null
         tree.clearRefs()
     }
 
@@ -154,6 +176,17 @@ class OverlayDebugControlHost(
                 width = panelRect.width - 20,
                 height = 20
             )
+        )
+    }
+
+    private fun OverlayLayerDebugSnapshot.toggleSnapshot(): ToggleSnapshot {
+        return ToggleSnapshot(
+            applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
+            applicationOverlayTintEnabled = applicationOverlayTintEnabled,
+            applicationOverlayInputEnabled = applicationOverlayInputEnabled,
+            systemOverlayRenderEnabled = systemOverlayRenderEnabled,
+            systemOverlayTintEnabled = systemOverlayTintEnabled,
+            systemOverlayInputEnabled = systemOverlayInputEnabled
         )
     }
 }
@@ -271,8 +304,8 @@ private class OverlayDebugControlRootNode(
         val statusTextValue =
             "R:${if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"}  " +
                 "I:${if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayInputEnabled) "S1" else "S0"}  " +
-                "FPS:${snapshot.frameFps} (${String.format(java.util.Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
-                "AvgFPS:${snapshot.frameFpsWindow} (${String.format(java.util.Locale.US, "%.1f", snapshot.frameTimeWindowMs)}ms)"
+                "FPS:${snapshot.frameFps} (${String.format(Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
+                "AvgFPS:${snapshot.frameFpsWindow} (${String.format(Locale.US, "%.1f", snapshot.frameTimeWindowMs)}ms)"
         statusNode.setText(statusTextValue)
         statusNode.color = 0xFFBAC7D6.toInt()
         statusNode.fontSize = 14

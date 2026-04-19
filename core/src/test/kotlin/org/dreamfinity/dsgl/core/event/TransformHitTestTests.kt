@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.event
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.UiTransform
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,7 +13,7 @@ class TransformHitTestTests {
     private val ctx = object : UiMeasureContext {
         override val fontHeight: Int = 9
         override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<org.dreamfinity.dsgl.core.render.RenderCommand>) = Unit
+        override fun paint(commands: List<RenderCommand>) = Unit
     }
 
     @Test

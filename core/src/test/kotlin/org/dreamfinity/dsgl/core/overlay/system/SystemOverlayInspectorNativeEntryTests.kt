@@ -17,6 +17,7 @@ import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import java.io.File
@@ -761,8 +762,8 @@ class SystemOverlayInspectorNativeEntryTests {
         val bodyNode = collectNodes(inspectorNode)
             .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
             ?: error("inspector body node missing")
-        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Hidden, bodyNode.overflowX)
-        assertEquals(org.dreamfinity.dsgl.core.style.Overflow.Auto, bodyNode.overflowY)
+        assertEquals(Overflow.Hidden, bodyNode.overflowX)
+        assertEquals(Overflow.Auto, bodyNode.overflowY)
         val bodyViewport = bodyNode.overflowViewportRect() ?: bodyRect
 
         val initialCommands = host.paint(ctx)

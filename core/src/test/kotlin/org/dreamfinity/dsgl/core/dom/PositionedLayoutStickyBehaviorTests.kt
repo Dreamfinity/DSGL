@@ -12,6 +12,7 @@ import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleEngine
@@ -133,7 +134,7 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `sticky left sticks visually on horizontal axis and keeps normal flow slot`() {
         val root = ContainerNode(key = "sticky-left-root").apply {
-            display = org.dreamfinity.dsgl.core.style.Display.Flex
+            display = Display.Flex
             overflowX = Overflow.Scroll
         }
         val sticky = ContainerNode(key = "sticky-left-node").apply {
@@ -166,7 +167,7 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `sticky right-only mode is deterministic on horizontal axis`() {
         val root = ContainerNode(key = "sticky-right-root").apply {
-            display = org.dreamfinity.dsgl.core.style.Display.Flex
+            display = Display.Flex
             overflowX = Overflow.Scroll
         }
         val spacer = ContainerNode(key = "sticky-right-spacer").apply {
@@ -201,7 +202,7 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `sticky both left and right uses left precedence`() {
         val root = ContainerNode(key = "sticky-horizontal-both-root").apply {
-            display = org.dreamfinity.dsgl.core.style.Display.Flex
+            display = Display.Flex
             overflowX = Overflow.Scroll
         }
         val sticky = ContainerNode(key = "sticky-horizontal-both-node").apply {
@@ -262,7 +263,7 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `sticky with no horizontal inset stays inactive on horizontal axis`() {
         val root = ContainerNode(key = "sticky-horizontal-inactive-root").apply {
-            display = org.dreamfinity.dsgl.core.style.Display.Flex
+            display = Display.Flex
             overflowX = Overflow.Scroll
         }
         val sticky = ContainerNode(key = "sticky-horizontal-inactive-node").apply {
@@ -690,7 +691,7 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `sticky horizontal movement is clamped by direct-parent containing block`() {
         val root = ContainerNode(key = "sticky-clamp-x-root").apply {
-            display = org.dreamfinity.dsgl.core.style.Display.Flex
+            display = Display.Flex
             overflowX = Overflow.Scroll
         }
         val leftSpacer = ContainerNode(key = "sticky-clamp-x-left-spacer").apply {

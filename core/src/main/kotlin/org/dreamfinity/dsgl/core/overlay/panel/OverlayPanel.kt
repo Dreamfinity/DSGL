@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.overlay.panel
 
-import org.dreamfinity.dsgl.core.UiScope
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
@@ -10,6 +10,9 @@ import org.dreamfinity.dsgl.core.dom.elements.TextSource
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
@@ -449,26 +452,26 @@ class OverlayPanel(
     private fun applyStyleToNodes(style: OverlayPanelStyle) {
         shadowNode.applyStyle {
             backgroundColor = style.panelShadowColor
-            border(0.px)
+            border { width = 0.px }
         }
         panelNode.applyStyle {
             backgroundColor = style.panelBackgroundColor
-            border(1.px, style.panelBorderColor)
+            border { width = 1.px; color = style.panelBorderColor }
         }
         headerNode.applyStyle {
             backgroundColor = style.headerBackgroundColor
-            border(1.px, style.headerBorderColor)
+            border { width = 1.px; color = style.headerBorderColor }
         }
         titleNode.applyStyle {
             color = style.textColor
-            fontSize(style.fontSize.px)
+            fontSize = style.fontSize.px
             textWrap = TextWrap.NoWrap
         }
         closeButtonNode.applyStyle {
             backgroundColor = style.closeButtonBackgroundColor
-            border(1.px, style.closeButtonBorderColor)
+            border { width = 1.px; color = style.closeButtonBorderColor }
             color = style.textColor
-            fontSize(style.fontSize.px)
+            fontSize = style.fontSize.px
             width = style.closeButtonWidth.px
             height = style.closeButtonHeight.px
             padding = 0.px

@@ -10,6 +10,7 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
@@ -2476,6 +2477,24 @@ class InspectorController(
             if (found != null) return found
         }
         return null
+    }
+
+    private fun nodeLabel(node: DOMNode): String {
+        val key = node.key?.toString() ?: "<no-key>"
+        return "${node.styleType}[$key]"
+    }
+
+    private fun pathToken(node: DOMNode): String {
+        val key = node.key?.toString() ?: "?"
+        return "${node.styleType}:$key"
+    }
+
+    private fun rectLabel(rect: Rect): String {
+        return "${rect.x},${rect.y},${rect.width}x${rect.height}"
+    }
+
+    private fun spacingLabel(value: Insets): String {
+        return "${value.top}/${value.right}/${value.bottom}/${value.left}"
     }
 
     private fun colorLabel(color: Int): String {

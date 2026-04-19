@@ -14,8 +14,9 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.toggle
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.ui
+import org.dreamfinity.dsgl.core.dsl.ui
 
 class ToggleNodeTests {
     private val ctx = object : UiMeasureContext {

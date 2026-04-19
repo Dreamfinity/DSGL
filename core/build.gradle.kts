@@ -1,6 +1,7 @@
 plugins {
     id("dsgl-core.conventions")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10"
+    id("dsgl-releaseable-module.conventions")
+    id("org.jetbrains.kotlin.plugin.serialization")
     jacoco
 }
 
@@ -47,4 +48,36 @@ tasks.jacocoTestCoverageVerification {
 
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+tasks.processResources {
+    val allowedCoreFontBases = setOf(
+        "fonts/minecraft/MinecraftDefault-Regular",
+        "fonts/ubuntu/Ubuntu-Regular",
+        "fonts/noto/Noto_Sans/NotoSans-Regular",
+        "fonts/jetbrains_mono/JetBrainsMono-Regular",
+        "fonts/telegrafico/telegrafico"
+    )
+
+    eachFile {
+        if (isDirectory || !path.startsWith("fonts/")) {
+            return@eachFile
+        }
+        val isAllowedFontArtifact =
+            path.endsWith(".ttf") ||
+                    path.endsWith(".json") ||
+                    path.endsWith(".rgba.deflate")
+        if (!isAllowedFontArtifact) {
+            exclude()
+            return@eachFile
+        }
+        val isAllowedCoreFontArtifact = allowedCoreFontBases.any { base ->
+            path == "$base.ttf" ||
+                    path == "$base-meta.json" ||
+                    path == "$base-mtsdf.rgba.deflate"
+        }
+        if (!isAllowedCoreFontArtifact) {
+            exclude()
+        }
+    }
 }

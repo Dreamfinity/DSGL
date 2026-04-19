@@ -1,8 +1,8 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.ComponentProps
+import org.dreamfinity.dsgl.core.dsl.ComponentProps
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.StyleScope
+import org.dreamfinity.dsgl.core.dsl.StyleScope
 import org.dreamfinity.dsgl.core.animation.AnimationSpec
 import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
 import org.dreamfinity.dsgl.core.animation.TransitionSpec
@@ -258,7 +258,7 @@ abstract class DOMNode(
     var textWrap: TextWrap = TextWrap.Wrap
     var textFormatting: TextFormatting = TextFormatting.None
     var fontWeight: FontWeight = FontWeight.Normal
-    var fontStyle: org.dreamfinity.dsgl.core.style.FontStyle = org.dreamfinity.dsgl.core.style.FontStyle.Normal
+    var fontStyle: FontStyle = FontStyle.Normal
     var textDecoration: TextDecoration = TextDecoration.None
     var textObfuscated: Boolean = false
     var fontId: String? = FontRegistry.DEFAULT_FONT_ID

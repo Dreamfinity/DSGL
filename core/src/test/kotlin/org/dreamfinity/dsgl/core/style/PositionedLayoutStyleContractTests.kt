@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.style
 
-import org.dreamfinity.dsgl.core.StyleScope
+import org.dreamfinity.dsgl.core.dsl.StyleScope
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import kotlin.test.Test
 import kotlin.test.assertEquals

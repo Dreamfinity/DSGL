@@ -12,6 +12,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.render.RenderCommandChunk
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.UiTransform
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertSame
@@ -80,7 +81,7 @@ class DomTreeCachingTests {
         override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
         override val fontHeight: Int = 9
         override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<org.dreamfinity.dsgl.core.render.RenderCommand>) = Unit
+        override fun paint(commands: List<RenderCommand>) = Unit
     }
 
     @AfterTest
@@ -147,7 +148,7 @@ class DomTreeCachingTests {
     fun `transform and opacity commands remain balanced`() {
         val root = ContainerNode(key = "root")
         val node = CountingRectNode(color = 0xFF22AA55.toInt(), key = "balanced").applyParent(root)
-        node.transform = org.dreamfinity.dsgl.core.style.UiTransform(translateX = 4f, translateY = 3f, scaleX = 1f, scaleY = 1f, rotateDeg = 0f)
+        node.transform = UiTransform(translateX = 4f, translateY = 3f, scaleX = 1f, scaleY = 1f, rotateDeg = 0f)
         node.opacity = 0.6f
         val tree = DomTree(root)
 
