@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.ScrollSessionSnapshot
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.TextInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -61,6 +62,10 @@ internal class SystemInspectorOverlayNode(
     private val persistedDropdownScrollSession: MutableMap<String, ScrollSessionSnapshot> = LinkedHashMap()
     private var activeDomDropdown: ActiveDomDropdown? = null
     private val panelNode: DOMNode = overlayPanel.node().applyParent(this)
+    private val inspectorBodyNode: ContainerNode = ContainerNode(
+        stackLayout = false,
+        key = "dsgl-system-inspector-body"
+    ).also(overlayPanel::setBodyContent)
     private var minimizedChipDragSession: MinimizedChipDragSession? = null
 
     private data class ActiveDomDropdown(
@@ -214,6 +219,7 @@ internal class SystemInspectorOverlayNode(
         val snapshot = controller.buildDomSnapshot(viewportRect.width, viewportRect.height)
         if (snapshot == null) {
             clearTree()
+            clearInspectorBodySubtree()
             panelNode.render(ctx, 0, 0, 0, 0)
             children.remove(panelNode)
             panelNode.parent = null
@@ -293,6 +299,7 @@ internal class SystemInspectorOverlayNode(
 
     private fun renderMinimized(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot) {
         closeActiveDomDropdown()
+        clearInspectorBodySubtree()
         panelNode.render(ctx, 0, 0, 0, 0)
         val scope = UiScope(this)
 
@@ -362,7 +369,15 @@ internal class SystemInspectorOverlayNode(
 
         renderHighlights(scope, ctx)
         renderPanelOccluder(scope, ctx, panelRect)
+        clearInspectorBodySubtree()
+        inspectorBodyNode.backgroundColor = 0x18212C39
+        inspectorBodyNode.overflow = Overflow.Hidden
+        inspectorBodyNode.overflowX = Overflow.Hidden
+        inspectorBodyNode.overflowY = Overflow.Auto
         panelNode.render(ctx, viewportRect.x, viewportRect.y, viewportRect.width, viewportRect.height)
+        if (overlayPanel.bodyRect() == null) {
+            renderNode(ctx, inspectorBodyNode, bodyRect)
+        }
 
         val pickRect = controller.overlayPickToggleBounds()
             ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
@@ -393,18 +408,7 @@ internal class SystemInspectorOverlayNode(
         }
         renderNode(ctx, minimizeButton, minimizeRect)
 
-        val body = scope.div({
-            key = "dsgl-system-inspector-body"
-            style = {
-                display = Display.Block
-            }
-        })
-        body.backgroundColor = 0x18212C39
-        body.overflow = Overflow.Hidden
-        body.overflowX = Overflow.Hidden
-        body.overflowY = Overflow.Auto
-        val bodyScope = UiScope(body)
-        renderNode(ctx, body, bodyRect)
+        val bodyScope = UiScope(inspectorBodyNode)
 
         val lineHeightPx = 32
         val rowHeightPx = 34
@@ -485,7 +489,7 @@ internal class SystemInspectorOverlayNode(
 
         val styleRows = controller.overlayStyleEditorRows()
         reconcileActiveDomDropdown(styleRows)
-        renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY, styleRows)
+        renderStyleEditorRows(bodyScope, inspectorBodyNode, ctx, bodyScrollY, styleRows)
         y += snapshot.styleEditorHeight
 
         snapshot.styleLines.forEachIndexed { index, line ->
@@ -507,10 +511,10 @@ internal class SystemInspectorOverlayNode(
         }
 
         renderDropdowns(scope, ctx, styleRows, bodyScrollY, viewportWidth, viewportHeight)
-        body.restoreScrollSessionSnapshot(persistedBodyScrollSession)
-        val bodyState = body.scrollContainerState()
-        persistedBodyScrollSession = body.captureScrollSessionSnapshot()
-        val bodyScrollbarVisual = body.debugScrollbarVisualState().vertical
+        inspectorBodyNode.restoreScrollSessionSnapshot(persistedBodyScrollSession)
+        val bodyState = inspectorBodyNode.scrollContainerState()
+        persistedBodyScrollSession = inspectorBodyNode.captureScrollSessionSnapshot()
+        val bodyScrollbarVisual = inspectorBodyNode.debugScrollbarVisualState().vertical
         controller.onNativeDomBodyScrollState(
             scrollY = bodyState.scrollY,
             trackRect = bodyScrollbarVisual?.trackRect,
@@ -1116,8 +1120,12 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun capturePersistedScrollStateFromCurrentTree() {
-        findNodeByKey("dsgl-system-inspector-body")?.let { bodyNode ->
-            persistedBodyScrollSession = bodyNode.captureScrollSessionSnapshot()
+        if (controller.panelState == InspectorPanelState.Expanded) {
+            findNodeByKey("dsgl-system-inspector-body")?.let { bodyNode ->
+                if (bodyNode.bounds.width > 0 && bodyNode.bounds.height > 0) {
+                    persistedBodyScrollSession = bodyNode.captureScrollSessionSnapshot()
+                }
+            }
         }
         val nextDropdownScroll = LinkedHashMap<String, ScrollSessionSnapshot>()
         collectNodes(this).forEach { node ->
@@ -1127,6 +1135,16 @@ internal class SystemInspectorOverlayNode(
         }
         persistedDropdownScrollSession.clear()
         persistedDropdownScrollSession.putAll(nextDropdownScroll)
+    }
+
+    private fun clearInspectorBodySubtree() {
+        EventBus.run {
+            inspectorBodyNode.children.toList().forEach { child ->
+                child.clearListenersDeep()
+                child.parent = null
+            }
+        }
+        inspectorBodyNode.children.clear()
     }
 
     private fun findNodeByKey(targetKey: String): DOMNode? {
