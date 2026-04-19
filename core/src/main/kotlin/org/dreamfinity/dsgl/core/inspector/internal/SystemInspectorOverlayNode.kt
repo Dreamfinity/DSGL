@@ -306,58 +306,7 @@ internal class SystemInspectorOverlayNode(
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
-        val chip = scope.div({
-            key = "dsgl-system-inspector-chip"
-            style = {
-                display = Display.Block
-            }
-        })
-        chip.backgroundColor = 0xDD1A202A.toInt()
-        chip.border = Border.all(1, 0xCC4F6076.toInt())
-        chip.onMouseDown = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                startMinimizedChipDrag(snapshot.panelRect, event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        chip.onMouseDrag = { event ->
-            val currentX = event.lastMouseX + event.dx
-            val currentY = event.lastMouseY + event.dy
-            updateMinimizedChipDragPointer(currentX, currentY)
-            event.cancelled = true
-        }
-        chip.onMouseUp = { event ->
-            if (event.mouseButton == MouseButton.LEFT) {
-                endMinimizedChipDrag(event.mouseX, event.mouseY)
-                event.cancelled = true
-            }
-        }
-        renderNode(ctx, chip, snapshot.panelRect)
-
-        val compactLineHeight = 20
-        var lineY = snapshot.panelRect.y + ((snapshot.panelRect.height - compactLineHeight * snapshot.minimizedLines.size) / 2)
-        snapshot.minimizedLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
-                key = "dsgl-system-inspector-chip-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
-            lineNode.color = 0xFFE6EDF6.toInt()
-            lineNode.fontSize = 14
-            renderNode(
-                ctx,
-                lineNode,
-                Rect(
-                    snapshot.panelRect.x + 8,
-                    lineY,
-                    (snapshot.panelRect.width - 16).coerceAtLeast(1),
-                    compactLineHeight
-                )
-            )
-            lineY += compactLineHeight
-        }
+        renderMinimizedChip(scope, ctx, snapshot)
     }
 
     private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect) {
@@ -373,34 +322,7 @@ internal class SystemInspectorOverlayNode(
         renderPanelOccluder(scope, ctx, panelRect)
         panelNode.render(ctx, viewportRect.x, viewportRect.y, viewportRect.width, viewportRect.height)
 
-        val pickRect = controller.overlayPickToggleBounds()
-            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
-        val minimizeRect = controller.overlayMinimizeBounds()
-            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
-
-        val pickButton = scope.button("Select Element", {
-            key = "dsgl-system-inspector-pick-toggle"
-        })
-        pickButton.backgroundColor = 0x3346596E
-        pickButton.border = Border.all(1, 0x775E738C)
-        pickButton.textColor = 0xFFE6EDF6.toInt()
-        pickButton.fontSize = 18
-        pickButton.onClick {
-            controller.onPickTogglePressed()
-        }
-        renderNode(ctx, pickButton, pickRect)
-
-        val minimizeButton = scope.button("Minimize", {
-            key = "dsgl-system-inspector-minimize"
-        })
-        minimizeButton.backgroundColor = 0x3346596E
-        minimizeButton.border = Border.all(1, 0x775E738C)
-        minimizeButton.textColor = 0xFFE6EDF6.toInt()
-        minimizeButton.fontSize = 18
-        minimizeButton.onClick {
-            controller.onPanelMinimizeTogglePressed()
-        }
-        renderNode(ctx, minimizeButton, minimizeRect)
+        renderExpandedChrome(scope, ctx, panelRect)
 
         val body = scope.div({
             key = "dsgl-system-inspector-body"
@@ -422,23 +344,15 @@ internal class SystemInspectorOverlayNode(
         val bodyScrollY = persistedBodyScrollSession?.resolvedY?.coerceAtLeast(0) ?: 0
         var y = bodyRect.y + 2 - bodyScrollY
 
-        snapshot.infoLines.forEachIndexed { index, line ->
-            val lineNode = bodyScope.text(props = {
-                key = "dsgl-system-inspector-info-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
-            lineNode.color = 0xFFDCE5EF.toInt()
-            lineNode.fontSize = 24
-            renderNode(
-                ctx,
-                lineNode,
-                Rect(contentX, y, contentW, lineHeightPx),
-            )
-            y += lineHeightPx
-        }
+        y = renderBodyInfoLines(
+            scope = bodyScope,
+            ctx = ctx,
+            infoLines = snapshot.infoLines,
+            contentX = contentX,
+            contentW = contentW,
+            startY = y,
+            lineHeightPx = lineHeightPx
+        )
 
         snapshot.parentLabel?.let { label ->
             val parentButton = bodyScope.button(label, {
@@ -527,6 +441,136 @@ internal class SystemInspectorOverlayNode(
         )
         renderTooltip(scope, ctx, "dsgl-system-inspector-variable-tooltip", controller.overlayVariableTooltip(), 0xEE141A22.toInt(), 0xCC60758F.toInt())
         renderTooltip(scope, ctx, "dsgl-system-inspector-cursor-tooltip", controller.overlayCursorTooltip(), 0xDD11151A.toInt(), 0xCC3F4A57.toInt())
+    }
+
+    private fun renderMinimizedChip(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        snapshot: InspectorDomSnapshot
+    ) {
+        val chip = scope.div({
+            key = "dsgl-system-inspector-chip"
+            style = {
+                display = Display.Block
+            }
+        })
+        chip.backgroundColor = 0xDD1A202A.toInt()
+        chip.border = Border.all(1, 0xCC4F6076.toInt())
+        chip.onMouseDown = { event ->
+            if (event.mouseButton == MouseButton.LEFT) {
+                startMinimizedChipDrag(snapshot.panelRect, event.mouseX, event.mouseY)
+                event.cancelled = true
+            }
+        }
+        chip.onMouseDrag = { event ->
+            val currentX = event.lastMouseX + event.dx
+            val currentY = event.lastMouseY + event.dy
+            updateMinimizedChipDragPointer(currentX, currentY)
+            event.cancelled = true
+        }
+        chip.onMouseUp = { event ->
+            if (event.mouseButton == MouseButton.LEFT) {
+                endMinimizedChipDrag(event.mouseX, event.mouseY)
+                event.cancelled = true
+            }
+        }
+        renderNode(ctx, chip, snapshot.panelRect)
+
+        val compactLineHeight = 20
+        var lineY = snapshot.panelRect.y + ((snapshot.panelRect.height - compactLineHeight * snapshot.minimizedLines.size) / 2)
+        snapshot.minimizedLines.forEachIndexed { index, line ->
+            val lineNode = scope.text(props = {
+                key = "dsgl-system-inspector-chip-line-$index"
+                value = line
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
+            lineNode.color = 0xFFE6EDF6.toInt()
+            lineNode.fontSize = 14
+            renderNode(
+                ctx,
+                lineNode,
+                Rect(
+                    snapshot.panelRect.x + 8,
+                    lineY,
+                    (snapshot.panelRect.width - 16).coerceAtLeast(1),
+                    compactLineHeight
+                )
+            )
+            lineY += compactLineHeight
+        }
+    }
+
+    private fun renderExpandedChrome(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        panelRect: Rect
+    ) {
+        val pickRect = controller.overlayPickToggleBounds()
+            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
+        val minimizeRect = controller.overlayMinimizeBounds()
+            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
+        renderPickToggleButton(scope, ctx, pickRect)
+        renderMinimizeButton(scope, ctx, minimizeRect)
+    }
+
+    private fun renderPickToggleButton(scope: UiScope, ctx: UiMeasureContext, rect: Rect) {
+        val pickButton = scope.button("Select Element", {
+            key = "dsgl-system-inspector-pick-toggle"
+        })
+        pickButton.backgroundColor = 0x3346596E
+        pickButton.border = Border.all(1, 0x775E738C)
+        pickButton.textColor = 0xFFE6EDF6.toInt()
+        pickButton.fontSize = 18
+        pickButton.onClick {
+            controller.onPickTogglePressed()
+        }
+        renderNode(ctx, pickButton, rect)
+    }
+
+    private fun renderMinimizeButton(scope: UiScope, ctx: UiMeasureContext, rect: Rect) {
+        val minimizeButton = scope.button("Minimize", {
+            key = "dsgl-system-inspector-minimize"
+        })
+        minimizeButton.backgroundColor = 0x3346596E
+        minimizeButton.border = Border.all(1, 0x775E738C)
+        minimizeButton.textColor = 0xFFE6EDF6.toInt()
+        minimizeButton.fontSize = 18
+        minimizeButton.onClick {
+            controller.onPanelMinimizeTogglePressed()
+        }
+        renderNode(ctx, minimizeButton, rect)
+    }
+
+    private fun renderBodyInfoLines(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        infoLines: List<String>,
+        contentX: Int,
+        contentW: Int,
+        startY: Int,
+        lineHeightPx: Int
+    ): Int {
+        var y = startY
+        infoLines.forEachIndexed { index, line ->
+            val lineNode = scope.text(props = {
+                key = "dsgl-system-inspector-info-line-$index"
+                value = line
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
+            lineNode.color = 0xFFDCE5EF.toInt()
+            lineNode.fontSize = 24
+            renderNode(
+                ctx,
+                lineNode,
+                Rect(contentX, y, contentW, lineHeightPx),
+            )
+            y += lineHeightPx
+        }
+        return y
     }
 
     private fun renderPanelOccluder(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
