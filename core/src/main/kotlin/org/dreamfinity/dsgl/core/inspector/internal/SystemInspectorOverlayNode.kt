@@ -985,6 +985,22 @@ internal class SystemInspectorOverlayNode(
         val dropdownKey = dropdownScrollKey(dropdown.property, dropdown.unitSelect)
         val persistedDropdownSession = persistedDropdownScrollSession[dropdownKey]
         val persistedDropdownY = persistedDropdownSession?.resolvedY?.coerceAtLeast(0) ?: 0
+        val popup = renderDropdownPopupContainer(scope, ctx, dropdownKey, dropdown.popupRect)
+        renderDropdownOptionButtons(scope, ctx, dropdown, dropdownKey, persistedDropdownY)
+        renderDropdownFooter(scope, ctx, dropdown, dropdownKey, persistedDropdownY)
+
+        popup.restoreScrollSessionSnapshot(persistedDropdownSession)
+        popup.scrollContainerState()
+        persistedDropdownScrollSession[dropdownKey] = popup.captureScrollSessionSnapshot()
+        controller.onNativeDomDropdownSnapshots(listOf(dropdown))
+    }
+
+    private fun renderDropdownPopupContainer(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        dropdownKey: String,
+        popupRect: Rect
+    ): DOMNode {
         val popup = scope.div({
             key = dropdownKey
             style = {
@@ -994,8 +1010,17 @@ internal class SystemInspectorOverlayNode(
         popup.backgroundColor = 0xEE202A36.toInt()
         popup.border = Border.all(1, 0xCC596A80.toInt())
         popup.overflowY = Overflow.Auto
-        renderNode(ctx, popup, dropdown.popupRect)
+        renderNode(ctx, popup, popupRect)
+        return popup
+    }
 
+    private fun renderDropdownOptionButtons(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        dropdown: InspectorDropdownSnapshot,
+        dropdownKey: String,
+        persistedDropdownY: Int
+    ) {
         dropdown.options.forEachIndexed { optionIndex, option ->
             val optionRect = Rect(
                 option.rect.x,
@@ -1021,7 +1046,15 @@ internal class SystemInspectorOverlayNode(
             }
             renderNode(ctx, button, optionRect)
         }
+    }
 
+    private fun renderDropdownFooter(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        dropdown: InspectorDropdownSnapshot,
+        dropdownKey: String,
+        persistedDropdownY: Int
+    ) {
         dropdown.footerText?.let { footer ->
             val footerNode = scope.text(props = {
                 key = "$dropdownKey-footer"
@@ -1043,11 +1076,6 @@ internal class SystemInspectorOverlayNode(
                 )
             )
         }
-
-        popup.restoreScrollSessionSnapshot(persistedDropdownSession)
-        popup.scrollContainerState()
-        persistedDropdownScrollSession[dropdownKey] = popup.captureScrollSessionSnapshot()
-        controller.onNativeDomDropdownSnapshots(listOf(dropdown))
     }
 
     private fun resolveDomDropdownSnapshot(
