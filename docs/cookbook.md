@@ -1,6 +1,6 @@
 # Cookbook
 
-A set of practical DSGL patterns that are already used in this repository (mostly in `mc-forge-1-7-10-demo`).
+A set of practical DSGL patterns that are already used in this repository (mostly in `adapters/mc-forge-1-7-10/demo`).
 It is not a generic UI cookbook; every recipe here maps to existing runtime / demo behaviour.
 
 ## Recipe 1: State-driven modal stack
@@ -256,5 +256,5 @@ class StylesWindow : DsglWindow() {
 ![img](images/cookbook-ref.png)
 ![img](images/cookbook-ref-focused.png)
 
-For more examples please see mc-forge-1-7-10-demo module
+For more examples please see adapters/mc-forge-1-7-10/demo module
 For full style semantics and limits, see [Styling](styling.md) and [Layout model](layout-model.md).

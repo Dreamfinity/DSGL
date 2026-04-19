@@ -1,22 +1,26 @@
+fun isAdapterEnabled(name: String) = providers.gradleProperty("enable$name").orNull?.toBoolean() ?: false
+
 pluginManagement {
+    includeBuild("build-logic")
+
+    fun isAdapterEnabled(name: String) = providers.gradleProperty("enable$name").orNull?.toBoolean() ?: false
+
     repositories {
         maven(url = "https://maven.minecraftforge.net")
         gradlePluginPortal()
         mavenCentral()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "forge") {
-                useModule("com.anatawa12.forge:ForgeGradle:1.2-1.1.+")
-            }
-        }
+
+    if (isAdapterEnabled("MinecraftForge1710")) {
+        includeBuild("adapters/mc-forge-1-7-10/adapter-build-logic")
     }
 }
 
 rootProject.name = "dsgl"
 
-include(
-    ":core",
-    ":mc-forge-1-7-10",
-    ":mc-forge-1-7-10-demo",
-)
+include(":core")
+
+if (isAdapterEnabled("MinecraftForge1710")) {
+    include(":adapters:mc-forge-1-7-10")
+    include(":adapters:mc-forge-1-7-10:demo")
+}

@@ -101,7 +101,7 @@ etc.) sit on top of this model; low-level overlay internals are not a stable app
 
 ## Where to inspect next
 
-- Runtime host path: `mc-forge-1-7-10/src/main/kotlin/org/dreamfinity/dsgl/mc1710/DsglScreenHost.kt`
+- Runtime host path: `adapters/mc-forge-1-7-10/src/main/kotlin/org/dreamfinity/dsgl/mcForge1710/DsglScreenHost.kt`
 - Retained tree + reconcile/layout/paint: `core/src/main/kotlin/org/dreamfinity/dsgl/core/DomTree.kt`
 - Style runtime: `core/src/main/kotlin/org/dreamfinity/dsgl/core/style/StyleEngine.kt`
 - Stylesheet loading: `core/src/main/kotlin/org/dreamfinity/dsgl/core/style/StylesheetManager.kt`

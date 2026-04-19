@@ -1,3 +1,5 @@
+package org.dreamfinity.buildlogic
+
 import javax.inject.Inject
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
