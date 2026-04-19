@@ -314,13 +314,16 @@ class SystemOverlayHost(
                     state.panelState.show()
                     overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
                 }
-                overlayPanel.handleMouseMove(
-                    mouseX = frame.cursorX,
-                    mouseY = frame.cursorY,
-                    viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
-                ) { rect ->
-                    inspectorController.onOverlayPanelRectChanged(rect, viewportWidth, viewportHeight)
+                val dragUpdatedByDomInput = node.consumeOverlayPanelDomDragUpdate()
+                if (!dragUpdatedByDomInput) {
+                    overlayPanel.handleMouseMove(
+                        mouseX = frame.cursorX,
+                        mouseY = frame.cursorY,
+                        viewportWidth = viewportWidth,
+                        viewportHeight = viewportHeight
+                    ) { rect ->
+                        inspectorController.onOverlayPanelRectChanged(rect, viewportWidth, viewportHeight)
+                    }
                 }
             } else {
                 state.panelState.hide()

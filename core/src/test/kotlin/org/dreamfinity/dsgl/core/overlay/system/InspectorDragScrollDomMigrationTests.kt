@@ -71,6 +71,55 @@ class InspectorDragScrollDomMigrationTests {
     }
 
     @Test
+    fun `inspector panel drag stays monotonic when sync cursor lags behind dom drag updates`() {
+        val fixture = openInspectorAndSelectTarget(withManyChildren = true)
+
+        val before = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
+        val downX = before.x + 18
+        val downY = before.y + 14
+        val dragX = downX + 92
+        val dragY = downY + 34
+
+        assertTrue(fixture.host.handleMouseDown(downX, downY, MouseButton.LEFT))
+        syncAndRender(fixture, downX, downY)
+
+        assertTrue(fixture.host.handleMouseMove(dragX, dragY))
+        val afterDomDrag = fixture.inspector.overlayPanelRect() ?: error("expected moved panel rect")
+        assertTrue(
+            afterDomDrag.x > before.x || afterDomDrag.y > before.y,
+            "expected drag move to advance panel: before=$before afterDomDrag=$afterDomDrag"
+        )
+
+        syncAndRender(fixture, downX, downY)
+        val afterStaleSync = fixture.inspector.overlayPanelRect() ?: error("expected panel rect after stale sync")
+
+        if (afterDomDrag.x > before.x) {
+            assertTrue(
+                afterStaleSync.x >= afterDomDrag.x,
+                "stale sync cursor regressed panel x: before=$before dom=$afterDomDrag stale=$afterStaleSync"
+            )
+        }
+        if (afterDomDrag.y > before.y) {
+            assertTrue(
+                afterStaleSync.y >= afterDomDrag.y,
+                "stale sync cursor regressed panel y: before=$before dom=$afterDomDrag stale=$afterStaleSync"
+            )
+        }
+
+        assertTrue(fixture.host.handleMouseMove(dragX + 28, dragY + 16))
+        syncAndRender(fixture, dragX + 28, dragY + 16)
+        val afterNextMove = fixture.inspector.overlayPanelRect() ?: error("expected panel rect after next drag move")
+        assertTrue(
+            afterNextMove.x >= afterStaleSync.x && afterNextMove.y >= afterStaleSync.y,
+            "expected monotonic drag progression across sync/render cycle: stale=$afterStaleSync next=$afterNextMove"
+        )
+
+        assertTrue(fixture.host.handleMouseUp(dragX + 28, dragY + 16, MouseButton.LEFT))
+        syncAndRender(fixture, dragX + 28, dragY + 16)
+        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+    }
+
+    @Test
     fun `inspector wheel body scroll is dom-first and not controller-authoritative`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = true)
         setViewport(fixture, 420, 280)

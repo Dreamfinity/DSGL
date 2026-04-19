@@ -814,6 +814,38 @@ class SystemOverlayInspectorNativeEntryTests {
     }
 
     @Test
+    fun `inspector expanded body renders baseline info text`() {
+        val inspector = InspectorController()
+        val host = SystemOverlayHost(inspector)
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        val root = inspectedRoot()
+
+        inspector.toggle()
+        host.onInputFrame(1280, 720)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
+        host.render(ctx, 1280, 720)
+        val commands = host.paint(ctx)
+
+        val bodyRect = inspector.overlayContentRect()
+        assertTrue(bodyRect.width > 0 && bodyRect.height > 0)
+        val baselineInfoRendered = commands.any { command ->
+            command is RenderCommand.DrawText &&
+                    command.text.contains("F12 toggle") &&
+                    command.x >= bodyRect.x &&
+                    command.x <= bodyRect.x + bodyRect.width &&
+                    command.y >= bodyRect.y &&
+                    command.y <= bodyRect.y + bodyRect.height
+        }
+        assertTrue(baselineInfoRendered)
+    }
+
+    @Test
     fun `inspector clipped body blocks hidden row input and accepts visible portion`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
