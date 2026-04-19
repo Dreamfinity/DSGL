@@ -716,161 +716,227 @@ internal class SystemInspectorOverlayNode(
     ) {
         rows.forEachIndexed { index, row ->
             val rowRect = translateRectY(row.rowRect, -bodyScrollY)
-            val rowNode = scope.div({
-                key = "dsgl-system-inspector-editor-row-$index"
-                style = {
-                    display = Display.Block
-                }
-            })
-            rowNode.backgroundColor = 0x1B293746
-            rowNode.border = Border.all(1, 0x553F4A57)
-            renderNode(ctx, rowNode, rowRect)
-
-            val labelNode = scope.text(props = {
-                key = "dsgl-system-inspector-editor-label-$index"
-                value = row.labelText
-                style = {
-                    textWrap = TextWrap.Wrap
-                }
-            })
-            labelNode.color = 0xFFDCE5EF.toInt()
-            labelNode.fontSize = 18
-            renderNode(
-                ctx,
-                labelNode,
-                Rect(rowRect.x + 8, rowRect.y + 5, (row.controlRect.x - row.rowRect.x - 14).coerceAtLeast(40), rowRect.height - 10),
-            )
-
-            val resetButton = scope.button("x", {
-                key = "dsgl-system-inspector-editor-reset-$index"
-            })
-            resetButton.backgroundColor = 0x3346596E
-            resetButton.border = Border.all(1, 0x775E738C)
-            resetButton.textColor = 0xFFDCE5EF.toInt()
-            resetButton.fontSize = 18
-            resetButton.onClick {
-                controller.onResetPropertyPressed(row.property)
-            }
-            renderNode(ctx, resetButton, translateRectY(row.resetRect, -bodyScrollY))
+            renderStyleEditorRowContainer(scope, ctx, rowRect, index)
+            renderStyleEditorRowLabel(scope, ctx, rowRect, row, index)
+            renderStyleEditorRowResetButton(scope, ctx, bodyScrollY, row, index)
 
             when (row.editorKind) {
                 InspectorEditorKind.EnumSelect,
                 InspectorEditorKind.FontSelect -> {
-                    val valueOpen = isDomDropdownOpen(row.property, unitSelect = false)
-                    val selector = scope.button(row.controlValue, {
-                        key = "dsgl-system-inspector-editor-select-$index"
-                    })
-                    selector.backgroundColor = if (valueOpen) 0x334D5D70 else if (row.controlHovered) 0x2A425164 else 0x22313D4B
-                    selector.border = Border.all(1, if (valueOpen) 0xFFA8C6E6.toInt() else 0x77607084)
-                    selector.textColor = 0xFFE6EDF6.toInt()
-                    selector.fontSize = 18
-                    selector.onClick {
-                        toggleDomDropdown(row.property, unitSelect = false)
-                    }
-                    renderNode(ctx, selector, translateRectY(row.controlRect, -bodyScrollY))
+                    renderStyleEditorSelectButton(scope, ctx, bodyScrollY, row, index)
                 }
 
                 InspectorEditorKind.StringInput -> {
-                    val input = TextInputNode(
-                        text = row.controlValue.replace("|", ""),
-                        key = "dsgl-system-inspector-editor-input-${row.property.key}"
-                    )
-                    input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
-                    input.focusedBackgroundColor = input.backgroundColor
-                    input.border = Border.all(1, if (row.inputActive) 0xFFA8C6E6.toInt() else 0x77607084)
-                    input.textColor = 0xFFE6EDF6.toInt()
-                    input.placeholderColor = 0xAA9AAFC6.toInt()
-                    input.fontSize = 18
-                    input.onInput = {
-                        controller.overlayApplyLiteralOverride(row.property, it.value)
-                    }
-                    input.onValueChange = {
-                        controller.overlayApplyLiteralOverride(row.property, it.value)
-                    }
-                    input.applyParent(parentNode)
-                    renderNode(ctx, input, translateRectY(row.controlRect, -bodyScrollY))
-
-                    row.colorPreviewRect?.let { previewRect ->
-                        val shiftedPreviewRect = translateRectY(previewRect, -bodyScrollY)
-                        val preview = scope.button("", {
-                            key = "dsgl-system-inspector-editor-color-preview-$index"
-                        })
-                        preview.backgroundColor = row.colorPreviewColor ?: 0x663F4A57
-                        preview.border = Border.all(1, 0xCC9BB2C9.toInt())
-                        preview.onClick {
-                            controller.onOpenColorPickerPressed(row.property, shiftedPreviewRect)
-                        }
-                        renderNode(ctx, preview, shiftedPreviewRect)
-                    }
+                    renderStyleEditorStringInput(scope, parentNode, ctx, bodyScrollY, row)
+                    renderStyleEditorColorPreview(scope, ctx, bodyScrollY, row, index)
                 }
 
                 InspectorEditorKind.NumericInput -> {
-                    row.decrementRect?.let { rect ->
-                        val dec = scope.button("-", {
-                            key = "dsgl-system-inspector-editor-dec-$index"
-                        })
-                        dec.backgroundColor = 0x3346596E
-                        dec.border = Border.all(1, 0x775E738C)
-                        dec.textColor = 0xFFDCE5EF.toInt()
-                        dec.fontSize = 18
-                        dec.onClick {
-                            controller.onNumericDecrementPressed(row.property)
-                        }
-                        renderNode(ctx, dec, translateRectY(rect, -bodyScrollY))
-                    }
-                    row.inputRect?.let { rect ->
-                        val input = TextInputNode(
-                            text = row.controlValue.replace("|", ""),
-                            key = "dsgl-system-inspector-editor-numeric-input-${row.property.key}"
-                        )
-                        input.allowedChars = "-0123456789."
-                        input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
-                        input.focusedBackgroundColor = input.backgroundColor
-                        input.border = Border.all(1, if (row.inputActive) 0xFFA8C6E6.toInt() else 0x77607084)
-                        input.textColor = 0xFFE6EDF6.toInt()
-                        input.placeholderColor = 0xAA9AAFC6.toInt()
-                        input.fontSize = 18
-                        input.onInput = {
-                            controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
-                        }
-                        input.onValueChange = {
-                            controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
-                        }
-                        input.applyParent(parentNode)
-                        renderNode(ctx, input, translateRectY(rect, -bodyScrollY))
-                    }
-
-                    row.incrementRect?.let { rect ->
-                        val inc = scope.button("+", {
-                            key = "dsgl-system-inspector-editor-inc-$index"
-                        })
-                        inc.backgroundColor = 0x3346596E
-                        inc.border = Border.all(1, 0x775E738C)
-                        inc.textColor = 0xFFDCE5EF.toInt()
-                        inc.fontSize = 18
-                        inc.onClick {
-                            controller.onNumericIncrementPressed(row.property)
-                        }
-                        renderNode(ctx, inc, translateRectY(rect, -bodyScrollY))
-                    }
-                    row.unitRect?.let { rect ->
-                        val unitOpen = isDomDropdownOpen(row.property, unitSelect = true)
-                        val unit = scope.button(row.unitValue ?: "px", {
-                            key = "dsgl-system-inspector-editor-unit-$index"
-                        })
-                        unit.backgroundColor = if (unitOpen) 0x334D5D70 else 0x22313D4B
-                        unit.border = Border.all(1, if (unitOpen) 0xFFA8C6E6.toInt() else 0x77607084)
-                        unit.textColor = 0xFFE6EDF6.toInt()
-                        unit.fontSize = 18
-                        unit.onClick {
-                            toggleDomDropdown(row.property, unitSelect = true)
-                        }
-                        renderNode(ctx, unit, translateRectY(rect, -bodyScrollY))
-                    }
+                    renderStyleEditorNumericControls(scope, parentNode, ctx, bodyScrollY, row, index)
                 }
             }
         }
 
+        renderStyleEditorFooterActions(scope, ctx, bodyScrollY)
+    }
+
+    private fun renderStyleEditorRowContainer(scope: UiScope, ctx: UiMeasureContext, rowRect: Rect, index: Int) {
+        val rowNode = scope.div({
+            key = "dsgl-system-inspector-editor-row-$index"
+            style = {
+                display = Display.Block
+            }
+        })
+        rowNode.backgroundColor = 0x1B293746
+        rowNode.border = Border.all(1, 0x553F4A57)
+        renderNode(ctx, rowNode, rowRect)
+    }
+
+    private fun renderStyleEditorRowLabel(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        rowRect: Rect,
+        row: InspectorStyleEditorRowSnapshot,
+        index: Int
+    ) {
+        val labelNode = scope.text(props = {
+            key = "dsgl-system-inspector-editor-label-$index"
+            value = row.labelText
+            style = {
+                textWrap = TextWrap.Wrap
+            }
+        })
+        labelNode.color = 0xFFDCE5EF.toInt()
+        labelNode.fontSize = 18
+        renderNode(
+            ctx,
+            labelNode,
+            Rect(rowRect.x + 8, rowRect.y + 5, (row.controlRect.x - row.rowRect.x - 14).coerceAtLeast(40), rowRect.height - 10),
+        )
+    }
+
+    private fun renderStyleEditorRowResetButton(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        row: InspectorStyleEditorRowSnapshot,
+        index: Int
+    ) {
+        val resetButton = scope.button("x", {
+            key = "dsgl-system-inspector-editor-reset-$index"
+        })
+        resetButton.backgroundColor = 0x3346596E
+        resetButton.border = Border.all(1, 0x775E738C)
+        resetButton.textColor = 0xFFDCE5EF.toInt()
+        resetButton.fontSize = 18
+        resetButton.onClick {
+            controller.onResetPropertyPressed(row.property)
+        }
+        renderNode(ctx, resetButton, translateRectY(row.resetRect, -bodyScrollY))
+    }
+
+    private fun renderStyleEditorSelectButton(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        row: InspectorStyleEditorRowSnapshot,
+        index: Int
+    ) {
+        val valueOpen = isDomDropdownOpen(row.property, unitSelect = false)
+        val selector = scope.button(row.controlValue, {
+            key = "dsgl-system-inspector-editor-select-$index"
+        })
+        selector.backgroundColor = if (valueOpen) 0x334D5D70 else if (row.controlHovered) 0x2A425164 else 0x22313D4B
+        selector.border = Border.all(1, if (valueOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+        selector.textColor = 0xFFE6EDF6.toInt()
+        selector.fontSize = 18
+        selector.onClick {
+            toggleDomDropdown(row.property, unitSelect = false)
+        }
+        renderNode(ctx, selector, translateRectY(row.controlRect, -bodyScrollY))
+    }
+
+    private fun renderStyleEditorStringInput(
+        scope: UiScope,
+        parentNode: DOMNode,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        row: InspectorStyleEditorRowSnapshot
+    ) {
+        val input = TextInputNode(
+            text = row.controlValue.replace("|", ""),
+            key = "dsgl-system-inspector-editor-input-${row.property.key}"
+        )
+        input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
+        input.focusedBackgroundColor = input.backgroundColor
+        input.border = Border.all(1, if (row.inputActive) 0xFFA8C6E6.toInt() else 0x77607084)
+        input.textColor = 0xFFE6EDF6.toInt()
+        input.placeholderColor = 0xAA9AAFC6.toInt()
+        input.fontSize = 18
+        input.onInput = {
+            controller.overlayApplyLiteralOverride(row.property, it.value)
+        }
+        input.onValueChange = {
+            controller.overlayApplyLiteralOverride(row.property, it.value)
+        }
+        input.applyParent(parentNode)
+        renderNode(ctx, input, translateRectY(row.controlRect, -bodyScrollY))
+    }
+
+    private fun renderStyleEditorColorPreview(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        row: InspectorStyleEditorRowSnapshot,
+        index: Int
+    ) {
+        row.colorPreviewRect?.let { previewRect ->
+            val shiftedPreviewRect = translateRectY(previewRect, -bodyScrollY)
+            val preview = scope.button("", {
+                key = "dsgl-system-inspector-editor-color-preview-$index"
+            })
+            preview.backgroundColor = row.colorPreviewColor ?: 0x663F4A57
+            preview.border = Border.all(1, 0xCC9BB2C9.toInt())
+            preview.onClick {
+                controller.onOpenColorPickerPressed(row.property, shiftedPreviewRect)
+            }
+            renderNode(ctx, preview, shiftedPreviewRect)
+        }
+    }
+
+    private fun renderStyleEditorNumericControls(
+        scope: UiScope,
+        parentNode: DOMNode,
+        ctx: UiMeasureContext,
+        bodyScrollY: Int,
+        row: InspectorStyleEditorRowSnapshot,
+        index: Int
+    ) {
+        row.decrementRect?.let { rect ->
+            val dec = scope.button("-", {
+                key = "dsgl-system-inspector-editor-dec-$index"
+            })
+            dec.backgroundColor = 0x3346596E
+            dec.border = Border.all(1, 0x775E738C)
+            dec.textColor = 0xFFDCE5EF.toInt()
+            dec.fontSize = 18
+            dec.onClick {
+                controller.onNumericDecrementPressed(row.property)
+            }
+            renderNode(ctx, dec, translateRectY(rect, -bodyScrollY))
+        }
+        row.inputRect?.let { rect ->
+            val input = TextInputNode(
+                text = row.controlValue.replace("|", ""),
+                key = "dsgl-system-inspector-editor-numeric-input-${row.property.key}"
+            )
+            input.allowedChars = "-0123456789."
+            input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
+            input.focusedBackgroundColor = input.backgroundColor
+            input.border = Border.all(1, if (row.inputActive) 0xFFA8C6E6.toInt() else 0x77607084)
+            input.textColor = 0xFFE6EDF6.toInt()
+            input.placeholderColor = 0xAA9AAFC6.toInt()
+            input.fontSize = 18
+            input.onInput = {
+                controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
+            }
+            input.onValueChange = {
+                controller.overlayApplyNumericOverride(row.property, it.value, row.unitValue)
+            }
+            input.applyParent(parentNode)
+            renderNode(ctx, input, translateRectY(rect, -bodyScrollY))
+        }
+
+        row.incrementRect?.let { rect ->
+            val inc = scope.button("+", {
+                key = "dsgl-system-inspector-editor-inc-$index"
+            })
+            inc.backgroundColor = 0x3346596E
+            inc.border = Border.all(1, 0x775E738C)
+            inc.textColor = 0xFFDCE5EF.toInt()
+            inc.fontSize = 18
+            inc.onClick {
+                controller.onNumericIncrementPressed(row.property)
+            }
+            renderNode(ctx, inc, translateRectY(rect, -bodyScrollY))
+        }
+        row.unitRect?.let { rect ->
+            val unitOpen = isDomDropdownOpen(row.property, unitSelect = true)
+            val unit = scope.button(row.unitValue ?: "px", {
+                key = "dsgl-system-inspector-editor-unit-$index"
+            })
+            unit.backgroundColor = if (unitOpen) 0x334D5D70 else 0x22313D4B
+            unit.border = Border.all(1, if (unitOpen) 0xFFA8C6E6.toInt() else 0x77607084)
+            unit.textColor = 0xFFE6EDF6.toInt()
+            unit.fontSize = 18
+            unit.onClick {
+                toggleDomDropdown(row.property, unitSelect = true)
+            }
+            renderNode(ctx, unit, translateRectY(rect, -bodyScrollY))
+        }
+    }
+
+    private fun renderStyleEditorFooterActions(scope: UiScope, ctx: UiMeasureContext, bodyScrollY: Int) {
         val resetRect = controller.overlayStyleEditorResetRect()
         if (resetRect.width > 0 && resetRect.height > 0) {
             val resetButton = scope.button("Reset node", {
