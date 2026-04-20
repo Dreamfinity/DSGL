@@ -1,11 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -21,8 +15,10 @@ import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.*
 
 class InspectorDragScrollDomMigrationTests {
     private val ctx = object : UiMeasureContext {
@@ -36,6 +32,7 @@ class InspectorDragScrollDomMigrationTests {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
         ColorPickerRuntime.engine.closeAll()
+        SelectRuntime.host.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -240,6 +237,9 @@ class InspectorDragScrollDomMigrationTests {
     fun `dropdown migration remains intact after drag-scroll migration`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val row = findVisibleSelectRow(fixture)
+        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
+            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val trigger = visibleControlRect(fixture, row)
         val clickX = trigger.x + 2
         val clickY = trigger.y + (trigger.height / 2).coerceAtLeast(1)
@@ -248,12 +248,12 @@ class InspectorDragScrollDomMigrationTests {
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
 
         fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        assertFalse(SelectRuntime.systemEngine.isOpenFor(ownerKey))
     }
 
     @Test
@@ -277,7 +277,13 @@ class InspectorDragScrollDomMigrationTests {
 
         inspector.toggle()
         host.onInputFrame(1280, 720)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))

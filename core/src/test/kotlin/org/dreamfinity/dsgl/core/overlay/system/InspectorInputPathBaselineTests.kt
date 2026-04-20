@@ -1,11 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -17,13 +11,14 @@ import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.*
 
 class InspectorInputPathBaselineTests {
     private val ctx = object : UiMeasureContext {
@@ -37,6 +32,7 @@ class InspectorInputPathBaselineTests {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
         ColorPickerRuntime.engine.closeAll()
+        SelectRuntime.host.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -44,9 +40,10 @@ class InspectorInputPathBaselineTests {
     @Test
     fun `inspector dropdown live path is dom first`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val (trigger, opened) = openDropdownFromVisibleSelectRow(fixture)
+        val (trigger, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
 
-        assertTrue(opened.options.isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertNotNull(selectPanelRect(ownerKey, fixture))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
         assertFalse(fixture.inspector.closeOpenStyleDropdowns())
         assertFalse(fixture.inspector.handleOpenStyleDropdownWheel(-120))
@@ -56,80 +53,77 @@ class InspectorInputPathBaselineTests {
         val routeProbe = inspectorNode.javaClass.getDeclaredMethod("isDomOwnedInteractionTarget", DOMNode::class.java)
         routeProbe.isAccessible = true
 
-        val dropdownPopupNode = findDropdownPopupNode(fixture)
-        val dropdownOptionNode = collectNodes(inspectorNode).firstOrNull {
-            (it.key?.toString() ?: "").contains("-option-")
-        } ?: error("expected dropdown option node")
+        val triggerNode = collectNodes(inspectorNode).firstOrNull { it.key?.toString() == ownerKey }
+            ?: error("expected select trigger node")
+        assertTrue(routeProbe.invoke(inspectorNode, triggerNode) as Boolean)
 
-        assertTrue(routeProbe.invoke(inspectorNode, dropdownPopupNode) as Boolean)
-        assertTrue(routeProbe.invoke(inspectorNode, dropdownOptionNode) as Boolean)
-
-        fixture.host.handleMouseDown(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
-        fixture.host.handleMouseUp(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
-        syncAndRender(fixture, trigger.x + 2, trigger.y + 2)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        val triggerCenterX = triggerNode.bounds.x + (triggerNode.bounds.width / 2).coerceAtLeast(1)
+        val triggerCenterY = triggerNode.bounds.y + (triggerNode.bounds.height / 2).coerceAtLeast(1)
+        dispatchSystemMouseDown(fixture, triggerCenterX, triggerCenterY)
+        dispatchSystemMouseUp(fixture, triggerCenterX, triggerCenterY)
+        syncAndRender(fixture, triggerCenterX, triggerCenterY)
+        waitForSystemSelectClosed(fixture, ownerKey, triggerCenterX, triggerCenterY)
     }
 
     @Test
     fun `inspector dropdown opens and closes from dom interactions`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val (trigger, _) = openDropdownFromVisibleSelectRow(fixture)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        val (trigger, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
 
-        fixture.host.handleMouseDown(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
-        fixture.host.handleMouseUp(trigger.x + 2, trigger.y + 2, MouseButton.LEFT)
+        dispatchSystemMouseDown(fixture, trigger.x + 2, trigger.y + 2)
+        dispatchSystemMouseUp(fixture, trigger.x + 2, trigger.y + 2)
         syncAndRender(fixture, trigger.x + 2, trigger.y + 2)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        waitForSystemSelectClosed(fixture, ownerKey, trigger.x + 2, trigger.y + 2)
     }
 
     @Test
     fun `inspector dropdown option selection is consumed without click through`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val (_, opened) = openDropdownFromVisibleSelectRow(fixture)
-        val option = opened.options.firstOrNull() ?: error("expected dropdown option")
-        val optionX = option.rect.x + 2
-        val optionY = option.rect.y + (option.rect.height / 2).coerceAtLeast(1)
+        val (_, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
+        val panel = selectPanelRect(ownerKey, fixture)
+        val optionX = panel.x + 6
+        val optionY = panel.y + 10
 
-        assertTrue(fixture.host.handleMouseDown(optionX, optionY, MouseButton.LEFT))
-        assertTrue(fixture.host.handleMouseUp(optionX, optionY, MouseButton.LEFT))
+        SelectRuntime.systemEngine.handleMouseMove(optionX, optionY)
+        assertTrue(SelectRuntime.systemEngine.handleMouseDown(optionX, optionY, MouseButton.LEFT))
+        assertTrue(SelectRuntime.systemEngine.handleMouseUp(optionX, optionY, MouseButton.LEFT))
         syncAndRender(fixture, optionX, optionY)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        waitForSystemSelectClosed(fixture, ownerKey, optionX, optionY)
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
 
     @Test
     fun `inspector dropdown continuity survives rebuild`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        val (_, opened) = openDropdownFromVisibleSelectRow(fixture)
+        val (_, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
 
-        syncAndRender(fixture, opened.popupRect.x + 2, opened.popupRect.y + 2)
-        val reopened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
-            ?: error("expected dropdown after rebuild")
-
-        assertEquals(opened.property, reopened.property)
-        assertEquals(opened.unitSelect, reopened.unitSelect)
+        val panel = selectPanelRect(ownerKey, fixture)
+        syncAndRender(fixture, panel.x + 2, panel.y + 2)
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
 
     @Test
     fun `controller dropdown authority stays demoted while dom dropdown is active`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
-        openDropdownFromVisibleSelectRow(fixture)
+        val (_, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
         assertFalse(fixture.inspector.handleOpenStyleDropdownWheel(-120))
 
         val contentRect = fixture.inspector.overlayContentRect()
-        val wheelX = contentRect.x + 4
-        val wheelY = contentRect.y + 10
+        val popup = selectPanelRect(ownerKey, fixture)
+        val wheelX = popup.x + (popup.width / 2).coerceAtLeast(1)
+        val wheelY = popup.y + (popup.height / 2).coerceAtLeast(1)
         val beforePanelScroll = fixture.inspector.panelScrollOffsetY
-        assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
+        assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
         assertEquals(beforePanelScroll, fixture.inspector.panelScrollOffsetY)
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
@@ -185,31 +179,28 @@ class InspectorInputPathBaselineTests {
         syncAndRender(fixture, visibleX, visibleY)
         assertTrue(findRowByProperty(fixture, row.property).controlHovered)
 
-        val (trigger, opened) = openDropdownFromVisibleSelectRow(fixture, row)
-        val popup = findDropdownPopupNode(fixture)
-        val expectedY = (trigger.y + trigger.height + 2)
-            .coerceIn(2, (fixture.viewportHeight - popup.bounds.height - 2).coerceAtLeast(2))
-        assertEquals(expectedY, popup.bounds.y)
+        val (trigger, ownerKey) = openDropdownFromVisibleSelectRow(fixture, row)
+        val popup = selectPanelRect(ownerKey, fixture)
+        assertTrue(popup.y >= 0)
+        assertTrue(popup.y + popup.height <= fixture.viewportHeight)
 
         val contentRect = fixture.inspector.overlayContentRect()
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
-        assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
+        assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
 
-        var outsideX = contentRect.x + 4
-        var outsideY = contentRect.y + 4
-        if (opened.popupRect.contains(outsideX, outsideY) || trigger.contains(outsideX, outsideY)) {
-            val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
-            outsideX = panelRect.x + 8
-            outsideY = panelRect.y + 8
-        }
+        val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
+        val outsideX = (panelRect.x - 12).coerceAtLeast(1)
+        val outsideY = (panelRect.y - 12).coerceAtLeast(1)
+        assertFalse(popup.contains(outsideX, outsideY))
+        assertFalse(trigger.contains(outsideX, outsideY))
 
-        fixture.host.handleMouseDown(outsideX, outsideY, MouseButton.LEFT)
-        fixture.host.handleMouseUp(outsideX, outsideY, MouseButton.LEFT)
+        dispatchSystemMouseDown(fixture, outsideX, outsideY)
+        dispatchSystemMouseUp(fixture, outsideX, outsideY)
         syncAndRender(fixture, outsideX, outsideY)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        waitForSystemSelectClosed(fixture, ownerKey, outsideX, outsideY)
     }
 
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
@@ -220,7 +211,13 @@ class InspectorInputPathBaselineTests {
 
         inspector.toggle()
         host.onInputFrame(1280, 720)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -263,7 +260,7 @@ class InspectorInputPathBaselineTests {
         val wheelX = contentRect.x + 4
         val wheelY = contentRect.y + 10
         repeat(steps) {
-            fixture.host.handleMouseWheel(wheelX, wheelY, -120)
+            dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120)
             syncAndRender(fixture, wheelX, wheelY)
         }
     }
@@ -310,28 +307,50 @@ class InspectorInputPathBaselineTests {
     private fun openDropdownFromVisibleSelectRow(
         fixture: Fixture,
         row: InspectorStyleEditorRowSnapshot = findOrScrollToVisibleSelectRow(fixture)
-    ): Pair<Rect, InspectorDropdownSnapshot> {
+    ): Pair<Rect, String> {
         val triggerRect = visibleControlRect(fixture, row)
+        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
+            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val clickX = triggerRect.x + 2
         val clickY = triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1)
-        fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
-        fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
+        dispatchSystemMouseDown(fixture, clickX, clickY)
+        dispatchSystemMouseUp(fixture, clickX, clickY)
         syncAndRender(fixture, clickX, clickY)
 
-        val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
-            ?: error("expected opened inspector dropdown")
-        return triggerRect to opened
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        return triggerRect to ownerKey
     }
 
-    private fun findDropdownPopupNode(fixture: Fixture): DOMNode {
-        val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
-            ?: error("inspector entry missing")
-        return collectNodes(inspectorNode).firstOrNull { node ->
-            val key = node.key?.toString() ?: return@firstOrNull false
-            key.startsWith("dsgl-system-inspector-dropdown-") &&
-                    !key.contains("-option-") &&
-                    !key.endsWith("-footer")
-        } ?: error("expected dropdown popup node")
+    private fun selectPanelRect(ownerKey: String, fixture: Fixture): Rect {
+        SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        return SelectRuntime.systemEngine.debugPanelRect(ownerKey)
+            ?: error("expected system select popup for owner=$ownerKey")
+    }
+
+    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+                fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
+    }
+
+    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+                fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
+    }
+
+    private fun dispatchSystemMouseWheel(fixture: Fixture, x: Int, y: Int, delta: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
+                fixture.host.handleMouseWheel(x, y, delta)
+    }
+
+    private fun waitForSystemSelectClosed(fixture: Fixture, ownerKey: String, cursorX: Int, cursorY: Int) {
+        repeat(30) {
+            if (!SelectRuntime.systemEngine.isOpenFor(ownerKey)) return
+            Thread.sleep(5)
+            syncAndRender(fixture, cursorX, cursorY)
+            SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        }
+        assertFalse(SelectRuntime.systemEngine.isOpenFor(ownerKey))
     }
 
     private fun focusInputByClick(fixture: Fixture, input: TextInputNode): Pair<Int, Int> {

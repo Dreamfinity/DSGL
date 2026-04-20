@@ -11,6 +11,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.select
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.InspectorController
@@ -21,9 +22,11 @@ import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.InspectorTooltipSnapshot
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -802,16 +805,14 @@ internal class SystemInspectorOverlayNode(
         row: InspectorStyleEditorRowSnapshot,
         index: Int
     ) {
-        val valueOpen = isDomDropdownOpen(row.property, unitSelect = false)
-        val selector = scope.button(row.controlValue, {
-            key = "dsgl-system-inspector-editor-select-$index"
-        })
-        selector.backgroundColor = if (valueOpen) 0x334D5D70 else if (row.controlHovered) 0x2A425164 else 0x22313D4B
-        selector.border = Border.all(1, if (valueOpen) 0xFFA8C6E6.toInt() else 0x77607084)
-        selector.textColor = 0xFFE6EDF6.toInt()
-        selector.fontSize = 18
-        selector.onClick {
-            toggleDomDropdown(row.property, unitSelect = false)
+        val selector = buildSystemOwnedSelectControl(
+            scope = scope,
+            key = "dsgl-system-inspector-editor-select-$index",
+            selectedValue = row.controlValue,
+            options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = false),
+            hovered = row.controlHovered
+        ) { selected ->
+            controller.onSelectValueOptionPressed(row.property, selected)
         }
         renderNode(ctx, selector, translateRectY(row.controlRect, -bodyScrollY))
     }
@@ -921,19 +922,47 @@ internal class SystemInspectorOverlayNode(
             renderNode(ctx, inc, translateRectY(rect, -bodyScrollY))
         }
         row.unitRect?.let { rect ->
-            val unitOpen = isDomDropdownOpen(row.property, unitSelect = true)
-            val unit = scope.button(row.unitValue ?: "px", {
-                key = "dsgl-system-inspector-editor-unit-$index"
-            })
-            unit.backgroundColor = if (unitOpen) 0x334D5D70 else 0x22313D4B
-            unit.border = Border.all(1, if (unitOpen) 0xFFA8C6E6.toInt() else 0x77607084)
-            unit.textColor = 0xFFE6EDF6.toInt()
-            unit.fontSize = 18
-            unit.onClick {
-                toggleDomDropdown(row.property, unitSelect = true)
+            val unitValue = row.unitValue ?: "px"
+            val unit = buildSystemOwnedSelectControl(
+                scope = scope,
+                key = "dsgl-system-inspector-editor-unit-$index",
+                selectedValue = unitValue,
+                options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = true),
+                hovered = false
+            ) { selected ->
+                controller.onSelectUnitOptionPressed(row.property, selected)
             }
             renderNode(ctx, unit, translateRectY(rect, -bodyScrollY))
         }
+    }
+
+    private fun buildSystemOwnedSelectControl(
+        scope: UiScope,
+        key: String,
+        selectedValue: String,
+        options: List<String>,
+        hovered: Boolean,
+        onSelected: (String) -> Unit
+    ): DOMNode {
+        val open = SelectRuntime.host.isOpenFor(key)
+        val selectNode = scope.select(
+            props = {
+                this.key = key
+                ownerScope = OverlayOwnerScope.System
+                value = selectedValue
+                onInput = { onSelected(it.value) }
+            }
+        ) {
+            options.forEach { option ->
+                option(id = option, label = option)
+            }
+        }
+        selectNode.backgroundColor = if (open) 0x334D5D70 else if (hovered) 0x2A425164 else 0x22313D4B
+        selectNode.border = Border.all(1, if (open) 0xFFA8C6E6.toInt() else 0x77607084)
+        selectNode.textColor = 0xFFE6EDF6.toInt()
+        selectNode.fontSize = 18
+        selectNode.placeholderColor = 0xFFE6EDF6.toInt()
+        return selectNode
     }
 
     private fun renderStyleEditorFooterActions(scope: UiScope, ctx: UiMeasureContext, bodyScrollY: Int) {

@@ -278,7 +278,12 @@ abstract class DsglScreenHost(
         systemOverlayCommandsBuffer.clear()
         systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
         if (systemOverlayRenderEnabled) {
-            SelectRuntime.systemEngine.appendOverlayCommands(adapter, lastWidth, lastHeight, systemOverlayCommandsBuffer)
+            SelectRuntime.systemEngine.appendOverlayCommands(
+                adapter,
+                lastWidth,
+                lastHeight,
+                systemOverlayCommandsBuffer
+            )
         }
         val debugOverlayCommands = runCatching {
             debugOverlayHost.render(lastWidth, lastHeight)
@@ -780,10 +785,10 @@ abstract class DsglScreenHost(
         inspectorMouseX: Int,
         inspectorMouseY: Int
     ): Boolean {
-        if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
+        if (SelectRuntime.systemEngine.handleKeyDown(keyCode, keyChar)) {
             return true
         }
-        if (SelectRuntime.systemEngine.handleKeyDown(keyCode, keyChar)) {
+        if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
         val keyboardBlocked = inspector.active && (
@@ -891,18 +896,13 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton?,
         buttonPressed: Boolean
     ): Boolean {
+        if (dWheel != 0 && SelectRuntime.systemEngine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
         if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
-            val consumedBySystemOverlay = if (buttonPressed) {
-                systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedBySystemOverlay) {
-                return true
-            }
             val consumedBySystemSelect = if (buttonPressed) {
                 SelectRuntime.systemEngine.handleMouseDown(mouseX, mouseY, mappedButton)
             } else {
@@ -911,12 +911,17 @@ abstract class DsglScreenHost(
             if (consumedBySystemSelect) {
                 return true
             }
-        } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
-            return true
+            val consumedBySystemOverlay = if (buttonPressed) {
+                systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedBySystemOverlay) {
+                return true
+            }
         } else if (mouseButton == -1 && SelectRuntime.systemEngine.handleMouseMove(mouseX, mouseY)) {
             return true
-        }
-        if (dWheel != 0 && SelectRuntime.systemEngine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
             return true
         }
 

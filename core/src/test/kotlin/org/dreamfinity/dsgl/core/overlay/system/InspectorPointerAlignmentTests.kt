@@ -1,11 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -15,12 +9,16 @@ import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.inspector.InspectorDropdownSnapshot
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class InspectorPointerAlignmentTests {
     private val ctx = object : UiMeasureContext {
@@ -34,6 +32,7 @@ class InspectorPointerAlignmentTests {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
         ColorPickerRuntime.engine.closeAll()
+        SelectRuntime.host.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -112,14 +111,25 @@ class InspectorPointerAlignmentTests {
         assertTrue(fixture.inspector.panelScrollOffsetY > 0)
 
         val row = findOrScrollToVisibleSelectRow(fixture)
+        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
+            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val property = row.property
-        val (triggerRect, openedOnVisible) = openDropdownFromVisibleSelectRow(fixture, row)
-        assertEquals(property, openedOnVisible.property)
+        val triggerRect = openDropdownFromVisibleSelectRow(fixture, row)
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
 
-        fixture.host.handleMouseDown(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
-        fixture.host.handleMouseUp(triggerRect.x + 2, triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1), MouseButton.LEFT)
+        fixture.host.handleMouseDown(
+            triggerRect.x + 2,
+            triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1),
+            MouseButton.LEFT
+        )
+        fixture.host.handleMouseUp(
+            triggerRect.x + 2,
+            triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1),
+            MouseButton.LEFT
+        )
         syncAndRender(fixture, triggerRect.x + 2, triggerRect.y + 2)
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
+        waitForSystemSelectClosed(fixture, ownerKey, triggerRect.x + 2, triggerRect.y + 2)
 
         val rawX = row.controlRect.x + 2
         val rawY = row.controlRect.y + (row.controlRect.height / 2).coerceAtLeast(1)
@@ -127,8 +137,7 @@ class InspectorPointerAlignmentTests {
         fixture.host.handleMouseUp(rawX, rawY, MouseButton.LEFT)
         syncAndRender(fixture, rawX, rawY)
 
-        val openedOnRaw = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
-        assertTrue(openedOnRaw == null || openedOnRaw.property != property)
+        waitForSystemSelectClosed(fixture, ownerKey, rawX, rawY)
     }
 
     @Test
@@ -137,30 +146,29 @@ class InspectorPointerAlignmentTests {
         setViewport(fixture, 420, 280)
 
         val row = findOrScrollToVisibleSelectRow(fixture)
-        val (triggerRect, dropdown) = openDropdownFromVisibleSelectRow(fixture, row)
+        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
+            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
+        val triggerRect = openDropdownFromVisibleSelectRow(fixture, row)
+        val dropdown = selectPanelRect(ownerKey, fixture)
         settleFrames(fixture, steps = 1)
-        val contentRect = fixture.inspector.overlayContentRect()
-        val wheelX = contentRect.x + 4
-        val wheelY = contentRect.y + 10
+        val wheelX = dropdown.x + (dropdown.width / 2).coerceAtLeast(1)
+        val wheelY = dropdown.y + (dropdown.height / 2).coerceAtLeast(1)
 
-        assertTrue(fixture.host.handleMouseWheel(wheelX, wheelY, -120))
+        assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isNotEmpty())
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
 
-        var outsideX = contentRect.x + 4
-        var outsideY = contentRect.y + 4
-        if (dropdown.popupRect.contains(outsideX, outsideY) || triggerRect.contains(outsideX, outsideY)) {
-            val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
-            outsideX = panelRect.x + 8
-            outsideY = panelRect.y + 8
-        }
+        val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
+        val outsideX = (panelRect.x - 12).coerceAtLeast(1)
+        val outsideY = (panelRect.y - 12).coerceAtLeast(1)
+        assertFalse(dropdown.contains(outsideX, outsideY))
+        assertFalse(triggerRect.contains(outsideX, outsideY))
 
-        fixture.host.handleMouseDown(outsideX, outsideY, MouseButton.LEFT)
-        fixture.host.handleMouseUp(outsideX, outsideY, MouseButton.LEFT)
+        assertTrue(dispatchSystemMouseDown(fixture, outsideX, outsideY))
+        assertTrue(dispatchSystemMouseUp(fixture, outsideX, outsideY))
         syncAndRender(fixture, outsideX, outsideY)
-
-        assertTrue(fixture.inspector.overlayStyleEditorDropdowns().isEmpty())
     }
 
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
@@ -171,7 +179,13 @@ class InspectorPointerAlignmentTests {
 
         inspector.toggle()
         host.onInputFrame(1280, 720)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false
+        )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -287,16 +301,45 @@ class InspectorPointerAlignmentTests {
     private fun openDropdownFromVisibleSelectRow(
         fixture: Fixture,
         row: InspectorStyleEditorRowSnapshot
-    ): Pair<Rect, InspectorDropdownSnapshot> {
+    ): Rect {
         val triggerRect = visibleControlRect(fixture, row)
         val clickX = triggerRect.x + 2
         val clickY = triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1)
         fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
-        val opened = fixture.inspector.overlayStyleEditorDropdowns().firstOrNull()
-        assertNotNull(opened)
-        return triggerRect to opened
+        return triggerRect
+    }
+
+    private fun selectPanelRect(ownerKey: String, fixture: Fixture): Rect {
+        SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        return SelectRuntime.systemEngine.debugPanelRect(ownerKey)
+            ?: error("expected system select popup for owner=$ownerKey")
+    }
+
+    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+                fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
+    }
+
+    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+                fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
+    }
+
+    private fun dispatchSystemMouseWheel(fixture: Fixture, x: Int, y: Int, delta: Int): Boolean {
+        return SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
+                fixture.host.handleMouseWheel(x, y, delta)
+    }
+
+    private fun waitForSystemSelectClosed(fixture: Fixture, ownerKey: String, cursorX: Int, cursorY: Int) {
+        repeat(30) {
+            if (!SelectRuntime.systemEngine.isOpenFor(ownerKey)) return
+            Thread.sleep(5)
+            syncAndRender(fixture, cursorX, cursorY)
+            SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        }
+        assertFalse(SelectRuntime.systemEngine.isOpenFor(ownerKey))
     }
 
     private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot {
