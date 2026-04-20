@@ -1795,6 +1795,10 @@ abstract class DOMNode(
         renderCommandsRevision += 1L
     }
 
+    internal fun requestRenderCommandsInvalidation() {
+        markRenderCommandsDirty()
+    }
+
     fun effectiveTransform(): UiTransform {
         val base = animatedTransform ?: transform
         val relativeOffsetX = if (position == PositionMode.Relative) relativeVisualOffsetXPx else 0

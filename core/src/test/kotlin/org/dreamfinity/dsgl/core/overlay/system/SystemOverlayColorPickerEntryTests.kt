@@ -13,6 +13,7 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.RgbChannelOrder
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -283,6 +284,69 @@ class SystemOverlayColorPickerEntryTests {
     }
 
     @Test
+    fun `system picker sync state updates current swatch without drag nudge`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val initial = popupState()
+        val updated = initial.copy(
+            color = RgbaColor(0.92f, 0.16f, 0.24f, 1f),
+            previous = initial.color
+        )
+
+        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        val swatchRect = host.debugSystemColorPickerBodyLayout()?.currentSwatchRect ?: error("swatch rect missing")
+        host.render(ctx, 1200, 800)
+        val beforeColor = resolveRectFillColor(host.paint(ctx), swatchRect) ?: error("before swatch fill missing")
+        assertEquals(initial.color.toArgbInt(), beforeColor)
+
+        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        host.render(ctx, 1200, 800)
+        val afterColor = resolveRectFillColor(host.paint(ctx), swatchRect) ?: error("after swatch fill missing")
+        assertEquals(updated.color.toArgbInt(), afterColor)
+        assertNotEquals(beforeColor, afterColor)
+    }
+
+    @Test
+    fun `system picker sync state updates rgb order button selected visuals without drag nudge`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val style = ColorPickerStyle()
+        val initial = popupState().copy(mode = ColorFormatMode.RGB, rgbOrder = RgbChannelOrder.RGBA)
+        val updated = initial.copy(rgbOrder = RgbChannelOrder.ARGB)
+
+        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 2, cursorY = 2, inspectorPointerCaptured = false)
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val rgbaRect = initialLayout.rgbaOrderRect ?: error("rgba rect missing")
+        val argbRect = initialLayout.argbOrderRect ?: error("argb rect missing")
+        host.render(ctx, 1200, 800)
+        val rgbaBefore = resolveRectFillColor(host.paint(ctx), rgbaRect) ?: error("rgba fill missing")
+        val argbBefore = resolveRectFillColor(host.paint(ctx), argbRect) ?: error("argb fill missing")
+        assertEquals(style.buttonActiveColor, rgbaBefore)
+        assertEquals(style.buttonBackgroundColor, argbBefore)
+
+        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 2, cursorY = 2, inspectorPointerCaptured = false)
+
+        host.render(ctx, 1200, 800)
+        val rgbaAfter = resolveRectFillColor(host.paint(ctx), rgbaRect) ?: error("rgba fill missing after sync")
+        val argbAfter = resolveRectFillColor(host.paint(ctx), argbRect) ?: error("argb fill missing after sync")
+        assertEquals(style.buttonBackgroundColor, rgbaAfter)
+        assertEquals(style.buttonActiveColor, argbAfter)
+        assertNotEquals(rgbaBefore, rgbaAfter)
+        assertNotEquals(argbBefore, argbAfter)
+    }
+
+    @Test
     fun `system picker hue and alpha drag update state`() {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()
@@ -492,6 +556,18 @@ class SystemOverlayColorPickerEntryTests {
             bounds = Rect(16, 18, 120, 30)
         }.applyParent(root)
         return root
+    }
+
+    private fun resolveRectFillColor(commands: List<RenderCommand>, rect: Rect): Int? {
+        return commands.asReversed().asSequence()
+            .filterIsInstance<RenderCommand.DrawRect>()
+            .firstOrNull { command ->
+                command.x == rect.x &&
+                        command.y == rect.y &&
+                        command.width == rect.width &&
+                        command.height == rect.height
+            }
+            ?.color
     }
 }
 
