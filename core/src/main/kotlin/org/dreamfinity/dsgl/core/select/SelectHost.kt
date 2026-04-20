@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.select
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 
 interface SelectHost {
     fun open(request: SelectOpenRequest)
@@ -20,7 +21,8 @@ data class SelectOpenRequest(
     val onSelect: ((String) -> Unit)? = null,
     val onClose: (() -> Unit)? = null,
     val fontId: String? = null,
-    val fontSize: Int? = null
+    val fontSize: Int? = null,
+    val ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
 )
 
 fun interface SelectClock {

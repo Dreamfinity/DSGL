@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEntry
 import org.dreamfinity.dsgl.core.select.SelectModel
@@ -19,6 +20,7 @@ class SelectNode(
     value: String? = null,
     defaultValue: String? = null,
     closeOnSelect: Boolean = true,
+    ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
     key: Any? = null
 ) : DOMNode(key) {
     override val styleType: String = "select"
@@ -56,6 +58,7 @@ class SelectNode(
             markRenderCommandsDirty()
         }
     var closeOnSelect: Boolean = closeOnSelect
+    var ownerScope: OverlayOwnerScope = ownerScope
     var textColor: Int = DsglColors.TEXT
     var placeholderColor: Int = 0xFF8A8A8A.toInt()
     var backgroundColor: Int = 0xFF2E2E33.toInt()
@@ -94,13 +97,13 @@ class SelectNode(
 
                     KeyCodes.DOWN -> {
                         openPopup()
-                        SelectRuntime.engine.moveHighlight(ownerToken, 1)
+                        SelectRuntime.engineFor(ownerScope).moveHighlight(ownerToken, 1)
                         event.cancelled = true
                     }
 
                     KeyCodes.UP -> {
                         openPopup()
-                        SelectRuntime.engine.moveHighlight(ownerToken, -1)
+                        SelectRuntime.engineFor(ownerScope).moveHighlight(ownerToken, -1)
                         event.cancelled = true
                     }
                 }
@@ -211,6 +214,7 @@ class SelectNode(
         controlledValue = template.controlledValue
         defaultValue = template.defaultValue
         closeOnSelect = template.closeOnSelect
+        ownerScope = template.ownerScope
         textColor = template.textColor
         placeholderColor = template.placeholderColor
         backgroundColor = template.backgroundColor
@@ -248,7 +252,7 @@ class SelectNode(
         val open = SelectRuntime.host.isOpenFor(ownerToken)
         setOpenState(open)
         if (open) {
-            SelectRuntime.engine.sync(openRequest())
+            SelectRuntime.engineFor(ownerScope).sync(openRequest())
         }
     }
 
@@ -265,7 +269,8 @@ class SelectNode(
             onSelect = { selected -> applySelection(selected) },
             onClose = { setOpenState(false) },
             fontId = fontId,
-            fontSize = fontSize
+            fontSize = fontSize,
+            ownerScope = ownerScope
         )
     }
 

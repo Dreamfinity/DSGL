@@ -91,6 +91,7 @@ abstract class DsglScreenHost(
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val stagingCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val applicationOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val systemOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
@@ -234,7 +235,8 @@ abstract class DsglScreenHost(
             tracePhase("style.end")
         }
         ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
-        SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        SelectRuntime.applicationEngine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        SelectRuntime.systemEngine.onFrame(adapter, lastWidth, lastHeight, 1f)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         refreshActiveColorSamplerOwner(tree.root)
@@ -273,6 +275,11 @@ abstract class DsglScreenHost(
                 emptyList()
             }
         }
+        systemOverlayCommandsBuffer.clear()
+        systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
+        if (systemOverlayRenderEnabled) {
+            SelectRuntime.systemEngine.appendOverlayCommands(adapter, lastWidth, lastHeight, systemOverlayCommandsBuffer)
+        }
         val debugOverlayCommands = runCatching {
             debugOverlayHost.render(lastWidth, lastHeight)
             debugOverlayHost.paint(adapter)
@@ -280,13 +287,14 @@ abstract class DsglScreenHost(
             emptyList()
         }
         val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
-        val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.engine.isOpen()
+        val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.applicationEngine.isOpen()
+        val systemSelectBlocks = systemOverlayInputEnabled && SelectRuntime.systemEngine.isOpen()
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         val colorPickerBlocks = !inspectorBlocks && (
                 (systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()) ||
                         (appOverlayInputEnabled && ColorPickerRuntime.engine.isOpen() && !inlineSamplerOwnsSession)
                 )
-        if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
+        if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !systemSelectBlocks && !colorPickerBlocks) {
             DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
         }
         DndRuntime.engine.onFrame(tree.root, dtSeconds)
@@ -294,7 +302,7 @@ abstract class DsglScreenHost(
         val prevY = if (lastMoveY == Int.MIN_VALUE) dsglMouseY else lastMoveY
         val dx = dsglMouseX - prevX
         val dy = dsglMouseY - prevY
-        if (inspectorBlocks || contextMenuBlocks || selectBlocks || colorPickerBlocks) {
+        if (inspectorBlocks || contextMenuBlocks || selectBlocks || systemSelectBlocks || colorPickerBlocks) {
             clearHoverChainStates()
             hoverTarget = null
         } else {
@@ -322,7 +330,12 @@ abstract class DsglScreenHost(
                 lastHeight,
                 applicationOverlayCommandsBuffer
             )
-            SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
+            SelectRuntime.applicationEngine.appendOverlayCommands(
+                adapter,
+                lastWidth,
+                lastHeight,
+                applicationOverlayCommandsBuffer
+            )
             ContextMenuRuntime.engine.appendOverlayCommands(
                 adapter,
                 lastWidth,
@@ -335,7 +348,7 @@ abstract class DsglScreenHost(
         OverlayLayerContracts.composePaintCommands(
             applicationRoot = commands,
             applicationOverlay = applicationOverlayCommandsBuffer,
-            systemOverlay = systemOverlayCommands,
+            systemOverlay = systemOverlayCommandsBuffer,
             debug = debugOverlayCommands,
             out = stagingCommandsBuffer,
             shouldRenderLayer = OverlayLayerDebugState::isRenderEnabled
@@ -372,7 +385,7 @@ abstract class DsglScreenHost(
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
         ColorPickerRuntime.engine.closeAll()
-        SelectRuntime.engine.closeAll()
+        SelectRuntime.host.closeAll()
         ContextMenuRuntime.engine.closeAll()
         clearActiveTarget()
         flushPendingCleanup()
@@ -620,7 +633,13 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f
         )
-        SelectRuntime.engine.onFrame(
+        SelectRuntime.applicationEngine.onFrame(
+            measureContext = adapter,
+            viewportWidth = lastWidth,
+            viewportHeight = lastHeight,
+            viewportScale = 1f
+        )
+        SelectRuntime.systemEngine.onFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -764,6 +783,9 @@ abstract class DsglScreenHost(
         if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
+        if (SelectRuntime.systemEngine.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
         val keyboardBlocked = inspector.active && (
                 inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
                         inspector.mode == InspectorMode.Locked
@@ -782,7 +804,7 @@ abstract class DsglScreenHost(
         if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
-        if (SelectRuntime.engine.handleKeyDown(keyCode, keyChar)) {
+        if (SelectRuntime.applicationEngine.handleKeyDown(keyCode, keyChar)) {
             return true
         }
         if (ContextMenuRuntime.engine.handleKeyDown(keyCode)) {
@@ -881,7 +903,20 @@ abstract class DsglScreenHost(
             if (consumedBySystemOverlay) {
                 return true
             }
+            val consumedBySystemSelect = if (buttonPressed) {
+                SelectRuntime.systemEngine.handleMouseDown(mouseX, mouseY, mappedButton)
+            } else {
+                SelectRuntime.systemEngine.handleMouseUp(mouseX, mouseY, mappedButton)
+            }
+            if (consumedBySystemSelect) {
+                return true
+            }
         } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            return true
+        } else if (mouseButton == -1 && SelectRuntime.systemEngine.handleMouseMove(mouseX, mouseY)) {
+            return true
+        }
+        if (dWheel != 0 && SelectRuntime.systemEngine.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
 
@@ -940,7 +975,7 @@ abstract class DsglScreenHost(
         if (dWheel != 0 && ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
-        if (dWheel != 0 && SelectRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && SelectRuntime.applicationEngine.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
@@ -953,9 +988,9 @@ abstract class DsglScreenHost(
                 return true
             }
             val consumedBySelect = if (buttonPressed) {
-                SelectRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+                SelectRuntime.applicationEngine.handleMouseDown(mouseX, mouseY, mappedButton)
             } else {
-                SelectRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+                SelectRuntime.applicationEngine.handleMouseUp(mouseX, mouseY, mappedButton)
             }
             if (consumedBySelect) {
                 return true
@@ -965,7 +1000,7 @@ abstract class DsglScreenHost(
         if (mouseButton == -1 && ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)) {
             return true
         }
-        if (mouseButton == -1 && SelectRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+        if (mouseButton == -1 && SelectRuntime.applicationEngine.handleMouseMove(mouseX, mouseY)) {
             return true
         }
         return false
