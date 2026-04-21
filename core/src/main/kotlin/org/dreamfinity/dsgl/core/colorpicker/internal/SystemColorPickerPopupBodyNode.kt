@@ -529,46 +529,69 @@ internal class SystemColorPickerModeDropdownOverlayNode(
     }
     private var appliedStyle: ColorPickerStyle? = null
 
+    private data class ModeDropdownRenderState(
+        val style: ColorPickerStyle,
+        val layout: ColorPickerLayout,
+        val popupRect: Rect,
+        val hoverX: Int,
+        val hoverY: Int,
+        val selectedMode: ColorFormatMode
+    )
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        val controller = popupEngine.debugActiveController()
-        val panelRect = popupEngine.debugActivePanelRect()
-        if (controller == null || panelRect == null || !controller.viewModeDropdownOpen()) {
+        val renderState = resolveRenderState() ?: run {
             hideAll(ctx)
             return
         }
+        renderPopupBackground(ctx, renderState)
+        renderModeOptions(ctx, renderState)
+    }
+
+    private fun resolveRenderState(): ModeDropdownRenderState? {
+        val controller = popupEngine.debugActiveController() ?: return null
+        val panelRect = popupEngine.debugActivePanelRect()
+        if (panelRect == null || !controller.viewModeDropdownOpen()) return null
         val style = popupEngine.debugActiveStyle() ?: controller.style()
         if (appliedStyle != style) {
             applyStaticStyle(style)
             appliedStyle = style
         }
-
-        val layout = popupEngine.debugActiveLayout() ?: run {
-            hideAll(ctx)
-            return
-        }
-        val popupRect = layout.modeOptionsRect ?: run {
-            hideAll(ctx)
-            return
-        }
+        val layout = popupEngine.debugActiveLayout() ?: return null
+        val popupRect = layout.modeOptionsRect ?: return null
         val hover = controller.viewHoverPosition()
-        val hoverX = hover.first
-        val hoverY = hover.second
+        return ModeDropdownRenderState(
+            style = style,
+            layout = layout,
+            popupRect = popupRect,
+            hoverX = hover.first,
+            hoverY = hover.second,
+            selectedMode = controller.snapshot().mode
+        )
+    }
 
+    private fun renderPopupBackground(ctx: UiMeasureContext, state: ModeDropdownRenderState) {
         popupBackgroundNode.display = Display.Block
         syncContainerVisual(
             node = popupBackgroundNode,
-            backgroundColor = style.inputBackgroundColor,
-            border = Border.all(1, style.inputBorderColor)
+            backgroundColor = state.style.inputBackgroundColor,
+            border = Border.all(1, state.style.inputBorderColor)
         )
-        popupBackgroundNode.render(ctx, popupRect.x, popupRect.y, popupRect.width, popupRect.height)
+        popupBackgroundNode.render(
+            ctx,
+            state.popupRect.x,
+            state.popupRect.y,
+            state.popupRect.width,
+            state.popupRect.height
+        )
+    }
 
-        val state = controller.snapshot()
-        val optionsByMode = layout.modeOptions.associateBy { it.mode }
+    private fun renderModeOptions(ctx: UiMeasureContext, state: ModeDropdownRenderState) {
+        val optionsByMode = state.layout.modeOptions.associateBy { it.mode }
         ColorFormatMode.entries.forEach { mode ->
             val button = modeOptionButtons[mode] ?: return@forEach
             val optionRect = optionsByMode[mode]?.rect
@@ -577,14 +600,12 @@ internal class SystemColorPickerModeDropdownOverlayNode(
                 button.render(ctx, 0, 0, 0, 0)
                 return@forEach
             }
-            val hovered = optionRect.contains(hoverX, hoverY)
-            val selected = state.mode == mode
             syncPickerButtonVisual(
                 button = button,
                 text = null,
-                style = style,
-                hovered = hovered,
-                selected = selected
+                style = state.style,
+                hovered = optionRect.contains(state.hoverX, state.hoverY),
+                selected = state.selectedMode == mode
             )
             button.display = Display.Block
             button.render(ctx, optionRect.x, optionRect.y, optionRect.width, optionRect.height)
@@ -701,88 +722,126 @@ internal class SystemColorPickerEyedropperOverlayNode(
         text = ""
     )
 
+    private data class EyedropperRenderState(
+        val model: ColorPickerEyedropperOverlayModel,
+        val style: ColorPickerStyle,
+        val color: RgbaColor
+    )
+
+    private data class EyedropperTextRects(
+        val modeRect: Rect,
+        val valueRect: Rect
+    )
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
 
     override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
         bounds = Rect(x, y, width, height)
-        val controller = popupEngine.debugActiveController() ?: run {
+        val renderState = resolveRenderState() ?: run {
             hideAll(ctx)
             return
         }
+
+        syncVisuals(renderState)
+        bindVisualNodes(renderState)
+        renderOverlayNodes(ctx, renderState)
+    }
+
+    private fun resolveRenderState(): EyedropperRenderState? {
+        val controller = popupEngine.debugActiveController() ?: return null
         val model = controller.resolveEyedropperOverlayModel(
             viewportWidth = bounds.width.coerceAtLeast(1),
             viewportHeight = bounds.height.coerceAtLeast(1)
-        ) ?: run {
-            hideAll(ctx)
-            return
-        }
+        ) ?: return null
         val style = popupEngine.debugActiveStyle() ?: controller.style()
-        val color = controller.snapshot().color
+        return EyedropperRenderState(
+            model = model,
+            style = style,
+            color = controller.snapshot().color
+        )
+    }
 
-        syncOverlayText(model.modeText, model.valueText)
+    private fun syncVisuals(state: EyedropperRenderState) {
+        syncOverlayText(state.model.modeText, state.model.valueText)
         syncContainerVisual(
             node = shadowNode,
-            backgroundColor = style.panelShadowColor,
+            backgroundColor = state.style.panelShadowColor,
             border = Border.NONE
         )
         syncContainerVisual(
             node = panelNode,
-            backgroundColor = style.eyedropperOverlayBackgroundColor,
-            border = Border.all(1, style.eyedropperOverlayBorderColor)
+            backgroundColor = state.style.eyedropperOverlayBackgroundColor,
+            border = Border.all(1, state.style.eyedropperOverlayBorderColor)
         )
         syncContainerVisual(
             node = centerNode,
             backgroundColor = null,
-            border = Border.all(1, style.eyedropperCenterBorderColor)
+            border = Border.all(1, state.style.eyedropperCenterBorderColor)
         )
+        syncOverlayTextVisual(modeTextNode, state.style.mutedTextColor, state.style.fontSize)
+        syncOverlayTextVisual(valueTextNode, state.style.textColor, state.style.fontSize)
+    }
 
-        syncOverlayTextVisual(modeTextNode, style.mutedTextColor, style.fontSize)
-        syncOverlayTextVisual(valueTextNode, style.textColor, style.fontSize)
-
+    private fun bindVisualNodes(state: EyedropperRenderState) {
         captureNode.bind(
-            sourceRect = model.captureSourceRect,
-            fallbackColor = color.toArgbInt()
+            sourceRect = state.model.captureSourceRect,
+            fallbackColor = state.color.toArgbInt()
         )
-        swatchNode.bind(style = style, color = color, highlighted = false)
+        swatchNode.bind(style = state.style, color = state.color, highlighted = false)
         magnifierDrawNode.bind(
-            columns = model.captureSourceRect.width,
-            rows = model.captureSourceRect.height,
-            cellSize = (model.magnifierRect.width / model.captureSourceRect.width.coerceAtLeast(1)).coerceAtLeast(1),
-            gridEnabled = style.eyedropperGridOverlayEnabled,
-            gridColor = style.eyedropperGridOverlayColor
+            columns = state.model.captureSourceRect.width,
+            rows = state.model.captureSourceRect.height,
+            cellSize = (
+                state.model.magnifierRect.width /
+                        state.model.captureSourceRect.width.coerceAtLeast(1)
+                ).coerceAtLeast(1),
+            gridEnabled = state.style.eyedropperGridOverlayEnabled,
+            gridColor = state.style.eyedropperGridOverlayColor
         )
+    }
 
+    private fun renderOverlayNodes(ctx: UiMeasureContext, state: EyedropperRenderState) {
         val shadowRect = Rect(
-            x = model.panelRect.x + 2,
-            y = model.panelRect.y + 2,
-            width = model.panelRect.width,
-            height = model.panelRect.height
+            x = state.model.panelRect.x + 2,
+            y = state.model.panelRect.y + 2,
+            width = state.model.panelRect.width,
+            height = state.model.panelRect.height
         )
-        val textX = model.swatchRect.x + model.swatchRect.width + 8
-        val textWidth = (model.panelRect.x + model.panelRect.width - 6 - textX).coerceAtLeast(1)
+        val textRects = resolveTextRects(state)
+
+        renderNode(ctx, captureNode, state.model.panelRect)
+        renderNode(ctx, shadowNode, shadowRect)
+        renderNode(ctx, panelNode, state.model.panelRect)
+        renderNode(ctx, magnifierDrawNode, state.model.magnifierRect)
+        renderNode(ctx, centerNode, state.model.centerRect)
+        renderNode(ctx, swatchNode, state.model.swatchRect)
+        renderNode(ctx, modeTextNode, textRects.modeRect)
+        renderNode(ctx, valueTextNode, textRects.valueRect)
+    }
+
+    private fun resolveTextRects(state: EyedropperRenderState): EyedropperTextRects {
+        val textX = state.model.swatchRect.x + state.model.swatchRect.width + 8
+        val textWidth = (
+            state.model.panelRect.x + state.model.panelRect.width - 6 - textX
+            ).coerceAtLeast(1)
         val modeRect = Rect(
             x = textX,
-            y = model.swatchRect.y + 1,
+            y = state.model.swatchRect.y + 1,
             width = textWidth,
-            height = (style.fontSize + 2).coerceAtLeast(1)
+            height = (state.style.fontSize + 2).coerceAtLeast(1)
         )
         val valueRect = Rect(
             x = textX,
-            y = modeRect.y + style.fontSize,
+            y = modeRect.y + state.style.fontSize,
             width = textWidth,
-            height = (style.fontSize + 2).coerceAtLeast(1)
+            height = (state.style.fontSize + 2).coerceAtLeast(1)
         )
-
-        renderNode(ctx, captureNode, model.panelRect)
-        renderNode(ctx, shadowNode, shadowRect)
-        renderNode(ctx, panelNode, model.panelRect)
-        renderNode(ctx, magnifierDrawNode, model.magnifierRect)
-        renderNode(ctx, centerNode, model.centerRect)
-        renderNode(ctx, swatchNode, model.swatchRect)
-        renderNode(ctx, modeTextNode, modeRect)
-        renderNode(ctx, valueTextNode, valueRect)
+        return EyedropperTextRects(
+            modeRect = modeRect,
+            valueRect = valueRect
+        )
     }
 
     private fun syncOverlayText(modeText: String, valueText: String) {
