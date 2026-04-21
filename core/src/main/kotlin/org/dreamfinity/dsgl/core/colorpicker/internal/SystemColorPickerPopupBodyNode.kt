@@ -10,6 +10,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.colorSwatch
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.style.Display
@@ -43,12 +44,12 @@ internal class SystemColorPickerPopupBodyNode(
         key = "dsgl-system-color-picker-surface-alpha"
     ).applyParent(this)
 
-    private val previousSwatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        key = "dsgl-system-color-picker-swatch-previous"
-    ).applyParent(this)
-    private val currentSwatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        key = "dsgl-system-color-picker-swatch-current"
-    ).applyParent(this)
+    private val previousSwatchNode: ColorSwatchSurfaceNode = scope.colorSwatch({
+        this.key = "dsgl-system-color-picker-swatch-previous"
+    })
+    private val currentSwatchNode: ColorSwatchSurfaceNode = scope.colorSwatch({
+        this.key = "dsgl-system-color-picker-swatch-current"
+    })
 
     private val copyButton: ButtonNode = scope.button("Copy", {
         this.key = "dsgl-system-color-picker-button-copy"
@@ -74,10 +75,10 @@ internal class SystemColorPickerPopupBodyNode(
     }
 
     private val recentSwatchNodes: List<ColorSwatchSurfaceNode> = (0 until RECENT_SWATCH_COUNT).map { index ->
-        ColorSwatchSurfaceNode(
-            allowEmpty = true,
-            key = "dsgl-system-color-picker-recent-$index"
-        ).applyParent(this)
+        scope.colorSwatch({
+            allowEmpty = true
+            this.key = "dsgl-system-color-picker-recent-$index"
+        })
     }
 
     private var appliedStyle: ColorPickerStyle? = null
@@ -707,10 +708,10 @@ internal class SystemColorPickerEyedropperOverlayNode(
     private val centerNode: ContainerNode = scope.div({
         this.key = "dsgl-system-color-picker-eyedropper-center"
     })
-    private val swatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        allowEmpty = false,
-        key = "dsgl-system-color-picker-eyedropper-swatch"
-    ).applyParent(this)
+    private val swatchNode: ColorSwatchSurfaceNode = scope.colorSwatch({
+        allowEmpty = false
+        this.key = "dsgl-system-color-picker-eyedropper-swatch"
+    })
     private val modeTextNode: TextNode = createOverlayTextNode(
         key = "dsgl-system-color-picker-eyedropper-mode",
         text = ""
