@@ -12,6 +12,7 @@ import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.colorSwatch
 import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.hueSlider
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.TextWrap
@@ -37,9 +38,9 @@ internal class SystemColorPickerPopupBodyNode(
     private val colorFieldNode: ColorFieldSurfaceNode = ColorFieldSurfaceNode(
         key = "dsgl-system-color-picker-surface-field"
     ).applyParent(this)
-    private val hueSliderNode: HueSurfaceNode = HueSurfaceNode(
-        key = "dsgl-system-color-picker-surface-hue"
-    ).applyParent(this)
+    private val hueSliderNode: HueSurfaceNode = scope.hueSlider({
+        this.key = "dsgl-system-color-picker-surface-hue"
+    })
     private val alphaSliderNode: AlphaSurfaceNode = AlphaSurfaceNode(
         key = "dsgl-system-color-picker-surface-alpha"
     ).applyParent(this)

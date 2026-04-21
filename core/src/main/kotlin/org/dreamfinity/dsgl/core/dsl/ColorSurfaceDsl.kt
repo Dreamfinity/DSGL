@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.dsl
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorSwatchSurfaceNode
+import org.dreamfinity.dsgl.core.colorpicker.internal.HueSurfaceNode
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 
@@ -10,6 +11,11 @@ internal open class ColorSwatchProps : ComponentProps() {
     var allowEmpty: Boolean = false
     var color: RgbaColor? = RgbaColor.WHITE
     var highlighted: Boolean = false
+    var palette: ColorPickerStyle = ColorPickerStyle()
+}
+
+internal open class HueSliderProps : ComponentProps() {
+    var hueDeg: Float = 0f
     var palette: ColorPickerStyle = ColorPickerStyle()
 }
 
@@ -23,6 +29,22 @@ internal fun UiScope.colorSwatch(
         key = props.key
     ).apply {
         bind(style = props.palette, color = props.color, highlighted = props.highlighted)
+        applyStyle(this, props.style)
+        applyHandlers(this, props)
+        applyRef(this, ref)
+        add(this)
+    }
+}
+
+@DsglDsl
+internal fun UiScope.hueSlider(
+    props: HueSliderProps.() -> Unit = {},
+    ref: RefTarget<ElementHandle>? = null
+) = withProps(HueSliderProps().apply(props)) { props ->
+    HueSurfaceNode(
+        key = props.key
+    ).apply {
+        bind(style = props.palette, hueDeg = props.hueDeg)
         applyStyle(this, props.style)
         applyHandlers(this, props)
         applyRef(this, ref)
