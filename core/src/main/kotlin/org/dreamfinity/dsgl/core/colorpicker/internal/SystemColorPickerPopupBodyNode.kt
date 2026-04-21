@@ -153,6 +153,24 @@ internal class SystemColorPickerPopupBodyNode(
         )
     }
 
+    private data class TopControlsRenderState(
+        val controller: ColorPickerController,
+        val layout: ColorPickerLayout,
+        val style: ColorPickerStyle,
+        val state: ColorPickerState,
+        val hueDeg: Float,
+        val hoverX: Int,
+        val hoverY: Int,
+        val modeDropdownOpen: Boolean
+    )
+
+    private data class RecentSwatchRenderState(
+        val layout: ColorPickerLayout,
+        val style: ColorPickerStyle,
+        val recentColors: List<RgbaColor>,
+        val hoveredRecent: Int
+    )
+
     private fun renderTopControls(
         ctx: UiMeasureContext,
         controller: ColorPickerController,
@@ -164,32 +182,58 @@ internal class SystemColorPickerPopupBodyNode(
         hoverY: Int,
         modeDropdownOpen: Boolean
     ) {
+        val renderState = TopControlsRenderState(
+            controller = controller,
+            layout = layout,
+            style = style,
+            state = state,
+            hueDeg = hueDeg,
+            hoverX = hoverX,
+            hoverY = hoverY,
+            modeDropdownOpen = modeDropdownOpen
+        )
+        renderModeSelectControl(ctx, renderState)
+        renderOrderControls(ctx, renderState)
+        renderColorSurfaceControls(ctx, renderState)
+        renderPrimarySwatches(ctx, renderState)
+        renderActionControls(ctx, renderState)
+    }
+
+    private fun renderModeSelectControl(
+        ctx: UiMeasureContext,
+        state: TopControlsRenderState
+    ) {
         syncPickerButtonVisual(
             button = modeSelectButton,
-            text = if (modeDropdownOpen) "${state.mode.name} ^" else "${state.mode.name} v",
-            style = style,
-            hovered = layout.modeSelectRect.contains(hoverX, hoverY),
-            selected = modeDropdownOpen
+            text = if (state.modeDropdownOpen) "${state.state.mode.name} ^" else "${state.state.mode.name} v",
+            style = state.style,
+            hovered = state.layout.modeSelectRect.contains(state.hoverX, state.hoverY),
+            selected = state.modeDropdownOpen
         )
-        renderNode(ctx, modeSelectButton, layout.modeSelectRect)
+        renderNode(ctx, modeSelectButton, state.layout.modeSelectRect)
+    }
 
-        val showOrder = layout.rgbaOrderRect != null && layout.argbOrderRect != null
+    private fun renderOrderControls(
+        ctx: UiMeasureContext,
+        state: TopControlsRenderState
+    ) {
+        val showOrder = state.layout.rgbaOrderRect != null && state.layout.argbOrderRect != null
         if (showOrder) {
-            val rgbaRect = layout.rgbaOrderRect
-            val argbRect = layout.argbOrderRect
+            val rgbaRect = state.layout.rgbaOrderRect
+            val argbRect = state.layout.argbOrderRect
             syncPickerButtonVisual(
                 button = rgbaOrderButton,
                 text = null,
-                style = style,
-                hovered = rgbaRect.contains(hoverX, hoverY),
-                selected = state.rgbOrder == RgbChannelOrder.RGBA
+                style = state.style,
+                hovered = rgbaRect.contains(state.hoverX, state.hoverY),
+                selected = state.state.rgbOrder == RgbChannelOrder.RGBA
             )
             syncPickerButtonVisual(
                 button = argbOrderButton,
                 text = null,
-                style = style,
-                hovered = argbRect.contains(hoverX, hoverY),
-                selected = state.rgbOrder == RgbChannelOrder.ARGB
+                style = state.style,
+                hovered = argbRect.contains(state.hoverX, state.hoverY),
+                selected = state.state.rgbOrder == RgbChannelOrder.ARGB
             )
             renderNode(ctx, rgbaOrderButton, rgbaRect)
             renderNode(ctx, argbOrderButton, argbRect)
@@ -197,57 +241,72 @@ internal class SystemColorPickerPopupBodyNode(
             renderNode(ctx, rgbaOrderButton, null)
             renderNode(ctx, argbOrderButton, null)
         }
+    }
 
-        colorFieldNode.bind(style = style, color = state.color, hueDeg = hueDeg)
-        renderNode(ctx, colorFieldNode, layout.colorFieldRect)
+    private fun renderColorSurfaceControls(
+        ctx: UiMeasureContext,
+        state: TopControlsRenderState
+    ) {
+        colorFieldNode.bind(style = state.style, color = state.state.color, hueDeg = state.hueDeg)
+        renderNode(ctx, colorFieldNode, state.layout.colorFieldRect)
 
-        hueSliderNode.bind(style = style, hueDeg = hueDeg)
-        renderNode(ctx, hueSliderNode, layout.hueRect)
+        hueSliderNode.bind(style = state.style, hueDeg = state.hueDeg)
+        renderNode(ctx, hueSliderNode, state.layout.hueRect)
 
-        if (state.alphaEnabled && layout.alphaRect != null) {
-            alphaSliderNode.bind(style = style, color = state.color)
-            renderNode(ctx, alphaSliderNode, layout.alphaRect)
+        if (state.state.alphaEnabled && state.layout.alphaRect != null) {
+            alphaSliderNode.bind(style = state.style, color = state.state.color)
+            renderNode(ctx, alphaSliderNode, state.layout.alphaRect)
         } else {
             renderNode(ctx, alphaSliderNode, null)
         }
+    }
 
+    private fun renderPrimarySwatches(
+        ctx: UiMeasureContext,
+        state: TopControlsRenderState
+    ) {
         previousSwatchNode.bind(
-            style = style,
-            color = state.previous,
-            highlighted = layout.previousSwatchRect.contains(hoverX, hoverY)
+            style = state.style,
+            color = state.state.previous,
+            highlighted = state.layout.previousSwatchRect.contains(state.hoverX, state.hoverY)
         )
         currentSwatchNode.bind(
-            style = style,
-            color = state.color,
-            highlighted = layout.currentSwatchRect.contains(hoverX, hoverY)
+            style = state.style,
+            color = state.state.color,
+            highlighted = state.layout.currentSwatchRect.contains(state.hoverX, state.hoverY)
         )
-        renderNode(ctx, previousSwatchNode, layout.previousSwatchRect)
-        renderNode(ctx, currentSwatchNode, layout.currentSwatchRect)
+        renderNode(ctx, previousSwatchNode, state.layout.previousSwatchRect)
+        renderNode(ctx, currentSwatchNode, state.layout.currentSwatchRect)
+    }
 
+    private fun renderActionControls(
+        ctx: UiMeasureContext,
+        state: TopControlsRenderState
+    ) {
         syncPickerButtonVisual(
             button = copyButton,
             text = null,
-            style = style,
-            hovered = layout.copyRect.contains(hoverX, hoverY),
+            style = state.style,
+            hovered = state.layout.copyRect.contains(state.hoverX, state.hoverY),
             selected = false
         )
         syncPickerButtonVisual(
             button = pasteButton,
             text = null,
-            style = style,
-            hovered = layout.pasteRect.contains(hoverX, hoverY),
+            style = state.style,
+            hovered = state.layout.pasteRect.contains(state.hoverX, state.hoverY),
             selected = false
         )
         syncPickerButtonVisual(
             button = pipetteButton,
-            text = if (controller.isEyedropperActive()) "Pick..." else "Pipette",
-            style = style,
-            hovered = layout.pipetteRect.contains(hoverX, hoverY),
-            selected = controller.isEyedropperActive()
+            text = if (state.controller.isEyedropperActive()) "Pick..." else "Pipette",
+            style = state.style,
+            hovered = state.layout.pipetteRect.contains(state.hoverX, state.hoverY),
+            selected = state.controller.isEyedropperActive()
         )
-        renderNode(ctx, copyButton, layout.copyRect)
-        renderNode(ctx, pasteButton, layout.pasteRect)
-        renderNode(ctx, pipetteButton, layout.pipetteRect)
+        renderNode(ctx, copyButton, state.layout.copyRect)
+        renderNode(ctx, pasteButton, state.layout.pasteRect)
+        renderNode(ctx, pipetteButton, state.layout.pipetteRect)
     }
 
     private fun renderInputRows(
@@ -322,21 +381,34 @@ internal class SystemColorPickerPopupBodyNode(
         hoverY: Int,
         recentColors: List<RgbaColor>
     ) {
-        val hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) }
+        val renderState = RecentSwatchRenderState(
+            layout = layout,
+            style = style,
+            recentColors = recentColors,
+            hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) }
+        )
         for (index in 0 until RECENT_SWATCH_COUNT) {
-            val swatchNode = recentSwatchNodes[index]
-            val swatchRect = layout.recentRects.getOrNull(index)
-            if (swatchRect == null) {
-                renderNode(ctx, swatchNode, null)
-                continue
-            }
-            swatchNode.bind(
-                style = style,
-                color = recentColors.getOrNull(index),
-                highlighted = index == hoveredRecent
-            )
-            renderNode(ctx, swatchNode, swatchRect)
+            renderRecentSwatch(ctx, renderState, index)
         }
+    }
+
+    private fun renderRecentSwatch(
+        ctx: UiMeasureContext,
+        state: RecentSwatchRenderState,
+        index: Int
+    ) {
+        val swatchNode = recentSwatchNodes[index]
+        val swatchRect = state.layout.recentRects.getOrNull(index)
+        if (swatchRect == null) {
+            renderNode(ctx, swatchNode, null)
+            return
+        }
+        swatchNode.bind(
+            style = state.style,
+            color = state.recentColors.getOrNull(index),
+            highlighted = index == state.hoveredRecent
+        )
+        renderNode(ctx, swatchNode, swatchRect)
     }
 
     private fun applyStaticStyle(style: ColorPickerStyle) {
