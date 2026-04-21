@@ -133,8 +133,17 @@ sealed class RenderCommand {
         val x: Int,
         val y: Int,
         val width: Int,
-        val height: Int
+        val height: Int,
+        val gridOverlay: CapturedGridOverlay? = null
     ) : RenderCommand()
+
+    /** Optional grid overlay rendered by backend as part of captured-region magnifier pass. */
+    data class CapturedGridOverlay(
+        val columns: Int,
+        val rows: Int,
+        val magnification: Int,
+        val color: Int
+    )
 
     /** Item stack draw command. */
     data class DrawItemStack(

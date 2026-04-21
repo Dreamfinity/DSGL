@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.colorField
 import org.dreamfinity.dsgl.core.dsl.colorSwatch
 import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.eyedropperMagnifier
 import org.dreamfinity.dsgl.core.dsl.hueSlider
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.style.Display
@@ -705,9 +706,9 @@ internal class SystemColorPickerEyedropperOverlayNode(
     private val panelNode: ContainerNode = scope.div({
         this.key = "dsgl-system-color-picker-eyedropper-panel"
     })
-    private val magnifierDrawNode: EyedropperMagnifierDrawNode = EyedropperMagnifierDrawNode(
-        key = "dsgl-system-color-picker-eyedropper-magnifier"
-    ).applyParent(this)
+    private val magnifierDrawNode: EyedropperMagnifierDrawNode = scope.eyedropperMagnifier({
+        this.key = "dsgl-system-color-picker-eyedropper-magnifier"
+    })
     private val centerNode: ContainerNode = scope.div({
         this.key = "dsgl-system-color-picker-eyedropper-center"
     })
@@ -795,7 +796,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
         magnifierDrawNode.bind(
             columns = state.model.captureSourceRect.width,
             rows = state.model.captureSourceRect.height,
-            cellSize = (
+            magnification = (
                 state.model.magnifierRect.width /
                         state.model.captureSourceRect.width.coerceAtLeast(1)
                 ).coerceAtLeast(1),

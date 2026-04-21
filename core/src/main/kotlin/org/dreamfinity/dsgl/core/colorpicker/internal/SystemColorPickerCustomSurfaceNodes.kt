@@ -54,17 +54,17 @@ internal class EyedropperMagnifierDrawNode(
 
     private var columns: Int = 1
     private var rows: Int = 1
-    private var cellSize: Int = 1
+    private var magnification: Int = 1
     private var gridEnabled: Boolean = true
     private var gridColor: Int = 0x66FFFFFF
 
-    fun bind(columns: Int, rows: Int, cellSize: Int, gridEnabled: Boolean, gridColor: Int) {
+    fun bind(columns: Int, rows: Int, magnification: Int, gridEnabled: Boolean, gridColor: Int) {
         val nextColumns = columns.coerceAtLeast(1)
         val nextRows = rows.coerceAtLeast(1)
-        val nextCellSize = cellSize.coerceAtLeast(1)
+        val nextMagnification = magnification.coerceAtLeast(1)
         if (this.columns != nextColumns ||
             this.rows != nextRows ||
-            this.cellSize != nextCellSize ||
+            this.magnification != nextMagnification ||
             this.gridEnabled != gridEnabled ||
             this.gridColor != gridColor
         ) {
@@ -72,7 +72,7 @@ internal class EyedropperMagnifierDrawNode(
         }
         this.columns = nextColumns
         this.rows = nextRows
-        this.cellSize = nextCellSize
+        this.magnification = nextMagnification
         this.gridEnabled = gridEnabled
         this.gridColor = gridColor
     }
@@ -92,19 +92,18 @@ internal class EyedropperMagnifierDrawNode(
             x = bounds.x,
             y = bounds.y,
             width = bounds.width,
-            height = bounds.height
+            height = bounds.height,
+            gridOverlay = if (gridEnabled) {
+                RenderCommand.CapturedGridOverlay(
+                    columns = columns,
+                    rows = rows,
+                    magnification = magnification,
+                    color = gridColor
+                )
+            } else {
+                null
+            }
         )
-        if (!gridEnabled) return
-        for (column in 1 until columns) {
-            val lineX = bounds.x + column * cellSize
-            if (lineX <= bounds.x || lineX >= bounds.x + bounds.width) continue
-            out += RenderCommand.DrawRect(lineX, bounds.y, 1, bounds.height, gridColor)
-        }
-        for (row in 1 until rows) {
-            val lineY = bounds.y + row * cellSize
-            if (lineY <= bounds.y || lineY >= bounds.y + bounds.height) continue
-            out += RenderCommand.DrawRect(bounds.x, lineY, bounds.width, 1, gridColor)
-        }
     }
 }
 

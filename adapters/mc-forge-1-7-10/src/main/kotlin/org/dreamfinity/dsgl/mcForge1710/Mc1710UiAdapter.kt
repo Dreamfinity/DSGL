@@ -430,6 +430,37 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         GL11.glTexCoord2f(0f, 0f)
         GL11.glVertex2f(command.x.toFloat(), (command.y + command.height).toFloat())
         GL11.glEnd()
+        drawCapturedRegionGridOverlay(command)
+    }
+
+    private fun drawCapturedRegionGridOverlay(command: RenderCommand.DrawCapturedScreenRegion) {
+        val grid = command.gridOverlay ?: return
+        val columns = grid.columns.coerceAtLeast(1)
+        val rows = grid.rows.coerceAtLeast(1)
+        val magnification = grid.magnification.coerceAtLeast(1)
+
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        glColor(applyOpacity(grid.color))
+        GL11.glBegin(GL11.GL_LINES)
+        for (column in 1 until columns) {
+            val lineX = command.x + column * magnification
+            if (lineX <= command.x || lineX >= command.x + command.width) continue
+            val x = lineX + 0.5f
+            GL11.glVertex2f(x, command.y.toFloat())
+            GL11.glVertex2f(x, (command.y + command.height).toFloat())
+        }
+        for (row in 1 until rows) {
+            val lineY = command.y + row * magnification
+            if (lineY <= command.y || lineY >= command.y + command.height) continue
+            val y = lineY + 0.5f
+            GL11.glVertex2f(command.x.toFloat(), y)
+            GL11.glVertex2f((command.x + command.width).toFloat(), y)
+        }
+        GL11.glEnd()
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
     }
 
     private fun drawCheckerboard(command: RenderCommand.DrawCheckerboard) {

@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.AlphaSurfaceNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorFieldSurfaceNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorSwatchSurfaceNode
+import org.dreamfinity.dsgl.core.colorpicker.internal.EyedropperMagnifierDrawNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.HueSurfaceNode
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
@@ -30,6 +31,14 @@ internal open class ColorFieldProps : ComponentProps() {
     var color: RgbaColor = RgbaColor.WHITE
     var hueDeg: Float = 0f
     var palette: ColorPickerStyle = ColorPickerStyle()
+}
+
+internal open class EyedropperMagnifierProps : ComponentProps() {
+    var sourceColumns: Int = 1
+    var sourceRows: Int = 1
+    var magnification: Int = 1
+    var showGrid: Boolean = true
+    var gridColor: Int = 0x66FFFFFF
 }
 
 @DsglDsl
@@ -90,6 +99,28 @@ internal fun UiScope.colorField(
         key = props.key
     ).apply {
         bind(style = props.palette, color = props.color, hueDeg = props.hueDeg)
+        applyStyle(this, props.style)
+        applyHandlers(this, props)
+        applyRef(this, ref)
+        add(this)
+    }
+}
+
+@DsglDsl
+internal fun UiScope.eyedropperMagnifier(
+    props: EyedropperMagnifierProps.() -> Unit = {},
+    ref: RefTarget<ElementHandle>? = null
+) = withProps(EyedropperMagnifierProps().apply(props)) { props ->
+    EyedropperMagnifierDrawNode(
+        key = props.key
+    ).apply {
+        bind(
+            columns = props.sourceColumns,
+            rows = props.sourceRows,
+            magnification = props.magnification,
+            gridEnabled = props.showGrid,
+            gridColor = props.gridColor
+        )
         applyStyle(this, props.style)
         applyHandlers(this, props)
         applyRef(this, ref)

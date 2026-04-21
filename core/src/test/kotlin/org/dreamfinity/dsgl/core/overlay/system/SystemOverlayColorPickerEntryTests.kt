@@ -522,10 +522,15 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(commands.none { command ->
             command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
         })
-        val gridLines = commands.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }
-        assertEquals(8, gridLines.size)
-        assertTrue(gridLines.any { it.width == 1 && it.height == 15 })
-        assertTrue(gridLines.any { it.width == 15 && it.height == 1 })
+        val capturedRegion = commands.filterIsInstance<RenderCommand.DrawCapturedScreenRegion>().single()
+        val gridOverlay = capturedRegion.gridOverlay ?: error("grid overlay missing")
+        assertEquals(5, gridOverlay.columns)
+        assertEquals(5, gridOverlay.rows)
+        assertEquals(3, gridOverlay.magnification)
+        assertEquals(gridColor, gridOverlay.color)
+        assertTrue(commands.none { command ->
+            command is RenderCommand.DrawRect && command.color == gridColor
+        })
         assertTrue(commands.any { command ->
             command is RenderCommand.DrawText && command.text.startsWith("Mode:")
         })
