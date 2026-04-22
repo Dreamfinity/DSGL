@@ -28,6 +28,14 @@ internal class SystemColorPickerOverlayNode(
         cursorY = mouseY
     }
 
+    fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
+        return bodyNode.focusInputSlot(index, mouseX, mouseY)
+    }
+
+    fun syncInputFocusForDomEditing() {
+        bodyNode.syncFocusedInputForModeOrOrderChange()
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }

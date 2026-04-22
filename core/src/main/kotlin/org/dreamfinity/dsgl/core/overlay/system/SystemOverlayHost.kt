@@ -6,8 +6,10 @@ import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerTransientOverlayNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
@@ -51,7 +53,7 @@ class SystemOverlayHost(
     private var knownViewportHeight: Int = 1
     private val domInputRouter: LayerDomInputRouter = LayerDomInputRouter(
         rootProvider = {
-            if (activeEntriesTopFirst().any { it.participatesInDomInput() }) rootNode else null
+            if (activeEntriesTopFirst().any { it.enablesDomInputFallbackRouting() }) rootNode else null
         }
     )
 
@@ -357,6 +359,8 @@ class SystemOverlayHost(
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
 
+        override fun enablesDomInputFallbackRouting(): Boolean = true
+
         override fun sync(frame: SystemOverlayFrameContext) {
             node.updateCursor(frame.cursorX, frame.cursorY)
             state.active = popupEngine.isOpenFor(ownerToken)
@@ -391,6 +395,7 @@ class SystemOverlayHost(
             ) {
                 popupEngine.onCursorPosition(frame.cursorX, frame.cursorY)
             }
+            node.syncInputFocusForDomEditing()
         }
 
         override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
@@ -422,6 +427,11 @@ class SystemOverlayHost(
             if (overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
                 return true
             }
+            if (popupEngine.shouldRouteSystemInputSlotMouseDownToDom(mouseX, mouseY, button)) {
+                return popupEngine.focusSystemInputSlotForDomEditing(mouseX, mouseY) { index ->
+                    node.focusInputSlot(index, mouseX, mouseY)
+                }
+            }
             return popupEngine.handleMouseDown(mouseX, mouseY, button)
         }
 
@@ -449,7 +459,18 @@ class SystemOverlayHost(
 
         override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
             if (!state.active) return false
+            if (shouldRouteSystemTextInputKeyDownToDom()) {
+                return false
+            }
             return popupEngine.handleKeyDown(keyCode, keyChar)
+        }
+
+        private fun shouldRouteSystemTextInputKeyDownToDom(): Boolean {
+            if (popupEngine.debugOwnerScope(ownerToken) != OverlayOwnerScope.System) return false
+            val focused = FocusManager.focusedNode() ?: return false
+            if (focused !is SingleLineInputNode) return false
+            val key = focused.key as? String ?: return false
+            return key.startsWith("dsgl-system-color-picker-input-value-")
         }
 
         override fun open(

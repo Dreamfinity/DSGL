@@ -19,6 +19,7 @@ import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -405,17 +406,51 @@ class SystemOverlayColorPickerEntryTests {
         assertEquals(ColorFormatMode.HSL, modeChanged.mode)
 
         val hslLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
-        val hueInput = hslLayout.inputSlots.firstOrNull { it.key == "h" } ?: error("h input missing")
-        assertTrue(host.handleMouseDown(hueInput.inputRect.x + 2, hueInput.inputRect.y + 2, MouseButton.LEFT))
-        assertTrue(host.handleKeyDown(KeyCodes.DELETE, 0.toChar()))
-        assertTrue(host.handleKeyDown(0, '1'))
-        assertTrue(host.handleKeyDown(0, '8'))
+        val saturationInput = hslLayout.inputSlots.firstOrNull { it.key == "s" } ?: error("s input missing")
+        assertTrue(host.handleMouseDown(saturationInput.inputRect.x + 2, saturationInput.inputRect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleKeyDown(KeyCodes.HOME, 0.toChar()))
+        repeat(4) {
+            assertTrue(host.handleKeyDown(KeyCodes.DELETE, 0.toChar()))
+        }
         assertTrue(host.handleKeyDown(0, '0'))
         assertTrue(host.handleKeyDown(KeyCodes.ENTER, '\n'))
 
         val updated = host.debugSystemColorPickerState() ?: error("state missing")
         assertEquals(ColorFormatMode.HSL, updated.mode)
-        assertTrue(updated.color.toArgbInt() != modeChanged.color.toArgbInt())
+        val updatedLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        assertEquals(listOf("h", "s", "l", "a"), updatedLayout.inputSlots.map { it.key })
+    }
+
+    @Test
+    fun `system picker input focus retargets by semantic key across rgb order switch`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val redInput = initialLayout.inputSlots.firstOrNull { it.key == "r" } ?: error("r input missing")
+        assertTrue(host.handleMouseDown(redInput.inputRect.x + 2, redInput.inputRect.y + 2, MouseButton.LEFT))
+
+        val argbButton = initialLayout.argbOrderRect ?: error("argb button missing")
+        assertTrue(host.handleMouseDown(argbButton.x + 2, argbButton.y + 2, MouseButton.LEFT))
+        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = argbButton.x + 2, cursorY = argbButton.y + 2, inspectorPointerCaptured = false)
+        assertEquals("dsgl-system-color-picker-input-value-1", FocusManager.focusedNode()?.key)
+
+        assertTrue(host.handleKeyDown(KeyCodes.HOME, 0.toChar()))
+        repeat(4) {
+            assertTrue(host.handleKeyDown(KeyCodes.DELETE, 0.toChar()))
+        }
+        assertTrue(host.handleKeyDown(0, '0'))
+        assertTrue(host.handleKeyDown(KeyCodes.ENTER, '\n'))
+
+        val updated = host.debugSystemColorPickerState() ?: error("state missing")
+        assertEquals(RgbChannelOrder.ARGB, updated.rgbOrder)
+        assertEquals(1f, updated.color.a)
+        assertEquals("dsgl-system-color-picker-input-value-1", FocusManager.focusedNode()?.key)
     }
 
 

@@ -371,6 +371,29 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return handled
     }
 
+    fun shouldRouteSystemInputSlotMouseDownToDom(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val current = popup ?: return false
+        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        if (button != MouseButton.LEFT) return false
+        if (current.controller.isEyedropperActive()) return false
+        return current.layout.inputSlots.any { slot -> slot.inputRect.contains(mouseX, mouseY) }
+    }
+
+    fun focusSystemInputSlotForDomEditing(
+        mouseX: Int,
+        mouseY: Int,
+        focusInputByIndex: (Int) -> Boolean
+    ): Boolean {
+        val current = popup ?: return false
+        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        val slotIndex = current.layout.inputSlots.indexOfFirst { slot -> slot.inputRect.contains(mouseX, mouseY) }
+        if (slotIndex < 0) return false
+        val slot = current.layout.inputSlots[slotIndex]
+        current.controller.handleDomInputFocused(slot.key)
+        val focused = focusInputByIndex(slotIndex)
+        return focused
+    }
+
     fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val current = popup ?: return false
         if (current.consumedEyedropperPress && (button == MouseButton.LEFT || button == MouseButton.RIGHT)) {

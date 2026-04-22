@@ -46,6 +46,8 @@ internal interface SystemOverlayEntry {
 
     fun participatesInDomInput(): Boolean = false
 
+    fun enablesDomInputFallbackRouting(): Boolean = participatesInDomInput()
+
     fun sync(frame: SystemOverlayFrameContext)
 
     fun onInputFrame(viewportWidth: Int, viewportHeight: Int) = Unit

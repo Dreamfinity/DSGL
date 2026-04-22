@@ -17,6 +17,16 @@ import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.eyedropperMagnifier
 import org.dreamfinity.dsgl.core.dsl.hueSlider
 import org.dreamfinity.dsgl.core.dsl.text
+import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.FocusManager
+import org.dreamfinity.dsgl.core.event.FocusGainEvent
+import org.dreamfinity.dsgl.core.event.FocusLoseEvent
+import org.dreamfinity.dsgl.core.event.InputEvent
+import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.TextWrap
 
@@ -28,6 +38,8 @@ internal class SystemColorPickerPopupBodyNode(
 
     private val scope = UiScope(this)
     private val inputLabelValues: MutableList<String> = MutableList(MAX_INPUT_SLOTS) { "" }
+    private val inputSemanticKeys: MutableList<String?> = MutableList(MAX_INPUT_SLOTS) { null }
+    private var focusedSemanticInputKey: String? = null
 
     private val modeSelectButton: ButtonNode = scope.button("", {
         this.key = "dsgl-system-color-picker-mode-select"
@@ -75,7 +87,9 @@ internal class SystemColorPickerPopupBodyNode(
         })
     }
     private val inputValueNodes: List<TextInputNode> = (0 until MAX_INPUT_SLOTS).map { index ->
-        TextInputNode(key = "dsgl-system-color-picker-input-value-$index").applyParent(this)
+        TextInputNode(key = "dsgl-system-color-picker-input-value-$index")
+            .applyParent(this)
+            .also { node -> configureInputValueNode(index, node) }
     }
 
     private val recentSwatchNodes: List<ColorSwatchSurfaceNode> = (0 until RECENT_SWATCH_COUNT).map { index ->
@@ -86,6 +100,27 @@ internal class SystemColorPickerPopupBodyNode(
     }
 
     private var appliedStyle: ColorPickerStyle? = null
+
+    fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
+        val inputNode = inputValueNodes.getOrNull(index) ?: return false
+        if (inputNode.display == Display.None) return false
+        val key = inputSemanticKeys.getOrNull(index)
+        focusedSemanticInputKey = key
+        if (key != null) {
+            popupEngine.debugActiveController()?.handleDomInputFocused(key)
+        }
+        val down = MouseDownEvent(mouseX = mouseX, mouseY = mouseY, mouseButton = MouseButton.LEFT)
+        down.target = inputNode
+        EventBus.post(down)
+        val focused = FocusManager.isFocused(inputNode)
+        return focused
+    }
+
+    fun syncFocusedInputForModeOrOrderChange() {
+        val controller = popupEngine.debugActiveController() ?: return
+        val layout = popupEngine.debugActiveLayout() ?: return
+        resyncFocusedInputForModeOrOrderChange(controller, layout)
+    }
 
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
@@ -110,11 +145,8 @@ internal class SystemColorPickerPopupBodyNode(
         val hover = controller.viewHoverPosition()
         val hoverX = hover.first
         val hoverY = hover.second
-        val nowMs = System.currentTimeMillis()
 
         val modeDropdownOpen = controller.viewModeDropdownOpen()
-        val activeInputKey = controller.viewActiveInputKey()
-        val activeInputBuffer = controller.viewActiveInputBuffer()
         val inputValues = controller.viewInputValues()
         val recentColors = controller.viewRecentColors()
         val definitionsByKey = controller.viewInputDefinitions().associate { it.first to it.second }
@@ -137,9 +169,6 @@ internal class SystemColorPickerPopupBodyNode(
             style = style,
             hoverX = hoverX,
             hoverY = hoverY,
-            nowMs = nowMs,
-            activeInputKey = activeInputKey,
-            activeInputBuffer = activeInputBuffer,
             inputValues = inputValues,
             definitionsByKey = definitionsByKey
         )
@@ -169,6 +198,16 @@ internal class SystemColorPickerPopupBodyNode(
         val style: ColorPickerStyle,
         val recentColors: List<RgbaColor>,
         val hoveredRecent: Int
+    )
+
+    private data class InputRowsRenderState(
+        val controller: ColorPickerController,
+        val layout: ColorPickerLayout,
+        val style: ColorPickerStyle,
+        val hoverX: Int,
+        val hoverY: Int,
+        val inputValues: Map<String, String>,
+        val definitionsByKey: Map<String, String>
     )
 
     private fun renderTopControls(
@@ -316,61 +355,99 @@ internal class SystemColorPickerPopupBodyNode(
         style: ColorPickerStyle,
         hoverX: Int,
         hoverY: Int,
-        nowMs: Long,
-        activeInputKey: String?,
-        activeInputBuffer: String,
         inputValues: Map<String, String>,
         definitionsByKey: Map<String, String>
     ) {
+        resyncFocusedInputForModeOrOrderChange(controller, layout)
+        val renderState = InputRowsRenderState(
+            controller = controller,
+            layout = layout,
+            style = style,
+            hoverX = hoverX,
+            hoverY = hoverY,
+            inputValues = inputValues,
+            definitionsByKey = definitionsByKey
+        )
         for (index in 0 until MAX_INPUT_SLOTS) {
-            val inputSlot = layout.inputSlots.getOrNull(index)
-            val labelNode = inputLabelNodes[index]
-            val inputNode = inputValueNodes[index]
-            if (inputSlot == null) {
-                inputLabelValues[index] = ""
-                syncTextNodeVisual(
-                    node = labelNode,
-                    text = "",
-                    color = style.mutedTextColor
-                )
-                renderNode(ctx, labelNode, null)
-                renderNode(ctx, inputNode, null)
-                continue
-            }
-
-            val key = inputSlot.key
-            val label = definitionsByKey[key] ?: inputSlot.label
-            inputLabelValues[index] = label
-            syncTextNodeVisual(
-                node = labelNode,
-                text = label,
-                color = style.mutedTextColor
-            )
-
-            val borderColor = when {
-                activeInputKey == key -> style.inputActiveBorderColor
-                inputSlot.inputRect.contains(hoverX, hoverY) -> style.buttonHoverColor
-                else -> style.inputBorderColor
-            }
-            val value = if (activeInputKey == key) {
-                activeInputBuffer + if (controller.viewCaretVisible(nowMs)) "|" else ""
-            } else {
-                inputValues[key].orEmpty()
-            }
-            syncTextInputVisual(
-                node = inputNode,
-                value = value,
-                border = Border.all(1, borderColor),
-                background = style.inputBackgroundColor,
-                focusedBackground = style.inputBackgroundColor,
-                textColor = style.textColor,
-                placeholderColor = style.mutedTextColor,
-                fontSize = style.fontSize
-            )
-
-            renderNode(ctx, labelNode, inputSlot.labelRect)
-            renderNode(ctx, inputNode, inputSlot.inputRect)
+            renderInputRow(ctx, renderState, index)
         }
+    }
+
+    private fun renderInputRow(
+        ctx: UiMeasureContext,
+        state: InputRowsRenderState,
+        index: Int
+    ) {
+        val inputSlot = state.layout.inputSlots.getOrNull(index)
+        val labelNode = inputLabelNodes[index]
+        val inputNode = inputValueNodes[index]
+        if (inputSlot == null) {
+            renderMissingInputRow(ctx, state, labelNode, inputNode, index)
+            return
+        }
+        renderPresentInputRow(ctx, state, labelNode, inputNode, inputSlot, index)
+    }
+
+    private fun renderMissingInputRow(
+        ctx: UiMeasureContext,
+        state: InputRowsRenderState,
+        labelNode: TextNode,
+        inputNode: TextInputNode,
+        index: Int
+    ) {
+        inputSemanticKeys[index] = null
+        if (FocusManager.isFocused(inputNode)) {
+            FocusManager.clearFocus()
+            focusedSemanticInputKey = null
+        }
+        inputLabelValues[index] = ""
+        syncTextNodeVisual(
+            node = labelNode,
+            text = "",
+            color = state.style.mutedTextColor
+        )
+        renderNode(ctx, labelNode, null)
+        renderNode(ctx, inputNode, null)
+    }
+
+    private fun renderPresentInputRow(
+        ctx: UiMeasureContext,
+        state: InputRowsRenderState,
+        labelNode: TextNode,
+        inputNode: TextInputNode,
+        inputSlot: ColorPickerInputSlot,
+        index: Int
+    ) {
+        val key = inputSlot.key
+        inputSemanticKeys[index] = key
+        val label = state.definitionsByKey[key] ?: inputSlot.label
+        inputLabelValues[index] = label
+        syncTextNodeVisual(
+            node = labelNode,
+            text = label,
+            color = state.style.mutedTextColor
+        )
+        val focused = FocusManager.isFocused(inputNode)
+
+        val borderColor = when {
+            focused -> state.style.inputActiveBorderColor
+            inputSlot.inputRect.contains(state.hoverX, state.hoverY) -> state.style.buttonHoverColor
+            else -> state.style.inputBorderColor
+        }
+        val value = if (focused) null else state.inputValues[key].orEmpty()
+        syncTextInputVisual(
+            node = inputNode,
+            value = value,
+            border = Border.all(1, borderColor),
+            background = state.style.inputBackgroundColor,
+            focusedBackground = state.style.inputBackgroundColor,
+            textColor = state.style.textColor,
+            placeholderColor = state.style.mutedTextColor,
+            fontSize = state.style.fontSize
+        )
+
+        renderNode(ctx, labelNode, inputSlot.labelRect)
+        renderNode(ctx, inputNode, inputSlot.inputRect)
     }
 
     private fun renderRecentSwatchGrid(
@@ -409,6 +486,69 @@ internal class SystemColorPickerPopupBodyNode(
             highlighted = index == state.hoveredRecent
         )
         renderNode(ctx, swatchNode, swatchRect)
+    }
+
+    private fun configureInputValueNode(index: Int, inputNode: TextInputNode) {
+        EventBus.run {
+            inputNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                focusedSemanticInputKey = key
+                popupEngine.debugActiveController()?.handleDomInputFocused(key)
+            }
+            inputNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
+                val key = inputSemanticKeys[index]
+                if (focusedSemanticInputKey == key) {
+                    focusedSemanticInputKey = null
+                }
+                if (key != null) {
+                    popupEngine.debugActiveController()?.handleDomInputBlurred(key)
+                }
+            }
+            inputNode.addEventListener(Events.INPUT) { _: InputEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                popupEngine.debugActiveController()?.handleDomInputDraft(key, inputNode.text)
+            }
+            inputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                val controller = popupEngine.debugActiveController() ?: return@addEventListener
+                when (event.keyCode) {
+                    KeyCodes.ENTER -> {
+                        controller.commitDomInputEdit(key, inputNode.text)
+                        event.cancelled = true
+                    }
+
+                    KeyCodes.ESCAPE -> {
+                        controller.cancelDomInputEdit(key)
+                        val restoredValue = controller.resolveDomInputValue(key)
+                        if (inputNode.text != restoredValue) {
+                            inputNode.text = restoredValue
+                            inputNode.requestRenderCommandsInvalidation()
+                        }
+                        event.cancelled = true
+                    }
+                }
+            }
+        }
+    }
+
+    private fun resyncFocusedInputForModeOrOrderChange(
+        controller: ColorPickerController,
+        layout: ColorPickerLayout
+    ) {
+        val focusedIndex = inputValueNodes.indexOf(FocusManager.focusedNode())
+        val focusedSlotKey = if (focusedIndex >= 0) inputSemanticKeys.getOrNull(focusedIndex) else null
+        val resyncKey = controller.consumeDomInputFocusResyncKey()
+            ?: focusedSemanticInputKey
+            ?: focusedSlotKey
+            ?: return
+        val targetIndex = layout.inputSlots.indexOfFirst { it.key == resyncKey }
+        if (targetIndex >= 0) {
+            FocusManager.requestFocus(inputValueNodes[targetIndex])
+            focusedSemanticInputKey = resyncKey
+            return
+        }
+        FocusManager.clearFocus()
+        focusedSemanticInputKey = null
     }
 
     private fun applyStaticStyle(style: ColorPickerStyle) {
@@ -499,7 +639,7 @@ internal class SystemColorPickerPopupBodyNode(
 
     private fun syncTextInputVisual(
         node: TextInputNode,
-        value: String,
+        value: String?,
         border: Border,
         background: Int,
         focusedBackground: Int,
@@ -508,7 +648,7 @@ internal class SystemColorPickerPopupBodyNode(
         fontSize: Int
     ) {
         var changed = false
-        if (node.text != value) {
+        if (value != null && node.text != value) {
             node.text = value
             changed = true
         }

@@ -95,6 +95,10 @@ class ColorPickerController(
     private var eyedropperBaseColor: RgbaColor = state.color
     private val eyedropperOverlayDrag: FloatingPaneDragModel = FloatingPaneDragModel()
     private var eyedropperOverlayRect: Rect? = null
+    private var domFocusedInputKey: String? = null
+    private var domInputFocusResyncRequested: Boolean = false
+    private var domLastFocusedInputKey: String? = null
+    private var domPendingFocusResyncKey: String? = null
 
     var onPreview: ((RgbaColor) -> Unit)? = null
     var onChange: ((RgbaColor) -> Unit)? = null
@@ -115,6 +119,10 @@ class ColorPickerController(
         modeDropdownOpen = false
         eyedropperOverlayDrag.end()
         eyedropperOverlayRect = null
+        domFocusedInputKey = null
+        domInputFocusResyncRequested = false
+        domLastFocusedInputKey = null
+        domPendingFocusResyncKey = null
         clearInputEdit()
     }
 
@@ -150,6 +158,52 @@ class ColorPickerController(
 
     internal fun viewFormattedColor(): String {
         return ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+    }
+
+    internal fun handleDomInputFocused(key: String) {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        if (activeInputKey == key) {
+            clearInputEdit()
+        }
+    }
+
+    internal fun handleDomInputBlurred(key: String) {
+        if (domFocusedInputKey == key) {
+            domFocusedInputKey = null
+        }
+    }
+
+    internal fun handleDomInputDraft(key: String, value: String): Boolean {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        return applyInputDraftValue(key, value)
+    }
+
+    internal fun commitDomInputEdit(key: String, value: String): Boolean {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        val applied = applyInputDraftValue(key, value)
+        commitCurrentColor()
+        clearInputEdit()
+        return applied
+    }
+
+    internal fun cancelDomInputEdit(key: String) {
+        if (domFocusedInputKey == key) {
+            domFocusedInputKey = null
+        }
+        clearInputEdit()
+    }
+
+    internal fun resolveDomInputValue(key: String): String = inputValues()[key].orEmpty()
+
+    internal fun consumeDomInputFocusResyncKey(): String? {
+        if (!domInputFocusResyncRequested) return null
+        domInputFocusResyncRequested = false
+        val key = domPendingFocusResyncKey
+        domPendingFocusResyncKey = null
+        return key
     }
 
     fun beginEyedropper() {
@@ -692,18 +746,21 @@ class ColorPickerController(
         if (modeOptionHit != null) {
             state = state.copy(mode = modeOptionHit.mode)
             modeDropdownOpen = false
+            requestDomInputFocusResync()
             clearInputEdit()
             return true
         }
         if (layout.rgbaOrderRect?.contains(globalX, globalY) == true) {
             state = state.copy(rgbOrder = RgbChannelOrder.RGBA)
             modeDropdownOpen = false
+            requestDomInputFocusResync()
             clearInputEdit()
             return true
         }
         if (layout.argbOrderRect?.contains(globalX, globalY) == true) {
             state = state.copy(rgbOrder = RgbChannelOrder.ARGB)
             modeDropdownOpen = false
+            requestDomInputFocusResync()
             clearInputEdit()
             return true
         }
@@ -876,7 +933,11 @@ class ColorPickerController(
     }
 
     private fun applyInputDraft(key: String): Boolean {
-        val value = activeInputBuffer.trim()
+        return applyInputDraftValue(key, activeInputBuffer)
+    }
+
+    private fun applyInputDraftValue(key: String, rawValue: String): Boolean {
+        val value = rawValue.trim()
         if (value.isEmpty()) return false
         val current = state.color
         when (key) {
@@ -1332,6 +1393,12 @@ class ColorPickerController(
             RgbChannelOrder.RGBA -> listOf("r", "g", "b", "a")
             RgbChannelOrder.ARGB -> listOf("a", "r", "g", "b")
         }
+    }
+
+    private fun requestDomInputFocusResync() {
+        val key = domFocusedInputKey ?: domLastFocusedInputKey ?: return
+        domPendingFocusResyncKey = key
+        domInputFocusResyncRequested = true
     }
 
     private data class InputDefinition(
