@@ -19,6 +19,7 @@ import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
+import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -119,38 +120,38 @@ class SystemOverlayHost(
     }
 
     override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
-        if (dispatchManualInput { entry -> entry.handleMouseMove(mouseX, mouseY) }) {
-            return true
-        }
-        return domInputRouter.handleMouseMove(mouseX, mouseY)
+        return dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleMouseMove(mouseX, mouseY) } },
+            domFallbackDispatch = { domInputRouter.handleMouseMove(mouseX, mouseY) }
+        )
     }
 
     override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        if (dispatchManualInput { entry -> entry.handleMouseDown(mouseX, mouseY, button) }) {
-            return true
-        }
-        return domInputRouter.handleMouseDown(mouseX, mouseY, button)
+        return dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleMouseDown(mouseX, mouseY, button) } },
+            domFallbackDispatch = { domInputRouter.handleMouseDown(mouseX, mouseY, button) }
+        )
     }
 
     override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        if (dispatchManualInput { entry -> entry.handleMouseUp(mouseX, mouseY, button) }) {
-            return true
-        }
-        return domInputRouter.handleMouseUp(mouseX, mouseY, button)
+        return dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleMouseUp(mouseX, mouseY, button) } },
+            domFallbackDispatch = { domInputRouter.handleMouseUp(mouseX, mouseY, button) }
+        )
     }
 
     override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
-        if (dispatchManualInput { entry -> entry.handleMouseWheel(mouseX, mouseY, delta) }) {
-            return true
-        }
-        return domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
+        return dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleMouseWheel(mouseX, mouseY, delta) } },
+            domFallbackDispatch = { domInputRouter.handleMouseWheel(mouseX, mouseY, delta) }
+        )
     }
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        if (dispatchManualInput { entry -> entry.handleKeyDown(keyCode, keyChar) }) {
-            return true
-        }
-        return domInputRouter.handleKeyDown(keyCode, keyChar)
+        return dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleKeyDown(keyCode, keyChar) } },
+            domFallbackDispatch = { domInputRouter.handleKeyDown(keyCode, keyChar) }
+        )
     }
 
     override fun clearRefs() {
