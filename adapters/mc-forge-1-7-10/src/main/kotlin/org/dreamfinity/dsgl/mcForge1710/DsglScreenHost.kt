@@ -164,12 +164,104 @@ abstract class DsglScreenHost(
         if (!::adapter.isInitialized) return
         frameIndex += 1
         tracePhase("draw.start")
+        val frameCursor = prepareFrameCursor()
+        val rebuiltThisFrame = rebuildIfNeeded()
+        val tree = domTree ?: return
+        val dtSeconds = tickFrameAndAnimations(tree, partialTicks)
+        val layoutPhase = commitLayoutPhaseOrFallback(
+            tree = tree,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            partialTicks = partialTicks
+        ) ?: return
+        val overlayState = syncInspectorAndResolveOverlayState(
+            tree = tree,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY
+        )
+        val commands = paintApplicationRootOrFallback(
+            tree = tree,
+            stylesAlreadyApplied = layoutPhase.stylesAlreadyApplied,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            partialTicks = partialTicks
+        ) ?: return
+        syncFeatureRuntimeFrame(
+            tree = tree,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY
+        )
+        val applicationOverlayCommands = collectApplicationOverlayCommands(overlayState.appOverlayRenderEnabled)
+        val systemOverlayCommands = syncSystemOverlayAndCollectCommands(
+            tree = tree,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY,
+            systemOverlayRenderEnabled = overlayState.systemOverlayRenderEnabled
+        )
+        stageSystemOverlayCommands(
+            systemOverlayCommands = systemOverlayCommands,
+            systemOverlayRenderEnabled = overlayState.systemOverlayRenderEnabled
+        )
+        val debugOverlayCommands = collectDebugOverlayCommands()
+        updateFrameInteractionState(
+            tree = tree,
+            dtSeconds = dtSeconds,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY,
+            appOverlayInputEnabled = overlayState.appOverlayInputEnabled,
+            systemOverlayInputEnabled = overlayState.systemOverlayInputEnabled,
+            inspectorBlocks = overlayState.inspectorBlocks
+        )
+        stageApplicationOverlayCommands(
+            tree = tree,
+            applicationOverlayCommands = applicationOverlayCommands,
+            appOverlayRenderEnabled = overlayState.appOverlayRenderEnabled
+        )
+        composeAndPresentFrame(
+            tree = tree,
+            commands = commands,
+            debugOverlayCommands = debugOverlayCommands,
+            rebuiltThisFrame = rebuiltThisFrame,
+            layoutCommittedThisFrame = layoutPhase.layoutCommittedThisFrame
+        )
+        finishDrawScreenFrame(
+            tree = tree,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            partialTicks = partialTicks
+        )
+    }
+
+    private data class FrameCursorPosition(
+        val mouseX: Int,
+        val mouseY: Int
+    )
+
+    private data class LayoutPhaseResult(
+        val stylesAlreadyApplied: Boolean,
+        val layoutCommittedThisFrame: Boolean
+    )
+
+    private data class OverlayLayerFrameState(
+        val appOverlayRenderEnabled: Boolean,
+        val systemOverlayRenderEnabled: Boolean,
+        val appOverlayInputEnabled: Boolean,
+        val systemOverlayInputEnabled: Boolean,
+        val inspectorBlocks: Boolean
+    )
+
+    private fun prepareFrameCursor(): FrameCursorPosition {
         updateSize(force = false)
         val dsglMouseX = lastViewport.rawMouseToDsglX(Mouse.getX())
         val dsglMouseY = lastViewport.rawMouseToDsglY(Mouse.getY())
         window.onFrame(System.currentTimeMillis())
-        val rebuiltThisFrame = rebuildIfNeeded()
-        val tree = domTree ?: return
+        return FrameCursorPosition(
+            mouseX = dsglMouseX,
+            mouseY = dsglMouseY
+        )
+    }
+
+    private fun tickFrameAndAnimations(tree: DomTree, partialTicks: Float): Double {
         val nowNanos = System.nanoTime()
         val dtSeconds = if (lastFrameNanos == 0L) {
             1.0 / 60.0
@@ -183,6 +275,15 @@ abstract class DsglScreenHost(
         if (animationVisualsChanged) {
             tree.markVisualDirty()
         }
+        return dtSeconds
+    }
+
+    private fun commitLayoutPhaseOrFallback(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float
+    ): LayoutPhaseResult? {
         var stylesAlreadyApplied = false
         var layoutCommittedThisFrame = false
         if (needsLayout) {
@@ -198,9 +299,20 @@ abstract class DsglScreenHost(
                 flushPendingCleanup()
                 super.drawScreen(mouseX, mouseY, partialTicks)
                 captureColorPickerEyedropperSamples()
-                return
+                return null
             }
         }
+        return LayoutPhaseResult(
+            stylesAlreadyApplied = stylesAlreadyApplied,
+            layoutCommittedThisFrame = layoutCommittedThisFrame
+        )
+    }
+
+    private fun syncInspectorAndResolveOverlayState(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int
+    ): OverlayLayerFrameState {
         inspector.onLayoutCommitted(tree.root, layoutRevision)
         inspector.onCursorMoved(dsglMouseX, dsglMouseY)
         inspectorPointerCaptured = inspector.isPointerCaptured
@@ -214,6 +326,22 @@ abstract class DsglScreenHost(
         val inspectorBlocks = systemOverlayInputEnabled && (
                 inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
                 )
+        return OverlayLayerFrameState(
+            appOverlayRenderEnabled = appOverlayRenderEnabled,
+            systemOverlayRenderEnabled = systemOverlayRenderEnabled,
+            appOverlayInputEnabled = appOverlayInputEnabled,
+            systemOverlayInputEnabled = systemOverlayInputEnabled,
+            inspectorBlocks = inspectorBlocks
+        )
+    }
+
+    private fun paintApplicationRootOrFallback(
+        tree: DomTree,
+        stylesAlreadyApplied: Boolean,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float
+    ): List<RenderCommand>? {
         tracePhase("commands.start")
         if (!stylesAlreadyApplied) {
             tracePhase("style.start")
@@ -229,31 +357,49 @@ abstract class DsglScreenHost(
             flushPendingCleanup()
             super.drawScreen(mouseX, mouseY, partialTicks)
             captureColorPickerEyedropperSamples()
-            return
+            return null
         }
         if (!stylesAlreadyApplied) {
             tracePhase("style.end")
         }
+        return commands
+    }
+
+    private fun syncFeatureRuntimeFrame(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int
+    ) {
         ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
         SelectRuntime.applicationEngine.onFrame(adapter, lastWidth, lastHeight, 1f)
         SelectRuntime.systemEngine.onFrame(adapter, lastWidth, lastHeight, 1f)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         refreshActiveColorSamplerOwner(tree.root)
-        val applicationOverlayCommands = if (!appOverlayRenderEnabled) {
-            emptyList()
-        } else {
-            try {
-                applicationOverlayHost.render(adapter, lastWidth, lastHeight)
-                applicationOverlayHost.paint(adapter)
-            } catch (error: Throwable) {
-                logPipelineError(
-                    key = "draw.applicationOverlay",
-                    message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}"
-                )
-                emptyList()
-            }
+    }
+
+    private fun collectApplicationOverlayCommands(appOverlayRenderEnabled: Boolean): List<RenderCommand> {
+        if (!appOverlayRenderEnabled) {
+            return emptyList()
         }
+        return try {
+            applicationOverlayHost.render(adapter, lastWidth, lastHeight)
+            applicationOverlayHost.paint(adapter)
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "draw.applicationOverlay",
+                message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}"
+            )
+            emptyList()
+        }
+    }
+
+    private fun syncSystemOverlayAndCollectCommands(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        systemOverlayRenderEnabled: Boolean
+    ): List<RenderCommand> {
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
@@ -261,20 +407,25 @@ abstract class DsglScreenHost(
             cursorY = dsglMouseY,
             inspectorPointerCaptured = inspectorPointerCaptured
         )
-        val systemOverlayCommands = if (!systemOverlayRenderEnabled) {
-            emptyList()
-        } else {
-            try {
-                systemOverlayHost.render(adapter, lastWidth, lastHeight)
-                systemOverlayHost.paint(adapter)
-            } catch (error: Throwable) {
-                logPipelineError(
-                    key = "draw.systemOverlay",
-                    message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
-                )
-                emptyList()
-            }
+        if (!systemOverlayRenderEnabled) {
+            return emptyList()
         }
+        return try {
+            systemOverlayHost.render(adapter, lastWidth, lastHeight)
+            systemOverlayHost.paint(adapter)
+        } catch (error: Throwable) {
+            logPipelineError(
+                key = "draw.systemOverlay",
+                message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
+            )
+            emptyList()
+        }
+    }
+
+    private fun stageSystemOverlayCommands(
+        systemOverlayCommands: List<RenderCommand>,
+        systemOverlayRenderEnabled: Boolean
+    ) {
         systemOverlayCommandsBuffer.clear()
         systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
         if (systemOverlayRenderEnabled) {
@@ -285,12 +436,26 @@ abstract class DsglScreenHost(
                 systemOverlayCommandsBuffer
             )
         }
-        val debugOverlayCommands = runCatching {
+    }
+
+    private fun collectDebugOverlayCommands(): List<RenderCommand> {
+        return runCatching {
             debugOverlayHost.render(lastWidth, lastHeight)
             debugOverlayHost.paint(adapter)
         }.getOrElse {
             emptyList()
         }
+    }
+
+    private fun updateFrameInteractionState(
+        tree: DomTree,
+        dtSeconds: Double,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        appOverlayInputEnabled: Boolean,
+        systemOverlayInputEnabled: Boolean,
+        inspectorBlocks: Boolean
+    ) {
         val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
         val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.applicationEngine.isOpen()
         val systemSelectBlocks = systemOverlayInputEnabled && SelectRuntime.systemEngine.isOpen()
@@ -324,6 +489,13 @@ abstract class DsglScreenHost(
         }
         lastMoveX = dsglMouseX
         lastMoveY = dsglMouseY
+    }
+
+    private fun stageApplicationOverlayCommands(
+        tree: DomTree,
+        applicationOverlayCommands: List<RenderCommand>,
+        appOverlayRenderEnabled: Boolean
+    ) {
         applicationOverlayCommandsBuffer.clear()
         if (appOverlayRenderEnabled) {
             applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
@@ -350,6 +522,15 @@ abstract class DsglScreenHost(
             ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
             appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
         }
+    }
+
+    private fun composeAndPresentFrame(
+        tree: DomTree,
+        commands: List<RenderCommand>,
+        debugOverlayCommands: List<RenderCommand>,
+        rebuiltThisFrame: Boolean,
+        layoutCommittedThisFrame: Boolean
+    ) {
         OverlayLayerContracts.composePaintCommands(
             applicationRoot = commands,
             applicationOverlay = applicationOverlayCommandsBuffer,
@@ -373,6 +554,14 @@ abstract class DsglScreenHost(
         }
         tracePhase("commands.end")
         adapter.paint(composedCommandsBuffer)
+    }
+
+    private fun finishDrawScreenFrame(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float
+    ) {
         tracePhase("draw.end")
         maybeLogPerf(tree)
         flushPendingCleanup()
