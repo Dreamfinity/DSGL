@@ -230,6 +230,7 @@ object DomReconciler {
                 current.syncFrom(template)
             }
         }
+        current.syncCustomFrom(template)
     }
 
     private fun countSubtree(node: DOMNode): Int {

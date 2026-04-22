@@ -134,6 +134,21 @@ internal class ColorFieldSurfaceNode(
         brightness = nextBrightness
     }
 
+    internal override fun syncCustomFrom(template: DOMNode) {
+        val typedTemplate = template as ColorFieldSurfaceNode
+        if (style != typedTemplate.style ||
+            hueDeg != typedTemplate.hueDeg ||
+            saturation != typedTemplate.saturation ||
+            brightness != typedTemplate.brightness
+        ) {
+            markRenderCommandsDirty()
+        }
+        style = typedTemplate.style
+        hueDeg = typedTemplate.hueDeg
+        saturation = typedTemplate.saturation
+        brightness = typedTemplate.brightness
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
@@ -176,6 +191,15 @@ internal class HueSurfaceNode(
         this.hueDeg = hueDeg
     }
 
+    internal override fun syncCustomFrom(template: DOMNode) {
+        val typedTemplate = template as HueSurfaceNode
+        if (style != typedTemplate.style || hueDeg != typedTemplate.hueDeg) {
+            markRenderCommandsDirty()
+        }
+        style = typedTemplate.style
+        hueDeg = typedTemplate.hueDeg
+    }
+
     override fun measure(ctx: UiMeasureContext): Size {
         return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
     }
@@ -212,6 +236,15 @@ internal class AlphaSurfaceNode(
         }
         this.style = style
         this.color = color
+    }
+
+    internal override fun syncCustomFrom(template: DOMNode) {
+        val typedTemplate = template as AlphaSurfaceNode
+        if (style != typedTemplate.style || color != typedTemplate.color) {
+            markRenderCommandsDirty()
+        }
+        style = typedTemplate.style
+        color = typedTemplate.color
     }
 
     override fun measure(ctx: UiMeasureContext): Size {
@@ -255,6 +288,19 @@ internal class ColorSwatchSurfaceNode(
         this.style = style
         this.color = color
         this.highlighted = highlighted
+    }
+
+    internal override fun syncCustomFrom(template: DOMNode) {
+        val typedTemplate = template as ColorSwatchSurfaceNode
+        if (style != typedTemplate.style ||
+            color != typedTemplate.color ||
+            highlighted != typedTemplate.highlighted
+        ) {
+            markRenderCommandsDirty()
+        }
+        style = typedTemplate.style
+        color = typedTemplate.color
+        highlighted = typedTemplate.highlighted
     }
 
     override fun measure(ctx: UiMeasureContext): Size {

@@ -1572,6 +1572,14 @@ abstract class DOMNode(
         markRenderCommandsDirty()
     }
 
+    /**
+     * Optional node-specific reconcile sync hook.
+     *
+     * Called by reconciler after [syncBaseFrom] only when class and key already match.
+     * Default behavior is no-op.
+     */
+    internal open fun syncCustomFrom(template: DOMNode) = Unit
+
     internal fun captureStyleDefaults(): ComputedStyleDefaults {
         val existing = styleDefaultsSnapshot
         if (existing != null) return existing
