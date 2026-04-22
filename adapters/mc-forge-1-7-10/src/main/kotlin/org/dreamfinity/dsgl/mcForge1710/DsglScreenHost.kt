@@ -730,97 +730,150 @@ abstract class DsglScreenHost(
         val inspectorMouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX
         val inspectorMouseY = if (lastMoveY == Int.MIN_VALUE) lastMouseY else lastMoveY
         if (Keyboard.getEventKeyState()) {
-            if (!Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12) {
-                inspector.toggle()
-                inspectorPointerCaptured = false
-                if (inspector.active) {
-                    DndRuntime.engine.cancelActiveDrag()
-                    releaseDragCapture()
-                    clearActiveTarget()
-                    clearHoverChainStates()
-                }
-                mc.dispatchKeypresses()
-                return
-            }
-            if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12 && inspector.active) {
-                inspector.toggleMode()
-                mc.dispatchKeypresses()
-                return
-            }
-            if (keyCode == Keyboard.KEY_F10) {
-                val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
-                val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
-                systemOverlayHost.togglePanelDemo(demoAnchorX, demoAnchorY)
-                mc.dispatchKeypresses()
-                return
-            }
-            if (keyCode == Keyboard.KEY_ESCAPE && inspector.cancelPickMode()) {
-                logInspectorInput("escape cancelled inspector pick mode")
-                mc.dispatchKeypresses()
-                return
-            }
-            if (consumeOverlayKeyDown(
+            if (handleKeyboardKeyDown(
                     keyCode = keyCode,
                     keyChar = keyChar,
                     inspectorMouseX = inspectorMouseX,
                     inspectorMouseY = inspectorMouseY
                 )
-            ) {
-                mc.dispatchKeypresses()
-                return
-            }
-            if (keyCode == Keyboard.KEY_F6) {
-                StyleEngine.forceReloadStylesheets()
-                requestRebuild("style reload")
-            }
-            if (pressedKeys.add(keyCode)) {
-                val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
-                EventBus.post(downEvent)
-                if (downEvent.cancelled) {
-                    pressedKeys.remove(keyCode)
-                } else {
-                    window.onKeyTyped(keyChar, keyCode)
-                    if (keyCode == Keyboard.KEY_ESCAPE) {
-                        mc.displayGuiScreen(null)
-                    }
-                }
-            }
+            ) return
         } else {
-            val keyboardBlocked = inspector.active && (
-                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
-                            inspector.mode == InspectorMode.Locked
-                    )
-            if (keyboardBlocked) {
-                pressedKeys.remove(keyCode)
-                logInspectorInput("keyboard up consumed keyCode=$keyCode")
-                mc.dispatchKeypresses()
-                return
-            }
-            if (pressedKeys.remove(keyCode)) {
-                EventBus.post(KeyboardKeyUpEvent(keyChar, keyCode))
-            }
+            if (handleKeyboardKeyUp(keyCode, keyChar, inspectorMouseX, inspectorMouseY)) return
         }
 
         mc.dispatchKeypresses()
     }
 
+    private fun handleKeyboardKeyDown(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int
+    ): Boolean {
+        if (!Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12) {
+            inspector.toggle()
+            inspectorPointerCaptured = false
+            if (inspector.active) {
+                DndRuntime.engine.cancelActiveDrag()
+                releaseDragCapture()
+                clearActiveTarget()
+                clearHoverChainStates()
+            }
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12 && inspector.active) {
+            inspector.toggleMode()
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (keyCode == Keyboard.KEY_F10) {
+            val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
+            val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
+            systemOverlayHost.togglePanelDemo(demoAnchorX, demoAnchorY)
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (keyCode == Keyboard.KEY_ESCAPE && inspector.cancelPickMode()) {
+            logInspectorInput("escape cancelled inspector pick mode")
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (consumeOverlayKeyDown(
+                keyCode = keyCode,
+                keyChar = keyChar,
+                inspectorMouseX = inspectorMouseX,
+                inspectorMouseY = inspectorMouseY
+            )
+        ) {
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (keyCode == Keyboard.KEY_F6) {
+            StyleEngine.forceReloadStylesheets()
+            requestRebuild("style reload")
+        }
+        if (pressedKeys.add(keyCode)) {
+            val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
+            EventBus.post(downEvent)
+            if (downEvent.cancelled) {
+                pressedKeys.remove(keyCode)
+            } else {
+                window.onKeyTyped(keyChar, keyCode)
+                if (keyCode == Keyboard.KEY_ESCAPE) {
+                    mc.displayGuiScreen(null)
+                }
+            }
+        }
+        return false
+    }
+
+    private fun handleKeyboardKeyUp(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int
+    ): Boolean {
+        val keyboardBlocked = inspector.active && (
+                inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                        inspector.mode == InspectorMode.Locked
+                )
+        if (keyboardBlocked) {
+            pressedKeys.remove(keyCode)
+            logInspectorInput("keyboard up consumed keyCode=$keyCode")
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (pressedKeys.remove(keyCode)) {
+            EventBus.post(KeyboardKeyUpEvent(keyChar, keyCode))
+        }
+        return false
+    }
+
     override fun handleMouseInput() {
         updateSize(force = false)
         rebuildIfNeeded()
-        val tree = domTree ?: return
+        val tree = prepareMouseInputTree() ?: return
+        val inputEvent = readMouseInputEvent()
+        syncMouseInputFrame(tree, inputEvent)
+        if (consumeOverlayPointerPhase(inputEvent)) return
+        refreshHoverTarget(inputEvent.mouseX, inputEvent.mouseY)
+        if (inputEvent.mouseButton > 2) return
+        dispatchApplicationRootPointerPhase(tree, inputEvent)
+        dispatchApplicationRootWheelPhase(inputEvent)
+        finishMouseInputEvent(inputEvent)
+    }
+
+    private data class MouseInputEvent(
+        val mouseX: Int,
+        val mouseY: Int,
+        val dWheel: Int,
+        val mouseButton: Int
+    )
+
+    private fun prepareMouseInputTree(): DomTree? {
+        val tree = domTree ?: return null
         if (needsLayout) {
             if (tryCommitLayout(tree, "handleMouseInput")) {
                 needsLayout = false
             } else {
-                return
+                return null
             }
         }
+        return tree
+    }
 
-        val mouseX = lastViewport.rawMouseToDsglX(Mouse.getEventX())
-        val mouseY = lastViewport.rawMouseToDsglY(Mouse.getEventY())
-        val dWheel = Mouse.getDWheel()
-        val mouseButton = Mouse.getEventButton()
-        inspector.onCursorMoved(mouseX, mouseY)
+    private fun readMouseInputEvent(): MouseInputEvent {
+        return MouseInputEvent(
+            mouseX = lastViewport.rawMouseToDsglX(Mouse.getEventX()),
+            mouseY = lastViewport.rawMouseToDsglY(Mouse.getEventY()),
+            dWheel = Mouse.getDWheel(),
+            mouseButton = Mouse.getEventButton()
+        )
+    }
+
+    private fun syncMouseInputFrame(tree: DomTree, inputEvent: MouseInputEvent) {
+        inspector.onCursorMoved(inputEvent.mouseX, inputEvent.mouseY)
         ContextMenuRuntime.engine.onFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
@@ -844,102 +897,126 @@ abstract class DsglScreenHost(
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
-            cursorX = mouseX,
-            cursorY = mouseY,
+            cursorX = inputEvent.mouseX,
+            cursorY = inputEvent.mouseY,
             inspectorPointerCaptured = inspectorPointerCaptured
         )
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         refreshActiveColorSamplerOwner(tree.root)
-        val appPressMove = mouseButton == -1 && eventButton != -1
-        if (!appPressMove && consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
-            consumeOverlayPointerState(mouseX, mouseY)
-            return
+    }
+
+    private fun consumeOverlayPointerPhase(inputEvent: MouseInputEvent): Boolean {
+        val appPressMove = inputEvent.mouseButton == -1 && eventButton != -1
+        if (!appPressMove && consumeOverlayPointerEvent(
+                mouseX = inputEvent.mouseX,
+                mouseY = inputEvent.mouseY,
+                dWheel = inputEvent.dWheel,
+                mouseButton = inputEvent.mouseButton
+            )
+        ) {
+            consumeOverlayPointerState(inputEvent.mouseX, inputEvent.mouseY)
+            return true
         }
+        return false
+    }
 
-
-        refreshHoverTarget(mouseX, mouseY)
-
-        if (mouseButton > 2) return
-
+    private fun dispatchApplicationRootPointerPhase(tree: DomTree, inputEvent: MouseInputEvent) {
         if (Mouse.getEventButtonState()) {
-            eventButton = mouseButton
-            lastMouseEvent = Minecraft.getSystemTime()
-            mapButton(mouseButton)?.let { mappedButton ->
-                val event = MouseDownEvent(mouseX, mouseY, mappedButton)
-                event.target = resolvePointerDownTarget()
-                EventBus.post(event)
-                DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
-                if (mappedButton == MouseButton.LEFT) {
-                    setActiveTarget(event.target ?: hoverTarget)
-                    val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
-                    if (captureTarget != null) {
-                        setDragCapture(captureTarget)
-                        captureTarget.beginPointerCapture(mouseX, mouseY, mappedButton)
-                    } else if (dragCaptureTarget != null) {
-                        releaseDragCapture()
-                    }
-                }
-            }
-        } else if (mouseButton != -1 && eventButton == mouseButton) {
-            val releaseTarget = resolvePointerUpTarget()
-            val hadDragCapture = dragCaptureTarget != null
-            eventButton = -1
-            mapButton(mouseButton)?.let { mappedButton ->
-                val upEvent = MouseUpEvent(mouseX, mouseY, mappedButton)
-                upEvent.target = releaseTarget
-                EventBus.post(upEvent)
-                dragCaptureTarget?.endPointerCapture(mouseX, mouseY, mappedButton)
-                val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
-                if (!hadDragCapture && !dndConsumed) {
-                    val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
-                    clickEvent.target = resolveClickTarget()
-                    EventBus.post(clickEvent)
-                }
-            }
-            clearActiveTarget()
-            releaseDragCapture()
+            dispatchApplicationRootPointerDown(tree, inputEvent)
+        } else if (inputEvent.mouseButton != -1 && eventButton == inputEvent.mouseButton) {
+            dispatchApplicationRootPointerUp(tree, inputEvent)
         } else if (eventButton != -1 && lastMouseEvent > 0L) {
-            mapButton(eventButton)?.let { mappedButton ->
-                val dx = mouseX - lastMouseX
-                val dy = mouseY - lastMouseY
-                if (dx != 0 || dy != 0) {
-                    DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
-                    val dragEvent = MouseDragEvent(
-                        lastMouseX,
-                        lastMouseY,
-                        dx,
-                        dy,
-                        mappedButton
-                    )
-                    if (!DndRuntime.engine.isDragging) {
-                        dragEvent.target = dragCaptureTarget ?: hoverTarget
-                        EventBus.post(dragEvent)
-                    }
-                    dragCaptureTarget?.continuePointerCapture(
-                        mouseX = mouseX,
-                        mouseY = mouseY,
-                        mouseDX = dx,
-                        mouseDY = dy,
-                        button = mappedButton
-                    )
+            dispatchApplicationRootPointerDrag(tree, inputEvent)
+        }
+    }
+
+    private fun dispatchApplicationRootPointerDown(tree: DomTree, inputEvent: MouseInputEvent) {
+        eventButton = inputEvent.mouseButton
+        lastMouseEvent = Minecraft.getSystemTime()
+        mapButton(inputEvent.mouseButton)?.let { mappedButton ->
+            val event = MouseDownEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            event.target = resolvePointerDownTarget()
+            EventBus.post(event)
+            DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
+            if (mappedButton == MouseButton.LEFT) {
+                setActiveTarget(event.target ?: hoverTarget)
+                val captureTarget =
+                    resolveDragCaptureTarget(event.target ?: hoverTarget, inputEvent.mouseX, inputEvent.mouseY)
+                if (captureTarget != null) {
+                    setDragCapture(captureTarget)
+                    captureTarget.beginPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+                } else if (dragCaptureTarget != null) {
+                    releaseDragCapture()
                 }
             }
         }
+    }
 
-        if (dWheel != 0) {
+    private fun dispatchApplicationRootPointerUp(tree: DomTree, inputEvent: MouseInputEvent) {
+        val releaseTarget = resolvePointerUpTarget()
+        val hadDragCapture = dragCaptureTarget != null
+        eventButton = -1
+        mapButton(inputEvent.mouseButton)?.let { mappedButton ->
+            val upEvent = MouseUpEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            upEvent.target = releaseTarget
+            EventBus.post(upEvent)
+            dragCaptureTarget?.endPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
+            if (!hadDragCapture && !dndConsumed) {
+                val clickEvent = MouseClickEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+                clickEvent.target = resolveClickTarget()
+                EventBus.post(clickEvent)
+            }
+        }
+        clearActiveTarget()
+        releaseDragCapture()
+    }
+
+    private fun dispatchApplicationRootPointerDrag(tree: DomTree, inputEvent: MouseInputEvent) {
+        mapButton(eventButton)?.let { mappedButton ->
+            val dx = inputEvent.mouseX - lastMouseX
+            val dy = inputEvent.mouseY - lastMouseY
+            if (dx != 0 || dy != 0) {
+                DndRuntime.engine.onMouseMove(tree.root, inputEvent.mouseX, inputEvent.mouseY)
+                val dragEvent = MouseDragEvent(
+                    lastMouseX,
+                    lastMouseY,
+                    dx,
+                    dy,
+                    mappedButton
+                )
+                if (!DndRuntime.engine.isDragging) {
+                    dragEvent.target = dragCaptureTarget ?: hoverTarget
+                    EventBus.post(dragEvent)
+                }
+                dragCaptureTarget?.continuePointerCapture(
+                    mouseX = inputEvent.mouseX,
+                    mouseY = inputEvent.mouseY,
+                    mouseDX = dx,
+                    mouseDY = dy,
+                    button = mappedButton
+                )
+            }
+        }
+    }
+
+    private fun dispatchApplicationRootWheelPhase(inputEvent: MouseInputEvent) {
+        if (inputEvent.dWheel != 0) {
             val wheelTarget = resolveWheelTarget()
             if (wheelTarget != null) {
-                val wheelEvent = MouseWheelEvent(mouseX, mouseY, dWheel)
+                val wheelEvent = MouseWheelEvent(inputEvent.mouseX, inputEvent.mouseY, inputEvent.dWheel)
                 wheelEvent.target = wheelTarget
                 EventBus.post(wheelEvent)
                 if (!wheelEvent.cancelled) {
-                    bubbleGenericWheel(wheelTarget, mouseX, mouseY, dWheel)
+                    bubbleGenericWheel(wheelTarget, inputEvent.mouseX, inputEvent.mouseY, inputEvent.dWheel)
                 }
             }
         }
+    }
 
-        lastMouseX = mouseX
-        lastMouseY = mouseY
+    private fun finishMouseInputEvent(inputEvent: MouseInputEvent) {
+        lastMouseX = inputEvent.mouseX
+        lastMouseY = inputEvent.mouseY
     }
 
     private fun consumeOverlayKeyDown(
