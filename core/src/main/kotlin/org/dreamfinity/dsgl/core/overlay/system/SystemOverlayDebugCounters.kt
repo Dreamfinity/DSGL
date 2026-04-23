@@ -2,7 +2,9 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 internal object SystemOverlayDebugCounters {
     @Volatile
-    private var enabled: Boolean = java.lang.Boolean.getBoolean("dsgl.systemOverlay.debugCounters")
+    private var enabled: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.systemOverlay.debugCounters")
 
     @Volatile
     private var rawNodeCreated: Long = 0L
@@ -24,7 +26,7 @@ internal object SystemOverlayDebugCounters {
         val rawNodeReused: Long,
         val rawNodeRemoved: Long,
         val rawNodeActive: Long,
-        val rawNodePeakActive: Long
+        val rawNodePeakActive: Long,
     )
 
     fun setEnabled(value: Boolean) {
@@ -39,15 +41,14 @@ internal object SystemOverlayDebugCounters {
         rawNodePeakActive = 0L
     }
 
-    fun snapshot(): Snapshot {
-        return Snapshot(
+    fun snapshot(): Snapshot =
+        Snapshot(
             rawNodeCreated = rawNodeCreated,
             rawNodeReused = rawNodeReused,
             rawNodeRemoved = rawNodeRemoved,
             rawNodeActive = rawNodeActive,
-            rawNodePeakActive = rawNodePeakActive
+            rawNodePeakActive = rawNodePeakActive,
         )
-    }
 
     fun onRawNodeCreated() {
         if (!enabled) return

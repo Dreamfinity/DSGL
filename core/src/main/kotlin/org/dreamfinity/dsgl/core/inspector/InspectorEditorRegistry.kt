@@ -18,31 +18,32 @@ enum class InspectorEditorKind {
     EnumSelect,
     FontSelect,
     StringInput,
-    NumericInput
+    NumericInput,
 }
 
 data class InspectorEditorDescriptor(
     val kind: InspectorEditorKind,
     val options: List<String> = emptyList(),
     val supportsUnits: Boolean = false,
-    val showColorPreview: Boolean = false
+    val showColorPreview: Boolean = false,
 )
 
 data class InspectorNumberUnitValue(
     val numberText: String,
     val unit: CssUnit?,
-    val isAuto: Boolean
+    val isAuto: Boolean,
 )
 
 object InspectorEditorRegistry {
-    private val unitOptions: List<CssUnit> = listOf(
-        CssUnit.Px,
-        CssUnit.Em,
-        CssUnit.Rem,
-        CssUnit.Vw,
-        CssUnit.Vh,
-        CssUnit.Percent
-    )
+    private val unitOptions: List<CssUnit> =
+        listOf(
+            CssUnit.Px,
+            CssUnit.Em,
+            CssUnit.Rem,
+            CssUnit.Vw,
+            CssUnit.Vh,
+            CssUnit.Percent,
+        )
 
     fun describe(property: StyleProperty, literal: String, expression: StyleExpression?): InspectorEditorDescriptor {
         val descriptor = StylePropertyRegistry.descriptor(property)
@@ -50,14 +51,14 @@ object InspectorEditorRegistry {
             StyleInspectorEditorKind.FontSelect -> {
                 InspectorEditorDescriptor(
                     kind = InspectorEditorKind.FontSelect,
-                    options = fontOptions()
+                    options = fontOptions(),
                 )
             }
 
             StyleInspectorEditorKind.EnumSelect -> {
                 InspectorEditorDescriptor(
                     kind = InspectorEditorKind.EnumSelect,
-                    options = descriptor.enumOptions
+                    options = descriptor.enumOptions,
                 )
             }
 
@@ -65,17 +66,19 @@ object InspectorEditorRegistry {
                 InspectorEditorDescriptor(
                     kind = InspectorEditorKind.NumericInput,
                     options = descriptor.enumOptions,
-                    supportsUnits = descriptor.grammarKind == StyleValueGrammarKind.LengthLike ||
-                        descriptor.grammarKind == StyleValueGrammarKind.LineHeight
+                    supportsUnits =
+                        descriptor.grammarKind == StyleValueGrammarKind.LengthLike ||
+                            descriptor.grammarKind == StyleValueGrammarKind.LineHeight,
                 )
             }
 
             StyleInspectorEditorKind.StringInput -> {
                 InspectorEditorDescriptor(
                     kind = InspectorEditorKind.StringInput,
-                    showColorPreview = isColorProperty(property) ||
-                        looksLikeColorLiteral(literal) ||
-                        expression is StyleExpression.VariableRef
+                    showColorPreview =
+                        isColorProperty(property) ||
+                            looksLikeColorLiteral(literal) ||
+                            expression is StyleExpression.VariableRef,
                 )
             }
         }
@@ -86,29 +89,28 @@ object InspectorEditorRegistry {
         return when (descriptor.valueType) {
             StyleEditorValueType.LengthPx,
             StyleEditorValueType.OptionalLengthPx,
-            StyleEditorValueType.SpacingLengthPx -> parseLengthLikeNumberUnit(rawLiteral)
+            StyleEditorValueType.SpacingLengthPx,
+            -> parseLengthLikeNumberUnit(rawLiteral)
 
             StyleEditorValueType.LineHeight -> parseLineHeightNumberUnit(rawLiteral)
 
             StyleEditorValueType.IntNumber -> parseUnitlessInt(rawLiteral, allowAuto = false)
             StyleEditorValueType.OptionalIntNumber -> parseUnitlessInt(rawLiteral, allowAuto = true)
             StyleEditorValueType.FloatNumber,
-            StyleEditorValueType.Spacing -> parseUnitlessFloat(rawLiteral)
+            StyleEditorValueType.Spacing,
+            -> parseUnitlessFloat(rawLiteral)
 
             else -> null
         }
     }
 
-    fun formatNumericLiteral(
-        property: StyleProperty,
-        numberText: String,
-        unitToken: String?
-    ): String {
+    fun formatNumericLiteral(property: StyleProperty, numberText: String, unitToken: String?): String {
         val descriptor = StylePropertyRegistry.descriptor(property)
         return when (descriptor.valueType) {
             StyleEditorValueType.LengthPx,
             StyleEditorValueType.OptionalLengthPx,
-            StyleEditorValueType.SpacingLengthPx -> {
+            StyleEditorValueType.SpacingLengthPx,
+            -> {
                 val unit = parseCssUnitToken(unitToken) ?: CssUnit.Px
                 formatNumberUnit(numberText, unit)
             }
@@ -138,7 +140,8 @@ object InspectorEditorRegistry {
             }
 
             StyleEditorValueType.FloatNumber,
-            StyleEditorValueType.Spacing -> {
+            StyleEditorValueType.Spacing,
+            -> {
                 val normalized = numberText.trim()
                 if (normalized.isEmpty()) {
                     "0"
@@ -165,14 +168,13 @@ object InspectorEditorRegistry {
         val descriptor = StylePropertyRegistry.descriptor(property)
         return when (descriptor.grammarKind) {
             StyleValueGrammarKind.LengthLike,
-            StyleValueGrammarKind.LineHeight -> CssUnit.Px
+            StyleValueGrammarKind.LineHeight,
+            -> CssUnit.Px
             else -> null
         }
     }
 
-    fun parseNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
-        return parseLengthLikeNumberUnit(rawLiteral)
-    }
+    fun parseNumberUnit(rawLiteral: String): InspectorNumberUnitValue? = parseLengthLikeNumberUnit(rawLiteral)
 
     fun formatNumberUnit(numberText: String, unit: CssUnit?): String {
         val trimmed = numberText.trim()
@@ -185,11 +187,10 @@ object InspectorEditorRegistry {
 
     fun unitOptions(): List<CssUnit> = unitOptions
 
-    fun isColorProperty(property: StyleProperty): Boolean {
-        return property == StyleProperty.BACKGROUND_COLOR ||
+    fun isColorProperty(property: StyleProperty): Boolean =
+        property == StyleProperty.BACKGROUND_COLOR ||
             property == StyleProperty.BORDER_COLOR ||
             property == StyleProperty.FOREGROUND_COLOR
-    }
 
     fun looksLikeColorLiteral(literal: String): Boolean {
         val value = literal.trim()
@@ -198,9 +199,7 @@ object InspectorEditorRegistry {
         return hex.length == 3 || hex.length == 6 || hex.length == 8
     }
 
-    private fun fontOptions(): List<String> {
-        return FontRegistry.allFontIds().sortedBy { it.lowercase() }
-    }
+    private fun fontOptions(): List<String> = FontRegistry.allFontIds().sortedBy { it.lowercase() }
 
     private fun parseLengthLikeNumberUnit(rawLiteral: String): InspectorNumberUnitValue? {
         val normalized = rawLiteral.trim()
@@ -208,14 +207,19 @@ object InspectorEditorRegistry {
         if (normalized.equals("auto", ignoreCase = true)) {
             return InspectorNumberUnitValue(numberText = "0", unit = CssUnit.Px, isAuto = true)
         }
-        val token = normalized.split(Regex("\\s+")).firstOrNull()?.trim().orEmpty()
+        val token =
+            normalized
+                .split(Regex("\\s+"))
+                .firstOrNull()
+                ?.trim()
+                .orEmpty()
         if (token.isEmpty()) return null
         return runCatching {
             val parsed = parseCssLength(token, allowUnitlessZero = true)
             InspectorNumberUnitValue(
                 numberText = stripTrailingZeros(parsed.value),
                 unit = parsed.unit,
-                isAuto = false
+                isAuto = false,
             )
         }.getOrNull()
     }
@@ -232,7 +236,7 @@ object InspectorEditorRegistry {
             InspectorNumberUnitValue(
                 numberText = stripTrailingZeros(parsed.value),
                 unit = parsed.unit,
-                isAuto = false
+                isAuto = false,
             )
         }.getOrNull()
     }
@@ -248,7 +252,7 @@ object InspectorEditorRegistry {
             InspectorNumberUnitValue(
                 numberText = parsed.toString(),
                 unit = null,
-                isAuto = false
+                isAuto = false,
             )
         }.getOrNull()
     }
@@ -261,7 +265,7 @@ object InspectorEditorRegistry {
             InspectorNumberUnitValue(
                 numberText = stripTrailingZeros(parsed),
                 unit = null,
-                isAuto = false
+                isAuto = false,
             )
         }.getOrNull()
     }

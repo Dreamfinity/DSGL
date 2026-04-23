@@ -1,7 +1,6 @@
 package org.dreamfinity.dsgl.core.debug
 
 import org.dreamfinity.dsgl.core.DomTree
-import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -11,6 +10,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
@@ -29,11 +29,11 @@ internal data class OverlayDebugControlLayout(
     val systemOverlayTintRect: Rect,
     val systemOverlayRenderRect: Rect,
     val systemOverlayInputRect: Rect,
-    val resetRect: Rect
+    val resetRect: Rect,
 )
 
 class OverlayDebugControlHost(
-    private val state: OverlayLayerDebugState = OverlayLayerDebugState
+    private val state: OverlayLayerDebugState = OverlayLayerDebugState,
 ) {
     private data class ToggleSnapshot(
         val applicationOverlayRenderEnabled: Boolean,
@@ -41,17 +41,18 @@ class OverlayDebugControlHost(
         val applicationOverlayInputEnabled: Boolean,
         val systemOverlayRenderEnabled: Boolean,
         val systemOverlayTintEnabled: Boolean,
-        val systemOverlayInputEnabled: Boolean
+        val systemOverlayInputEnabled: Boolean,
     )
 
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1
     private var layout: OverlayDebugControlLayout? = null
     private val rootNode: OverlayDebugControlRootNode = OverlayDebugControlRootNode()
-    private val tree: DomTree = DomTree(
-        root = rootNode,
-        styleScope = StyleApplicationScope.SystemOverlay
-    )
+    private val tree: DomTree =
+        DomTree(
+            root = rootNode,
+            styleScope = StyleApplicationScope.SystemOverlay,
+        )
     private var lastToggleSnapshot: ToggleSnapshot? = null
 
     fun render(viewportWidth: Int, viewportHeight: Int) {
@@ -150,12 +151,13 @@ class OverlayDebugControlHost(
         val panelHeight = 176 + 56
         val panelX = 8
         val panelY = (viewportHeight - panelHeight - 8).coerceAtLeast(8)
-        val panelRect = Rect(
-            x = panelX,
-            y = panelY,
-            width = panelWidth.coerceAtMost((viewportWidth - 16).coerceAtLeast(120)),
-            height = panelHeight.coerceAtMost((viewportHeight - 16).coerceAtLeast(96))
-        )
+        val panelRect =
+            Rect(
+                x = panelX,
+                y = panelY,
+                width = panelWidth.coerceAtMost((viewportWidth - 16).coerceAtLeast(120)),
+                height = panelHeight.coerceAtMost((viewportHeight - 16).coerceAtLeast(96)),
+            )
         val toggleWidth = 56
         val toggleHeight = 18
         val toggleX = panelRect.x + panelRect.width - toggleWidth - 10
@@ -170,53 +172,58 @@ class OverlayDebugControlHost(
             systemOverlayRenderRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
             systemOverlayTintRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
             systemOverlayInputRect = Rect(toggleX, firstY + rowStep * row++, toggleWidth, toggleHeight),
-            resetRect = Rect(
-                x = panelRect.x + 10,
-                y = panelRect.y + panelRect.height - 40,
-                width = panelRect.width - 20,
-                height = 20
-            )
+            resetRect =
+                Rect(
+                    x = panelRect.x + 10,
+                    y = panelRect.y + panelRect.height - 40,
+                    width = panelRect.width - 20,
+                    height = 20,
+                ),
         )
     }
 
-    private fun OverlayLayerDebugSnapshot.toggleSnapshot(): ToggleSnapshot {
-        return ToggleSnapshot(
+    private fun OverlayLayerDebugSnapshot.toggleSnapshot(): ToggleSnapshot =
+        ToggleSnapshot(
             applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
             applicationOverlayTintEnabled = applicationOverlayTintEnabled,
             applicationOverlayInputEnabled = applicationOverlayInputEnabled,
             systemOverlayRenderEnabled = systemOverlayRenderEnabled,
             systemOverlayTintEnabled = systemOverlayTintEnabled,
-            systemOverlayInputEnabled = systemOverlayInputEnabled
+            systemOverlayInputEnabled = systemOverlayInputEnabled,
         )
-    }
 }
 
 private class OverlayDebugControlRootNode(
-    key: Any? = "dsgl-overlay-debug-root"
+    key: Any? = "dsgl-overlay-debug-root",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-overlay-debug-root"
 
     private val scope = UiScope(this)
-    private val shadowNode: ContainerNode = scope.div({
-        this.key = "dsgl-overlay-debug-shadow"
-    })
-    private val panelNode: ContainerNode = scope.div({
-        this.key = "dsgl-overlay-debug-panel"
-    })
-    private val titleNode: TextNode = scope.text(props = {
-        this.key = "dsgl-overlay-debug-title"
-        source = TextSource.Static("Overlay Debug")
-        style = {
-            textWrap = TextWrap.NoWrap
-        }
-    })
+    private val shadowNode: ContainerNode =
+        scope.div({
+            this.key = "dsgl-overlay-debug-shadow"
+        })
+    private val panelNode: ContainerNode =
+        scope.div({
+            this.key = "dsgl-overlay-debug-panel"
+        })
+    private val titleNode: TextNode =
+        scope.text(props = {
+            this.key = "dsgl-overlay-debug-title"
+            source = TextSource.Static("Overlay Debug")
+            style = {
+                textWrap = TextWrap.NoWrap
+            }
+        })
 
     private val appRenderLabelNode: TextNode = labelNode("App Overlay Render", "dsgl-overlay-debug-label-app-render")
     private val appTintLabelNode: TextNode = labelNode("App Overlay Tint", "dsgl-overlay-debug-label-app-tint")
     private val appInputLabelNode: TextNode = labelNode("App Overlay Input", "dsgl-overlay-debug-label-app-input")
-    private val systemRenderLabelNode: TextNode = labelNode("System Overlay Render", "dsgl-overlay-debug-label-system-render")
+    private val systemRenderLabelNode: TextNode =
+        labelNode("System Overlay Render", "dsgl-overlay-debug-label-system-render")
     private val systemTintLabelNode: TextNode = labelNode("System Overlay Tint", "dsgl-overlay-debug-label-system-tint")
-    private val systemInputLabelNode: TextNode = labelNode("System Overlay Input", "dsgl-overlay-debug-label-system-input")
+    private val systemInputLabelNode: TextNode =
+        labelNode("System Overlay Input", "dsgl-overlay-debug-label-system-input")
 
     private val appRenderToggleNode: ButtonNode = toggleNode("dsgl-overlay-debug-toggle-app-render")
     private val appTintToggleNode: ButtonNode = toggleNode("dsgl-overlay-debug-toggle-app-tint")
@@ -225,50 +232,59 @@ private class OverlayDebugControlRootNode(
     private val systemTintToggleNode: ButtonNode = toggleNode("dsgl-overlay-debug-toggle-system-tint")
     private val systemInputToggleNode: ButtonNode = toggleNode("dsgl-overlay-debug-toggle-system-input")
 
-    private val resetButtonNode: ButtonNode = scope.button("Reset All", {
-        this.key = "dsgl-overlay-debug-reset"
-        style = {
-            textWrap = TextWrap.NoWrap
-        }
-    })
+    private val resetButtonNode: ButtonNode =
+        scope.button("Reset All", {
+            this.key = "dsgl-overlay-debug-reset"
+            style = {
+                textWrap = TextWrap.NoWrap
+            }
+        })
 
-    private val statusNode: TextNode = scope.text(props = {
-        this.key = "dsgl-overlay-debug-status"
-        source = TextSource.Static("")
-        style = {
-            textWrap = TextWrap.NoWrap
-        }
-    })
+    private val statusNode: TextNode =
+        scope.text(props = {
+            this.key = "dsgl-overlay-debug-status"
+            source = TextSource.Static("")
+            style = {
+                textWrap = TextWrap.NoWrap
+            }
+        })
 
     private var layout: OverlayDebugControlLayout? = null
-    private var snapshot: OverlayLayerDebugSnapshot = OverlayLayerDebugSnapshot(
-        applicationOverlayRenderEnabled = true,
-        applicationOverlayTintEnabled = false,
-        applicationOverlayInputEnabled = true,
-        systemOverlayRenderEnabled = true,
-        systemOverlayTintEnabled = false,
-        systemOverlayInputEnabled = true,
-        frameFps = 0,
-        frameTimeMs = 0f,
-        frameFpsWindow = 0,
-        frameTimeWindowMs = 0f
-    )
+    private var snapshot: OverlayLayerDebugSnapshot =
+        OverlayLayerDebugSnapshot(
+            applicationOverlayRenderEnabled = true,
+            applicationOverlayTintEnabled = false,
+            applicationOverlayInputEnabled = true,
+            systemOverlayRenderEnabled = true,
+            systemOverlayTintEnabled = false,
+            systemOverlayInputEnabled = true,
+            frameFps = 0,
+            frameTimeMs = 0f,
+            frameFpsWindow = 0,
+            frameTimeWindowMs = 0f,
+        )
 
     fun bind(layout: OverlayDebugControlLayout, snapshot: OverlayLayerDebugSnapshot) {
         this.layout = layout
         this.snapshot = snapshot
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
-        val localLayout = layout ?: run {
-            hideAll(ctx)
-            return
-        }
+        val localLayout =
+            layout ?: run {
+                hideAll(ctx)
+                return
+            }
 
         val panelRect = localLayout.panelRect
         val shadowRect = Rect(panelRect.x + 2, panelRect.y + 2, panelRect.width, panelRect.height)
@@ -301,9 +317,12 @@ private class OverlayDebugControlRootNode(
         resetButtonNode.textColor = 0xFFFFFFFF.toInt()
         resetButtonNode.fontSize = 14
 
+        val rApp = if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"
+        val rSys = if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"
+        val iApp = if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"
+        val iSys = if (snapshot.systemOverlayInputEnabled) "S1" else "S0"
         val statusTextValue =
-            "R:${if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"}  " +
-                "I:${if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"}/${if (snapshot.systemOverlayInputEnabled) "S1" else "S0"}  " +
+            "R:$rApp/$rSys  I:$iApp/$iSys  " +
                 "FPS:${snapshot.frameFps} (${String.format(Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
                 "AvgFPS:${snapshot.frameFpsWindow} (${String.format(Locale.US, "%.1f", snapshot.frameTimeWindowMs)}ms)"
         statusNode.setText(statusTextValue)
@@ -317,7 +336,13 @@ private class OverlayDebugControlRootNode(
         renderToggleRow(ctx, panelRect, localLayout.appOverlayRenderRect, appRenderLabelNode, appRenderToggleNode)
         renderToggleRow(ctx, panelRect, localLayout.appOverlayTintRect, appTintLabelNode, appTintToggleNode)
         renderToggleRow(ctx, panelRect, localLayout.appOverlayInputRect, appInputLabelNode, appInputToggleNode)
-        renderToggleRow(ctx, panelRect, localLayout.systemOverlayRenderRect, systemRenderLabelNode, systemRenderToggleNode)
+        renderToggleRow(
+            ctx,
+            panelRect,
+            localLayout.systemOverlayRenderRect,
+            systemRenderLabelNode,
+            systemRenderToggleNode,
+        )
         renderToggleRow(ctx, panelRect, localLayout.systemOverlayTintRect, systemTintLabelNode, systemTintToggleNode)
         renderToggleRow(ctx, panelRect, localLayout.systemOverlayInputRect, systemInputLabelNode, systemInputToggleNode)
 
@@ -329,29 +354,27 @@ private class OverlayDebugControlRootNode(
                 x = panelRect.x + 10,
                 y = panelRect.y + panelRect.height - 14,
                 width = (panelRect.width - 20).coerceAtLeast(1),
-                height = 14
-            )
+                height = 14,
+            ),
         )
     }
 
-    private fun labelNode(text: String, key: Any): TextNode {
-        return scope.text(props = {
+    private fun labelNode(text: String, key: Any): TextNode =
+        scope.text(props = {
             this.key = key
             source = TextSource.Static(text)
             style = {
                 textWrap = TextWrap.NoWrap
             }
         })
-    }
 
-    private fun toggleNode(key: Any): ButtonNode {
-        return scope.button("ON", {
+    private fun toggleNode(key: Any): ButtonNode =
+        scope.button("ON", {
             this.key = key
             style = {
                 textWrap = TextWrap.NoWrap
             }
         })
-    }
 
     private fun applyLabelStyle(node: TextNode) {
         node.color = 0xFFE0E9F2.toInt()
@@ -371,14 +394,15 @@ private class OverlayDebugControlRootNode(
         panelRect: Rect,
         toggleRect: Rect,
         labelNode: TextNode,
-        toggleNode: ButtonNode
+        toggleNode: ButtonNode,
     ) {
-        val labelRect = Rect(
-            x = panelRect.x + 10,
-            y = toggleRect.y + 2,
-            width = (toggleRect.x - (panelRect.x + 16)).coerceAtLeast(1),
-            height = (toggleRect.height - 2).coerceAtLeast(1)
-        )
+        val labelRect =
+            Rect(
+                x = panelRect.x + 10,
+                y = toggleRect.y + 2,
+                width = (toggleRect.x - (panelRect.x + 16)).coerceAtLeast(1),
+                height = (toggleRect.height - 2).coerceAtLeast(1),
+            )
         renderNode(ctx, labelNode, labelRect)
         renderNode(ctx, toggleNode, toggleRect)
     }

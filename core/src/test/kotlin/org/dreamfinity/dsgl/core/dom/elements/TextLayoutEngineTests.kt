@@ -11,13 +11,14 @@ class TextLayoutEngineTests {
 
     @Test
     fun `wrap mode breaks lines by width`() {
-        val layout = TextLayoutEngine.layout(
-            text = "one two three",
-            maxWidth = 5,
-            wrap = TextWrap.Wrap,
-            fontHeight = 9,
-            measureText = measure
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = "one two three",
+                maxWidth = 5,
+                wrap = TextWrap.Wrap,
+                fontHeight = 9,
+                measureText = measure,
+            )
 
         assertTrue(layout.lines.size > 1)
         assertTrue(layout.lines.all { it.width <= 5 })
@@ -26,27 +27,34 @@ class TextLayoutEngineTests {
 
     @Test
     fun `nowrap mode keeps single line`() {
-        val layout = TextLayoutEngine.layout(
-            text = "one two three",
-            maxWidth = 5,
-            wrap = TextWrap.NoWrap,
-            fontHeight = 9,
-            measureText = measure
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = "one two three",
+                maxWidth = 5,
+                wrap = TextWrap.NoWrap,
+                fontHeight = 9,
+                measureText = measure,
+            )
 
         assertEquals(1, layout.lines.size)
-        assertEquals("one two three", layout.lines.single().text)
+        assertEquals(
+            "one two three",
+            layout.lines
+                .single()
+                .text,
+        )
     }
 
     @Test
     fun `wrap mode hard breaks long words`() {
-        val layout = TextLayoutEngine.layout(
-            text = "abcdefghij",
-            maxWidth = 4,
-            wrap = TextWrap.Wrap,
-            fontHeight = 10,
-            measureText = measure
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = "abcdefghij",
+                maxWidth = 4,
+                wrap = TextWrap.Wrap,
+                fontHeight = 10,
+                measureText = measure,
+            )
 
         assertEquals(listOf("abcd", "efgh", "ij"), layout.lines.map { it.text })
         assertTrue(layout.lines.all { it.width <= 4 })
@@ -54,13 +62,14 @@ class TextLayoutEngineTests {
 
     @Test
     fun `newline indices are preserved for caret mapping`() {
-        val layout = TextLayoutEngine.layout(
-            text = "ab\ncd",
-            maxWidth = null,
-            wrap = TextWrap.NoWrap,
-            fontHeight = 8,
-            measureText = measure
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = "ab\ncd",
+                maxWidth = null,
+                wrap = TextWrap.NoWrap,
+                fontHeight = 8,
+                measureText = measure,
+            )
 
         assertEquals(2, layout.lines.size)
         assertEquals(0, layout.lineForCaret(2))

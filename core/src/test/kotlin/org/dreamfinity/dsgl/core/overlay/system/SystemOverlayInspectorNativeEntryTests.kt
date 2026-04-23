@@ -25,11 +25,14 @@ import java.nio.file.Files
 import kotlin.test.*
 
 class SystemOverlayInspectorNativeEntryTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -41,15 +44,18 @@ class SystemOverlayInspectorNativeEntryTests {
 
     @Test
     fun `inspector migration removes intermediate native overlay model classes`() {
-        val loadResult = runCatching {
-            Class.forName("org.dreamfinity.dsgl.core.inspector.InspectorNativeOverlayModel")
-        }
+        val loadResult =
+            runCatching {
+                Class.forName("org.dreamfinity.dsgl.core.inspector.InspectorNativeOverlayModel")
+            }
         assertTrue(loadResult.isFailure)
     }
 
     @Test
     fun `inspector controller no longer exposes manual append overlay commands path`() {
-        val methodNames = InspectorController::class.java.methods.map { it.name }
+        val methodNames =
+            InspectorController::class.java.methods
+                .map { it.name }
         assertFalse(methodNames.contains("appendOverlayCommands"))
     }
 
@@ -96,7 +102,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
 
@@ -122,7 +128,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -134,7 +140,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 2L,
             cursorX = 84,
             cursorY = 96,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
 
@@ -145,10 +151,12 @@ class SystemOverlayInspectorNativeEntryTests {
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
         val directChildren = inspectorNode.children.toList()
 
-        val occluder = directChildren.firstOrNull { it.key == "dsgl-system-inspector-panel-occluder" }
-            ?: error("occluder node missing")
-        val selectedContentFill = directChildren.firstOrNull { it.key == "dsgl-system-inspector-selected-content-fill" }
-            ?: error("selected content fill node missing")
+        val occluder =
+            directChildren.firstOrNull { it.key == "dsgl-system-inspector-panel-occluder" }
+                ?: error("occluder node missing")
+        val selectedContentFill =
+            directChildren.firstOrNull { it.key == "dsgl-system-inspector-selected-content-fill" }
+                ?: error("selected content fill node missing")
 
         assertEquals(panelRect, occluder.bounds)
         assertEquals(highlight.contentRect, selectedContentFill.bounds)
@@ -170,7 +178,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
 
@@ -187,12 +195,13 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
-        val openedByClick = if (colorAction != null) {
-            host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
+        val openedByClick =
+            if (colorAction != null) {
+                host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
                     host.handleMouseUp(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT)
-        } else {
-            false
-        }
+            } else {
+                false
+            }
         if (!openedByClick) {
             assertTrue(inspector.debugOpenColorPickerForSelection(StyleProperty.BACKGROUND_COLOR, colorAnchor))
         }
@@ -202,7 +211,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = colorAnchor.x + 1,
             cursorY = colorAnchor.y + 1,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         assertTrue(host.isSystemColorPickerOpen())
         assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
@@ -226,7 +235,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
 
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -290,11 +299,13 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 1280, 720)
 
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val panelHostNode = collectNodes(inspectorNode).firstOrNull { node ->
-            (node.key?.toString() ?: "").startsWith("dsgl-overlay-panel-")
-        } ?: error("panel host node missing")
-        val minimizedChipNode = collectNodes(inspectorNode).firstOrNull { it.key == "dsgl-system-inspector-chip" }
-            ?: error("minimized chip node missing")
+        val panelHostNode =
+            collectNodes(inspectorNode).firstOrNull { node ->
+                (node.key?.toString() ?: "").startsWith("dsgl-overlay-panel-")
+            } ?: error("panel host node missing")
+        val minimizedChipNode =
+            collectNodes(inspectorNode).firstOrNull { it.key == "dsgl-system-inspector-chip" }
+                ?: error("minimized chip node missing")
 
         assertEquals(0, panelHostNode.bounds.width)
         assertEquals(0, panelHostNode.bounds.height)
@@ -334,7 +345,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = dragX,
             cursorY = dragY,
-            inspectorPointerCaptured = inspector.isPointerCaptured
+            inspectorPointerCaptured = inspector.isPointerCaptured,
         )
         host.render(ctx, 1280, 720)
 
@@ -361,7 +372,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -380,7 +391,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = wheelX,
             cursorY = wheelY,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -397,7 +408,6 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(inspector.panelScrollOffsetY >= afterWheel)
     }
 
-
     @Test
     fun `scrollbar drag release over control ends capture and does not trigger control click`() {
         val inspector = InspectorController()
@@ -412,7 +422,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -445,7 +455,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = releaseX,
             cursorY = releaseY + 48,
-            inspectorPointerCaptured = inspector.isPointerCaptured
+            inspectorPointerCaptured = inspector.isPointerCaptured,
         )
         host.render(ctx, 420, 280)
         assertEquals(scrollAfterRelease, inspector.panelScrollOffsetY)
@@ -465,7 +475,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -480,14 +490,16 @@ class SystemOverlayInspectorNativeEntryTests {
         val panelRect = inspector.overlayPanelRect() ?: error("panel rect missing")
         val modeBeforeRelease = inspector.mode
 
-        val candidatePoints = listOf(
-            Pair((panelRect.x + panelRect.width + 4).coerceAtMost(419), panelRect.y + 6),
-            Pair((panelRect.x - 4).coerceAtLeast(0), panelRect.y + 6),
-            Pair(panelRect.x + 6, (panelRect.y - 4).coerceAtLeast(0)),
-            Pair(panelRect.x + 6, (panelRect.y + panelRect.height + 4).coerceAtMost(279))
-        )
-        val outsidePoint = candidatePoints.firstOrNull { (x, y) -> !panelRect.contains(x, y) }
-            ?: error("failed to find outside release point")
+        val candidatePoints =
+            listOf(
+                Pair((panelRect.x + panelRect.width + 4).coerceAtMost(419), panelRect.y + 6),
+                Pair((panelRect.x - 4).coerceAtLeast(0), panelRect.y + 6),
+                Pair(panelRect.x + 6, (panelRect.y - 4).coerceAtLeast(0)),
+                Pair(panelRect.x + 6, (panelRect.y + panelRect.height + 4).coerceAtMost(279)),
+            )
+        val outsidePoint =
+            candidatePoints.firstOrNull { (x, y) -> !panelRect.contains(x, y) }
+                ?: error("failed to find outside release point")
         val releaseX = outsidePoint.first
         val releaseY = outsidePoint.second
 
@@ -506,7 +518,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = (releaseX + 32).coerceAtMost(419),
             cursorY = (releaseY + 32).coerceAtMost(279),
-            inspectorPointerCaptured = inspector.isPointerCaptured
+            inspectorPointerCaptured = inspector.isPointerCaptured,
         )
         host.render(ctx, 420, 280)
         assertEquals(scrollAfterRelease, inspector.panelScrollOffsetY)
@@ -527,8 +539,8 @@ class SystemOverlayInspectorNativeEntryTests {
                     ownerScope = OverlayOwnerScope.Application,
                     anchorRect = Rect(240, 210, 20, 18),
                     title = "App Popup",
-                    state = popupState()
-                )
+                    state = popupState(),
+                ),
             )
             assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
 
@@ -539,7 +551,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 1L,
                 cursorX = 984,
                 cursorY = 144,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 1280, 720)
             assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -549,17 +561,18 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 2L,
                 cursorX = 80,
                 cursorY = 52,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 1280, 720)
             val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
             val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
-            val openedByClick = if (colorAction != null) {
-                host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
+            val openedByClick =
+                if (colorAction != null) {
+                    host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
                         host.handleMouseUp(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT)
-            } else {
-                false
-            }
+                } else {
+                    false
+                }
             if (!openedByClick) {
                 assertTrue(inspector.debugOpenColorPickerForSelection(StyleProperty.BACKGROUND_COLOR, colorAnchor))
             }
@@ -568,7 +581,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 3L,
                 cursorX = colorAnchor.x + 1,
                 cursorY = colorAnchor.y + 1,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
 
             assertTrue(host.isSystemColorPickerOpen())
@@ -581,7 +594,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 4L,
                 cursorX = colorAnchor.x + 1,
                 cursorY = colorAnchor.y + 1,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             assertFalse(host.isSystemColorPickerOpen())
             assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
@@ -604,7 +617,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = revision,
                 cursorX = cursorX,
                 cursorY = cursorY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 1280, 720)
         }
@@ -618,12 +631,13 @@ class SystemOverlayInspectorNativeEntryTests {
         sync(revision = 2L, cursorX = 80, cursorY = 52)
         val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
-        val openedByClick = if (colorAction != null) {
-            host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
+        val openedByClick =
+            if (colorAction != null) {
+                host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
                     host.handleMouseUp(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT)
-        } else {
-            false
-        }
+            } else {
+                false
+            }
         if (!openedByClick) {
             assertTrue(inspector.debugOpenColorPickerForSelection(StyleProperty.BACKGROUND_COLOR, colorAnchor))
         }
@@ -633,13 +647,14 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val layout = host.debugSystemColorPickerBodyLayout() ?: error("color picker body layout missing")
         val style = ColorPickerStyle()
-        val hoverTargets = listOf(
-            "dsgl-system-color-picker-mode-select" to layout.modeSelectRect,
-            "dsgl-system-color-picker-order-argb" to (layout.argbOrderRect ?: error("argb order rect missing")),
-            "dsgl-system-color-picker-button-copy" to layout.copyRect,
-            "dsgl-system-color-picker-button-paste" to layout.pasteRect,
-            "dsgl-system-color-picker-button-pipette" to layout.pipetteRect
-        )
+        val hoverTargets =
+            listOf(
+                "dsgl-system-color-picker-mode-select" to layout.modeSelectRect,
+                "dsgl-system-color-picker-order-argb" to (layout.argbOrderRect ?: error("argb order rect missing")),
+                "dsgl-system-color-picker-button-copy" to layout.copyRect,
+                "dsgl-system-color-picker-button-paste" to layout.pasteRect,
+                "dsgl-system-color-picker-button-pipette" to layout.pipetteRect,
+            )
 
         var revision = 4L
         hoverTargets.forEach { (key, rect) ->
@@ -648,11 +663,13 @@ class SystemOverlayInspectorNativeEntryTests {
             assertTrue(host.handleMouseMove(hoverX, hoverY), "expected hover move to be consumed for $key")
             sync(revision = revision++, cursorX = hoverX, cursorY = hoverY)
 
-            val pickerNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup)
-                ?: error("color picker entry missing")
-            val buttonNode = collectNodes(pickerNode)
-                .firstOrNull { it.key?.toString() == key } as? ButtonNode
-                ?: error("button node missing for $key")
+            val pickerNode =
+                host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup)
+                    ?: error("color picker entry missing")
+            val buttonNode =
+                collectNodes(pickerNode)
+                    .firstOrNull { it.key?.toString() == key } as? ButtonNode
+                    ?: error("button node missing for $key")
             assertEquals(style.buttonHoverColor, buttonNode.backgroundColor, "expected hover color for $key")
         }
     }
@@ -670,7 +687,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = revision,
                 cursorX = cursorX,
                 cursorY = cursorY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 1280, 720)
         }
@@ -685,12 +702,13 @@ class SystemOverlayInspectorNativeEntryTests {
         sync(revision = 2L, cursorX = 80, cursorY = 52)
         val colorAction = inspector.overlayColorPickerActionBounds(StyleProperty.BACKGROUND_COLOR)
         val colorAnchor = colorAction ?: Rect(80, 80, 20, 18)
-        val openedByClick = if (colorAction != null) {
-            host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
+        val openedByClick =
+            if (colorAction != null) {
+                host.handleMouseDown(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT) &&
                     host.handleMouseUp(colorAction.x + 1, colorAction.y + 1, MouseButton.LEFT)
-        } else {
-            false
-        }
+            } else {
+                false
+            }
         if (!openedByClick) {
             assertTrue(inspector.debugOpenColorPickerForSelection(StyleProperty.BACKGROUND_COLOR, colorAnchor))
         }
@@ -699,28 +717,37 @@ class SystemOverlayInspectorNativeEntryTests {
         assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
 
         val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("color picker body layout missing")
-        assertTrue(host.handleMouseDown(initialLayout.modeSelectRect.x + 2, initialLayout.modeSelectRect.y + 2, MouseButton.LEFT))
+        assertTrue(
+            host.handleMouseDown(
+                initialLayout.modeSelectRect.x + 2,
+                initialLayout.modeSelectRect.y + 2,
+                MouseButton.LEFT,
+            ),
+        )
         sync(
             revision = 4L,
             cursorX = initialLayout.modeSelectRect.x + 2,
-            cursorY = initialLayout.modeSelectRect.y + 2
+            cursorY = initialLayout.modeSelectRect.y + 2,
         )
         assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
 
         val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("expanded color picker layout missing")
-        val hslOption = expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL }
-            ?: error("HSL mode option missing")
+        val hslOption =
+            expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL }
+                ?: error("HSL mode option missing")
         val optionHoverX = hslOption.rect.x + hslOption.rect.width / 2
         val optionHoverY = hslOption.rect.y + hslOption.rect.height / 2
         assertTrue(host.handleMouseMove(optionHoverX, optionHoverY))
         sync(revision = 5L, cursorX = optionHoverX, cursorY = optionHoverY)
 
         val style = ColorPickerStyle()
-        val transientNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerTransient)
-            ?: error("transient entry missing")
-        val optionNode = collectNodes(transientNode)
-            .firstOrNull { it.key?.toString() == "dsgl-system-color-picker-mode-option-hsl" } as? ButtonNode
-            ?: error("HSL option node missing")
+        val transientNode =
+            host.debugEntryNode(SystemOverlayEntryId.ColorPickerTransient)
+                ?: error("transient entry missing")
+        val optionNode =
+            collectNodes(transientNode)
+                .firstOrNull { it.key?.toString() == "dsgl-system-color-picker-mode-option-hsl" } as? ButtonNode
+                ?: error("HSL option node missing")
         assertEquals(style.buttonHoverColor, optionNode.backgroundColor)
 
         assertTrue(host.handleMouseDown(optionHoverX, optionHoverY, MouseButton.LEFT))
@@ -748,7 +775,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -759,21 +786,24 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val bodyRect = inspector.overlayContentRect()
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val bodyNode = collectNodes(inspectorNode)
-            .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
-            ?: error("inspector body node missing")
+        val bodyNode =
+            collectNodes(inspectorNode)
+                .firstOrNull { it.key?.toString() == "dsgl-system-inspector-body" }
+                ?: error("inspector body node missing")
         assertEquals(Overflow.Hidden, bodyNode.overflowX)
         assertEquals(Overflow.Auto, bodyNode.overflowY)
         val bodyViewport = bodyNode.overflowViewportRect() ?: bodyRect
 
         val initialCommands = host.paint(ctx)
-        assertTrue(initialCommands.any { command ->
-            command is RenderCommand.PushClip &&
+        assertTrue(
+            initialCommands.any { command ->
+                command is RenderCommand.PushClip &&
                     command.x == bodyViewport.x &&
                     command.y == bodyViewport.y &&
                     command.width == bodyViewport.width &&
                     command.height == bodyViewport.height
-        })
+            },
+        )
 
         assertTrue(host.handleMouseWheel(bodyRect.x + 4, bodyRect.y + 12, -120))
         host.syncFrame(
@@ -781,36 +811,42 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = bodyRect.x + 4,
             cursorY = bodyRect.y + 12,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 320, 220)
 
-        val bodyLines = collectNodes(inspectorNode).filter { node ->
-            if (node.display == Display.None) return@filter false
-            val key = node.key?.toString() ?: return@filter false
-            key.startsWith("dsgl-system-inspector-info-line-") ||
+        val bodyLines =
+            collectNodes(inspectorNode).filter { node ->
+                if (node.display == Display.None) return@filter false
+                val key = node.key?.toString() ?: return@filter false
+                key.startsWith("dsgl-system-inspector-info-line-") ||
                     key.startsWith("dsgl-system-inspector-style-line-")
-        }
+            }
 
         assertTrue(bodyLines.isNotEmpty())
-        assertTrue(bodyLines.any { node ->
-            node.bounds.y < bodyRect.y || node.bounds.y + node.bounds.height > bodyRect.y + bodyRect.height
-        })
+        assertTrue(
+            bodyLines.any { node ->
+                node.bounds.y < bodyRect.y || node.bounds.y + node.bounds.height > bodyRect.y + bodyRect.height
+            },
+        )
 
-        val edgeIntersecting = bodyLines.filter { node ->
-            intersects(node.bounds, bodyRect) && !containsFully(bodyRect, node.bounds)
-        }
+        val edgeIntersecting =
+            bodyLines.filter { node ->
+                intersects(node.bounds, bodyRect) && !containsFully(bodyRect, node.bounds)
+            }
         assertTrue(edgeIntersecting.isNotEmpty())
         assertTrue(edgeIntersecting.all { it.bounds.height >= 24 })
 
         val scrolledCommands = host.paint(ctx)
-        assertTrue(scrolledCommands.any { command ->
-            command is RenderCommand.PushClip &&
+        assertTrue(
+            scrolledCommands.any { command ->
+                command is RenderCommand.PushClip &&
                     command.x == bodyViewport.x &&
                     command.y == bodyViewport.y &&
                     command.width == bodyViewport.width &&
                     command.height == bodyViewport.height
-        })
+            },
+        )
     }
 
     @Test
@@ -827,21 +863,22 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         val commands = host.paint(ctx)
 
         val bodyRect = inspector.overlayContentRect()
         assertTrue(bodyRect.width > 0 && bodyRect.height > 0)
-        val baselineInfoRendered = commands.any { command ->
-            command is RenderCommand.DrawText &&
+        val baselineInfoRendered =
+            commands.any { command ->
+                command is RenderCommand.DrawText &&
                     command.text.contains("F12 toggle") &&
                     command.x >= bodyRect.x &&
                     command.x <= bodyRect.x + bodyRect.width &&
                     command.y >= bodyRect.y &&
                     command.y <= bodyRect.y + bodyRect.height
-        }
+            }
         assertTrue(baselineInfoRendered)
     }
 
@@ -859,7 +896,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -880,18 +917,21 @@ class SystemOverlayInspectorNativeEntryTests {
         var latestInteractiveNodes: List<DOMNode> = emptyList()
         repeat(24) {
             val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-            val interactiveNodes = collectNodes(inspectorNode).filter { node ->
-                if (node.display == Display.None) return@filter false
-                val key = node.key?.toString() ?: return@filter false
-                isInteractiveInspectorControlKey(key)
-            }
+            val interactiveNodes =
+                collectNodes(inspectorNode).filter { node ->
+                    if (node.display == Display.None) return@filter false
+                    val key = node.key?.toString() ?: return@filter false
+                    isInteractiveInspectorControlKey(key)
+                }
             latestInteractiveNodes = interactiveNodes
-            edgeNode = interactiveNodes.firstOrNull { node ->
-                intersects(node.bounds, bodyRect) && !containsFully(
-                    bodyRect,
-                    node.bounds
-                )
-            }
+            edgeNode =
+                interactiveNodes.firstOrNull { node ->
+                    intersects(node.bounds, bodyRect) &&
+                        !containsFully(
+                            bodyRect,
+                            node.bounds,
+                        )
+                }
             hiddenNode = interactiveNodes.firstOrNull { node -> !intersects(node.bounds, bodyRect) }
             visibleNode = interactiveNodes.firstOrNull { node -> containsFully(bodyRect, node.bounds) }
             if (edgeNode != null && visibleNode != null) return@repeat
@@ -901,7 +941,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = revision,
                 cursorX = wheelX,
                 cursorY = wheelY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 320, 213)
             revision += 1L
@@ -909,24 +949,26 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val hiddenTarget =
             edgeNode ?: hiddenNode ?: latestInteractiveNodes.firstOrNull { node -> !intersects(node.bounds, bodyRect) }
-            ?: error("failed to find hidden interactive inspector control")
+                ?: error("failed to find hidden interactive inspector control")
         val visibleTarget =
             visibleNode ?: latestInteractiveNodes.firstOrNull { node -> intersects(node.bounds, bodyRect) } ?: edgeNode
 
-        val hiddenX = if (edgeNode != null) {
-            maxOf(hiddenTarget.bounds.x, bodyRect.x) + 2
-        } else {
-            hiddenTarget.bounds.x + (hiddenTarget.bounds.width / 2).coerceAtLeast(1)
-        }
-        val hiddenY = if (edgeNode != null) {
-            if (hiddenTarget.bounds.y < bodyRect.y) {
-                hiddenTarget.bounds.y + 1
+        val hiddenX =
+            if (edgeNode != null) {
+                maxOf(hiddenTarget.bounds.x, bodyRect.x) + 2
             } else {
-                hiddenTarget.bounds.y + hiddenTarget.bounds.height - 1
+                hiddenTarget.bounds.x + (hiddenTarget.bounds.width / 2).coerceAtLeast(1)
             }
-        } else {
-            hiddenTarget.bounds.y + (hiddenTarget.bounds.height / 2).coerceAtLeast(1)
-        }
+        val hiddenY =
+            if (edgeNode != null) {
+                if (hiddenTarget.bounds.y < bodyRect.y) {
+                    hiddenTarget.bounds.y + 1
+                } else {
+                    hiddenTarget.bounds.y + hiddenTarget.bounds.height - 1
+                }
+            } else {
+                hiddenTarget.bounds.y + (hiddenTarget.bounds.height / 2).coerceAtLeast(1)
+            }
 
         assertFalse(bodyRect.contains(hiddenX, hiddenY))
         assertTrue(hiddenTarget.bounds.contains(hiddenX, hiddenY))
@@ -960,7 +1002,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -970,8 +1012,9 @@ class SystemOverlayInspectorNativeEntryTests {
         host.render(ctx, 420, 280)
 
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
-        val bodyNode = collectNodes(inspectorNode).firstOrNull { it.key == "dsgl-system-inspector-body" }
-            ?: error("inspector body node missing")
+        val bodyNode =
+            collectNodes(inspectorNode).firstOrNull { it.key == "dsgl-system-inspector-body" }
+                ?: error("inspector body node missing")
         val scrollState = bodyNode.scrollContainerState()
 
         assertTrue(scrollState.axisY.scrollContainer)
@@ -1005,7 +1048,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -1018,22 +1061,25 @@ class SystemOverlayInspectorNativeEntryTests {
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector node missing")
         val bodyRect = inspector.overlayContentRect()
         val allNodes = collectNodes(inspectorNode)
-        val interactiveNode = allNodes.firstOrNull { node ->
-            val key = node.key?.toString() ?: return@firstOrNull false
-            val interactiveControl = key.startsWith("dsgl-system-inspector-editor-input-") ||
-                    key.startsWith("dsgl-system-inspector-editor-numeric-input-") ||
-                    key.startsWith("dsgl-system-inspector-editor-select-") ||
-                    key.startsWith("dsgl-system-inspector-editor-color-preview-")
-            if (!interactiveControl) return@firstOrNull false
-            val probeX = node.bounds.x + 2
-            val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
-            bodyRect.contains(probeX, probeY)
-        }
-        val wheelNode = interactiveNode ?: allNodes.firstOrNull { node ->
-            val probeX = node.bounds.x + 2
-            val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
-            bodyRect.contains(probeX, probeY)
-        } ?: error("visible inspector body content node missing")
+        val interactiveNode =
+            allNodes.firstOrNull { node ->
+                val key = node.key?.toString() ?: return@firstOrNull false
+                val interactiveControl =
+                    key.startsWith("dsgl-system-inspector-editor-input-") ||
+                        key.startsWith("dsgl-system-inspector-editor-numeric-input-") ||
+                        key.startsWith("dsgl-system-inspector-editor-select-") ||
+                        key.startsWith("dsgl-system-inspector-editor-color-preview-")
+                if (!interactiveControl) return@firstOrNull false
+                val probeX = node.bounds.x + 2
+                val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
+                bodyRect.contains(probeX, probeY)
+            }
+        val wheelNode =
+            interactiveNode ?: allNodes.firstOrNull { node ->
+                val probeX = node.bounds.x + 2
+                val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
+                bodyRect.contains(probeX, probeY)
+            } ?: error("visible inspector body content node missing")
 
         val wheelX = wheelNode.bounds.x + 2
         val wheelY = wheelNode.bounds.y + (wheelNode.bounds.height / 2).coerceAtLeast(1)
@@ -1045,7 +1091,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = wheelX,
             cursorY = wheelY,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -1066,7 +1112,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         assertTrue(host.handleMouseDown(984, 144, MouseButton.LEFT))
@@ -1087,7 +1133,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = wheelX,
             cursorY = wheelY,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -1109,7 +1155,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -1131,7 +1177,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 3L + step,
                 cursorX = wheelX,
                 cursorY = wheelY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1142,7 +1188,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 20L + settle,
                 cursorX = wheelX,
                 cursorY = wheelY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1159,7 +1205,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 40L + step,
                 cursorX = wheelX,
                 cursorY = wheelY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1173,7 +1219,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 60L + settle,
                 cursorX = wheelX,
                 cursorY = wheelY,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1181,7 +1227,7 @@ class SystemOverlayInspectorNativeEntryTests {
         }
         assertTrue(
             scrolledUp < scrolledDown,
-            "expected upward wheel to reduce scroll: down=$scrolledDown up=$scrolledUp"
+            "expected upward wheel to reduce scroll: down=$scrolledDown up=$scrolledUp",
         )
     }
 
@@ -1199,7 +1245,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -1225,7 +1271,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = dragX,
             cursorY = dragStartY + 18,
-            inspectorPointerCaptured = inspector.isPointerCaptured
+            inspectorPointerCaptured = inspector.isPointerCaptured,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -1238,7 +1284,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 4L,
             cursorX = dragX,
             cursorY = dragStartY + 42,
-            inspectorPointerCaptured = inspector.isPointerCaptured
+            inspectorPointerCaptured = inspector.isPointerCaptured,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -1250,12 +1296,13 @@ class SystemOverlayInspectorNativeEntryTests {
 
     @Test
     fun `inspector style boundary stays isolated from application stylesheet`() {
-        val stylesDir = createTempStylesDir(
-            """
-            text { color: #FF00FF00; }
-            div { background-color: #FFFF00FF; }
-            """.trimIndent()
-        )
+        val stylesDir =
+            createTempStylesDir(
+                """
+                text { color: #FF00FF00; }
+                div { background-color: #FFFF00FF; }
+                """.trimIndent(),
+            )
         StyleEngine.setStylesDirectory(stylesDir)
         StyleEngine.forceReloadStylesheets()
 
@@ -1271,13 +1318,14 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         val commands = host.paint(ctx)
-        val headerTexts = commands
-            .filterIsInstance<RenderCommand.DrawText>()
-            .filter { it.text.startsWith("Inspector") }
+        val headerTexts =
+            commands
+                .filterIsInstance<RenderCommand.DrawText>()
+                .filter { it.text.startsWith("Inspector") }
 
         assertTrue(headerTexts.isNotEmpty())
         assertTrue(headerTexts.none { it.color == 0xFF00FF00.toInt() })
@@ -1287,10 +1335,12 @@ class SystemOverlayInspectorNativeEntryTests {
     private fun inspectedRoot(): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }.applyParent(root)
-        StyleEngine.setInspectorOverrideLiteral(root.children.first(), StyleProperty.BACKGROUND_COLOR, "#FF112233")
+        ContainerNode(key = "target")
+            .apply {
+                bounds = Rect(980, 140, 120, 30)
+            }.applyParent(root)
+        StyleEngine
+            .setInspectorOverrideLiteral(root.children.first(), StyleProperty.BACKGROUND_COLOR, "#FF112233")
             .getOrThrow()
         return root
     }
@@ -1298,13 +1348,16 @@ class SystemOverlayInspectorNativeEntryTests {
     private fun inspectedRootWithManyChildren(): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1800, 1200)
-        val selected = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 260, 180)
-        }.applyParent(root)
+        val selected =
+            ContainerNode(key = "target")
+                .apply {
+                    bounds = Rect(980, 140, 260, 180)
+                }.applyParent(root)
         repeat(60) { index ->
-            ContainerNode(key = "child-$index").apply {
-                bounds = Rect(980, 180 + index * 12, 180, 10)
-            }.applyParent(selected)
+            ContainerNode(key = "child-$index")
+                .apply {
+                    bounds = Rect(980, 180 + index * 12, 180, 10)
+                }.applyParent(selected)
         }
         StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
         return root
@@ -1313,52 +1366,51 @@ class SystemOverlayInspectorNativeEntryTests {
     private fun inspectedRootMovedUnderPanel(): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        val selected = ContainerNode(key = "target").apply {
-            bounds = Rect(72, 84, 180, 80)
-        }.applyParent(root)
+        val selected =
+            ContainerNode(key = "target")
+                .apply {
+                    bounds = Rect(72, 84, 180, 80)
+                }.applyParent(root)
         StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
         return root
     }
 
-    private fun popupState(): ColorPickerState {
-        return ColorPickerState(
+    private fun popupState(): ColorPickerState =
+        ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             previous = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             mode = ColorFormatMode.RGB,
             alphaEnabled = true,
-            closeOnSelect = false
+            closeOnSelect = false,
         )
-    }
 
-    private fun intersects(a: Rect, b: Rect): Boolean {
-        return a.x < b.x + b.width &&
-                a.x + a.width > b.x &&
-                a.y < b.y + b.height &&
-                a.y + a.height > b.y
-    }
+    private fun intersects(a: Rect, b: Rect): Boolean =
+        a.x < b.x + b.width &&
+            a.x + a.width > b.x &&
+            a.y < b.y + b.height &&
+            a.y + a.height > b.y
 
-    private fun containsFully(outer: Rect, inner: Rect): Boolean {
-        return inner.x >= outer.x &&
-                inner.y >= outer.y &&
-                inner.x + inner.width <= outer.x + outer.width &&
-                inner.y + inner.height <= outer.y + outer.height
-    }
+    private fun containsFully(outer: Rect, inner: Rect): Boolean =
+        inner.x >= outer.x &&
+            inner.y >= outer.y &&
+            inner.x + inner.width <= outer.x + outer.width &&
+            inner.y + inner.height <= outer.y + outer.height
 
-    private fun isInteractiveInspectorControlKey(key: String): Boolean {
-        return key == "dsgl-system-inspector-parent-row" ||
-                key.startsWith("dsgl-system-inspector-child-row-") ||
-                key.startsWith("dsgl-system-inspector-editor-reset-") ||
-                key.startsWith("dsgl-system-inspector-editor-select-") ||
-                key.startsWith("dsgl-system-inspector-editor-dec-") ||
-                key.startsWith("dsgl-system-inspector-editor-inc-") ||
-                key.startsWith("dsgl-system-inspector-editor-unit-") ||
-                key.startsWith("dsgl-system-inspector-editor-color-preview-") ||
-                key == "dsgl-system-inspector-reset-node" ||
-                key == "dsgl-system-inspector-clear-all"
-    }
+    private fun isInteractiveInspectorControlKey(key: String): Boolean =
+        key == "dsgl-system-inspector-parent-row" ||
+            key.startsWith("dsgl-system-inspector-child-row-") ||
+            key.startsWith("dsgl-system-inspector-editor-reset-") ||
+            key.startsWith("dsgl-system-inspector-editor-select-") ||
+            key.startsWith("dsgl-system-inspector-editor-dec-") ||
+            key.startsWith("dsgl-system-inspector-editor-inc-") ||
+            key.startsWith("dsgl-system-inspector-editor-unit-") ||
+            key.startsWith("dsgl-system-inspector-editor-color-preview-") ||
+            key == "dsgl-system-inspector-reset-node" ||
+            key == "dsgl-system-inspector-clear-all"
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -1369,6 +1421,7 @@ class SystemOverlayInspectorNativeEntryTests {
 
     private fun collectStyleTypes(root: DOMNode): Set<String> {
         val out = LinkedHashSet<String>()
+
         fun walk(node: DOMNode) {
             out += node.styleType
             node.children.forEach(::walk)
@@ -1397,7 +1450,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -1419,7 +1472,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 3L,
             cursorX = wheelX,
             cursorY = wheelY,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 420, 280)
         host.paint(ctx)
@@ -1441,7 +1494,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -1469,7 +1522,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 3L + step,
                 cursorX = dragX,
                 cursorY = nextY,
-                inspectorPointerCaptured = inspector.isPointerCaptured
+                inspectorPointerCaptured = inspector.isPointerCaptured,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1477,11 +1530,11 @@ class SystemOverlayInspectorNativeEntryTests {
             val currentThumbY = inspector.overlayScrollbarThumbRect().y
             assertTrue(
                 currentScroll >= previousScroll,
-                "scroll regressed: prev=$previousScroll current=$currentScroll step=$step"
+                "scroll regressed: prev=$previousScroll current=$currentScroll step=$step",
             )
             assertTrue(
                 currentThumbY >= previousThumbY,
-                "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step"
+                "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step",
             )
             previousScroll = currentScroll
             previousThumbY = currentThumbY
@@ -1497,7 +1550,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 20L + idx,
                 cursorX = dragX,
                 cursorY = startY,
-                inspectorPointerCaptured = inspector.isPointerCaptured
+                inspectorPointerCaptured = inspector.isPointerCaptured,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1520,7 +1573,7 @@ class SystemOverlayInspectorNativeEntryTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -1547,7 +1600,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 20L + step,
                 cursorX = dragX,
                 cursorY = nextY,
-                inspectorPointerCaptured = inspector.isPointerCaptured
+                inspectorPointerCaptured = inspector.isPointerCaptured,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1555,11 +1608,11 @@ class SystemOverlayInspectorNativeEntryTests {
             val currentThumbY = inspector.overlayScrollbarThumbRect().y
             assertTrue(
                 currentScroll >= previousScroll,
-                "scroll regressed: prev=$previousScroll current=$currentScroll step=$step"
+                "scroll regressed: prev=$previousScroll current=$currentScroll step=$step",
             )
             assertTrue(
                 currentThumbY >= previousThumbY,
-                "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step"
+                "thumb regressed: prev=$previousThumbY current=$currentThumbY step=$step",
             )
             previousScroll = currentScroll
             previousThumbY = currentThumbY
@@ -1575,7 +1628,7 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectedLayoutRevision = 40L + idx,
                 cursorX = dragX,
                 cursorY = boundaryY,
-                inspectorPointerCaptured = inspector.isPointerCaptured
+                inspectorPointerCaptured = inspector.isPointerCaptured,
             )
             host.render(ctx, 420, 280)
             host.paint(ctx)
@@ -1586,8 +1639,3 @@ class SystemOverlayInspectorNativeEntryTests {
         assertTrue(host.handleMouseUp(dragX, startY + 2000, MouseButton.LEFT))
     }
 }
-
-
-
-
-

@@ -1,9 +1,9 @@
 package org.dreamfinity.dsgl.core.hooks
 
 import org.dreamfinity.dsgl.core.DsglWindow
-import kotlin.reflect.KType
-import kotlin.reflect.KClass
 import java.util.ArrayDeque
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
 
 internal enum class HookEntryKind {
     Ref,
@@ -12,19 +12,21 @@ internal enum class HookEntryKind {
     Memo,
     Effect,
     CustomScope,
-    Custom
+    Custom,
 }
 
 enum class HookRenderSessionMode {
     Normal,
-    HotReload
+    HotReload,
 }
 
 class HookHotReloadRemountException(
-    message: String
+    message: String,
 ) : RuntimeException(message)
 
-internal class HookUsageException(message: String) : IllegalStateException(message)
+internal class HookUsageException(
+    message: String,
+) : IllegalStateException(message)
 
 @PublishedApi
 internal sealed interface HookSignature {
@@ -32,32 +34,32 @@ internal sealed interface HookSignature {
 }
 
 internal data class KindOnlyHookSignature(
-    val kind: HookEntryKind
+    val kind: HookEntryKind,
 ) : HookSignature {
     override fun diagnosticLabel(): String = "KindOnly($kind)"
 }
 
 internal data class StateHookSignature(
-    val valueType: KType
+    val valueType: KType,
 ) : HookSignature {
     override fun diagnosticLabel(): String = "State<$valueType>"
 }
 
 internal data class RefHookSignature(
-    val valueType: KType
+    val valueType: KType,
 ) : HookSignature {
     override fun diagnosticLabel(): String = "Ref<$valueType>"
 }
 
 internal data class MemoHookSignature(
-    val valueType: KType
+    val valueType: KType,
 ) : HookSignature {
     override fun diagnosticLabel(): String = "Memo<$valueType>"
 }
 
 internal data class ReducerHookSignature(
     val stateClass: KClass<*>?,
-    val initialWasNull: Boolean
+    val initialWasNull: Boolean,
 ) : HookSignature {
     override fun diagnosticLabel(): String {
         val classLabel = stateClass?.qualifiedName ?: "unknown"
@@ -68,11 +70,11 @@ internal data class ReducerHookSignature(
 
 internal enum class EffectHookRunMode {
     OnDependencyChange,
-    EveryCommit
+    EveryCommit,
 }
 
 internal data class EffectHookSignature(
-    val runMode: EffectHookRunMode
+    val runMode: EffectHookRunMode,
 ) : HookSignature {
     override fun diagnosticLabel(): String = "Effect<$runMode>"
 }
@@ -92,19 +94,18 @@ internal object HookSignatures {
     internal fun memo(valueType: KType): HookSignature = MemoHookSignature(valueType)
 
     @PublishedApi
-    internal fun reducer(stateClass: KClass<*>?, initialWasNull: Boolean): HookSignature {
-        return ReducerHookSignature(
+    internal fun reducer(stateClass: KClass<*>?, initialWasNull: Boolean): HookSignature =
+        ReducerHookSignature(
             stateClass = stateClass,
-            initialWasNull = initialWasNull
+            initialWasNull = initialWasNull,
         )
-    }
 
     @PublishedApi
     internal fun effect(runMode: EffectHookRunMode): HookSignature = EffectHookSignature(runMode)
 }
 
 internal data class HookPath(
-    val segments: List<String>
+    val segments: List<String>,
 ) {
     init {
         require(segments.isNotEmpty()) { "Hook path must contain at least one segment." }
@@ -114,11 +115,9 @@ internal data class HookPath(
 }
 
 internal class OwnerIdentity(
-    private val owner: Any
+    private val owner: Any,
 ) {
-    override fun equals(other: Any?): Boolean {
-        return other is OwnerIdentity && owner === other.owner
-    }
+    override fun equals(other: Any?): Boolean = other is OwnerIdentity && owner === other.owner
 
     override fun hashCode(): Int = System.identityHashCode(owner)
 }
@@ -128,46 +127,46 @@ internal sealed interface ComponentDiscriminator {
 }
 
 private data class ExplicitKeyDiscriminator(
-    val key: Any
+    val key: Any,
 ) : ComponentDiscriminator {
     override fun debugLabel(): String = "key=$key"
 }
 
 private data class PositionalIndexDiscriminator(
-    val index: Int
+    val index: Int,
 ) : ComponentDiscriminator {
     override fun debugLabel(): String = "#$index"
 }
 
 internal data class ComponentIdentitySegment(
     val name: String,
-    private val discriminator: ComponentDiscriminator
+    private val discriminator: ComponentDiscriminator,
 ) {
     fun debugLabel(): String = "$name[${discriminator.debugLabel()}]"
 }
 
 internal data class ComponentInstanceId(
     private val ownerIdentity: OwnerIdentity,
-    val segments: List<ComponentIdentitySegment>
+    val segments: List<ComponentIdentitySegment>,
 ) {
     companion object {
-        fun root(owner: Any): ComponentInstanceId {
-            return ComponentInstanceId(
+        fun root(owner: Any): ComponentInstanceId =
+            ComponentInstanceId(
                 ownerIdentity = OwnerIdentity(owner),
-                segments = emptyList()
+                segments = emptyList(),
             )
-        }
     }
 
     fun child(name: String, explicitKey: Any?, positionalIndex: Int): ComponentInstanceId {
-        val discriminator = if (explicitKey != null) {
-            ExplicitKeyDiscriminator(explicitKey)
-        } else {
-            PositionalIndexDiscriminator(positionalIndex)
-        }
+        val discriminator =
+            if (explicitKey != null) {
+                ExplicitKeyDiscriminator(explicitKey)
+            } else {
+                PositionalIndexDiscriminator(positionalIndex)
+            }
         return ComponentInstanceId(
             ownerIdentity = ownerIdentity,
-            segments = segments + ComponentIdentitySegment(name, discriminator)
+            segments = segments + ComponentIdentitySegment(name, discriminator),
         )
     }
 
@@ -192,7 +191,7 @@ internal data class HookEntry(
     val signature: HookSignature,
     var value: Any?,
     val synthetic: Boolean,
-    val createdRenderEpoch: Long
+    val createdRenderEpoch: Long,
 ) {
     var lastVisitedRenderEpoch: Long = createdRenderEpoch
 }
@@ -201,24 +200,24 @@ internal data class ResolvedHookEntry(
     val path: HookPath,
     val entry: HookEntry,
     val created: Boolean,
-    val synthetic: Boolean
+    val synthetic: Boolean,
 )
 
 internal data class ResolvedTypedHookEntry<T : Any>(
     val path: HookPath,
     val value: T,
     val created: Boolean,
-    val synthetic: Boolean
+    val synthetic: Boolean,
 )
 
 private data class SyntheticCounterKey(
     val scopeSegments: List<String>,
-    val hookName: String
+    val hookName: String,
 )
 
 private enum class HookCompatibilityMismatchReason {
     Kind,
-    Signature
+    Signature,
 }
 
 private data class HookCompatibilityMismatch(
@@ -228,7 +227,7 @@ private data class HookCompatibilityMismatch(
     val requestedKind: HookEntryKind,
     val existingSignature: HookSignature,
     val requestedSignature: HookSignature,
-    val reason: HookCompatibilityMismatchReason
+    val reason: HookCompatibilityMismatchReason,
 ) {
     fun runtimeErrorMessage(): String {
         val guidance = "Use distinct delegated property names/scopes for semantically different hooks."
@@ -247,22 +246,21 @@ private data class HookCompatibilityMismatch(
         }
     }
 
-    fun hotReloadWarningMessage(): String {
-        return "[DSGL][Hooks] Hot-reload remount/reset for component '${componentId.debugPath()}' due to " +
+    fun hotReloadWarningMessage(): String =
+        "[DSGL][Hooks] Hot-reload remount/reset for component '${componentId.debugPath()}' due to " +
             "incompatible hook at path '$path': " +
             "previous=${existingSignature.diagnosticLabel()} ($existingKind), " +
             "next=${requestedSignature.diagnosticLabel()} ($requestedKind). " +
             "Local hook state for this component subtree was reset. " +
             "Use distinct delegated property names/scopes for semantically different hooks."
-    }
 }
 
 private class HookCompatibilityMismatchException(
-    val mismatch: HookCompatibilityMismatch
+    val mismatch: HookCompatibilityMismatch,
 ) : RuntimeException()
 
 internal class ComponentHookContext(
-    val componentId: ComponentInstanceId
+    val componentId: ComponentInstanceId,
 ) {
     private val entriesByPath: MutableMap<HookPath, HookEntry> = linkedMapOf()
     private val claimedPathsThisRender: MutableSet<HookPath> = linkedSetOf()
@@ -283,7 +281,7 @@ internal class ComponentHookContext(
         kind: HookEntryKind,
         signature: HookSignature,
         renderEpoch: Long,
-        initializer: () -> Any?
+        initializer: () -> Any?,
     ): ResolvedHookEntry {
         val path = HookPath(scopeSegments + delegateName)
         return resolvePath(
@@ -292,7 +290,7 @@ internal class ComponentHookContext(
             signature = signature,
             synthetic = false,
             renderEpoch = renderEpoch,
-            initializer = initializer
+            initializer = initializer,
         )
     }
 
@@ -302,7 +300,7 @@ internal class ComponentHookContext(
         kind: HookEntryKind,
         signature: HookSignature,
         renderEpoch: Long,
-        initializer: () -> Any?
+        initializer: () -> Any?,
     ): ResolvedHookEntry {
         val counterKey = SyntheticCounterKey(scopeSegments = scopeSegments, hookName = hookName)
         val index = syntheticCounterByScope[counterKey] ?: 0
@@ -315,7 +313,7 @@ internal class ComponentHookContext(
             signature = signature,
             synthetic = true,
             renderEpoch = renderEpoch,
-            initializer = initializer
+            initializer = initializer,
         )
     }
 
@@ -337,16 +335,16 @@ internal class ComponentHookContext(
         signature: HookSignature,
         synthetic: Boolean,
         renderEpoch: Long,
-        initializer: () -> Any?
+        initializer: () -> Any?,
     ): ResolvedHookEntry {
         if (!claimedPathsThisRender.add(path)) {
             if (synthetic) {
                 throw HookUsageException(
-                    "Synthetic hook key collision at path '$path' in component '${componentId.debugPath()}'."
+                    "Synthetic hook key collision at path '$path' in component '${componentId.debugPath()}'.",
                 )
             }
             throw HookUsageException(
-                "Duplicate hook path '$path' in component '${componentId.debugPath()}'."
+                "Duplicate hook path '$path' in component '${componentId.debugPath()}'.",
             )
         }
 
@@ -354,7 +352,7 @@ internal class ComponentHookContext(
         if (existing != null) {
             if (existing.synthetic != synthetic) {
                 throw HookUsageException(
-                    "Synthetic hook key collision at path '$path' in component '${componentId.debugPath()}'."
+                    "Synthetic hook key collision at path '$path' in component '${componentId.debugPath()}'.",
                 )
             }
             if (existing.kind != kind) {
@@ -366,8 +364,8 @@ internal class ComponentHookContext(
                         requestedKind = kind,
                         existingSignature = existing.signature,
                         requestedSignature = signature,
-                        reason = HookCompatibilityMismatchReason.Kind
-                    )
+                        reason = HookCompatibilityMismatchReason.Kind,
+                    ),
                 )
             }
             if (existing.signature != signature) {
@@ -379,21 +377,22 @@ internal class ComponentHookContext(
                         requestedKind = kind,
                         existingSignature = existing.signature,
                         requestedSignature = signature,
-                        reason = HookCompatibilityMismatchReason.Signature
-                    )
+                        reason = HookCompatibilityMismatchReason.Signature,
+                    ),
                 )
             }
             existing.lastVisitedRenderEpoch = renderEpoch
             return ResolvedHookEntry(path = path, entry = existing, created = false, synthetic = synthetic)
         }
 
-        val created = HookEntry(
-            kind = kind,
-            signature = signature,
-            value = initializer(),
-            synthetic = synthetic,
-            createdRenderEpoch = renderEpoch
-        )
+        val created =
+            HookEntry(
+                kind = kind,
+                signature = signature,
+                value = initializer(),
+                synthetic = synthetic,
+                createdRenderEpoch = renderEpoch,
+            )
         created.lastVisitedRenderEpoch = renderEpoch
         entriesByPath[path] = created
         return ResolvedHookEntry(path = path, entry = created, created = true, synthetic = synthetic)
@@ -404,30 +403,30 @@ internal class ComponentHookRuntime {
     internal data class StorageHookBindingToken(
         val hookName: String,
         val renderEpoch: Long,
-        var bound: Boolean = false
+        var bound: Boolean = false,
     )
 
     private enum class ComponentFrameOrigin {
         Root,
         Explicit,
-        Inferred
+        Inferred,
     }
 
     private data class InferredComponentDescriptor(
         val ownerClassName: String,
         val methodName: String,
-        val componentName: String
+        val componentName: String,
     )
 
     private data class HookCallSite(
         val className: String,
         val methodName: String,
-        val lineNumber: Int
+        val lineNumber: Int,
     )
 
     private data class InferenceSnapshot(
         val descriptors: List<InferredComponentDescriptor>,
-        val leafCallSite: HookCallSite?
+        val leafCallSite: HookCallSite?,
     )
 
     private data class ComponentFrame(
@@ -437,12 +436,12 @@ internal class ComponentHookRuntime {
         val positionalChildCounters: MutableMap<String, Int> = linkedMapOf(),
         val origin: ComponentFrameOrigin,
         val inferredDescriptor: InferredComponentDescriptor? = null,
-        val seenHookCallSitesThisRender: MutableSet<HookCallSite> = linkedSetOf()
+        val seenHookCallSitesThisRender: MutableSet<HookCallSite> = linkedSetOf(),
     )
 
     private data class EffectRegistrationKey(
         val componentId: ComponentInstanceId,
-        val path: HookPath
+        val path: HookPath,
     )
 
     private data class EffectRenderRegistration(
@@ -450,18 +449,18 @@ internal class ComponentHookRuntime {
         val path: HookPath,
         val runMode: EffectHookRunMode,
         val deps: List<Any?>,
-        val effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+        val effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit,
     )
 
     private data class CommittedEffectState(
         val runMode: EffectHookRunMode,
         val deps: List<Any?>,
-        val cleanup: (() -> Unit)?
+        val cleanup: (() -> Unit)?,
     )
 
     private data class PendingEffectCommitBatch(
         val visitedComponents: Set<ComponentInstanceId>,
-        val registrationsInOrder: List<EffectRenderRegistration>
+        val registrationsInOrder: List<EffectRenderRegistration>,
     )
 
     private val contextsByComponent: MutableMap<ComponentInstanceId, ComponentHookContext> = linkedMapOf()
@@ -469,6 +468,8 @@ internal class ComponentHookRuntime {
     private val componentStack: ArrayDeque<ComponentFrame> = ArrayDeque()
     private val pendingStorageHookBindings: MutableList<StorageHookBindingToken> = arrayListOf()
     private val renderEffectRegistrations: MutableMap<EffectRegistrationKey, EffectRenderRegistration> = linkedMapOf()
+
+    @Suppress("ktlint:standard:max-line-length", "ktlint:standard:property-wrapping")
     private val committedEffectsByComponent: MutableMap<ComponentInstanceId, MutableMap<HookPath, CommittedEffectState>> =
         linkedMapOf()
     private var pendingEffectCommitBatch: PendingEffectCommitBatch? = null
@@ -500,8 +501,8 @@ internal class ComponentHookRuntime {
             ComponentFrame(
                 componentId = rootId,
                 context = rootContext,
-                origin = ComponentFrameOrigin.Root
-            )
+                origin = ComponentFrameOrigin.Root,
+            ),
         )
     }
 
@@ -514,22 +515,23 @@ internal class ComponentHookRuntime {
 
         unwindInferredFramesForRenderEnd()
 
-        val unboundStorageHook = pendingStorageHookBindings.firstOrNull { token ->
-            token.renderEpoch == renderEpoch && !token.bound
-        }
+        val unboundStorageHook =
+            pendingStorageHookBindings.firstOrNull { token ->
+                token.renderEpoch == renderEpoch && !token.bound
+            }
         if (unboundStorageHook != null) {
             failStorageBackedHookWithoutDelegate(unboundStorageHook.hookName)
         }
         val current = componentStack.lastOrNull()
         if (componentStack.size != 1 || current == null) {
             throw HookUsageException(
-                "Invalid nested component scope behavior: render ended with unbalanced component scopes."
+                "Invalid nested component scope behavior: render ended with unbalanced component scopes.",
             )
         }
         if (current.scopeSegments.isNotEmpty()) {
             throw HookUsageException(
                 "Invalid nested hook scope behavior: render ended with unclosed custom hook scope " +
-                    "'${current.scopeSegments.last()}'."
+                    "'${current.scopeSegments.last()}'.",
             )
         }
 
@@ -547,32 +549,28 @@ internal class ComponentHookRuntime {
             }
         }
 
-        pendingEffectCommitBatch = PendingEffectCommitBatch(
-            visitedComponents = enteredComponentIdsThisRender.toSet(),
-            registrationsInOrder = renderEffectRegistrations.values.toList()
-        )
+        pendingEffectCommitBatch =
+            PendingEffectCommitBatch(
+                visitedComponents = enteredComponentIdsThisRender.toSet(),
+                registrationsInOrder = renderEffectRegistrations.values.toList(),
+            )
 
         clearRenderSessionStateOnly()
     }
 
-    fun registerEffectOnDependencyChange(
-        deps: List<Any?>,
-        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
-    ) {
+    fun registerEffectOnDependencyChange(deps: List<Any?>, effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit) {
         registerEffectInvocation(
             runMode = EffectHookRunMode.OnDependencyChange,
             deps = deps,
-            effect = effect
+            effect = effect,
         )
     }
 
-    fun registerEffectEveryCommit(
-        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
-    ) {
+    fun registerEffectEveryCommit(effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit) {
         registerEffectInvocation(
             runMode = EffectHookRunMode.EveryCommit,
             deps = emptyList(),
-            effect = effect
+            effect = effect,
         )
     }
 
@@ -595,7 +593,7 @@ internal class ComponentHookRuntime {
         pendingEffectCommitBatch = null
         runCommittedEffectCleanupForSubtree(
             root = null,
-            reason = "component runtime disposal"
+            reason = "component runtime disposal",
         )
         committedEffectsByComponent.clear()
         contextsByComponent.clear()
@@ -613,7 +611,7 @@ internal class ComponentHookRuntime {
             componentName = normalizedName,
             key = key,
             origin = ComponentFrameOrigin.Explicit,
-            inferredDescriptor = null
+            inferredDescriptor = null,
         )
     }
 
@@ -625,13 +623,13 @@ internal class ComponentHookRuntime {
         val frame = componentStack.last()
         if (frame.origin != ComponentFrameOrigin.Explicit) {
             throw HookUsageException(
-                "Cannot leave inferred/root component hook scope with explicit leave call."
+                "Cannot leave inferred/root component hook scope with explicit leave call.",
             )
         }
         if (frame.scopeSegments.isNotEmpty()) {
             throw HookUsageException(
                 "Invalid nested hook scope behavior: component '${frame.componentId.debugPath()}' " +
-                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'."
+                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'.",
             )
         }
         componentStack.removeLast()
@@ -654,7 +652,7 @@ internal class ComponentHookRuntime {
             delegateName = normalizedName,
             kind = HookEntryKind.CustomScope,
             signature = HookSignatures.kindOnly(HookEntryKind.CustomScope),
-            renderEpoch = renderEpoch
+            renderEpoch = renderEpoch,
         ) { Unit }
         recordInferredHookCallSite(frame)
         frame.scopeSegments.addLast(normalizedName)
@@ -664,7 +662,7 @@ internal class ComponentHookRuntime {
         val frame = currentFrame()
         if (frame.scopeSegments.isEmpty()) {
             throw HookUsageException(
-                "Invalid nested hook scope behavior: no active custom hook scope to leave."
+                "Invalid nested hook scope behavior: no active custom hook scope to leave.",
             )
         }
         frame.scopeSegments.removeLast()
@@ -679,22 +677,14 @@ internal class ComponentHookRuntime {
         }
     }
 
-    fun resolveNamedEntry(
-        kind: HookEntryKind,
-        delegateName: String,
-        initializer: () -> Any?
-    ): ResolvedHookEntry {
+    fun resolveNamedEntry(kind: HookEntryKind, delegateName: String, initializer: () -> Any?): ResolvedHookEntry {
         val frame = currentFrameForHookResolution()
         val normalizedName = validateSegment(delegateName, "delegated property")
         val signature = HookSignatures.kindOnly(kind)
         return resolveNamedEntryWithSignature(frame, kind, signature, normalizedName, initializer)
     }
 
-    fun resolveUnnamedEntry(
-        kind: HookEntryKind,
-        hookName: String,
-        initializer: () -> Any?
-    ): ResolvedHookEntry {
+    fun resolveUnnamedEntry(kind: HookEntryKind, hookName: String, initializer: () -> Any?): ResolvedHookEntry {
         val frame = currentFrameForHookResolution()
         val normalizedHookName = validateSegment(hookName, "hook name")
         val signature = HookSignatures.kindOnly(kind)
@@ -706,22 +696,23 @@ internal class ComponentHookRuntime {
         delegateName: String,
         signature: HookSignature,
         expectedRawType: Class<*>,
-        initializer: () -> T
+        initializer: () -> T,
     ): ResolvedTypedHookEntry<T> {
         val frame = currentFrameForHookResolution()
         val normalizedName = validateSegment(delegateName, "delegated property")
         val resolved = resolveNamedEntryWithSignature(frame, kind, signature, normalizedName, initializer)
-        val typedValue: T = castResolvedEntryValue(
-            value = resolved.entry.value,
-            path = resolved.path,
-            componentLabel = frame.componentId.debugPath(),
-            expectedRawType = expectedRawType
-        )
+        val typedValue: T =
+            castResolvedEntryValue(
+                value = resolved.entry.value,
+                path = resolved.path,
+                componentLabel = frame.componentId.debugPath(),
+                expectedRawType = expectedRawType,
+            )
         return ResolvedTypedHookEntry(
             path = resolved.path,
             value = typedValue,
             created = resolved.created,
-            synthetic = resolved.synthetic
+            synthetic = resolved.synthetic,
         )
     }
 
@@ -729,38 +720,38 @@ internal class ComponentHookRuntime {
         kind: HookEntryKind,
         delegateName: String,
         signature: HookSignature,
-        noinline initializer: () -> T
-    ): ResolvedTypedHookEntry<T> {
-        return resolveNamedTypedEntry(
+        noinline initializer: () -> T,
+    ): ResolvedTypedHookEntry<T> =
+        resolveNamedTypedEntry(
             kind = kind,
             delegateName = delegateName,
             signature = signature,
             expectedRawType = T::class.java,
-            initializer = initializer
+            initializer = initializer,
         )
-    }
 
     fun <T : Any> resolveUnnamedTypedEntry(
         kind: HookEntryKind,
         hookName: String,
         signature: HookSignature,
         expectedRawType: Class<*>,
-        initializer: () -> T
+        initializer: () -> T,
     ): ResolvedTypedHookEntry<T> {
         val frame = currentFrameForHookResolution()
         val normalizedHookName = validateSegment(hookName, "hook name")
         val resolved = resolveUnnamedEntryWithSignature(frame, kind, signature, normalizedHookName, initializer)
-        val typedValue: T = castResolvedEntryValue(
-            value = resolved.entry.value,
-            path = resolved.path,
-            componentLabel = frame.componentId.debugPath(),
-            expectedRawType = expectedRawType
-        )
+        val typedValue: T =
+            castResolvedEntryValue(
+                value = resolved.entry.value,
+                path = resolved.path,
+                componentLabel = frame.componentId.debugPath(),
+                expectedRawType = expectedRawType,
+            )
         return ResolvedTypedHookEntry(
             path = resolved.path,
             value = typedValue,
             created = resolved.created,
-            synthetic = resolved.synthetic
+            synthetic = resolved.synthetic,
         )
     }
 
@@ -768,30 +759,29 @@ internal class ComponentHookRuntime {
         kind: HookEntryKind,
         hookName: String,
         signature: HookSignature,
-        noinline initializer: () -> T
-    ): ResolvedTypedHookEntry<T> {
-        return resolveUnnamedTypedEntry(
+        noinline initializer: () -> T,
+    ): ResolvedTypedHookEntry<T> =
+        resolveUnnamedTypedEntry(
             kind = kind,
             hookName = hookName,
             signature = signature,
             expectedRawType = T::class.java,
-            initializer = initializer
+            initializer = initializer,
         )
-    }
 
-    fun failStorageBackedHookWithoutDelegate(hookName: String): Nothing {
+    fun failStorageBackedHookWithoutDelegate(hookName: String): Nothing =
         throw HookUsageException(
             "Storage-backed hook '$hookName' must be bound via delegated property syntax (`by $hookName(...)`). " +
-                "Direct assignment is not supported."
+                "Direct assignment is not supported.",
         )
-    }
 
     fun registerStorageBackedHookCandidate(hookName: String): StorageHookBindingToken {
         ensureActiveRender()
-        val token = StorageHookBindingToken(
-            hookName = hookName,
-            renderEpoch = renderEpoch
-        )
+        val token =
+            StorageHookBindingToken(
+                hookName = hookName,
+                renderEpoch = renderEpoch,
+            )
         pendingStorageHookBindings.add(token)
         return token
     }
@@ -800,7 +790,7 @@ internal class ComponentHookRuntime {
         ensureActiveRender()
         if (token.renderEpoch != renderEpoch) {
             throw HookUsageException(
-                "Storage-backed hook '${token.hookName}' binding token does not belong to current render session."
+                "Storage-backed hook '${token.hookName}' binding token does not belong to current render session.",
             )
         }
         token.bound = true
@@ -815,46 +805,46 @@ internal class ComponentHookRuntime {
         kind: HookEntryKind,
         signature: HookSignature,
         delegateName: String,
-        initializer: () -> Any?
-    ): ResolvedHookEntry {
-        return try {
-            val resolved = frame.context.resolveNamedEntry(
-                scopeSegments = frame.scopeSegments.toList(),
-                delegateName = delegateName,
-                kind = kind,
-                signature = signature,
-                renderEpoch = renderEpoch,
-                initializer = initializer
-            )
+        initializer: () -> Any?,
+    ): ResolvedHookEntry =
+        try {
+            val resolved =
+                frame.context.resolveNamedEntry(
+                    scopeSegments = frame.scopeSegments.toList(),
+                    delegateName = delegateName,
+                    kind = kind,
+                    signature = signature,
+                    renderEpoch = renderEpoch,
+                    initializer = initializer,
+                )
             recordInferredHookCallSite(frame)
             resolved
         } catch (mismatch: HookCompatibilityMismatchException) {
             handleCompatibilityMismatch(mismatch.mismatch)
         }
-    }
 
     private fun resolveUnnamedEntryWithSignature(
         frame: ComponentFrame,
         kind: HookEntryKind,
         signature: HookSignature,
         hookName: String,
-        initializer: () -> Any?
-    ): ResolvedHookEntry {
-        return try {
-            val resolved = frame.context.resolveUnnamedEntry(
-                scopeSegments = frame.scopeSegments.toList(),
-                hookName = hookName,
-                kind = kind,
-                signature = signature,
-                renderEpoch = renderEpoch,
-                initializer = initializer
-            )
+        initializer: () -> Any?,
+    ): ResolvedHookEntry =
+        try {
+            val resolved =
+                frame.context.resolveUnnamedEntry(
+                    scopeSegments = frame.scopeSegments.toList(),
+                    hookName = hookName,
+                    kind = kind,
+                    signature = signature,
+                    renderEpoch = renderEpoch,
+                    initializer = initializer,
+                )
             recordInferredHookCallSite(frame)
             resolved
         } catch (mismatch: HookCompatibilityMismatchException) {
             handleCompatibilityMismatch(mismatch.mismatch)
         }
-    }
 
     private fun handleCompatibilityMismatch(mismatch: HookCompatibilityMismatch): Nothing {
         if (renderSessionMode != HookRenderSessionMode.HotReload) {
@@ -866,9 +856,10 @@ internal class ComponentHookRuntime {
     }
 
     private fun resetComponentSubtree(root: ComponentInstanceId) {
-        val idsToRemove = contextsByComponent.keys
-            .filter { componentId -> componentId.isSameOrDescendantOf(root) }
-            .toSet()
+        val idsToRemove =
+            contextsByComponent.keys
+                .filter { componentId -> componentId.isSameOrDescendantOf(root) }
+                .toSet()
         if (idsToRemove.isEmpty()) return
         val iterator = contextsByComponent.entries.iterator()
         while (iterator.hasNext()) {
@@ -879,7 +870,7 @@ internal class ComponentHookRuntime {
         }
         runCommittedEffectCleanupForSubtree(
             root = root,
-            reason = "hot-reload remount/reset"
+            reason = "hot-reload remount/reset",
         )
         committedEffectsByComponent.keys
             .filter { componentId -> componentId.isSameOrDescendantOf(root) }
@@ -902,26 +893,29 @@ internal class ComponentHookRuntime {
     private fun registerEffectInvocation(
         runMode: EffectHookRunMode,
         deps: List<Any?>,
-        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit,
     ) {
         val frame = currentFrameForHookResolution()
-        val resolved = resolveUnnamedEntryWithSignature(
-            frame = frame,
-            kind = HookEntryKind.Effect,
-            signature = HookSignatures.effect(runMode),
-            hookName = "useEffect"
-        ) { }
-        val key = EffectRegistrationKey(
-            componentId = frame.componentId,
-            path = resolved.path
-        )
-        renderEffectRegistrations[key] = EffectRenderRegistration(
-            componentId = frame.componentId,
-            path = resolved.path,
-            runMode = runMode,
-            deps = deps,
-            effect = effect
-        )
+        val resolved =
+            resolveUnnamedEntryWithSignature(
+                frame = frame,
+                kind = HookEntryKind.Effect,
+                signature = HookSignatures.effect(runMode),
+                hookName = "useEffect",
+            ) { }
+        val key =
+            EffectRegistrationKey(
+                componentId = frame.componentId,
+                path = resolved.path,
+            )
+        renderEffectRegistrations[key] =
+            EffectRenderRegistration(
+                componentId = frame.componentId,
+                path = resolved.path,
+                runMode = runMode,
+                deps = deps,
+                effect = effect,
+            )
     }
 
     private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch) {
@@ -930,9 +924,11 @@ internal class ComponentHookRuntime {
         val runQueue: MutableList<EffectRenderRegistration> = arrayListOf()
 
         val visitedComponents = batch.visitedComponents
-        val registrationsByComponent: MutableMap<ComponentInstanceId, MutableList<EffectRenderRegistration>> = linkedMapOf()
+        val registrationsByComponent: MutableMap<ComponentInstanceId, MutableList<EffectRenderRegistration>> =
+            linkedMapOf()
         batch.registrationsInOrder.forEach { registration ->
-            registrationsByComponent.getOrPut(registration.componentId) { arrayListOf() }
+            registrationsByComponent
+                .getOrPut(registration.componentId) { arrayListOf() }
                 .add(registration)
         }
 
@@ -955,15 +951,16 @@ internal class ComponentHookRuntime {
                 runQueue.add(registration)
                 return@forEach
             }
-            val shouldRerun = when (registration.runMode) {
-                EffectHookRunMode.EveryCommit -> true
-                EffectHookRunMode.OnDependencyChange -> existing.deps != registration.deps
-            }
+            val shouldRerun =
+                when (registration.runMode) {
+                    EffectHookRunMode.EveryCommit -> true
+                    EffectHookRunMode.OnDependencyChange -> existing.deps != registration.deps
+                }
             if (shouldRerun) {
                 val cleanup = existing.cleanup
                 if (cleanup != null) {
                     cleanupQueue.add(
-                        EffectRegistrationKey(registration.componentId, registration.path) to cleanup
+                        EffectRegistrationKey(registration.componentId, registration.path) to cleanup,
                     )
                 }
                 runQueue.add(registration)
@@ -992,7 +989,7 @@ internal class ComponentHookRuntime {
                 componentId = key.componentId,
                 path = key.path,
                 cleanup = cleanup,
-                reason = "effect cleanup"
+                reason = "effect cleanup",
             )
         }
 
@@ -1005,32 +1002,35 @@ internal class ComponentHookRuntime {
         }
 
         runQueue.forEach { registration ->
-            val committedByPath = committedEffectsByComponent
-                .getOrPut(registration.componentId) { linkedMapOf() }
-            val cleanup = runCommittedEffect(
-                componentId = registration.componentId,
-                path = registration.path,
-                effect = registration.effect
-            )
-            committedByPath[registration.path] = CommittedEffectState(
-                runMode = registration.runMode,
-                deps = registration.deps,
-                cleanup = cleanup
-            )
+            val committedByPath =
+                committedEffectsByComponent
+                    .getOrPut(registration.componentId) { linkedMapOf() }
+            val cleanup =
+                runCommittedEffect(
+                    componentId = registration.componentId,
+                    path = registration.path,
+                    effect = registration.effect,
+                )
+            committedByPath[registration.path] =
+                CommittedEffectState(
+                    runMode = registration.runMode,
+                    deps = registration.deps,
+                    cleanup = cleanup,
+                )
         }
     }
 
     private fun runCommittedEffect(
         componentId: ComponentInstanceId,
         path: HookPath,
-        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit
+        effect: (registerCleanup: (() -> Unit) -> Unit) -> Unit,
     ): (() -> Unit)? {
         var cleanupRegistration: (() -> Unit)? = null
         effect { cleanup ->
             if (cleanupRegistration != null) {
                 throw HookUsageException(
                     "Effect at path '$path' in component '${componentId.debugPath()}' " +
-                        "registered multiple cleanup handlers via onDispose."
+                        "registered multiple cleanup handlers via onDispose.",
                 )
             }
             cleanupRegistration = cleanup
@@ -1042,22 +1042,19 @@ internal class ComponentHookRuntime {
         componentId: ComponentInstanceId,
         path: HookPath,
         cleanup: () -> Unit,
-        reason: String
+        reason: String,
     ) {
         try {
             cleanup()
         } catch (error: Throwable) {
             println(
                 "[DSGL][Hooks] Effect cleanup failed at path '$path' in component '${componentId.debugPath()}' " +
-                    "during $reason: ${error.message}"
+                    "during $reason: ${error.message}",
             )
         }
     }
 
-    private fun runCommittedEffectCleanupForSubtree(
-        root: ComponentInstanceId?,
-        reason: String
-    ) {
+    private fun runCommittedEffectCleanupForSubtree(root: ComponentInstanceId?, reason: String) {
         val entries = committedEffectsByComponent.entries.toList()
         entries.forEach { (componentId, byPath) ->
             if (root != null && !componentId.isSameOrDescendantOf(root)) {
@@ -1069,7 +1066,7 @@ internal class ComponentHookRuntime {
                     componentId = componentId,
                     path = path,
                     cleanup = cleanup,
-                    reason = reason
+                    reason = reason,
                 )
             }
         }
@@ -1094,8 +1091,9 @@ internal class ComponentHookRuntime {
 
     private fun prepareInferredComponentFramesForHookResolution() {
         ensureActiveRender()
-        val top = componentStack.lastOrNull()
-            ?: throw HookUsageException("Hook runtime has no active component frame.")
+        val top =
+            componentStack.lastOrNull()
+                ?: throw HookUsageException("Hook runtime has no active component frame.")
         if (top.origin == ComponentFrameOrigin.Explicit) {
             currentInferenceLeafCallSite = null
             return
@@ -1112,7 +1110,9 @@ internal class ComponentHookRuntime {
         while (commonPrefixLength < existingCount && commonPrefixLength < desiredPath.size) {
             val existingFrame = componentStack.elementAt(baseIndex + 1 + commonPrefixLength)
             val existingDescriptor = existingFrame.inferredDescriptor
-            if (existingFrame.origin != ComponentFrameOrigin.Inferred || existingDescriptor != desiredPath[commonPrefixLength]) {
+            if (existingFrame.origin != ComponentFrameOrigin.Inferred ||
+                existingDescriptor != desiredPath[commonPrefixLength]
+            ) {
                 break
             }
             commonPrefixLength += 1
@@ -1122,18 +1122,20 @@ internal class ComponentHookRuntime {
             popInferredFrameForTransition()
         }
 
-        var parent = componentStack.lastOrNull()
-            ?: throw HookUsageException("Hook runtime has no active component frame.")
+        var parent =
+            componentStack.lastOrNull()
+                ?: throw HookUsageException("Hook runtime has no active component frame.")
         var index = commonPrefixLength
         while (index < desiredPath.size) {
             val descriptor = desiredPath[index]
-            parent = pushComponentFrame(
-                parent = parent,
-                componentName = descriptor.componentName,
-                key = null,
-                origin = ComponentFrameOrigin.Inferred,
-                inferredDescriptor = descriptor
-            )
+            parent =
+                pushComponentFrame(
+                    parent = parent,
+                    componentName = descriptor.componentName,
+                    key = null,
+                    origin = ComponentFrameOrigin.Inferred,
+                    inferredDescriptor = descriptor,
+                )
             index += 1
         }
     }
@@ -1150,15 +1152,18 @@ internal class ComponentHookRuntime {
     }
 
     private fun popInferredFrameForTransition() {
-        val frame = componentStack.lastOrNull()
-            ?: throw HookUsageException("Hook runtime has no active component frame.")
+        val frame =
+            componentStack.lastOrNull()
+                ?: throw HookUsageException("Hook runtime has no active component frame.")
         if (frame.origin != ComponentFrameOrigin.Inferred) {
-            throw HookUsageException("Hook runtime internal error: attempted to pop non-inferred frame during inference transition.")
+            throw HookUsageException(
+                "Hook runtime internal error: attempted to pop non-inferred frame during inference transition.",
+            )
         }
         if (frame.scopeSegments.isNotEmpty()) {
             throw HookUsageException(
                 "Invalid nested hook scope behavior: component '${frame.componentId.debugPath()}' " +
-                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'."
+                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'.",
             )
         }
         componentStack.removeLast()
@@ -1171,13 +1176,13 @@ internal class ComponentHookRuntime {
                 ComponentFrameOrigin.Inferred -> popInferredFrameForTransition()
                 ComponentFrameOrigin.Explicit -> {
                     throw HookUsageException(
-                        "Invalid nested component scope behavior: render ended with unbalanced explicit component scopes."
+                        "Invalid nested component scope behavior: render ended with unbalanced explicit component scopes.",
                     )
                 }
 
                 ComponentFrameOrigin.Root -> {
                     throw HookUsageException(
-                        "Hook runtime internal error: root frame encountered before stack unwind completed."
+                        "Hook runtime internal error: root frame encountered before stack unwind completed.",
                     )
                 }
             }
@@ -1189,34 +1194,37 @@ internal class ComponentHookRuntime {
         componentName: String,
         key: Any?,
         origin: ComponentFrameOrigin,
-        inferredDescriptor: InferredComponentDescriptor?
+        inferredDescriptor: InferredComponentDescriptor?,
     ): ComponentFrame {
-        val positionalIndex = if (key == null) {
-            val current = parent.positionalChildCounters[componentName] ?: 0
-            parent.positionalChildCounters[componentName] = current + 1
-            current
-        } else {
-            -1
-        }
+        val positionalIndex =
+            if (key == null) {
+                val current = parent.positionalChildCounters[componentName] ?: 0
+                parent.positionalChildCounters[componentName] = current + 1
+                current
+            } else {
+                -1
+            }
 
-        val childId = parent.componentId.child(
-            name = componentName,
-            explicitKey = key,
-            positionalIndex = positionalIndex
-        )
+        val childId =
+            parent.componentId.child(
+                name = componentName,
+                explicitKey = key,
+                positionalIndex = positionalIndex,
+            )
         if (!enteredComponentIdsThisRender.add(childId)) {
             throw HookUsageException(
-                "Duplicate component identity '${childId.debugPath()}' in a single render pass."
+                "Duplicate component identity '${childId.debugPath()}' in a single render pass.",
             )
         }
         val childContext = contextsByComponent.getOrPut(childId) { ComponentHookContext(childId) }
         childContext.beginRender(renderEpoch)
-        val childFrame = ComponentFrame(
-            componentId = childId,
-            context = childContext,
-            origin = origin,
-            inferredDescriptor = inferredDescriptor
-        )
+        val childFrame =
+            ComponentFrame(
+                componentId = childId,
+                context = childContext,
+                origin = origin,
+                inferredDescriptor = inferredDescriptor,
+            )
         componentStack.addLast(childFrame)
         return childFrame
     }
@@ -1235,17 +1243,19 @@ internal class ComponentHookRuntime {
                 foundRenderBoundary = true
                 break
             }
-            val descriptor = InferredComponentDescriptor(
-                ownerClassName = frame.className,
-                methodName = methodName,
-                componentName = inferredComponentName(frame.className, methodName)
-            )
-            if (leafCallSite == null) {
-                leafCallSite = HookCallSite(
-                    className = frame.className,
+            val descriptor =
+                InferredComponentDescriptor(
+                    ownerClassName = frame.className,
                     methodName = methodName,
-                    lineNumber = frame.lineNumber
+                    componentName = inferredComponentName(frame.className, methodName),
                 )
+            if (leafCallSite == null) {
+                leafCallSite =
+                    HookCallSite(
+                        className = frame.className,
+                        methodName = methodName,
+                        lineNumber = frame.lineNumber,
+                    )
             }
             if (innerToOuter.lastOrNull() == descriptor) {
                 continue
@@ -1255,14 +1265,14 @@ internal class ComponentHookRuntime {
         if (!foundRenderBoundary || innerToOuter.isEmpty()) {
             return InferenceSnapshot(
                 descriptors = emptyList(),
-                leafCallSite = null
+                leafCallSite = null,
             )
         }
         val result = innerToOuter.toMutableList()
         result.reverse()
         return InferenceSnapshot(
             descriptors = result,
-            leafCallSite = leafCallSite
+            leafCallSite = leafCallSite,
         )
     }
 
@@ -1281,10 +1291,11 @@ internal class ComponentHookRuntime {
     }
 
     private fun normalizeInferenceMethodName(rawMethodName: String): String? {
-        val method = when {
-            rawMethodName.endsWith("\$default") -> rawMethodName.removeSuffix("\$default")
-            else -> rawMethodName
-        }
+        val method =
+            when {
+                rawMethodName.endsWith("\$default") -> rawMethodName.removeSuffix("\$default")
+                else -> rawMethodName
+            }
         if (method.isBlank()) return null
         if (method == "getStackTrace") return null
         if (method.startsWith("invoke")) return null
@@ -1312,7 +1323,7 @@ internal class ComponentHookRuntime {
         val raw = "inferred_${ownerSimple}_$methodName"
         return validateSegment(
             value = raw.replace('.', '_'),
-            label = "inferred component name"
+            label = "inferred component name",
         )
     }
 
@@ -1324,23 +1335,25 @@ internal class ComponentHookRuntime {
         if (!frame.seenHookCallSitesThisRender.contains(callSite)) {
             return frame
         }
-        val descriptor = frame.inferredDescriptor
-            ?: throw HookUsageException("Hook runtime internal error: inferred frame without descriptor.")
+        val descriptor =
+            frame.inferredDescriptor
+                ?: throw HookUsageException("Hook runtime internal error: inferred frame without descriptor.")
         if (frame.scopeSegments.isNotEmpty()) {
             throw HookUsageException(
                 "Invalid nested hook scope behavior: component '${frame.componentId.debugPath()}' " +
-                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'."
+                    "ended with unclosed custom hook scope '${frame.scopeSegments.last()}'.",
             )
         }
         componentStack.removeLast()
-        val parent = componentStack.lastOrNull()
-            ?: throw HookUsageException("Hook runtime has no parent frame for inferred sibling transition.")
+        val parent =
+            componentStack.lastOrNull()
+                ?: throw HookUsageException("Hook runtime has no parent frame for inferred sibling transition.")
         return pushComponentFrame(
             parent = parent,
             componentName = descriptor.componentName,
             key = null,
             origin = ComponentFrameOrigin.Inferred,
-            inferredDescriptor = descriptor
+            inferredDescriptor = descriptor,
         )
     }
 
@@ -1379,13 +1392,13 @@ internal class ComponentHookRuntime {
         value: Any?,
         path: HookPath,
         componentLabel: String,
-        expectedRawType: Class<*>
+        expectedRawType: Class<*>,
     ): T {
         if (value == null || !expectedRawType.isInstance(value)) {
             val actualType = if (value == null) "null" else value.javaClass.name
             throw HookUsageException(
                 "Hook value type mismatch at path '$path' in component '$componentLabel': " +
-                    "expected=${expectedRawType.name}, actual=$actualType."
+                    "expected=${expectedRawType.name}, actual=$actualType.",
             )
         }
         @Suppress("UNCHECKED_CAST")

@@ -2,6 +2,7 @@ plugins {
     id("dsgl-mc-adapter.conventions")
     id("dsgl-mc-forge-1-7-10.conventions")
     id("dsgl-releaseable-module.conventions")
+    id("dsgl-linter.conventions")
 }
 
 dsglRelease {
@@ -9,9 +10,10 @@ dsglRelease {
 }
 
 dependencies {
-    val coreProject = findProject(":core")
-        ?: findProject(":dsgl:core")
-        ?: error("DSGL core project not found (expected :core or :dsgl:core).")
+    val coreProject =
+        findProject(":core")
+            ?: findProject(":dsgl:core")
+            ?: error("DSGL core project not found (expected :core or :dsgl:core).")
     implementation(coreProject)
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))

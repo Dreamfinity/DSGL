@@ -18,7 +18,9 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.PositionMode
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import org.dreamfinity.dsgl.core.style.StyleEngine
-import java.util.*
+import java.util.Collections
+import java.util.IdentityHashMap
+import java.util.WeakHashMap
 
 /**
  * Retained DOM tree. Render phase builds this tree, paint phase draws it.
@@ -28,7 +30,7 @@ import java.util.*
  */
 class DomTree(
     var root: DOMNode,
-    private val styleScope: StyleApplicationScope = StyleApplicationScope.Application
+    private val styleScope: StyleApplicationScope = StyleApplicationScope.Application,
 ) {
     data class PaintStats(
         val frames: Long,
@@ -37,7 +39,7 @@ class DomTree(
         val chunkNodesRebuiltLastFrame: Int,
         val styledNodesLastFrame: Int,
         val styleCacheHitsLastFrame: Int,
-        val styleRecomputedLastFrame: Int
+        val styleRecomputedLastFrame: Int,
     )
 
     private var lastWidth: Int = 0
@@ -58,14 +60,17 @@ class DomTree(
     private var chunkTreeChangedThisFrame: Boolean = false
     private var lastPaintBuildErrorMs: Long = 0L
     private val chunksByNode: MutableMap<DOMNode, RenderCommandChunk> = WeakHashMap()
-    private val debugCommandStackChecks: Boolean = java.lang.Boolean.getBoolean("dsgl.render.debug.stack")
-    private var lastStyleReport: StyleEngine.StyleApplyReport = StyleEngine.StyleApplyReport(
-        layoutDirty = false,
-        visualDirty = false,
-        visitedNodes = 0,
-        cacheHits = 0,
-        recomputedNodes = 0
-    )
+    private val debugCommandStackChecks: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.render.debug.stack")
+    private var lastStyleReport: StyleEngine.StyleApplyReport =
+        StyleEngine.StyleApplyReport(
+            layoutDirty = false,
+            visualDirty = false,
+            visitedNodes = 0,
+            cacheHits = 0,
+            recomputedNodes = 0,
+        )
 
     /** Measures and lays out the tree for the given viewport. */
     fun render(ctx: UiMeasureContext, width: Int, height: Int) {
@@ -77,7 +82,7 @@ class DomTree(
         root.resolveLayoutStyleValues(
             ctx = ctx,
             parentContentWidth = width,
-            parentContentHeight = height
+            parentContentHeight = height,
         )
         root.render(ctx, 0, 0, width, height)
         validateLayout(ctx)
@@ -98,31 +103,32 @@ class DomTree(
             }
             val scrollInvalidation = root.consumeScrollInvalidationRecursively()
             val styleRevision = if (applyStyles) StyleEngine.currentStyleRevision(styleScope) else lastStyleRevision
-            val styleReport = if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
-                val styleStartNanos = System.nanoTime()
-                StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
-                    lastStyleReport = it
-                    lastStyleRevision = styleRevision
-                    ScrollPerformanceCounters.recordStyleApplyDuration(System.nanoTime() - styleStartNanos)
+            val styleReport =
+                if (applyStyles && (styleRevision != lastStyleRevision || !laidOut)) {
+                    val styleStartNanos = System.nanoTime()
+                    StyleEngine.applyStylesRecursivelyDetailed(root, styleScope).also {
+                        lastStyleReport = it
+                        lastStyleRevision = styleRevision
+                        ScrollPerformanceCounters.recordStyleApplyDuration(System.nanoTime() - styleStartNanos)
+                    }
+                } else {
+                    StyleEngine.StyleApplyReport(
+                        layoutDirty = false,
+                        visualDirty = false,
+                        visitedNodes = 0,
+                        cacheHits = 0,
+                        recomputedNodes = 0,
+                    )
                 }
-            } else {
-                StyleEngine.StyleApplyReport(
-                    layoutDirty = false,
-                    visualDirty = false,
-                    visitedNodes = 0,
-                    cacheHits = 0,
-                    recomputedNodes = 0
-                )
-            }
             val canUseGuardedScrollVisualFastPath =
                 laidOut &&
-                        lastWidth > 0 &&
-                        lastHeight > 0 &&
-                        styleScope != StyleApplicationScope.SystemOverlay &&
-                        !styleReport.layoutDirty &&
-                        !styleReport.visualDirty &&
-                        scrollInvalidation.visualDirty &&
-                        !scrollInvalidation.layoutDirty
+                    lastWidth > 0 &&
+                    lastHeight > 0 &&
+                    styleScope != StyleApplicationScope.SystemOverlay &&
+                    !styleReport.layoutDirty &&
+                    !styleReport.visualDirty &&
+                    scrollInvalidation.visualDirty &&
+                    !scrollInvalidation.layoutDirty
             val stickyLayoutInvalidated = styleReport.layoutDirty || scrollInvalidation.layoutDirty
             if (stickyLayoutInvalidated) {
                 root.invalidateStickyVisualOffsetsRecursively()
@@ -138,7 +144,12 @@ class DomTree(
             }
             val requiresSystemOverlayScrollLayoutFallback =
                 styleScope == StyleApplicationScope.SystemOverlay && scrollInvalidation.visualDirty
-            if ((!laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresSystemOverlayScrollLayoutFallback) &&
+            if ((
+                    !laidOut ||
+                        styleReport.layoutDirty ||
+                        scrollInvalidation.layoutDirty ||
+                        requiresSystemOverlayScrollLayoutFallback
+                ) &&
                 lastWidth > 0 &&
                 lastHeight > 0
             ) {
@@ -146,7 +157,7 @@ class DomTree(
                 root.resolveLayoutStyleValues(
                     ctx = ctx,
                     parentContentWidth = lastWidth,
-                    parentContentHeight = lastHeight
+                    parentContentHeight = lastHeight,
                 )
                 root.render(ctx, 0, 0, lastWidth, lastHeight)
                 val resolvedStickyNodes = root.refreshStickyVisualOffsetsRecursively()
@@ -188,17 +199,16 @@ class DomTree(
         return result
     }
 
-    fun paintStats(): PaintStats {
-        return PaintStats(
+    fun paintStats(): PaintStats =
+        PaintStats(
             frames = frames,
             commandRebuilds = commandRebuilds,
             chunkNodesVisitedLastFrame = chunkNodesVisitedLastFrame,
             chunkNodesRebuiltLastFrame = chunkNodesRebuiltLastFrame,
             styledNodesLastFrame = lastStyleReport.visitedNodes,
             styleCacheHitsLastFrame = lastStyleReport.cacheHits,
-            styleRecomputedLastFrame = lastStyleReport.recomputedNodes
+            styleRecomputedLastFrame = lastStyleReport.recomputedNodes,
         )
-    }
 
     fun markVisualDirty() {
         commandsDirty = true
@@ -211,12 +221,13 @@ class DomTree(
 
     private fun nextScrollAnimationDtSeconds(): Double {
         val nowNanos = System.nanoTime()
-        val dtSeconds = if (lastScrollAnimationNanos == 0L) {
-            1.0 / 60.0
-        } else {
-            ((nowNanos - lastScrollAnimationNanos).toDouble() / 1_000_000_000.0)
-                .coerceIn(1.0 / 240.0, 0.2)
-        }
+        val dtSeconds =
+            if (lastScrollAnimationNanos == 0L) {
+                1.0 / 60.0
+            } else {
+                ((nowNanos - lastScrollAnimationNanos).toDouble() / 1_000_000_000.0)
+                    .coerceIn(1.0 / 240.0, 0.2)
+            }
         lastScrollAnimationNanos = nowNanos
         return dtSeconds
     }
@@ -227,12 +238,13 @@ class DomTree(
             chunkNodesVisitedLastFrame = 0
             chunkNodesRebuiltLastFrame = 0
             chunkTreeChangedThisFrame = false
-            val chunkChanged = if (!strictInvalidLayout) {
-                rebuildChunkRecursive(root, ctx, nowMs)
-                chunkTreeChangedThisFrame
-            } else {
-                false
-            }
+            val chunkChanged =
+                if (!strictInvalidLayout) {
+                    rebuildChunkRecursive(root, ctx, nowMs)
+                    chunkTreeChangedThisFrame
+                } else {
+                    false
+                }
             val changed = commandsDirty || chunkChanged
             if (!changed) {
                 return false
@@ -256,7 +268,9 @@ class DomTree(
             val now = System.currentTimeMillis()
             if (now - lastPaintBuildErrorMs >= 2_000L) {
                 lastPaintBuildErrorMs = now
-                println("[DSGL-DomTree] Paint command rebuild failed; keeping previous frame commands: ${error.message}")
+                println(
+                    "[DSGL-DomTree] Paint command rebuild failed; keeping previous frame commands: ${error.message}",
+                )
             }
             false
         }
@@ -327,40 +341,42 @@ class DomTree(
         val chunk = chunksByNode.getOrPut(node) { RenderCommandChunk() }
         val nodeHidden = node.dragRenderHidden || node.display == Display.None
 
-        val childSignature = if (nodeHidden) {
-            if (chunk.children.isNotEmpty()) {
-                chunk.children.clear()
-                chunkTreeChangedThisFrame = true
-            }
-            0L
-        } else {
-            var signature = 1L
-            val expectedChildren = node.orderedChildrenForPaintTraversal()
-            var childrenChanged = chunk.children.size != expectedChildren.size
-            if (childrenChanged) {
-                chunk.children.clear()
-            }
-            expectedChildren.forEachIndexed { index, child ->
-                val childChunk = rebuildChunkRecursive(child, ctx, nowMs)
+        val childSignature =
+            if (nodeHidden) {
+                if (chunk.children.isNotEmpty()) {
+                    chunk.children.clear()
+                    chunkTreeChangedThisFrame = true
+                }
+                0L
+            } else {
+                var signature = 1L
+                val expectedChildren = node.orderedChildrenForPaintTraversal()
+                var childrenChanged = chunk.children.size != expectedChildren.size
                 if (childrenChanged) {
-                    chunk.children += childChunk
-                } else if (chunk.children[index] !== childChunk) {
-                    childrenChanged = true
+                    chunk.children.clear()
                 }
-                signature = 31L * signature + childChunk.subtreeSignature
-            }
-            if (childrenChanged) {
-                chunkTreeChangedThisFrame = true
-                chunk.children.clear()
-                expectedChildren.forEach { child ->
-                    chunk.children += chunksByNode.getOrPut(child) { RenderCommandChunk() }
+                expectedChildren.forEachIndexed { index, child ->
+                    val childChunk = rebuildChunkRecursive(child, ctx, nowMs)
+                    if (childrenChanged) {
+                        chunk.children += childChunk
+                    } else if (chunk.children[index] !== childChunk) {
+                        childrenChanged = true
+                    }
+                    signature = 31L * signature + childChunk.subtreeSignature
                 }
+                if (childrenChanged) {
+                    chunkTreeChangedThisFrame = true
+                    chunk.children.clear()
+                    expectedChildren.forEach { child ->
+                        chunk.children += chunksByNode.getOrPut(child) { RenderCommandChunk() }
+                    }
+                }
+                signature
             }
-            signature
-        }
 
         val nodeSignature = node.renderCommandsSignature(nowMs)
-        val rebuildSelf = chunk.lastNodeSignature != nodeSignature ||
+        val rebuildSelf =
+            chunk.lastNodeSignature != nodeSignature ||
                 chunk.lastChildrenSignature != childSignature ||
                 chunk.lastNodeSignature == Long.MIN_VALUE
 
@@ -381,7 +397,7 @@ class DomTree(
         node: DOMNode,
         chunk: RenderCommandChunk,
         ctx: UiMeasureContext,
-        nodeHidden: Boolean
+        nodeHidden: Boolean,
     ) {
         chunk.prefixCommands.clear()
         chunk.selfCommands.clear()
@@ -394,33 +410,36 @@ class DomTree(
         val activeOpacity = node.effectiveOpacity()
         val transformPushed = !activeTransform.isIdentity()
         val opacityPushed = activeOpacity < 0.999f
-        val promotedFixedRootViewportClipRect = if (node.position == PositionMode.Fixed) {
-            node.fixedViewportClipRectForPromotedParticipation()
-        } else {
-            null
-        }
+        val promotedFixedRootViewportClipRect =
+            if (node.position == PositionMode.Fixed) {
+                node.fixedViewportClipRectForPromotedParticipation()
+            } else {
+                null
+            }
 
         if (promotedFixedRootViewportClipRect != null) {
-            chunk.prefixCommands += RenderCommand.PushClip(
-                x = promotedFixedRootViewportClipRect.x,
-                y = promotedFixedRootViewportClipRect.y,
-                width = promotedFixedRootViewportClipRect.width.coerceAtLeast(0),
-                height = promotedFixedRootViewportClipRect.height.coerceAtLeast(0)
-            )
+            chunk.prefixCommands +=
+                RenderCommand.PushClip(
+                    x = promotedFixedRootViewportClipRect.x,
+                    y = promotedFixedRootViewportClipRect.y,
+                    width = promotedFixedRootViewportClipRect.width.coerceAtLeast(0),
+                    height = promotedFixedRootViewportClipRect.height.coerceAtLeast(0),
+                )
         }
 
         if (transformPushed) {
             val ox = node.bounds.x + node.bounds.width * node.transformOrigin.originX
             val oy = node.bounds.y + node.bounds.height * node.transformOrigin.originY
-            chunk.prefixCommands += RenderCommand.PushTransform(
-                originX = ox,
-                originY = oy,
-                translateX = activeTransform.translateX,
-                translateY = activeTransform.translateY,
-                scaleX = activeTransform.scaleX,
-                scaleY = activeTransform.scaleY,
-                rotateDeg = activeTransform.rotateDeg
-            )
+            chunk.prefixCommands +=
+                RenderCommand.PushTransform(
+                    originX = ox,
+                    originY = oy,
+                    translateX = activeTransform.translateX,
+                    translateY = activeTransform.translateY,
+                    scaleX = activeTransform.scaleX,
+                    scaleY = activeTransform.scaleY,
+                    rotateDeg = activeTransform.rotateDeg,
+                )
         }
         if (opacityPushed) {
             chunk.prefixCommands += RenderCommand.PushOpacity(activeOpacity)
@@ -432,12 +451,13 @@ class DomTree(
 
         val clipRect = node.overflowViewportRect()
         if (clipRect != null) {
-            chunk.childrenPrefixCommands += RenderCommand.PushClip(
-                x = clipRect.x,
-                y = clipRect.y,
-                width = clipRect.width.coerceAtLeast(0),
-                height = clipRect.height.coerceAtLeast(0)
-            )
+            chunk.childrenPrefixCommands +=
+                RenderCommand.PushClip(
+                    x = clipRect.x,
+                    y = clipRect.y,
+                    width = clipRect.width.coerceAtLeast(0),
+                    height = clipRect.height.coerceAtLeast(0),
+                )
             chunk.childrenSuffixCommands += RenderCommand.PopClip
         }
 
@@ -499,9 +519,8 @@ class DomTree(
             val first = violations.first()
             println(
                 "[DSGL-Layout] strict mode invalidated paint/hit-test due to ${first.code} " +
-                        "key=${first.nodeKey} parent=${first.parentKey}: ${first.message}"
+                    "key=${first.nodeKey} parent=${first.parentKey}: ${first.message}",
             )
         }
     }
 }
-

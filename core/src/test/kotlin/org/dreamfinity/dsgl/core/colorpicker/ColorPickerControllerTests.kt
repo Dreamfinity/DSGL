@@ -11,18 +11,26 @@ class ColorPickerControllerTests {
     @Test
     fun `mode switch keeps selected color`() {
         val initial = RgbaColor(0.25f, 0.5f, 0.75f, 0.6f)
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = initial,
-                previous = initial,
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = initial,
+                        previous = initial,
+                        mode = ColorFormatMode.RGB,
+                        alphaEnabled = true,
+                    ),
             )
-        )
         val firstLayout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
-        controller.handleMouseDown(firstLayout.modeSelectRect.x + 2, firstLayout.modeSelectRect.y + 2, MouseButton.LEFT, firstLayout)
+        controller.handleMouseDown(
+            firstLayout.modeSelectRect.x + 2,
+            firstLayout.modeSelectRect.y + 2,
+            MouseButton.LEFT,
+            firstLayout,
+        )
         val dropdownLayout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
-        val hslOption = dropdownLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        val hslOption =
+            dropdownLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
         controller.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, MouseButton.LEFT, dropdownLayout)
 
         val after = controller.snapshot()
@@ -38,11 +46,12 @@ class ColorPickerControllerTests {
         val sampled = 0xCC112233.toInt()
         val history = ColorRecentHistory()
         var committed: RgbaColor? = null
-        val controller = ColorPickerController(
-            initial = ColorPickerState(RgbaColor.WHITE, closeOnSelect = false),
-            recentHistory = history,
-            screenSampler = ScreenColorSampler { _, _ -> sampled }
-        )
+        val controller =
+            ColorPickerController(
+                initial = ColorPickerState(RgbaColor.WHITE, closeOnSelect = false),
+                recentHistory = history,
+                screenSampler = ScreenColorSampler { _, _ -> sampled },
+            )
         controller.onCommit = { committed = it }
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
@@ -60,32 +69,41 @@ class ColorPickerControllerTests {
     @Test
     fun `commit stores color in recents`() {
         val history = ColorRecentHistory()
-        val controller = ColorPickerController(
-            initial = ColorPickerState(color = RgbaColor.WHITE),
-            recentHistory = history
-        )
+        val controller =
+            ColorPickerController(
+                initial = ColorPickerState(color = RgbaColor.WHITE),
+                recentHistory = history,
+            )
         val next = RgbaColor(0.1f, 0.2f, 0.3f, 0.4f)
         controller.setState(
             ColorPickerState(
                 color = next,
                 previous = RgbaColor.WHITE,
                 mode = ColorFormatMode.HEX,
-                alphaEnabled = true
-            )
+                alphaEnabled = true,
+            ),
         )
         controller.commitCurrentColor()
-        assertEquals(next.toArgbInt(), history.snapshot().first().toArgbInt())
+        assertEquals(
+            next.toArgbInt(),
+            history
+                .snapshot()
+                .first()
+                .toArgbInt(),
+        )
     }
 
     @Test
     fun `input slot layout separates label and input rectangles`() {
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.RGB,
+                        alphaEnabled = true,
+                    ),
             )
-        )
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         assertTrue(layout.inputSlots.isNotEmpty())
         layout.inputSlots.forEach { slot ->
@@ -97,14 +115,16 @@ class ColorPickerControllerTests {
 
     @Test
     fun `rgb channel order switch updates active mode and input order`() {
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor(0.3f, 0.4f, 0.5f, 0.6f),
-                mode = ColorFormatMode.RGB,
-                rgbOrder = RgbChannelOrder.RGBA,
-                alphaEnabled = true
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor(0.3f, 0.4f, 0.5f, 0.6f),
+                        mode = ColorFormatMode.RGB,
+                        rgbOrder = RgbChannelOrder.RGBA,
+                        alphaEnabled = true,
+                    ),
             )
-        )
         val firstLayout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         val argbRect = firstLayout.argbOrderRect ?: error("ARGB switch not rendered")
         controller.handleMouseDown(argbRect.x + 2, argbRect.y + 2, MouseButton.LEFT, firstLayout)
@@ -120,18 +140,21 @@ class ColorPickerControllerTests {
     @Test
     fun `eyedropper overlay shows mode and formatted value tooltip`() {
         val sampled = 0xFF336699.toInt()
-        val sampler = object : ScreenColorSampler {
-            override fun sampleColorAt(x: Int, y: Int): Int? = sampled
-        }
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.RGB,
-                rgbOrder = RgbChannelOrder.ARGB,
-                alphaEnabled = true
-            ),
-            screenSampler = sampler
-        )
+        val sampler =
+            object : ScreenColorSampler {
+                override fun sampleColorAt(x: Int, y: Int): Int? = sampled
+            }
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.RGB,
+                        rgbOrder = RgbChannelOrder.ARGB,
+                        alphaEnabled = true,
+                    ),
+                screenSampler = sampler,
+            )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(20, 20, 340, controller.preferredHeight(true)))
         controller.handleMouseMove(120, 160, layout)
@@ -141,26 +164,29 @@ class ColorPickerControllerTests {
 
         val textCommands = out.filterIsInstance<RenderCommand.DrawText>()
         assertTrue(textCommands.any { it.text.contains("Mode: RGB (ARGB)") })
-        val expected = ColorTextCodec.format(
-            RgbaColor.fromArgbInt(sampled).normalized(),
-            ColorFormatMode.RGB,
-            true,
-            RgbChannelOrder.ARGB
-        )
+        val expected =
+            ColorTextCodec.format(
+                RgbaColor.fromArgbInt(sampled).normalized(),
+                ColorFormatMode.RGB,
+                true,
+                RgbChannelOrder.ARGB,
+            )
         assertTrue(textCommands.any { it.text == expected })
     }
 
     @Test
     fun `eyedropper overlay preview path does not use area sampling`() {
         val sampler = RecordingSampler()
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.HEX,
-                alphaEnabled = true
-            ),
-            screenSampler = sampler
-        )
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.HEX,
+                        alphaEnabled = true,
+                    ),
+                screenSampler = sampler,
+            )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
@@ -176,13 +202,15 @@ class ColorPickerControllerTests {
 
     @Test
     fun `eyedropper overlay emits capture and textured magnifier commands instead of per-cell rectangles`() {
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.HEX,
-                alphaEnabled = true
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.HEX,
+                        alphaEnabled = true,
+                    ),
             )
-        )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
@@ -191,26 +219,32 @@ class ColorPickerControllerTests {
 
         assertTrue(out.any { it is RenderCommand.CaptureScreenRegion })
         assertTrue(out.any { it is RenderCommand.DrawCapturedScreenRegion })
-        assertTrue(out.none { command ->
-            command is RenderCommand.DrawRect && command.width == 8 && command.height == 8
-        })
+        assertTrue(
+            out.none { command ->
+                command is RenderCommand.DrawRect && command.width == 8 && command.height == 8
+            },
+        )
     }
+
     @Test
     fun `eyedropper overlay draws aligned light grid over captured magnifier`() {
         val gridColor = 0x7F57C2FF
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.HEX,
-                alphaEnabled = true
-            ),
-            style = ColorPickerStyle(
-                eyedropperGridSize = 5,
-                eyedropperCellSize = 4,
-                eyedropperGridOverlayEnabled = true,
-                eyedropperGridOverlayColor = gridColor
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.HEX,
+                        alphaEnabled = true,
+                    ),
+                style =
+                    ColorPickerStyle(
+                        eyedropperGridSize = 5,
+                        eyedropperCellSize = 4,
+                        eyedropperGridOverlayEnabled = true,
+                        eyedropperGridOverlayColor = gridColor,
+                    ),
             )
-        )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
@@ -227,14 +261,16 @@ class ColorPickerControllerTests {
     @Test
     fun `eyedropper keeps existing alpha while sampling rgb`() {
         val sampled = 0x00336699
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor(0.1f, 0.2f, 0.3f, 0.4f),
-                mode = ColorFormatMode.HEX,
-                alphaEnabled = true
-            ),
-            screenSampler = ScreenColorSampler { _, _ -> sampled }
-        )
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor(0.1f, 0.2f, 0.3f, 0.4f),
+                        mode = ColorFormatMode.HEX,
+                        alphaEnabled = true,
+                    ),
+                screenSampler = ScreenColorSampler { _, _ -> sampled },
+            )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
         controller.handleMouseMove(20, 24, layout)
@@ -249,13 +285,15 @@ class ColorPickerControllerTests {
 
     @Test
     fun `picker draws gradient bars with dedicated render commands`() {
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.RGB,
+                        alphaEnabled = true,
+                    ),
             )
-        )
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
         val out = ArrayList<RenderCommand>()
         controller.appendCommands(layout, out)
@@ -269,26 +307,32 @@ class ColorPickerControllerTests {
     fun `picker checker backgrounds use dedicated checkerboard command`() {
         val checkerLight = 0x7FA0D010
         val checkerDark = 0x7F104090
-        val controller = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true
-            ),
-            style = ColorPickerStyle(
-                checkerLightColor = checkerLight,
-                checkerDarkColor = checkerDark
+        val controller =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.RGB,
+                        alphaEnabled = true,
+                    ),
+                style =
+                    ColorPickerStyle(
+                        checkerLightColor = checkerLight,
+                        checkerDarkColor = checkerDark,
+                    ),
             )
-        )
         val layout = controller.buildLayout(Rect(0, 0, 320, controller.preferredHeight(true)))
         val out = ArrayList<RenderCommand>()
         controller.appendCommands(layout, out)
 
         assertTrue(out.any { it is RenderCommand.DrawCheckerboard })
-        assertTrue(out.none { command ->
-            command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
-        })
+        assertTrue(
+            out.none { command ->
+                command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
+            },
+        )
     }
+
     private class RecordingSampler : ScreenColorSampler {
         var colorCalls: Int = 0
         var areaCalls: Int = 0
@@ -298,7 +342,13 @@ class ColorPickerControllerTests {
             return 0xFF112233.toInt()
         }
 
-        override fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
+        override fun sampleArea(
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+            outArgb: IntArray,
+        ): Boolean {
             areaCalls += 1
             var index = 0
             while (index < width * height && index < outArgb.size) {
@@ -309,8 +359,5 @@ class ColorPickerControllerTests {
         }
     }
 
-    private fun closeEnough(a: Float, b: Float): Boolean {
-        return kotlin.math.abs(a - b) <= 0.01f
-    }
+    private fun closeEnough(a: Float, b: Float): Boolean = kotlin.math.abs(a - b) <= 0.01f
 }
-

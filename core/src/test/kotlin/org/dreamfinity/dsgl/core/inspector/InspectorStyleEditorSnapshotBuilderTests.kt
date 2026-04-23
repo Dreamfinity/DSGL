@@ -10,7 +10,6 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
 
 class InspectorStyleEditorSnapshotBuilderTests {
-
     @AfterTest
     fun cleanup() {
         StyleEngine.clearAllInspectorOverrides()
@@ -23,29 +22,34 @@ class InspectorStyleEditorSnapshotBuilderTests {
         StyleEngine.setInspectorOverrideLiteral(selected, StyleProperty.BACKGROUND_COLOR, "#FF336699").getOrThrow()
         val inspection = StyleEngine.inspect(selected)
 
-        val result = builder().build(
-            context(
-                selected = selected,
-                inspection = inspection,
-                editableProperties = listOf(
-                    StyleProperty.BACKGROUND_COLOR,
-                    StyleProperty.WIDTH,
-                    StyleProperty.DISPLAY
+        val result =
+            builder().build(
+                context(
+                    selected = selected,
+                    inspection = inspection,
+                    editableProperties =
+                        listOf(
+                            StyleProperty.BACKGROUND_COLOR,
+                            StyleProperty.WIDTH,
+                            StyleProperty.DISPLAY,
+                        ),
+                    openValueSelectProperty = StyleProperty.DISPLAY,
+                    openUnitSelectProperty = StyleProperty.WIDTH,
+                    openValueSelectScrollIndex = 99,
+                    openUnitSelectScrollIndex = 99,
                 ),
-                openValueSelectProperty = StyleProperty.DISPLAY,
-                openUnitSelectProperty = StyleProperty.WIDTH,
-                openValueSelectScrollIndex = 99,
-                openUnitSelectScrollIndex = 99
             )
-        )
 
         assertEquals(3, result.rows.size)
-        val colorRow = result.rows.firstOrNull { it.property == StyleProperty.BACKGROUND_COLOR }
-            ?: error("background color row missing")
-        val widthRow = result.rows.firstOrNull { it.property == StyleProperty.WIDTH }
-            ?: error("width row missing")
-        val displayRow = result.rows.firstOrNull { it.property == StyleProperty.DISPLAY }
-            ?: error("display row missing")
+        val colorRow =
+            result.rows.firstOrNull { it.property == StyleProperty.BACKGROUND_COLOR }
+                ?: error("background color row missing")
+        val widthRow =
+            result.rows.firstOrNull { it.property == StyleProperty.WIDTH }
+                ?: error("width row missing")
+        val displayRow =
+            result.rows.firstOrNull { it.property == StyleProperty.DISPLAY }
+                ?: error("display row missing")
 
         assertNotNull(colorRow.colorPreviewRect)
         assertNotNull(colorRow.colorPreviewColor)
@@ -64,8 +68,9 @@ class InspectorStyleEditorSnapshotBuilderTests {
 
         assertTrue(
             result.actionSpecs.any {
-                it.type == InspectorStyleEditorActionType.OpenColorPicker && it.property == StyleProperty.BACKGROUND_COLOR
-            }
+                it.type == InspectorStyleEditorActionType.OpenColorPicker &&
+                    it.property == StyleProperty.BACKGROUND_COLOR
+            },
         )
         assertTrue(result.resetRect.width > 0 && result.resetRect.height > 0)
         assertTrue(result.clearRect.width > 0 && result.clearRect.height > 0)
@@ -75,29 +80,32 @@ class InspectorStyleEditorSnapshotBuilderTests {
     fun `builder projects dropdown hover through pointer projection scroll and preserves option value`() {
         val (_, selected) = inspectedSelection()
         val inspection = StyleEngine.inspect(selected)
-        val baseContext = context(
-            selected = selected,
-            inspection = inspection,
-            editableProperties = listOf(StyleProperty.DISPLAY),
-            openValueSelectProperty = StyleProperty.DISPLAY,
-            pointerProjectionScrollY = 32,
-            mouseX = 0,
-            mouseY = 0
-        )
+        val baseContext =
+            context(
+                selected = selected,
+                inspection = inspection,
+                editableProperties = listOf(StyleProperty.DISPLAY),
+                openValueSelectProperty = StyleProperty.DISPLAY,
+                pointerProjectionScrollY = 32,
+                mouseX = 0,
+                mouseY = 0,
+            )
         val baseline = builder().build(baseContext)
         val dropdown = baseline.dropdowns.firstOrNull() ?: error("display dropdown missing")
         val option = dropdown.options.firstOrNull() ?: error("display dropdown option missing")
         val projectedOptionY = option.rect.y - 32
 
-        val hovered = builder().build(
-            baseContext.copy(
-                mouseX = option.rect.x + 2,
-                mouseY = projectedOptionY + (option.rect.height / 2).coerceAtLeast(1)
+        val hovered =
+            builder().build(
+                baseContext.copy(
+                    mouseX = option.rect.x + 2,
+                    mouseY = projectedOptionY + (option.rect.height / 2).coerceAtLeast(1),
+                ),
             )
-        )
         val hoveredDropdown = hovered.dropdowns.firstOrNull() ?: error("display dropdown missing after hover pass")
-        val hoveredOption = hoveredDropdown.options.firstOrNull { it.value == option.value }
-            ?: error("hovered option missing")
+        val hoveredOption =
+            hoveredDropdown.options.firstOrNull { it.value == option.value }
+                ?: error("hovered option missing")
 
         assertTrue(hoveredOption.hovered)
         assertEquals(option.value, hoveredOption.value)
@@ -109,34 +117,34 @@ class InspectorStyleEditorSnapshotBuilderTests {
         StyleEngine.setInspectorOverride(
             selected,
             StyleProperty.BACKGROUND_COLOR,
-            StyleExpression.VariableRef("--missing-color")
+            StyleExpression.VariableRef("--missing-color"),
         )
         val inspection = StyleEngine.inspect(selected)
         val panelRect = Rect(20, 20, 360, 260)
         val rowY = 64 + 32
 
-        val result = builder().build(
-            context(
-                selected = selected,
-                inspection = inspection,
-                panelRect = panelRect,
-                editableProperties = listOf(StyleProperty.BACKGROUND_COLOR),
-                mouseX = panelRect.x + 18,
-                mouseY = rowY + 8
+        val result =
+            builder().build(
+                context(
+                    selected = selected,
+                    inspection = inspection,
+                    panelRect = panelRect,
+                    editableProperties = listOf(StyleProperty.BACKGROUND_COLOR),
+                    mouseX = panelRect.x + 18,
+                    mouseY = rowY + 8,
+                ),
             )
-        )
 
         val tooltip = result.variableTooltip ?: error("expected variable tooltip")
         assertTrue(tooltip.text.contains("--missing-color"))
         assertTrue(tooltip.rect.width > 0 && tooltip.rect.height > 0)
     }
 
-    private fun builder(): InspectorStyleEditorSnapshotBuilder {
-        return InspectorStyleEditorSnapshotBuilder(
+    private fun builder(): InspectorStyleEditorSnapshotBuilder =
+        InspectorStyleEditorSnapshotBuilder(
             resolveLiteralFromComputed = ::literalForProperty,
-            renderExpressionLabel = ::expressionLabel
+            renderExpressionLabel = ::expressionLabel,
         )
-    }
 
     private fun context(
         selected: ContainerNode,
@@ -149,9 +157,9 @@ class InspectorStyleEditorSnapshotBuilderTests {
         openValueSelectProperty: StyleProperty? = null,
         openUnitSelectProperty: StyleProperty? = null,
         openValueSelectScrollIndex: Int = 0,
-        openUnitSelectScrollIndex: Int = 0
-    ): InspectorStyleEditorSnapshotBuildContext {
-        return InspectorStyleEditorSnapshotBuildContext(
+        openUnitSelectScrollIndex: Int = 0,
+    ): InspectorStyleEditorSnapshotBuildContext =
+        InspectorStyleEditorSnapshotBuildContext(
             panelRect = panelRect,
             panelBounds = panelRect,
             selected = selected,
@@ -169,37 +177,37 @@ class InspectorStyleEditorSnapshotBuilderTests {
             openValueSelectProperty = openValueSelectProperty,
             openUnitSelectProperty = openUnitSelectProperty,
             openValueSelectScrollIndex = openValueSelectScrollIndex,
-            openUnitSelectScrollIndex = openUnitSelectScrollIndex
+            openUnitSelectScrollIndex = openUnitSelectScrollIndex,
         )
-    }
 
     private fun inspectedSelection(): Pair<ContainerNode, ContainerNode> {
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        val selected = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        val selected =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         selected.applyParent(root)
         return root to selected
     }
 
-    private fun literalForProperty(style: ComputedStyle, property: StyleProperty): String {
-        return when (property) {
+    private fun literalForProperty(style: ComputedStyle, property: StyleProperty): String =
+        when (property) {
             StyleProperty.BACKGROUND_COLOR -> "#FF336699"
             StyleProperty.WIDTH -> "24px"
             StyleProperty.DISPLAY -> "block"
-            else -> when (property) {
-                StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
-                else -> "0"
-            }
+            else ->
+                when (property) {
+                    StyleProperty.FONT_ID -> style.fontId ?: "minecraft"
+                    else -> "0"
+                }
         }
-    }
 
-    private fun expressionLabel(expression: StyleExpression): String {
-        return when (expression) {
+    private fun expressionLabel(expression: StyleExpression): String =
+        when (expression) {
             is StyleExpression.Literal -> expression.value
             is StyleExpression.VariableRef -> "var(${expression.name})"
         }
-    }
 }

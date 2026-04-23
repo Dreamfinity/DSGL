@@ -9,7 +9,7 @@ data class DndListeners(
     val onDragEnter: ((DragEnterEvent) -> Unit)? = null,
     val onDragOver: ((DragOverEvent) -> Unit)? = null,
     val onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
-    val onDrop: ((DropEvent) -> Unit)? = null
+    val onDrop: ((DropEvent) -> Unit)? = null,
 )
 
 fun ComponentProps.applyDndListeners(listeners: DndListeners) {
@@ -22,22 +22,18 @@ fun ComponentProps.applyDndListeners(listeners: DndListeners) {
     onDrop = chain(onDrop, listeners.onDrop)
 }
 
-fun mergeDndListeners(first: DndListeners, second: DndListeners): DndListeners {
-    return DndListeners(
+fun mergeDndListeners(first: DndListeners, second: DndListeners): DndListeners =
+    DndListeners(
         onDragStart = chain(first.onDragStart, second.onDragStart),
         onDrag = chain(first.onDrag, second.onDrag),
         onDragEnd = chain(first.onDragEnd, second.onDragEnd),
         onDragEnter = chain(first.onDragEnter, second.onDragEnter),
         onDragOver = chain(first.onDragOver, second.onDragOver),
         onDragLeave = chain(first.onDragLeave, second.onDragLeave),
-        onDrop = chain(first.onDrop, second.onDrop)
+        onDrop = chain(first.onDrop, second.onDrop),
     )
-}
 
-private fun <T> chain(
-    first: ((T) -> Unit)?,
-    second: ((T) -> Unit)?
-): ((T) -> Unit)? {
+private fun <T> chain(first: ((T) -> Unit)?, second: ((T) -> Unit)?): ((T) -> Unit)? {
     if (first == null) return second
     if (second == null) return first
     return { event ->

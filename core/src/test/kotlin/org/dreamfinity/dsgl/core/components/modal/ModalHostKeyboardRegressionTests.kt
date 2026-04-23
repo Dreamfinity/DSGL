@@ -1,14 +1,14 @@
 package org.dreamfinity.dsgl.core.components.modal
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.dsl.ui
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,13 +17,18 @@ import kotlin.test.assertNotNull
 
 class ModalHostKeyboardRegressionTests {
     private val trees: MutableList<DomTree> = ArrayList()
-    private val measureContext = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val measureContext =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -64,7 +69,9 @@ class ModalHostKeyboardRegressionTests {
 
         tree.render(measureContext, 1920, 1080)
 
-        val host = tree.root.children.firstOrNull()
+        val host =
+            tree.root.children
+                .firstOrNull()
         assertNotNull(host)
         assertEquals(0, host.bounds.x)
         assertEquals(0, host.bounds.y)
@@ -77,19 +84,17 @@ class ModalHostKeyboardRegressionTests {
         assertEquals(1080, content.bounds.height)
     }
 
-    private fun buildTree(hostKey: String, modals: List<ModalSpec>): DomTree {
-        return ui {
+    private fun buildTree(hostKey: String, modals: List<ModalSpec>): DomTree =
+        ui {
             modalHost(modals = modals, modalKey = hostKey) {
                 div({ key = "$hostKey.content" })
             }
         }
-    }
 
-    private fun staticModal(): ModalSpec {
-        return ModalSpec(
+    private fun staticModal(): ModalSpec =
+        ModalSpec(
             key = "modal.static",
             backdrop = BackdropMode.Static,
-            keyboard = false
+            keyboard = false,
         ) { _ -> }
-    }
 }

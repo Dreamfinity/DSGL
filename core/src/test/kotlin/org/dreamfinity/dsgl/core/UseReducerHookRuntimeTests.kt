@@ -80,9 +80,10 @@ class UseReducerHookRuntimeTests {
         renderWithHookSession(window)
 
         window.useStringBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            renderWithHookSession(window)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                renderWithHookSession(window)
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("useReducer#0") == true)
@@ -122,19 +123,17 @@ class UseReducerHookRuntimeTests {
     fun `useReducer outside active render fails loudly`() {
         val window = ReducerProbeWindow()
 
-        val error = assertFailsWith<HookUsageException> {
-            window.useReducer(0) { old: Int, action: Int ->
-                old + action
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.useReducer(0) { old: Int, action: Int ->
+                    old + action
+                }
             }
-        }
 
         assertTrue(error.message?.contains("outside active component render") == true)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal): DomTree {
         window.beginRenderBuild(mode)
         return try {
             window.render()
@@ -162,7 +161,11 @@ class UseReducerHookRuntimeTests {
     private class ReducerProbeWindow : DsglWindow() {
         sealed interface CounterAction {
             data object Increment : CounterAction
-            data class Add(val delta: Int) : CounterAction
+
+            data class Add(
+                val delta: Int,
+            ) : CounterAction
+
             data object Noop : CounterAction
         }
 
@@ -182,13 +185,12 @@ class UseReducerHookRuntimeTests {
             return DomTree(ContainerNode(key = "reducer.probe.root"))
         }
 
-        private fun reduceCounter(old: Int, action: CounterAction): Int {
-            return when (action) {
+        private fun reduceCounter(old: Int, action: CounterAction): Int =
+            when (action) {
                 CounterAction.Increment -> old + 1
                 is CounterAction.Add -> old + action.delta
                 CounterAction.Noop -> old
             }
-        }
     }
 
     private class ConditionalReducerTypeWindow : DsglWindow() {
@@ -198,18 +200,20 @@ class UseReducerHookRuntimeTests {
 
         override fun render(): DomTree {
             if (useStringBranch) {
-                val (state, dispatch) = useReducer("fresh") { old: String, action: String ->
-                    old + action
-                }
+                val (state, dispatch) =
+                    useReducer("fresh") { old: String, action: String ->
+                        old + action
+                    }
                 lastSeen = state
                 lastIntDispatch = null
                 if (dispatch.hashCode() == Int.MIN_VALUE) {
                     error("unreachable")
                 }
             } else {
-                val (state, dispatch) = useReducer(0) { old: Int, action: Int ->
-                    old + action
-                }
+                val (state, dispatch) =
+                    useReducer(0) { old: Int, action: Int ->
+                        old + action
+                    }
                 lastSeen = state
                 lastIntDispatch = dispatch
             }
@@ -218,7 +222,7 @@ class UseReducerHookRuntimeTests {
     }
 
     private class RecordingHost(
-        override val window: DsglWindow
+        override val window: DsglWindow,
     ) : DsglWindowHost {
         var rebuildRequests: Int = 0
 
@@ -229,8 +233,6 @@ class UseReducerHookRuntimeTests {
         override fun requestRedraw() {
         }
 
-        override fun getViewport(): Viewport {
-            return Viewport(width = 0, height = 0)
-        }
+        override fun getViewport(): Viewport = Viewport(width = 0, height = 0)
     }
 }

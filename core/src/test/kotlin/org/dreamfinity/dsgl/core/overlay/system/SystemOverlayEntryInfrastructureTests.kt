@@ -1,12 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNotSame
-import kotlin.test.assertSame
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
@@ -17,14 +10,26 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragType
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class SystemOverlayEntryInfrastructureTests {
     @Test
     fun `system overlay host exposes explicit persistent entries`() {
         val host = SystemOverlayHost(InspectorController())
         assertEquals(
-            listOf(SystemOverlayEntryId.Inspector, SystemOverlayEntryId.ColorPickerPopup, SystemOverlayEntryId.ColorPickerTransient, SystemOverlayEntryId.PanelDemo),
-            host.debugRegisteredEntryIds()
+            listOf(
+                SystemOverlayEntryId.Inspector,
+                SystemOverlayEntryId.ColorPickerPopup,
+                SystemOverlayEntryId.ColorPickerTransient,
+                SystemOverlayEntryId.PanelDemo,
+            ),
+            host.debugRegisteredEntryIds(),
         )
     }
 
@@ -62,14 +67,26 @@ class SystemOverlayEntryInfrastructureTests {
         val root = inspectedRoot()
         pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
-            host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 40, cursorY = 42, inspectorPointerCaptured = false)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 1L,
+                cursorX = 40,
+                cursorY = 42,
+                inspectorPointerCaptured = false,
+            )
             val firstState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("state missing")
             val firstNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("node missing")
             val firstRect = firstState.panelState.currentRectOrNull()
             assertNotNull(firstRect)
             assertTrue(firstState.active)
 
-            host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 60, cursorY = 65, inspectorPointerCaptured = false)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 2L,
+                cursorX = 60,
+                cursorY = 65,
+                inspectorPointerCaptured = false,
+            )
             val secondState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("state missing")
             val secondNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("node missing")
             val secondRect = secondState.panelState.currentRectOrNull() ?: error("panel rect missing")
@@ -96,10 +113,16 @@ class SystemOverlayEntryInfrastructureTests {
         inspector.toggle()
         pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
-            host.syncFrame(root, inspectedLayoutRevision = 10L, cursorX = 20, cursorY = 18, inspectorPointerCaptured = false)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 10L,
+                cursorX = 20,
+                cursorY = 18,
+                inspectorPointerCaptured = false,
+            )
             assertEquals(
                 listOf(SystemOverlayEntryId.Inspector, SystemOverlayEntryId.ColorPickerPopup),
-                host.debugMountedEntryIds()
+                host.debugMountedEntryIds(),
             )
         } finally {
             inspector.deactivate()
@@ -118,7 +141,7 @@ class SystemOverlayEntryInfrastructureTests {
             type = OverlayPanelDragType.PanelMove,
             pointerX = 100,
             pointerY = 120,
-            panelState = panelState
+            panelState = panelState,
         )
         assertTrue(session.active)
         assertEquals(SystemOverlayEntryId.ColorPickerPopup, session.ownerId)
@@ -167,22 +190,22 @@ class SystemOverlayEntryInfrastructureTests {
         assertEquals(0, host.debugTransientSessionCount())
     }
 
-    private fun popupState(): ColorPickerState {
-        return ColorPickerState(
+    private fun popupState(): ColorPickerState =
+        ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             previous = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             mode = ColorFormatMode.RGB,
             alphaEnabled = true,
-            closeOnSelect = false
+            closeOnSelect = false,
         )
-    }
 
     private fun inspectedRoot(): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 800, 600)
-        ContainerNode(key = "child").apply {
-            bounds = Rect(16, 18, 120, 30)
-        }.applyParent(root)
+        ContainerNode(key = "child")
+            .apply {
+                bounds = Rect(16, 18, 120, 30)
+            }.applyParent(root)
         return root
     }
 }

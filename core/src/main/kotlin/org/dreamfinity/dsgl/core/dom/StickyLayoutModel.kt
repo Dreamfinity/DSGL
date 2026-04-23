@@ -6,25 +6,25 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 
 internal object StickyLayoutModel {
     enum class PositionedGeometryIntegrationPoint {
-        SharedUsedGeometryTransform
+        SharedUsedGeometryTransform,
     }
 
     enum class StickyInsetAxisMode {
         Inactive,
         Top,
-        Bottom
+        Bottom,
     }
 
     enum class StickyHorizontalInsetAxisMode {
         Inactive,
         Left,
-        Right
+        Right,
     }
 
     data class StickyInsetResolution(
         val mode: StickyInsetAxisMode,
         val sourceProperty: StyleProperty?,
-        val value: CssLength?
+        val value: CssLength?,
     ) {
         val active: Boolean
             get() = mode != StickyInsetAxisMode.Inactive && sourceProperty != null && value != null
@@ -33,7 +33,7 @@ internal object StickyLayoutModel {
     data class StickyHorizontalInsetResolution(
         val mode: StickyHorizontalInsetAxisMode,
         val sourceProperty: StyleProperty?,
-        val value: CssLength?
+        val value: CssLength?,
     ) {
         val active: Boolean
             get() = mode != StickyHorizontalInsetAxisMode.Inactive && sourceProperty != null && value != null
@@ -41,13 +41,13 @@ internal object StickyLayoutModel {
 
     data class StickyReferenceScrollContainers(
         val horizontal: DOMNode,
-        val vertical: DOMNode
+        val vertical: DOMNode,
     )
 
     fun nearestStickyScrollContainers(
         node: DOMNode,
         resolveHorizontal: Boolean = true,
-        resolveVertical: Boolean = true
+        resolveVertical: Boolean = true,
     ): StickyReferenceScrollContainers {
         val root = PositionedLayoutModel.rootStackingScope(node)
         var horizontal: DOMNode? = if (resolveHorizontal) null else root
@@ -65,77 +65,76 @@ internal object StickyLayoutModel {
         }
         return StickyReferenceScrollContainers(
             horizontal = horizontal ?: root,
-            vertical = vertical ?: root
+            vertical = vertical ?: root,
         )
     }
 
-    fun nearestStickyScrollContainerHorizontal(node: DOMNode): DOMNode {
-        return nearestStickyScrollContainers(
+    fun nearestStickyScrollContainerHorizontal(node: DOMNode): DOMNode =
+        nearestStickyScrollContainers(
             node = node,
             resolveHorizontal = true,
-            resolveVertical = false
+            resolveVertical = false,
         ).horizontal
-    }
 
-    fun nearestStickyScrollContainerVertical(node: DOMNode): DOMNode {
-        return nearestStickyScrollContainers(
+    fun nearestStickyScrollContainerVertical(node: DOMNode): DOMNode =
+        nearestStickyScrollContainers(
             node = node,
             resolveHorizontal = false,
-            resolveVertical = true
+            resolveVertical = true,
         ).vertical
-    }
 
-    fun stickyContainingBlock(node: DOMNode): DOMNode {
-        return node.parent ?: PositionedLayoutModel.rootStackingScope(node)
-    }
+    fun stickyContainingBlock(node: DOMNode): DOMNode = node.parent ?: PositionedLayoutModel.rootStackingScope(node)
 
-    fun resolveHorizontalInsets(left: CssLength?, right: CssLength?): StickyHorizontalInsetResolution {
-        return when {
-            left != null -> StickyHorizontalInsetResolution(
-                mode = StickyHorizontalInsetAxisMode.Left,
-                sourceProperty = StyleProperty.LEFT,
-                value = left
-            )
+    fun resolveHorizontalInsets(left: CssLength?, right: CssLength?): StickyHorizontalInsetResolution =
+        when {
+            left != null ->
+                StickyHorizontalInsetResolution(
+                    mode = StickyHorizontalInsetAxisMode.Left,
+                    sourceProperty = StyleProperty.LEFT,
+                    value = left,
+                )
 
-            right != null -> StickyHorizontalInsetResolution(
-                mode = StickyHorizontalInsetAxisMode.Right,
-                sourceProperty = StyleProperty.RIGHT,
-                value = right
-            )
+            right != null ->
+                StickyHorizontalInsetResolution(
+                    mode = StickyHorizontalInsetAxisMode.Right,
+                    sourceProperty = StyleProperty.RIGHT,
+                    value = right,
+                )
 
-            else -> StickyHorizontalInsetResolution(
-                mode = StickyHorizontalInsetAxisMode.Inactive,
-                sourceProperty = null,
-                value = null
-            )
+            else ->
+                StickyHorizontalInsetResolution(
+                    mode = StickyHorizontalInsetAxisMode.Inactive,
+                    sourceProperty = null,
+                    value = null,
+                )
         }
-    }
 
-    fun resolveVerticalInsets(top: CssLength?, bottom: CssLength?): StickyInsetResolution {
-        return when {
-            top != null -> StickyInsetResolution(
-                mode = StickyInsetAxisMode.Top,
-                sourceProperty = StyleProperty.TOP,
-                value = top
-            )
+    fun resolveVerticalInsets(top: CssLength?, bottom: CssLength?): StickyInsetResolution =
+        when {
+            top != null ->
+                StickyInsetResolution(
+                    mode = StickyInsetAxisMode.Top,
+                    sourceProperty = StyleProperty.TOP,
+                    value = top,
+                )
 
-            bottom != null -> StickyInsetResolution(
-                mode = StickyInsetAxisMode.Bottom,
-                sourceProperty = StyleProperty.BOTTOM,
-                value = bottom
-            )
+            bottom != null ->
+                StickyInsetResolution(
+                    mode = StickyInsetAxisMode.Bottom,
+                    sourceProperty = StyleProperty.BOTTOM,
+                    value = bottom,
+                )
 
-            else -> StickyInsetResolution(
-                mode = StickyInsetAxisMode.Inactive,
-                sourceProperty = null,
-                value = null
-            )
+            else ->
+                StickyInsetResolution(
+                    mode = StickyInsetAxisMode.Inactive,
+                    sourceProperty = null,
+                    value = null,
+                )
         }
-    }
 
-    fun positionedGeometryIntegrationPoint(): PositionedGeometryIntegrationPoint {
-        return PositionedGeometryIntegrationPoint.SharedUsedGeometryTransform
-    }
+    fun positionedGeometryIntegrationPoint(): PositionedGeometryIntegrationPoint =
+        PositionedGeometryIntegrationPoint.SharedUsedGeometryTransform
 
     fun resolveVerticalVisualOffsetPx(
         baseY: Int,
@@ -143,25 +142,26 @@ internal object StickyLayoutModel {
         viewportRect: Rect,
         containingBlockRect: Rect,
         insetResolution: StickyInsetResolution,
-        insetPx: Int
+        insetPx: Int,
     ): Int {
         if (!insetResolution.active) return 0
 
         val minY = containingBlockRect.y
         val maxY = (containingBlockRect.y + containingBlockRect.height - nodeHeight).coerceAtLeast(minY)
-        val targetY = when (insetResolution.mode) {
-            StickyInsetAxisMode.Top -> {
-                val thresholdY = viewportRect.y + insetPx
-                maxOf(baseY, thresholdY)
-            }
+        val targetY =
+            when (insetResolution.mode) {
+                StickyInsetAxisMode.Top -> {
+                    val thresholdY = viewportRect.y + insetPx
+                    maxOf(baseY, thresholdY)
+                }
 
-            StickyInsetAxisMode.Bottom -> {
-                val thresholdY = viewportRect.y + viewportRect.height - insetPx - nodeHeight
-                minOf(baseY, thresholdY)
-            }
+                StickyInsetAxisMode.Bottom -> {
+                    val thresholdY = viewportRect.y + viewportRect.height - insetPx - nodeHeight
+                    minOf(baseY, thresholdY)
+                }
 
-            StickyInsetAxisMode.Inactive -> baseY
-        }
+                StickyInsetAxisMode.Inactive -> baseY
+            }
         val finalY = targetY.coerceIn(minY, maxY)
         return finalY - baseY
     }
@@ -172,25 +172,26 @@ internal object StickyLayoutModel {
         viewportRect: Rect,
         containingBlockRect: Rect,
         insetResolution: StickyHorizontalInsetResolution,
-        insetPx: Int
+        insetPx: Int,
     ): Int {
         if (!insetResolution.active) return 0
 
         val minX = containingBlockRect.x
         val maxX = (containingBlockRect.x + containingBlockRect.width - nodeWidth).coerceAtLeast(minX)
-        val targetX = when (insetResolution.mode) {
-            StickyHorizontalInsetAxisMode.Left -> {
-                val thresholdX = viewportRect.x + insetPx
-                maxOf(baseX, thresholdX)
-            }
+        val targetX =
+            when (insetResolution.mode) {
+                StickyHorizontalInsetAxisMode.Left -> {
+                    val thresholdX = viewportRect.x + insetPx
+                    maxOf(baseX, thresholdX)
+                }
 
-            StickyHorizontalInsetAxisMode.Right -> {
-                val thresholdX = viewportRect.x + viewportRect.width - insetPx - nodeWidth
-                minOf(baseX, thresholdX)
-            }
+                StickyHorizontalInsetAxisMode.Right -> {
+                    val thresholdX = viewportRect.x + viewportRect.width - insetPx - nodeWidth
+                    minOf(baseX, thresholdX)
+                }
 
-            StickyHorizontalInsetAxisMode.Inactive -> baseX
-        }
+                StickyHorizontalInsetAxisMode.Inactive -> baseX
+            }
         val finalX = targetX.coerceIn(minX, maxX)
         return finalX - baseX
     }

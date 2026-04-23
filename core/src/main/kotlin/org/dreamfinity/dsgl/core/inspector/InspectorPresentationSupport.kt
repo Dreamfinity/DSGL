@@ -9,9 +9,7 @@ internal object InspectorPresentationSupport {
         return "${node.styleType}[$key]"
     }
 
-    fun rectLabel(rect: Rect): String {
-        return "${rect.x},${rect.y},${rect.width}x${rect.height}"
-    }
+    fun rectLabel(rect: Rect): String = "${rect.x},${rect.y},${rect.width}x${rect.height}"
 
     fun estimateMaxChars(pixelWidth: Int, fontSize: Int): Int {
         val approxCharWidth = (fontSize * 0.56f).toInt().coerceAtLeast(6)
@@ -77,11 +75,7 @@ internal object InspectorPresentationSupport {
         return lines
     }
 
-    fun wrapMinimizedLabel(
-        text: String,
-        maxCharsPerLine: Int,
-        maxLines: Int
-    ): List<String> {
+    fun wrapMinimizedLabel(text: String, maxCharsPerLine: Int, maxLines: Int): List<String> {
         val source = text.trim()
         if (source.isEmpty()) return listOf("")
         if (maxCharsPerLine <= 0 || maxLines <= 0) return listOf("")

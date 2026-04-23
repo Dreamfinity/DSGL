@@ -7,7 +7,10 @@ import kotlin.test.assertTrue
 class StylePropertyRegistryTests {
     @Test
     fun `registry defines descriptor for every style property`() {
-        val registered = StylePropertyRegistry.all.map { it.property }.toSet()
+        val registered =
+            StylePropertyRegistry.all
+                .map { it.property }
+                .toSet()
         assertEquals(StyleProperty.entries.toSet(), registered)
         assertEquals(StyleProperty.entries.size, StylePropertyRegistry.all.size)
     }
@@ -51,11 +54,11 @@ class StylePropertyRegistryTests {
 
         assertEquals(
             LineHeightValue.Normal,
-            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "normal")
+            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "normal"),
         )
         assertEquals(
             LineHeightValue.Length(CssLength(24f, CssUnit.Px)),
-            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "24px")
+            StylePropertyRegistry.parseLineHeightLiteral(StyleProperty.LINE_HEIGHT, "24px"),
         )
     }
 
@@ -65,7 +68,7 @@ class StylePropertyRegistryTests {
             StyleProperty.LEFT,
             StyleProperty.TOP,
             StyleProperty.RIGHT,
-            StyleProperty.BOTTOM
+            StyleProperty.BOTTOM,
         ).forEach { property ->
             val descriptor = StylePropertyRegistry.descriptor(property)
             assertEquals(StyleValueGrammarKind.LengthLike, descriptor.grammarKind)
@@ -76,7 +79,10 @@ class StylePropertyRegistryTests {
 
     @Test
     fun `registry includes text style editable properties`() {
-        val properties = StylePropertyRegistry.all.map { it.property }.toSet()
+        val properties =
+            StylePropertyRegistry.all
+                .map { it.property }
+                .toSet()
         assertTrue(StyleProperty.FOREGROUND_COLOR in properties)
         assertTrue(StyleProperty.FONT_SIZE in properties)
         assertTrue(StyleProperty.LINE_HEIGHT in properties)

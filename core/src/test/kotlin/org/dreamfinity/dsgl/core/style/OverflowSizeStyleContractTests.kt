@@ -37,15 +37,16 @@ class OverflowSizeStyleContractTests {
 
     @Test
     fun `overflow axis properties override shorthand-derived values`() {
-        val target = styledTarget(
-            """
-            .target {
-              overflow: hidden auto;
-              overflow-x: visible;
-              overflow-y: scroll;
-            }
-            """.trimIndent()
-        )
+        val target =
+            styledTarget(
+                """
+                .target {
+                  overflow: hidden auto;
+                  overflow-x: visible;
+                  overflow-y: scroll;
+                }
+                """.trimIndent(),
+            )
 
         val style = target.appliedComputedStyleSnapshot() ?: error("Missing computed style")
         assertEquals(Overflow.Visible, style.overflowX)
@@ -54,16 +55,17 @@ class OverflowSizeStyleContractTests {
 
     @Test
     fun `min and max size properties parse and persist in computed style`() {
-        val target = styledTarget(
-            """
-            .target {
-              min-width: 120px;
-              min-height: 10vh;
-              max-width: 75%;
-              max-height: auto;
-            }
-            """.trimIndent()
-        )
+        val target =
+            styledTarget(
+                """
+                .target {
+                  min-width: 120px;
+                  min-height: 10vh;
+                  max-width: 75%;
+                  max-height: auto;
+                }
+                """.trimIndent(),
+            )
 
         val style = target.appliedComputedStyleSnapshot() ?: error("Missing computed style")
         assertEquals(CssLength(120f, CssUnit.Px), style.minWidth)
@@ -115,4 +117,3 @@ class OverflowSizeStyleContractTests {
         assertEquals(expectedY, actual.overflowY)
     }
 }
-

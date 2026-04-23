@@ -1,10 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
@@ -15,13 +10,21 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class OverlayGeometryIntegrationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `system overlay root uses full game viewport bounds in live host path`() {
@@ -55,8 +58,8 @@ class OverlayGeometryIntegrationTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = anchor,
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
 
         val panel = engine.debugPanelRect(owner)
@@ -77,8 +80,8 @@ class OverlayGeometryIntegrationTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = anchor,
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val preFramePanel = engine.debugPanelRect(owner)
         assertNotNull(preFramePanel)
@@ -103,8 +106,8 @@ class OverlayGeometryIntegrationTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = anchor,
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
 
         val panel = engine.debugPanelRect(owner)
@@ -123,8 +126,8 @@ class OverlayGeometryIntegrationTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(420, 260, 24, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         engine.forcePanelRect(owner, Rect(980, 200, 320, 340))
         engine.close(owner)
@@ -134,8 +137,8 @@ class OverlayGeometryIntegrationTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(20, 20, 10, 10),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val reopened = engine.debugPanelRect(owner)
         assertNotNull(reopened)

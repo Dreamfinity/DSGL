@@ -22,7 +22,7 @@ data class ScrollPerformanceSnapshot(
     val paintTotalNanos: Long,
     val styleApplyNanos: Long,
     val fullRerenderLayoutNanos: Long,
-    val chunkRebuildNanos: Long
+    val chunkRebuildNanos: Long,
 )
 
 object ScrollPerformanceCounters {
@@ -115,8 +115,8 @@ object ScrollPerformanceCounters {
         chunkRebuildNanos.addAndGet(durationNanos.coerceAtLeast(0L))
     }
 
-    fun snapshot(): ScrollPerformanceSnapshot {
-        return ScrollPerformanceSnapshot(
+    fun snapshot(): ScrollPerformanceSnapshot =
+        ScrollPerformanceSnapshot(
             paintCalls = paintCalls.get(),
             guardedScrollVisualFastPathRuns = guardedScrollVisualFastPathRuns.get(),
             scrollVisualGeometryRefreshRuns = scrollVisualGeometryRefreshRuns.get(),
@@ -136,9 +136,8 @@ object ScrollPerformanceCounters {
             paintTotalNanos = paintTotalNanos.get(),
             styleApplyNanos = styleApplyNanos.get(),
             fullRerenderLayoutNanos = fullRerenderLayoutNanos.get(),
-            chunkRebuildNanos = chunkRebuildNanos.get()
+            chunkRebuildNanos = chunkRebuildNanos.get(),
         )
-    }
 
     fun resetForTests() {
         paintCalls.set(0L)

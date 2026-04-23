@@ -17,4 +17,8 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     implementation("org.jetbrains.dokka:org.jetbrains.dokka.gradle.plugin:2.1.0")
+    implementation(libs.plugins.ktlint.toDep())
 }
+
+fun Provider<PluginDependency>.toDep() =
+    map { "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}" }

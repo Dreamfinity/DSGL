@@ -18,10 +18,11 @@ internal object SystemOverlayCommandDslRenderer {
                 return@forEachIndexed
             }
 
-            val replacement = SystemOverlayRawRenderCommandNode(
-                renderCommand = command,
-                key = "$keyPrefix-$index"
-            )
+            val replacement =
+                SystemOverlayRawRenderCommandNode(
+                    renderCommand = command,
+                    key = "$keyPrefix-$index",
+                )
             replacement.parent = parent
             if (existing == null) {
                 children += replacement

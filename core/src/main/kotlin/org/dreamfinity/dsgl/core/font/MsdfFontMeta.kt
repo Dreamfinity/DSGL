@@ -11,7 +11,7 @@ data class MsdfAtlasInfo(
     val size: Float,
     val width: Int,
     val height: Int,
-    val yOrigin: String
+    val yOrigin: String,
 )
 
 data class MsdfMetrics(
@@ -20,21 +20,21 @@ data class MsdfMetrics(
     val ascender: Float,
     val descender: Float,
     val underlineY: Float? = null,
-    val underlineThickness: Float? = null
+    val underlineThickness: Float? = null,
 )
 
 data class MsdfPlaneBounds(
     val left: Float,
     val bottom: Float,
     val right: Float,
-    val top: Float
+    val top: Float,
 )
 
 data class MsdfAtlasBounds(
     val left: Float,
     val bottom: Float,
     val right: Float,
-    val top: Float
+    val top: Float,
 )
 
 data class MsdfGlyph(
@@ -42,7 +42,7 @@ data class MsdfGlyph(
     val codepoint: Int?,
     val advance: Float,
     val planeBounds: MsdfPlaneBounds?,
-    val atlasBounds: MsdfAtlasBounds?
+    val atlasBounds: MsdfAtlasBounds?,
 ) {
     val drawable: Boolean
         get() = planeBounds != null && atlasBounds != null
@@ -51,7 +51,7 @@ data class MsdfGlyph(
 data class MsdfKerningPair(
     val leftGlyphIndex: Int,
     val rightGlyphIndex: Int,
-    val advance: Float
+    val advance: Float,
 )
 
 data class MsdfGlyphRunItem(
@@ -60,7 +60,7 @@ data class MsdfGlyphRunItem(
     val glyph: MsdfGlyph?,
     val advancePx: Float,
     val draw: Boolean,
-    val usedFallback: Boolean
+    val usedFallback: Boolean,
 )
 
 data class MsdfFontMeta(
@@ -71,32 +71,35 @@ data class MsdfFontMeta(
     val kerningPairsByIndex: Map<Long, Float>,
     val kerningPairsByCodepoint: Map<Long, Float>,
     val replacementGlyphIndex: Int?,
-    val replacementCodepoint: Int?
+    val replacementCodepoint: Int?,
 ) {
     private val tabWidthInSpaces: Int = 4
-    private val denseGlyphsByIndex: Array<MsdfGlyph?> = run {
-        val maxIndex = glyphsByIndex.keys.maxOrNull() ?: -1
-        if (maxIndex < 0) {
-            emptyArray()
-        } else {
-            arrayOfNulls<MsdfGlyph>(maxIndex + 1).also { dense ->
-                glyphsByIndex.forEach { (index, glyph) ->
-                    if (index >= 0 && index < dense.size) {
-                        dense[index] = glyph
+    private val denseGlyphsByIndex: Array<MsdfGlyph?> =
+        run {
+            val maxIndex = glyphsByIndex.keys.maxOrNull() ?: -1
+            if (maxIndex < 0) {
+                emptyArray()
+            } else {
+                arrayOfNulls<MsdfGlyph>(maxIndex + 1).also { dense ->
+                    glyphsByIndex.forEach { (index, glyph) ->
+                        if (index >= 0 && index < dense.size) {
+                            dense[index] = glyph
+                        }
                     }
                 }
             }
         }
-    }
-    private val cachedFallbackGlyph: MsdfGlyph? = run {
-        val replacementByIndex = replacementGlyphIndex
-            ?.takeIf { it >= 0 && it < denseGlyphsByIndex.size }
-            ?.let { denseGlyphsByIndex[it] }
-        if (replacementByIndex != null) return@run replacementByIndex
-        val replacementByCodepoint = replacementCodepoint?.let(glyphsByCodepoint::get)
-        if (replacementByCodepoint != null) return@run replacementByCodepoint
-        glyphsByIndex.values.firstOrNull() ?: glyphsByCodepoint.values.firstOrNull()
-    }
+    private val cachedFallbackGlyph: MsdfGlyph? =
+        run {
+            val replacementByIndex =
+                replacementGlyphIndex
+                    ?.takeIf { it >= 0 && it < denseGlyphsByIndex.size }
+                    ?.let { denseGlyphsByIndex[it] }
+            if (replacementByIndex != null) return@run replacementByIndex
+            val replacementByCodepoint = replacementCodepoint?.let(glyphsByCodepoint::get)
+            if (replacementByCodepoint != null) return@run replacementByCodepoint
+            glyphsByIndex.values.firstOrNull() ?: glyphsByCodepoint.values.firstOrNull()
+        }
 
     fun glyphByIndex(glyphIndex: Int): MsdfGlyph? {
         if (glyphIndex >= 0 && glyphIndex < denseGlyphsByIndex.size) {
@@ -107,13 +110,9 @@ data class MsdfFontMeta(
 
     fun glyph(codepoint: Int): MsdfGlyph? = glyphsByCodepoint[codepoint]
 
-    fun fallbackGlyph(): MsdfGlyph? {
-        return cachedFallbackGlyph
-    }
+    fun fallbackGlyph(): MsdfGlyph? = cachedFallbackGlyph
 
-    fun glyphOrFallback(codepoint: Int): MsdfGlyph? {
-        return glyph(codepoint) ?: fallbackGlyph()
-    }
+    fun glyphOrFallback(codepoint: Int): MsdfGlyph? = glyph(codepoint) ?: fallbackGlyph()
 
     fun resolveGlyphRun(codepoint: Int, fontSizePx: Int): MsdfGlyphRunItem? {
         val size = fontSizePx.coerceAtLeast(1)
@@ -126,7 +125,7 @@ data class MsdfFontMeta(
                     glyph = explicitSpaceGlyph,
                     advancePx = spaceAdvancePx(size),
                     draw = false,
-                    usedFallback = false
+                    usedFallback = false,
                 )
             }
 
@@ -137,7 +136,7 @@ data class MsdfFontMeta(
                     glyph = null,
                     advancePx = spaceAdvancePx(size) * tabWidthInSpaces,
                     draw = false,
-                    usedFallback = false
+                    usedFallback = false,
                 )
             }
 
@@ -150,7 +149,7 @@ data class MsdfFontMeta(
                         glyph = direct,
                         advancePx = advancePx(direct, size),
                         draw = direct.drawable,
-                        usedFallback = false
+                        usedFallback = false,
                     )
                 }
                 val fallback = fallbackGlyph() ?: return null
@@ -160,7 +159,7 @@ data class MsdfFontMeta(
                     glyph = fallback,
                     advancePx = advancePx(fallback, size),
                     draw = fallback.drawable,
-                    usedFallback = true
+                    usedFallback = true,
                 )
             }
         }
@@ -189,17 +188,13 @@ data class MsdfFontMeta(
         return ceil(metrics.lineHeight * scale).toInt().coerceAtLeast(1)
     }
 
-    fun advancePx(glyph: MsdfGlyph, fontSizePx: Int): Float {
-        return glyph.advance * scalePx(fontSizePx)
-    }
+    fun advancePx(glyph: MsdfGlyph, fontSizePx: Int): Float = glyph.advance * scalePx(fontSizePx)
 
-    fun kerningPx(leftCodepoint: Int, rightCodepoint: Int, fontSizePx: Int): Float {
-        return kerning(leftCodepoint, rightCodepoint) * scalePx(fontSizePx)
-    }
+    fun kerningPx(leftCodepoint: Int, rightCodepoint: Int, fontSizePx: Int): Float =
+        kerning(leftCodepoint, rightCodepoint) * scalePx(fontSizePx)
 
-    fun kerningPxByIndex(leftGlyphIndex: Int, rightGlyphIndex: Int, fontSizePx: Int): Float {
-        return kerningByIndex(leftGlyphIndex, rightGlyphIndex) * scalePx(fontSizePx)
-    }
+    fun kerningPxByIndex(leftGlyphIndex: Int, rightGlyphIndex: Int, fontSizePx: Int): Float =
+        kerningByIndex(leftGlyphIndex, rightGlyphIndex) * scalePx(fontSizePx)
 
     fun measureTextWidth(text: String, fontSizePx: Int): Int {
         if (text.isEmpty()) return 0
@@ -258,9 +253,6 @@ data class MsdfFontMeta(
     }
 
     companion object {
-        fun kerningKey(left: Int, right: Int): Long {
-            return (left.toLong() shl 32) or (right.toLong() and 0xFFFF_FFFFL)
-        }
+        fun kerningKey(left: Int, right: Int): Long = (left.toLong() shl 32) or (right.toLong() and 0xFFFF_FFFFL)
     }
 }
-

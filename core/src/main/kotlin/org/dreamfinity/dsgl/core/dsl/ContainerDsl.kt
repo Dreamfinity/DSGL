@@ -8,11 +8,11 @@ import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 fun UiScope.div(
     props: ComponentProps.() -> Unit,
     ref: RefTarget<ElementHandle>? = null,
-    block: UiScope.() -> Unit = {}
+    block: UiScope.() -> Unit = {},
 ) = withProps(ComponentProps().apply(props)) { props ->
     ContainerNode(
         stackLayout = false,
-        key = props.key
+        key = props.key,
     ).apply {
         applyStyle(this, props.style)
         applyHandlers(this, props)
@@ -26,11 +26,11 @@ fun UiScope.div(
 fun UiScope.overlay(
     props: ComponentProps.() -> Unit,
     ref: RefTarget<ElementHandle>? = null,
-    block: UiScope.() -> Unit = {}
+    block: UiScope.() -> Unit = {},
 ) = withProps(ComponentProps().apply(props)) { props ->
     ContainerNode(
         stackLayout = true,
-        key = props.key
+        key = props.key,
     ).apply {
         applyStyle(this, props.style)
         applyHandlers(this, props)

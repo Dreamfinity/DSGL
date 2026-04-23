@@ -1,9 +1,5 @@
 package org.dreamfinity.dsgl.core.dom.reconcile
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertSame
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.internal.AlphaSurfaceNode
@@ -16,13 +12,20 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertSame
 
 class ColorPickerCustomNodeReconcileTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `color field custom bind state syncs on reconcile reuse`() {
@@ -124,4 +127,3 @@ class ColorPickerCustomNodeReconcileTests {
         val NODE_RECT: Rect = Rect(12, 24, 56, 14)
     }
 }
-

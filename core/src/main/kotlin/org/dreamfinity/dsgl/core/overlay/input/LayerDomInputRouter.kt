@@ -8,20 +8,20 @@ import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
+import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.event.MouseDragEvent
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
+import org.dreamfinity.dsgl.core.event.MouseDragEvent
 import org.dreamfinity.dsgl.core.event.MouseEnterEvent
 import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
 import org.dreamfinity.dsgl.core.event.MouseMoveEvent
 import org.dreamfinity.dsgl.core.event.MouseOverEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.event.MouseWheelEvent
-import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 
 class LayerDomInputRouter(
-    private val rootProvider: () -> DOMNode?
+    private val rootProvider: () -> DOMNode?,
 ) {
     private val hoverChain: MutableList<DOMNode> = ArrayList()
     private var hoverTarget: DOMNode? = null
@@ -36,10 +36,11 @@ class LayerDomInputRouter(
     private var lastMoveY: Int = Int.MIN_VALUE
 
     fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
-        val root = rootProvider() ?: run {
-            clear()
-            return false
-        }
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
         restoreDragCapture(root)
         val prevX = if (lastMoveX == Int.MIN_VALUE) mouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) mouseY else lastMoveY
@@ -67,7 +68,7 @@ class LayerDomInputRouter(
                     mouseY = mouseY,
                     mouseDX = dx,
                     mouseDY = dy,
-                    button = button
+                    button = button,
                 )
             }
         }
@@ -77,10 +78,11 @@ class LayerDomInputRouter(
     }
 
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        val root = rootProvider() ?: run {
-            clear()
-            return false
-        }
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
         restoreDragCapture(root)
         updateHoverLocal(root, hoverChain, mouseX, mouseY, 0, 0)
         hoverTarget = hoverChain.lastOrNull()
@@ -108,10 +110,11 @@ class LayerDomInputRouter(
     }
 
     fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        val root = rootProvider() ?: run {
-            clear()
-            return false
-        }
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
         restoreDragCapture(root)
         updateHoverLocal(root, hoverChain, mouseX, mouseY, 0, 0)
         hoverTarget = hoverChain.lastOrNull()
@@ -143,10 +146,11 @@ class LayerDomInputRouter(
 
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
         if (delta == 0) return false
-        val root = rootProvider() ?: run {
-            clear()
-            return false
-        }
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
         restoreDragCapture(root)
         updateHoverLocal(root, hoverChain, mouseX, mouseY, 0, 0)
         hoverTarget = hoverChain.lastOrNull()
@@ -159,10 +163,11 @@ class LayerDomInputRouter(
     }
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        val root = rootProvider() ?: run {
-            clear()
-            return false
-        }
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
         val focused = FocusManager.focusedNode() ?: return false
         if (!isSameOrAncestor(root, focused)) return false
         val event = KeyboardKeyDownEvent(keyChar = keyChar, keyCode = keyCode)
@@ -280,7 +285,12 @@ class LayerDomInputRouter(
         return if (focused is TextAreaNode) focused else null
     }
 
-    private fun bubbleGenericWheel(target: DOMNode, mouseX: Int, mouseY: Int, delta: Int): Boolean {
+    private fun bubbleGenericWheel(
+        target: DOMNode,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Int,
+    ): Boolean {
         var current: DOMNode? = target
         while (current != null) {
             if (current.handleGenericWheel(mouseX, mouseY, delta)) {
@@ -313,7 +323,7 @@ class LayerDomInputRouter(
         mouseY: Int,
         parentTransform: AffineTransform2D,
         parentInputClipRect: Rect?,
-        out: MutableList<DOMNode>
+        out: MutableList<DOMNode>,
     ): Boolean {
         if (root.styleDisabled) return false
         if (!root.isHitTestVisible()) return false
@@ -332,7 +342,7 @@ class LayerDomInputRouter(
                     mouseY = mouseY,
                     parentTransform = worldTransform,
                     parentInputClipRect = childInputClipRect,
-                    out = out
+                    out = out,
                 )
             ) {
                 return true
@@ -368,7 +378,7 @@ class LayerDomInputRouter(
         mouseX: Int,
         mouseY: Int,
         mouseDX: Int,
-        mouseDY: Int
+        mouseDY: Int,
     ) {
         val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
         collectHoverChainLocal(
@@ -377,7 +387,7 @@ class LayerDomInputRouter(
             mouseY = mouseY,
             parentTransform = AffineTransform2D.IDENTITY,
             parentInputClipRect = null,
-            out = currHoverChain
+            out = currHoverChain,
         )
         val minSize = minOf(prevHoverChain.size, currHoverChain.size)
         var commonPrefixLen = 0
@@ -444,4 +454,3 @@ class LayerDomInputRouter(
         target.onmouseover?.invoke(event)
     }
 }
-

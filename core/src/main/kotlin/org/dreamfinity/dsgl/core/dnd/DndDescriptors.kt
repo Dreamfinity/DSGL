@@ -15,7 +15,7 @@ data class Draggable(
     val previewMode: DragPreviewMode,
     val hideSourceWhileDragging: Boolean,
     val renderPreview: (DragPreviewScope.() -> Unit)?,
-    val renderPlaceholder: (PlaceholderScope.() -> Unit)?
+    val renderPlaceholder: (PlaceholderScope.() -> Unit)?,
 )
 
 data class Droppable(
@@ -24,7 +24,7 @@ data class Droppable(
     val isOver: Boolean,
     val active: ActiveDrag?,
     val listeners: DndListeners,
-    val setNodeRef: RefTarget<ElementHandle>
+    val setNodeRef: RefTarget<ElementHandle>,
 )
 
 data class Sortable(
@@ -36,5 +36,5 @@ data class Sortable(
     val isOver: Boolean,
     val overId: String?,
     val projection: SortableProjection,
-    val listeners: DndListeners
+    val listeners: DndListeners,
 )

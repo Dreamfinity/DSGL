@@ -7,9 +7,9 @@ object OverlayDebugVisualization {
     var systemOverlayBorderColor: Int = 0xAAE18BFF.toInt()
     val enabled: Boolean
         get() {
-            return testOverride ?: java.lang.Boolean.getBoolean("dsgl.overlay.debug")
+            return testOverride ?: java.lang.Boolean
+                .getBoolean("dsgl.overlay.debug")
         }
-
 
     private var testOverride: Boolean? = null
 

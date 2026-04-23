@@ -1,7 +1,6 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState.isTintEnabled
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -9,23 +8,25 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
 class ApplicationOverlayRootNode(
-    key: Any? = "dsgl-application-overlay-root"
+    key: Any? = "dsgl-application-overlay-root",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-application-overlay-root"
     private var viewportWidth: Int = 0
     private var viewportHeight: Int = 0
-    private val debugTintNode: ContainerNode = UiScope(this).div({
-        this.key = "dsgl-application-overlay-debug-tint"
-        style = {
-            display = Display.None
-        }
-    })
+    private val debugTintNode: ContainerNode =
+        UiScope(this).div({
+            this.key = "dsgl-application-overlay-debug-tint"
+            style = {
+                display = Display.None
+            }
+        })
 
     internal fun setViewportBounds(width: Int, height: Int) {
         viewportWidth = width.coerceAtLeast(0)
@@ -37,11 +38,17 @@ class ApplicationOverlayRootNode(
         val resolvedHeight = if (viewportHeight > 0) viewportHeight else StyleEngine.viewportHeightPx().coerceAtLeast(0)
         return Size(
             width = resolvedWidth,
-            height = resolvedHeight
+            height = resolvedHeight,
         )
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         setViewportBounds(width, height)
         bounds = Rect(0, 0, viewportWidth, viewportHeight)
         val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(UiLayerId.ApplicationOverlay)

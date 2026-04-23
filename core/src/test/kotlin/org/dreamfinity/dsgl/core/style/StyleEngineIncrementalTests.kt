@@ -66,7 +66,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .a ~ .b { color: #33AA66; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -92,7 +92,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .target { color: #2288FF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -113,7 +113,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .node { color: #FFFFFF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")

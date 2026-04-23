@@ -18,7 +18,7 @@ fun collectHoverChain(root: DOMNode, mouseX: Int, mouseY: Int): List<DOMNode> {
         mouseY = mouseY,
         parentTransform = AffineTransform2D.IDENTITY,
         parentInputClipRect = null,
-        out = out
+        out = out,
     )
     return out
 }
@@ -29,18 +29,19 @@ internal fun collectHoverChain(
     mouseY: Int,
     parentTransform: AffineTransform2D,
     parentInputClipRect: Rect?,
-    out: MutableList<DOMNode>
+    out: MutableList<DOMNode>,
 ): Boolean {
     if (root.styleDisabled) return false
     if (!root.isHitTestVisible()) return false
 
-    val projection = UsedInteractionGeometryResolver.projectNodeAtPoint(
-        node = root,
-        mouseX = mouseX,
-        mouseY = mouseY,
-        parentTransform = parentTransform,
-        parentInputClipRect = parentInputClipRect
-    ) ?: return false
+    val projection =
+        UsedInteractionGeometryResolver.projectNodeAtPoint(
+            node = root,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            parentTransform = parentTransform,
+            parentInputClipRect = parentInputClipRect,
+        ) ?: return false
 
     out.add(root)
 
@@ -54,7 +55,7 @@ internal fun collectHoverChain(
                     mouseY = mouseY,
                     parentTransform = projection.worldTransform,
                     parentInputClipRect = childInputClipRect,
-                    out = out
+                    out = out,
                 )
             ) {
                 return true
@@ -78,7 +79,7 @@ fun updateHover(
     mouseX: Int,
     mouseY: Int,
     mouseDX: Int,
-    mouseDY: Int
+    mouseDY: Int,
 ) {
     val currHoverChain = ArrayList<DOMNode>(prevHoverChain.size + 4)
     collectHoverChain(
@@ -87,7 +88,7 @@ fun updateHover(
         mouseY = mouseY,
         parentTransform = AffineTransform2D.IDENTITY,
         parentInputClipRect = null,
-        out = currHoverChain
+        out = currHoverChain,
     )
 
     val minSize = minOf(prevHoverChain.size, currHoverChain.size)
@@ -134,9 +135,9 @@ private fun isSameHoverNode(prev: DOMNode, curr: DOMNode): Boolean {
     val currKey = curr.key
     if (prevKey != null || currKey != null) {
         return prevKey != null &&
-                currKey != null &&
-                prevKey == currKey &&
-                prev.javaClass == curr.javaClass
+            currKey != null &&
+            prevKey == currKey &&
+            prev.javaClass == curr.javaClass
     }
 
     // Root is recreated on every rebuild but is conceptually the same hover scope.
@@ -181,4 +182,3 @@ private fun label(element: DOMNode): String {
     val keyPart = element.key?.let { " key=$it" } ?: ""
     return element.javaClass.simpleName + keyPart
 }
-

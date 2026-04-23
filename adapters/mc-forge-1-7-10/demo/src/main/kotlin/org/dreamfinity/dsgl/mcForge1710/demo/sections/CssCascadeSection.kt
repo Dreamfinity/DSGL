@@ -2,9 +2,9 @@ package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> Unit) {
@@ -18,23 +18,28 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
 
     val parentThemeClass = if (cascadeParentDark) "dark" else "light"
     val ruleBlockClass = if (cascadeRuleAEnabled) "rule-a" else "rule-b"
-    val adjacentOrder = if (cascadeAdjacentSwapOrder) {
-        listOf("adj-target-1", "adj-source", "adj-target-2")
-    } else {
-        listOf("adj-source", "adj-target-1", "adj-target-2")
-    }
-    val generalItems = buildList {
-        add("gen-0")
-        if (cascadeGeneralInsertExtra) {
-            add("gen-extra")
+    val adjacentOrder =
+        if (cascadeAdjacentSwapOrder) {
+            listOf("adj-target-1", "adj-source", "adj-target-2")
+        } else {
+            listOf("adj-source", "adj-target-1", "adj-target-2")
         }
-        add("gen-1")
-        add("gen-2")
-        add("gen-3")
-    }
-    val effectiveWarningIndex = if (generalItems.isEmpty()) 0 else {
-        (cascadeGeneralWarningIndex.toInt().coerceAtLeast(0)) % generalItems.size
-    }
+    val generalItems =
+        buildList {
+            add("gen-0")
+            if (cascadeGeneralInsertExtra) {
+                add("gen-extra")
+            }
+            add("gen-1")
+            add("gen-2")
+            add("gen-3")
+        }
+    val effectiveWarningIndex =
+        if (generalItems.isEmpty()) {
+            0
+        } else {
+            (cascadeGeneralWarningIndex.toInt().coerceAtLeast(0)) % generalItems.size
+        }
 
     div({
         key = "section.cssCascade"
@@ -44,10 +49,12 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
             flexDirection = FlexDirection.Column
         }
     }) {
-        text("CSS-like cascade demo: descendant/child/sibling selectors, specificity, source order, !important, inheritance.")
+        text(
+            "CSS-like cascade demo: descendant/child/sibling selectors, specificity, source order, !important, inheritance.",
+        )
         text(
             "Use the controls to toggle classes, swap siblings, and insert/remove items.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -66,7 +73,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                         cascadeParentDark = !cascadeParentDark
                         onLogHook("css.cascade.toggle.parentClass", event, "dark=$cascadeParentDark")
                     }
-                }
+                },
             )
             button(if (cascadeRuleAEnabled) "Rule block: A" else "Rule block: B", {
                 key = "section.cssCascade.toggleRuleBlock"
@@ -89,7 +96,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
             text("Inheritance target: this text should inherit parent color class '$parentThemeClass'.")
             text(
                 "Descendant vs child: direct item should be green, nested item blue, outside item inherited.",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
 
             div({
@@ -158,7 +165,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
         }) {
             text(
                 "Adjacent sibling (+): only immediate .adj-target after .adj-source should change.",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
             div({
                 key = "section.cssCascade.adj.controls"
@@ -177,10 +184,10 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                             onLogHook(
                                 "css.cascade.adj.toggleSource",
                                 event,
-                                "enabled=$cascadeAdjacentSourceEnabled"
+                                "enabled=$cascadeAdjacentSourceEnabled",
                             )
                         }
-                    }
+                    },
                 )
                 button(if (cascadeAdjacentSwapOrder) "Order: swapped" else "Order: default", {
                     key = "section.cssCascade.adj.swap"
@@ -200,17 +207,21 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                 }
             }) {
                 adjacentOrder.forEach { item ->
-                    val classNames = buildString {
-                        append("adj-item ")
-                        when (item) {
-                            "adj-source" -> {
-                                if (cascadeAdjacentSourceEnabled) append("adj-source")
-                                else append("adj-neutral")
-                            }
+                    val classNames =
+                        buildString {
+                            append("adj-item ")
+                            when (item) {
+                                "adj-source" -> {
+                                    if (cascadeAdjacentSourceEnabled) {
+                                        append("adj-source")
+                                    } else {
+                                        append("adj-neutral")
+                                    }
+                                }
 
-                            else -> append("adj-target")
+                                else -> append("adj-target")
+                            }
                         }
-                    }
                     text(item, {
                         key = "section.cssCascade.$item"
                         className = classNames
@@ -220,7 +231,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
 
             text(
                 "General sibling (~): all .gen-target after .warning should change.",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
             div({
                 key = "section.cssCascade.gen.controls"
@@ -238,7 +249,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                         onLogHook(
                             "css.cascade.gen.moveWarning",
                             event,
-                            "index=$cascadeGeneralWarningIndex"
+                            "index=$cascadeGeneralWarningIndex",
                         )
                     }
                 })
@@ -249,7 +260,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                         onLogHook(
                             "css.cascade.gen.toggleExtra",
                             event,
-                            "extra=$cascadeGeneralInsertExtra"
+                            "extra=$cascadeGeneralInsertExtra",
                         )
                     }
                 })
@@ -274,7 +285,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
 
             text(
                 "Mixed chain: .cascade-mixed > .header + .body .title",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
             button(if (cascadeMixedSpacerEnabled) "Spacer: ON (break +)" else "Spacer: OFF (adjacent)", {
                 key = "section.cssCascade.mixed.toggleSpacer"
@@ -283,7 +294,7 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                     onLogHook(
                         "css.cascade.mixed.toggleSpacer",
                         event,
-                        "spacer=$cascadeMixedSpacerEnabled"
+                        "spacer=$cascadeMixedSpacerEnabled",
                     )
                 }
             })

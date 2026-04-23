@@ -21,11 +21,14 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
 
 class InspectorInputPathBaselineTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -48,13 +51,15 @@ class InspectorInputPathBaselineTests {
         assertFalse(fixture.inspector.closeOpenStyleDropdowns())
         assertFalse(fixture.inspector.handleOpenStyleDropdownWheel(-120))
 
-        val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
-            ?: error("inspector entry missing")
+        val inspectorNode =
+            fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
+                ?: error("inspector entry missing")
         val routeProbe = inspectorNode.javaClass.getDeclaredMethod("isDomOwnedInteractionTarget", DOMNode::class.java)
         routeProbe.isAccessible = true
 
-        val triggerNode = collectNodes(inspectorNode).firstOrNull { it.key?.toString() == ownerKey }
-            ?: error("expected select trigger node")
+        val triggerNode =
+            collectNodes(inspectorNode).firstOrNull { it.key?.toString() == ownerKey }
+                ?: error("expected select trigger node")
         assertTrue(routeProbe.invoke(inspectorNode, triggerNode) as Boolean)
 
         val triggerCenterX = triggerNode.bounds.x + (triggerNode.bounds.width / 2).coerceAtLeast(1)
@@ -216,7 +221,7 @@ class InspectorInputPathBaselineTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -224,14 +229,15 @@ class InspectorInputPathBaselineTests {
         assertTrue(host.handleMouseUp(984, 144, MouseButton.LEFT))
         inspector.setPickMode(false)
 
-        val fixture = Fixture(
-            inspector = inspector,
-            host = host,
-            root = root,
-            revision = 2L,
-            viewportWidth = 1280,
-            viewportHeight = 720
-        )
+        val fixture =
+            Fixture(
+                inspector = inspector,
+                host = host,
+                root = root,
+                revision = 2L,
+                viewportWidth = 1280,
+                viewportHeight = 720,
+            )
         syncAndRender(fixture, 984, 144)
         return fixture
     }
@@ -249,7 +255,7 @@ class InspectorInputPathBaselineTests {
             inspectedLayoutRevision = fixture.revision++,
             cursorX = cursorX,
             cursorY = cursorY,
-            inspectorPointerCaptured = fixture.inspector.isPointerCaptured
+            inspectorPointerCaptured = fixture.inspector.isPointerCaptured,
         )
         fixture.host.render(ctx, fixture.viewportWidth, fixture.viewportHeight)
         fixture.host.paint(ctx)
@@ -267,22 +273,25 @@ class InspectorInputPathBaselineTests {
 
     private fun findOrScrollToVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
-            val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
-                row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
-            }
+            val rows =
+                fixture.inspector.overlayStyleEditorRows().filter { row ->
+                    row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
+                }
             val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
-            rows.firstOrNull { row ->
-                val rect = Rect(
-                    row.controlRect.x,
-                    row.controlRect.y - bodyScrollY,
-                    row.controlRect.width,
-                    row.controlRect.height
-                )
-                val centerX = rect.x + (rect.width / 2).coerceAtLeast(1)
-                val centerY = rect.y + (rect.height / 2).coerceAtLeast(1)
-                contentRect.contains(centerX, centerY)
-            }?.let { return it }
+            rows
+                .firstOrNull { row ->
+                    val rect =
+                        Rect(
+                            row.controlRect.x,
+                            row.controlRect.y - bodyScrollY,
+                            row.controlRect.width,
+                            row.controlRect.height,
+                        )
+                    val centerX = rect.x + (rect.width / 2).coerceAtLeast(1)
+                    val centerY = rect.y + (rect.height / 2).coerceAtLeast(1)
+                    contentRect.contains(centerX, centerY)
+                }?.let { return it }
 
             scrollInspectorBodyDown(fixture, steps = 1)
         }
@@ -295,22 +304,26 @@ class InspectorInputPathBaselineTests {
             row.controlRect.x,
             row.controlRect.y - bodyScrollY,
             row.controlRect.width,
-            row.controlRect.height
+            row.controlRect.height,
         )
     }
 
-    private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot {
-        return fixture.inspector.overlayStyleEditorRows().firstOrNull { it.property == property }
+    private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot =
+        fixture.inspector
+            .overlayStyleEditorRows()
+            .firstOrNull { it.property == property }
             ?: error("expected row for $property")
-    }
 
     private fun openDropdownFromVisibleSelectRow(
         fixture: Fixture,
-        row: InspectorStyleEditorRowSnapshot = findOrScrollToVisibleSelectRow(fixture)
+        row: InspectorStyleEditorRowSnapshot = findOrScrollToVisibleSelectRow(fixture),
     ): Pair<Rect, String> {
         val triggerRect = visibleControlRect(fixture, row)
-        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
-            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val rowIndex =
+            fixture.inspector
+                .overlayStyleEditorRows()
+                .indexOfFirst { it.property == row.property }
+                .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
         val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val clickX = triggerRect.x + 2
         val clickY = triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1)
@@ -328,22 +341,29 @@ class InspectorInputPathBaselineTests {
             ?: error("expected system select popup for owner=$ownerKey")
     }
 
-    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
-                fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
-    }
+    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+            fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
 
-    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
-                fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
-    }
+    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+            fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
 
-    private fun dispatchSystemMouseWheel(fixture: Fixture, x: Int, y: Int, delta: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
-                fixture.host.handleMouseWheel(x, y, delta)
-    }
+    private fun dispatchSystemMouseWheel(
+        fixture: Fixture,
+        x: Int,
+        y: Int,
+        delta: Int,
+    ): Boolean =
+        SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
+            fixture.host.handleMouseWheel(x, y, delta)
 
-    private fun waitForSystemSelectClosed(fixture: Fixture, ownerKey: String, cursorX: Int, cursorY: Int) {
+    private fun waitForSystemSelectClosed(
+        fixture: Fixture,
+        ownerKey: String,
+        cursorX: Int,
+        cursorY: Int,
+    ) {
         repeat(30) {
             if (!SelectRuntime.systemEngine.isOpenFor(ownerKey)) return
             Thread.sleep(5)
@@ -372,12 +392,14 @@ class InspectorInputPathBaselineTests {
     }
 
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
-        val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
-            ?: error("inspector entry missing")
+        val inspectorNode =
+            fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
+                ?: error("inspector entry missing")
         val contentRect = fixture.inspector.overlayContentRect()
-        val candidates = collectNodes(inspectorNode)
-            .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
+        val candidates =
+            collectNodes(inspectorNode)
+                .filterIsInstance<TextInputNode>()
+                .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
 
         return candidates.firstOrNull { node ->
             val probeX = node.bounds.x + 2
@@ -389,15 +411,17 @@ class InspectorInputPathBaselineTests {
     private fun inspectedRoot(withManyChildren: Boolean): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        val target = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val target =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         target.applyParent(root)
         if (withManyChildren) {
             repeat(24) { index ->
-                ContainerNode(key = "child-$index").apply {
-                    bounds = Rect(980, 170 + index * 14, 120, 10)
-                }.applyParent(target)
+                ContainerNode(key = "child-$index")
+                    .apply {
+                        bounds = Rect(980, 170 + index * 14, 120, 10)
+                    }.applyParent(target)
             }
         }
         StyleEngine.setInspectorOverrideLiteral(target, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
@@ -406,6 +430,7 @@ class InspectorInputPathBaselineTests {
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -420,8 +445,6 @@ class InspectorInputPathBaselineTests {
         val root: ContainerNode,
         var revision: Long,
         var viewportWidth: Int,
-        var viewportHeight: Int
+        var viewportHeight: Int,
     )
 }
-
-

@@ -75,9 +75,10 @@ class UseMemoHookRuntimeTests {
         renderWithHookSession(window)
 
         window.useStringBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            renderWithHookSession(window)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                renderWithHookSession(window)
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("memoValue") == true)
@@ -155,9 +156,10 @@ class UseMemoHookRuntimeTests {
 
         window.beginRenderBuild()
         window.render()
-        val error = assertFailsWith<HookUsageException> {
-            window.endRenderBuild()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.endRenderBuild()
+            }
 
         assertTrue(error.message?.contains("Storage-backed hook 'useMemo'") == true)
         assertTrue(error.message?.contains("delegated property syntax") == true)
@@ -169,18 +171,16 @@ class UseMemoHookRuntimeTests {
 
         window.beginRenderBuild()
         window.render()
-        val error = assertFailsWith<HookUsageException> {
-            window.endRenderBuild()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.endRenderBuild()
+            }
 
         assertTrue(error.message?.contains("Storage-backed hook 'useCallback'") == true)
         assertTrue(error.message?.contains("delegated property syntax") == true)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal): DomTree {
         window.beginRenderBuild(mode)
         return try {
             window.render()

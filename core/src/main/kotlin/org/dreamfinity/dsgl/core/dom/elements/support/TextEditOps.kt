@@ -3,13 +3,9 @@ package org.dreamfinity.dsgl.core.dom.elements.support
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 
 internal object TextEditOps {
-    fun isPrintable(ch: Char): Boolean {
-        return ch >= ' ' && ch.code != 127
-    }
+    fun isPrintable(ch: Char): Boolean = ch >= ' ' && ch.code != 127
 
-    fun dragIdentity(key: Any?, node: Any): Any {
-        return key ?: node
-    }
+    fun dragIdentity(key: Any?, node: Any): Any = key ?: node
 
     fun selectedText(source: String, editState: TextEditState): String {
         if (!editState.hasSelection()) return ""
@@ -36,7 +32,12 @@ internal object TextEditOps {
         return start to end
     }
 
-    fun moveCaretWithSelection(editState: TextEditState, next: Int, textLength: Int, extend: Boolean) {
+    fun moveCaretWithSelection(
+        editState: TextEditState,
+        next: Int,
+        textLength: Int,
+        extend: Boolean,
+    ) {
         if (extend) {
             if (editState.selectionAnchor == null) {
                 editState.selectionAnchor = editState.caretIndex
@@ -50,7 +51,12 @@ internal object TextEditOps {
         }
     }
 
-    fun replaceRange(source: String, start: Int, end: Int, insert: String): String {
+    fun replaceRange(
+        source: String,
+        start: Int,
+        end: Int,
+        insert: String,
+    ): String {
         val safeStart = start.coerceIn(0, source.length)
         val safeEnd = end.coerceIn(safeStart, source.length)
         return source.substring(0, safeStart) + insert + source.substring(safeEnd)

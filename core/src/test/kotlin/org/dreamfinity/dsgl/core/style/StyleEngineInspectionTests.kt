@@ -1,15 +1,15 @@
 package org.dreamfinity.dsgl.core.style
 
-import java.io.File
-import java.nio.file.Files
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.TextNode
 import org.dreamfinity.dsgl.core.dom.elements.TextSource
+import java.io.File
+import java.nio.file.Files
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class StyleEngineInspectionTests {
     @AfterTest
@@ -21,12 +21,13 @@ class StyleEngineInspectionTests {
 
     @Test
     fun `inspect reports selector and inline provenance`() {
-        val stylesDir = createTempStylesDir(
-            """
-            text { color: #112233; }
-            #sample { color: #445566; }
-            """.trimIndent()
-        )
+        val stylesDir =
+            createTempStylesDir(
+                """
+                text { color: #112233; }
+                #sample { color: #445566; }
+                """.trimIndent(),
+            )
         StyleEngine.setStylesDirectory(stylesDir)
         StyleEngine.forceReloadStylesheets()
 
@@ -40,7 +41,7 @@ class StyleEngineInspectionTests {
 
         node.inlineStyleDeclarations.set(
             StyleProperty.FOREGROUND_COLOR,
-            StyleExpression.Literal("#ABCDEF")
+            StyleExpression.Literal("#ABCDEF"),
         )
         val inlineInspection = StyleEngine.inspect(node)
         val inlineSource = inlineInspection.propertySources[StyleProperty.FOREGROUND_COLOR]
@@ -50,12 +51,13 @@ class StyleEngineInspectionTests {
 
     @Test
     fun `inspector override has highest precedence`() {
-        val stylesDir = createTempStylesDir(
-            """
-            text { color: #111111; }
-            #sample { color: #222222; }
-            """.trimIndent()
-        )
+        val stylesDir =
+            createTempStylesDir(
+                """
+                text { color: #111111; }
+                #sample { color: #222222; }
+                """.trimIndent(),
+            )
         StyleEngine.setStylesDirectory(stylesDir)
         StyleEngine.forceReloadStylesheets()
 
@@ -63,7 +65,7 @@ class StyleEngineInspectionTests {
         node.styleId = "sample"
         node.inlineStyleDeclarations.set(
             StyleProperty.FOREGROUND_COLOR,
-            StyleExpression.Literal("#333333")
+            StyleExpression.Literal("#333333"),
         )
         StyleEngine.setInspectorOverrideLiteral("sample", StyleProperty.FOREGROUND_COLOR, "#444444").getOrThrow()
 

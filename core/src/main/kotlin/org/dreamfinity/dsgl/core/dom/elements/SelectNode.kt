@@ -21,7 +21,7 @@ class SelectNode(
     defaultValue: String? = null,
     closeOnSelect: Boolean = true,
     ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "select"
     override val focusable: Boolean = true
@@ -64,7 +64,10 @@ class SelectNode(
     var backgroundColor: Int = 0xFF2E2E33.toInt()
     var disabledTextColor: Int = 0xFF8E8E8E.toInt()
     var minContentWidth: Int = 92
-    var arrowGlyph: String = SelectRuntime.engine.currentStyle().arrowGlyph
+    var arrowGlyph: String =
+        SelectRuntime.engine
+            .currentStyle()
+            .arrowGlyph
     var arrowSpacing: Int = 8
 
     private var uncontrolledValue: String? = defaultValue
@@ -116,13 +119,10 @@ class SelectNode(
         }
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val lineHeight = resolveFontSize(ctx)
@@ -156,11 +156,12 @@ class SelectNode(
         syncPopup()
         val isFocused = FocusManager.isFocused(this) && !styleDisabled
         val textValue = selectedLabelOrPlaceholder()
-        val drawColor = when {
-            styleDisabled -> disabledTextColor
-            selectedOptionId() == null -> placeholderColor
-            else -> textColor
-        }
+        val drawColor =
+            when {
+                styleDisabled -> disabledTextColor
+                selectedOptionId() == null -> placeholderColor
+                else -> textColor
+            }
         val arrowWidth = if (arrowGlyph.isEmpty()) 0 else measureText(ctx, arrowGlyph)
         val lineHeight = resolveFontSize(ctx)
         out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, backgroundColor)
@@ -177,27 +178,28 @@ class SelectNode(
 
         out += RenderCommand.PushClip(innerX, innerY, textClipWidth, innerHeight.coerceAtLeast(1))
         if (textValue.isNotEmpty()) {
-            out += drawTextCommand(
-                ctx,
-                text = textValue,
-                x = innerX,
-                y = textY,
-                color = drawColor
-            )
+            out +=
+                drawTextCommand(
+                    ctx,
+                    text = textValue,
+                    x = innerX,
+                    y = textY,
+                    color = drawColor,
+                )
         }
         out += RenderCommand.PopClip
 
         if (arrowGlyph.isNotEmpty()) {
             val arrowColor = if (styleDisabled) disabledTextColor else textColor
-            out += drawTextCommand(
-                ctx,
-                text = arrowGlyph,
-                x = arrowX,
-                y = textY,
-                color = arrowColor
-            )
+            out +=
+                drawTextCommand(
+                    ctx,
+                    text = arrowGlyph,
+                    x = arrowX,
+                    y = textY,
+                    color = arrowColor,
+                )
         }
-
     }
 
     override fun volatileRenderCommandsSignature(nowMs: Long): Long {
@@ -270,7 +272,7 @@ class SelectNode(
             onClose = { setOpenState(false) },
             fontId = fontId,
             fontSize = fontSize,
-            ownerScope = ownerScope
+            ownerScope = ownerScope,
         )
     }
 
@@ -299,7 +301,9 @@ class SelectNode(
                 return option.labelProvider.invoke()
             }
         }
-        return model.placeholderProvider?.invoke().orEmpty()
+        return model.placeholderProvider
+            ?.invoke()
+            .orEmpty()
     }
 
     private fun reconcileSelection() {
@@ -310,17 +314,16 @@ class SelectNode(
         if (controlled) {
             return
         }
-        uncontrolledValue = when {
-            !defaultValue.isNullOrEmpty() && optionExists(defaultValue!!) -> defaultValue
-            else -> firstEnabledOptionId()
-        }
+        uncontrolledValue =
+            when {
+                !defaultValue.isNullOrEmpty() && optionExists(defaultValue!!) -> defaultValue
+                else -> firstEnabledOptionId()
+            }
     }
 
     private fun hasEnabledOption(): Boolean = firstEnabledOptionId() != null
 
-    private fun firstEnabledOptionId(): String? {
-        return firstEnabledOptionId(model.entries)
-    }
+    private fun firstEnabledOptionId(): String? = firstEnabledOptionId(model.entries)
 
     private fun firstEnabledOptionId(entries: List<SelectEntry>): String? {
         entries.forEach { entry ->
@@ -337,13 +340,9 @@ class SelectNode(
         return null
     }
 
-    private fun optionExists(optionId: String): Boolean {
-        return findOption(optionId) != null
-    }
+    private fun optionExists(optionId: String): Boolean = findOption(optionId) != null
 
-    private fun findOption(optionId: String): SelectEntry.Option? {
-        return findOption(model.entries, optionId)
-    }
+    private fun findOption(optionId: String): SelectEntry.Option? = findOption(model.entries, optionId)
 
     private fun findOption(entries: List<SelectEntry>, optionId: String): SelectEntry.Option? {
         entries.forEach { entry ->

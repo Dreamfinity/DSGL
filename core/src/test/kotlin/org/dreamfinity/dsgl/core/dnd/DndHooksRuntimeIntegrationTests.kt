@@ -2,34 +2,34 @@ package org.dreamfinity.dsgl.core.dnd
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.dnd.internal.DefaultDndEngine
+import org.dreamfinity.dsgl.core.hooks.HookUsageException
+import java.util.WeakHashMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
-import java.util.WeakHashMap
 
 class DndHooksRuntimeIntegrationTests {
     @Test
     fun `dnd hooks are callable from UiScope without window qualification`() {
         val baselineListeners = monitorListenersSnapshot().keys
-        val window = object : DsglWindow() {
-            override fun render(): DomTree {
-                return ui {
-                    useDraggable(id = "card-a", nodeKey = "card-a")
-                    useDroppable(id = "lane-a", nodeKey = "lane-a")
-                    useSortable(
-                        id = "card-b",
-                        nodeKey = "card-b",
-                        containerId = "lane-a",
-                        items = listOf("card-b")
-                    )
-                    useDragDropMonitor(DragDropMonitorCallbacks())
-                }
+        val window =
+            object : DsglWindow() {
+                override fun render(): DomTree =
+                    ui {
+                        useDraggable(id = "card-a", nodeKey = "card-a")
+                        useDroppable(id = "lane-a", nodeKey = "lane-a")
+                        useSortable(
+                            id = "card-b",
+                            nodeKey = "card-b",
+                            containerId = "lane-a",
+                            items = listOf("card-b"),
+                        )
+                        useDragDropMonitor(DragDropMonitorCallbacks())
+                    }
             }
-        }
 
         try {
             renderWithHookSession(window, commit = true)
@@ -42,19 +42,20 @@ class DndHooksRuntimeIntegrationTests {
 
     @Test
     fun `duplicate hook-component identity in same render fails loudly`() {
-        val window = object : DsglWindow() {
-            override fun render(): DomTree {
-                return ui {
-                    useDraggable(id = "card-a", nodeKey = "same")
-                    useDraggable(id = "card-b", nodeKey = "same")
-                }
+        val window =
+            object : DsglWindow() {
+                override fun render(): DomTree =
+                    ui {
+                        useDraggable(id = "card-a", nodeKey = "same")
+                        useDraggable(id = "card-b", nodeKey = "same")
+                    }
             }
-        }
 
         window.beginRenderBuild()
-        val error = assertFailsWith<HookUsageException> {
-            window.render()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.render()
+            }
         assertEquals(error.message?.contains("Duplicate component identity"), true)
         window.endRenderBuild()
     }
@@ -63,19 +64,19 @@ class DndHooksRuntimeIntegrationTests {
     fun `drag-drop monitor keeps one subscription and refreshes callbacks`() {
         val baselineListeners = monitorListenersSnapshot()
         val callbackCalls: MutableList<String> = arrayListOf()
-        val window = object : DsglWindow() {
-            var callbackVersion: String = "v1"
+        val window =
+            object : DsglWindow() {
+                var callbackVersion: String = "v1"
 
-            override fun render(): DomTree {
-                return ui {
-                    useDragDropMonitor(
-                        DragDropMonitorCallbacks(
-                            onDragCancel = { callbackCalls += callbackVersion }
+                override fun render(): DomTree =
+                    ui {
+                        useDragDropMonitor(
+                            DragDropMonitorCallbacks(
+                                onDragCancel = { callbackCalls += callbackVersion },
+                            ),
                         )
-                    )
-                }
+                    }
             }
-        }
 
         try {
             renderWithHookSession(window, commit = true)
@@ -102,17 +103,17 @@ class DndHooksRuntimeIntegrationTests {
     @Test
     fun `drag-drop monitor cleans up on disappearance and re-subscribes on reappearance`() {
         val baselineCount = monitorListenersSnapshot().size
-        val window = object : DsglWindow() {
-            var showMonitor: Boolean = true
+        val window =
+            object : DsglWindow() {
+                var showMonitor: Boolean = true
 
-            override fun render(): DomTree {
-                return ui {
-                    if (showMonitor) {
-                        useDragDropMonitor(DragDropMonitorCallbacks())
+                override fun render(): DomTree =
+                    ui {
+                        if (showMonitor) {
+                            useDragDropMonitor(DragDropMonitorCallbacks())
+                        }
                     }
-                }
             }
-        }
 
         try {
             renderWithHookSession(window, commit = true)
@@ -136,22 +137,22 @@ class DndHooksRuntimeIntegrationTests {
 
     @Test
     fun `sortable container state persists while mounted and resets after disappearance`() {
-        val window = object : DsglWindow() {
-            var showSortable: Boolean = true
+        val window =
+            object : DsglWindow() {
+                var showSortable: Boolean = true
 
-            override fun render(): DomTree {
-                return ui {
-                    if (showSortable) {
-                        useSortable(
-                            id = "card-a",
-                            nodeKey = "card-a",
-                            containerId = "lane",
-                            items = listOf("card-a")
-                        )
+                override fun render(): DomTree =
+                    ui {
+                        if (showSortable) {
+                            useSortable(
+                                id = "card-a",
+                                nodeKey = "card-a",
+                                containerId = "lane",
+                                items = listOf("card-a"),
+                            )
+                        }
                     }
-                }
             }
-        }
 
         try {
             renderWithHookSession(window, commit = true)
@@ -220,8 +221,8 @@ class DndHooksRuntimeIntegrationTests {
         return System.identityHashCode(state)
     }
 
-    private fun sampleActiveDrag(): ActiveDrag {
-        return ActiveDrag(
+    private fun sampleActiveDrag(): ActiveDrag =
+        ActiveDrag(
             id = "sample",
             type = "sample",
             sourceKey = "source",
@@ -231,7 +232,6 @@ class DndHooksRuntimeIntegrationTests {
             cursorY = 0,
             transform = Transform(0.0, 0.0),
             dropEffect = DropEffect.NONE,
-            dataTransfer = DataTransfer()
+            dataTransfer = DataTransfer(),
         )
-    }
 }

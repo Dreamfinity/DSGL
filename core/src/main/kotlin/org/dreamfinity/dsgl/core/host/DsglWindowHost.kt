@@ -10,27 +10,26 @@ data class Viewport(
     val height: Int,
     val scale: Float = 1f,
     val x: Int = 0,
-    val y: Int = 0
+    val y: Int = 0,
 )
 
 data class ViewportPoint(
     val x: Int,
-    val y: Int
+    val y: Int,
 )
 
 data class GlScissorRect(
     val x: Int,
     val y: Int,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
-fun Viewport.rawMouseToDsgl(rawX: Int, rawY: Int): ViewportPoint {
-    return ViewportPoint(
+fun Viewport.rawMouseToDsgl(rawX: Int, rawY: Int): ViewportPoint =
+    ViewportPoint(
         x = rawX - x,
-        y = (y + height) - rawY - 1
+        y = (y + height) - rawY - 1,
     )
-}
 
 fun Viewport.rawMouseToDsglX(rawX: Int): Int = rawX - x
 
@@ -40,7 +39,7 @@ fun Viewport.dsglRectToGlScissor(
     dsglX: Int,
     dsglY: Int,
     dsglWidth: Int,
-    dsglHeight: Int
+    dsglHeight: Int,
 ): GlScissorRect {
     val widthPx = dsglWidth.coerceAtLeast(0)
     val heightPx = dsglHeight.coerceAtLeast(0)
@@ -48,7 +47,7 @@ fun Viewport.dsglRectToGlScissor(
         x = x + dsglX,
         y = y + height - (dsglY + heightPx),
         width = widthPx,
-        height = heightPx
+        height = heightPx,
     )
 }
 

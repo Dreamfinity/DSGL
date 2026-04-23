@@ -25,7 +25,7 @@ object DefaultDndEngine : DndEngine {
         val sourceKey: Any?,
         val sourceClass: Class<out DOMNode>,
         val startX: Int,
-        val startY: Int
+        val startY: Int,
     )
 
     private data class ActiveSession(
@@ -52,7 +52,7 @@ object DefaultDndEngine : DndEngine {
         var collisionCandidateCount: Int = 0,
         var sourceExcludedFromHitTest: Boolean = true,
         var dragTickAccum: Double = 0.0,
-        var overTickAccum: Double = 0.0
+        var overTickAccum: Double = 0.0,
     )
 
     private var pendingDrag: PendingDrag? = null
@@ -74,18 +74,19 @@ object DefaultDndEngine : DndEngine {
     override fun getSmoothingFactor(): Double = smoothingFactor
 
     override fun monitor(nodeKey: Any?): DndMonitorState {
-        val active = activeDrag ?: return DndMonitorState(
-            isDragging = false,
-            sourceKey = null,
-            cursorX = 0,
-            cursorY = 0,
-            previewX = 0.0,
-            previewY = 0.0,
-            mode = null,
-            overKey = null,
-            collisionCandidates = 0,
-            sourceExcludedFromHitTest = true
-        )
+        val active =
+            activeDrag ?: return DndMonitorState(
+                isDragging = false,
+                sourceKey = null,
+                cursorX = 0,
+                cursorY = 0,
+                previewX = 0.0,
+                previewY = 0.0,
+                mode = null,
+                overKey = null,
+                collisionCandidates = 0,
+                sourceExcludedFromHitTest = true,
+            )
         val draggingThisSource = nodeKey != null && nodeKey == active.sourceKey
         return DndMonitorState(
             isDragging = nodeKey == null || draggingThisSource,
@@ -97,7 +98,7 @@ object DefaultDndEngine : DndEngine {
             mode = active.previewMode,
             overKey = active.dropTargetKey,
             collisionCandidates = active.collisionCandidateCount,
-            sourceExcludedFromHitTest = active.sourceExcludedFromHitTest
+            sourceExcludedFromHitTest = active.sourceExcludedFromHitTest,
         )
     }
 
@@ -126,15 +127,16 @@ object DefaultDndEngine : DndEngine {
             return
         }
         if (activeDrag != null) return
-        pendingDrag = resolveDraggableSource(target)?.let { source ->
-            PendingDrag(
-                sourceNode = source,
-                sourceKey = source.key,
-                sourceClass = source.javaClass,
-                startX = event.mouseX,
-                startY = event.mouseY
-            )
-        }
+        pendingDrag =
+            resolveDraggableSource(target)?.let { source ->
+                PendingDrag(
+                    sourceNode = source,
+                    sourceKey = source.key,
+                    sourceClass = source.javaClass,
+                    startX = event.mouseX,
+                    startY = event.mouseY,
+                )
+            }
     }
 
     override fun onMouseMove(root: DOMNode, mouseX: Int, mouseY: Int) {
@@ -175,12 +177,13 @@ object DefaultDndEngine : DndEngine {
         var didDrop = false
         var dropTargetKey: Any? = null
         if (acceptedTarget != null) {
-            val dropEvent = DropEvent(
-                x = active.cursorX,
-                y = active.cursorY,
-                dragSourceKey = active.sourceKey,
-                transfer = active.dataTransfer
-            )
+            val dropEvent =
+                DropEvent(
+                    x = active.cursorX,
+                    y = active.cursorY,
+                    dragSourceKey = active.sourceKey,
+                    transfer = active.dataTransfer,
+                )
             dropEvent.target = acceptedTarget
             EventBus.post(dropEvent)
             dropTargetKey = acceptedTarget.key
@@ -199,11 +202,12 @@ object DefaultDndEngine : DndEngine {
         rebindAfterReconcile(root)
         val active = activeDrag ?: return
 
-        val alpha = if (smoothingFactor <= 0.0) {
-            1.0
-        } else {
-            1.0 - exp(-smoothingFactor * safeDt)
-        }
+        val alpha =
+            if (smoothingFactor <= 0.0) {
+                1.0
+            } else {
+                1.0 - exp(-smoothingFactor * safeDt)
+            }
         active.previewX += (active.cursorX.toDouble() - active.previewX) * alpha
         active.previewY += (active.cursorY.toDouble() - active.previewY) * alpha
 
@@ -239,7 +243,7 @@ object DefaultDndEngine : DndEngine {
         ctx: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         val active = activeDrag ?: return
         if (viewportWidth <= 0 || viewportHeight <= 0) return
@@ -271,11 +275,12 @@ object DefaultDndEngine : DndEngine {
         }
 
         val dropClass = active.dropTargetClass
-        val reboundTarget = if (active.dropTargetKey != null && dropClass != null) {
-            findByKeyAndClass(root, active.dropTargetKey, dropClass)
-        } else {
-            null
-        }
+        val reboundTarget =
+            if (active.dropTargetKey != null && dropClass != null) {
+                findByKeyAndClass(root, active.dropTargetKey, dropClass)
+            } else {
+                null
+            }
         active.dropTargetNode = reboundTarget
         if (reboundTarget == null) {
             active.dropTargetKey = null
@@ -286,23 +291,30 @@ object DefaultDndEngine : DndEngine {
     }
 
     override fun cancelActiveDrag() {
-        val active = activeDrag ?: run {
-            pendingDrag = null
-            return
-        }
+        val active =
+            activeDrag ?: run {
+                pendingDrag = null
+                return
+            }
         notifyDragCancel(active)
         finishDrag(active, didDrop = false, dropTargetKey = null)
     }
 
-    private fun tryStartDrag(root: DOMNode, pending: PendingDrag, mouseX: Int, mouseY: Int) {
+    private fun tryStartDrag(
+        root: DOMNode,
+        pending: PendingDrag,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
         val source = findByKeyAndClass(root, pending.sourceKey, pending.sourceClass) ?: pending.sourceNode
         val transfer = DataTransfer()
-        val startEvent = DragStartEvent(
-            x = mouseX,
-            y = mouseY,
-            dragSourceKey = source.key,
-            transfer = transfer
-        )
+        val startEvent =
+            DragStartEvent(
+                x = mouseX,
+                y = mouseY,
+                dragSourceKey = source.key,
+                transfer = transfer,
+            )
         startEvent.target = source
         EventBus.post(startEvent)
         if (startEvent.cancelled) {
@@ -318,24 +330,25 @@ object DefaultDndEngine : DndEngine {
         val previewOffsetY = previewSpec?.offsetY ?: defaultOffsetY
         val hideSource = source.dragPreviewMode == DragPreviewMode.ORIGINAL || source.hideSourceWhileDragging
 
-        val startedDrag = ActiveSession(
-            sourceNode = source,
-            sourceKey = source.key,
-            sourceClass = source.javaClass,
-            dataTransfer = transfer,
-            previewMode = source.dragPreviewMode,
-            sourceHiddenDuringDrag = hideSource,
-            placeholderWidth = sourceBounds.width,
-            placeholderHeight = sourceBounds.height,
-            placeholderBuilder = source.dragPlaceholderBuilder,
-            previewBuilder = source.dragPreviewBuilder,
-            cursorX = mouseX,
-            cursorY = mouseY,
-            previewX = mouseX.toDouble(),
-            previewY = mouseY.toDouble(),
-            previewOffsetX = previewOffsetX,
-            previewOffsetY = previewOffsetY
-        )
+        val startedDrag =
+            ActiveSession(
+                sourceNode = source,
+                sourceKey = source.key,
+                sourceClass = source.javaClass,
+                dataTransfer = transfer,
+                previewMode = source.dragPreviewMode,
+                sourceHiddenDuringDrag = hideSource,
+                placeholderWidth = sourceBounds.width,
+                placeholderHeight = sourceBounds.height,
+                placeholderBuilder = source.dragPlaceholderBuilder,
+                previewBuilder = source.dragPreviewBuilder,
+                cursorX = mouseX,
+                cursorY = mouseY,
+                previewX = mouseX.toDouble(),
+                previewY = mouseY.toDouble(),
+                previewOffsetX = previewOffsetX,
+                previewOffsetY = previewOffsetY,
+            )
         activeDrag = startedDrag
         pendingDrag = null
         applySourceHiddenFlags(startedDrag)
@@ -357,12 +370,13 @@ object DefaultDndEngine : DndEngine {
         val resolvedTarget = resolveDropTarget(root, active, active.cursorX, active.cursorY)
         if (!isSameNode(active.dropTargetNode, resolvedTarget)) {
             active.dropTargetNode?.let { prev ->
-                val leaveEvent = DragLeaveEvent(
-                    x = active.cursorX,
-                    y = active.cursorY,
-                    dragSourceKey = active.sourceKey,
-                    transfer = active.dataTransfer
-                )
+                val leaveEvent =
+                    DragLeaveEvent(
+                        x = active.cursorX,
+                        y = active.cursorY,
+                        dragSourceKey = active.sourceKey,
+                        transfer = active.dataTransfer,
+                    )
                 leaveEvent.target = prev
                 EventBus.post(leaveEvent)
             }
@@ -372,47 +386,56 @@ object DefaultDndEngine : DndEngine {
             active.dropAccepted = false
             active.dataTransfer.dropEffect = DropEffect.NONE
             resolvedTarget?.let { next ->
-                val enterEvent = DragEnterEvent(
-                    x = active.cursorX,
-                    y = active.cursorY,
-                    dragSourceKey = active.sourceKey,
-                    transfer = active.dataTransfer
-                )
+                val enterEvent =
+                    DragEnterEvent(
+                        x = active.cursorX,
+                        y = active.cursorY,
+                        dragSourceKey = active.sourceKey,
+                        transfer = active.dataTransfer,
+                    )
                 enterEvent.target = next
                 EventBus.post(enterEvent)
             }
         }
 
         if (!dispatchOver) return
-        val currentTarget = active.dropTargetNode ?: run {
-            active.dropAccepted = false
-            active.dataTransfer.dropEffect = DropEffect.NONE
-            return
-        }
+        val currentTarget =
+            active.dropTargetNode ?: run {
+                active.dropAccepted = false
+                active.dataTransfer.dropEffect = DropEffect.NONE
+                return
+            }
 
-        val overEvent = DragOverEvent(
-            x = active.cursorX,
-            y = active.cursorY,
-            dragSourceKey = active.sourceKey,
-            transfer = active.dataTransfer
-        )
+        val overEvent =
+            DragOverEvent(
+                x = active.cursorX,
+                y = active.cursorY,
+                dragSourceKey = active.sourceKey,
+                transfer = active.dataTransfer,
+            )
         overEvent.target = currentTarget
         EventBus.post(overEvent)
 
         val accepted = overEvent.dropAccepted || overEvent.cancelled
         active.dropAccepted = accepted
         if (accepted) {
-            active.dataTransfer.dropEffect = normalizeDropEffect(
-                requested = active.dataTransfer.dropEffect,
-                allowed = active.dataTransfer.effectAllowed
-            )
+            active.dataTransfer.dropEffect =
+                normalizeDropEffect(
+                    requested = active.dataTransfer.dropEffect,
+                    allowed = active.dataTransfer.effectAllowed,
+                )
         } else {
             active.dataTransfer.dropEffect = DropEffect.NONE
         }
         notifyDragOver(active)
     }
 
-    private fun resolveDropTarget(root: DOMNode, active: ActiveSession, mouseX: Int, mouseY: Int): DOMNode? {
+    private fun resolveDropTarget(
+        root: DOMNode,
+        active: ActiveSession,
+        mouseX: Int,
+        mouseY: Int,
+    ): DOMNode? {
         val chain = collectHoverChain(root, mouseX, mouseY)
         val candidates = ArrayList<DOMNode>(chain.size)
         var excludedSource = false
@@ -447,27 +470,29 @@ object DefaultDndEngine : DndEngine {
 
     private fun dispatchDragEvent(active: ActiveSession) {
         val source = active.sourceNode
-        val dragEvent = DragEvent(
-            x = active.cursorX,
-            y = active.cursorY,
-            dragSourceKey = active.sourceKey,
-            transfer = active.dataTransfer
-        )
+        val dragEvent =
+            DragEvent(
+                x = active.cursorX,
+                y = active.cursorY,
+                dragSourceKey = active.sourceKey,
+                transfer = active.dataTransfer,
+            )
         dragEvent.target = source
         EventBus.post(dragEvent)
     }
 
     private fun dispatchDragEnd(active: ActiveSession, didDrop: Boolean, dropTargetKey: Any?) {
         val source = active.sourceNode
-        val event = DragEndEvent(
-            x = active.cursorX,
-            y = active.cursorY,
-            dragSourceKey = active.sourceKey,
-            transfer = active.dataTransfer,
-            didDrop = didDrop,
-            finalDropEffect = if (didDrop) active.dataTransfer.dropEffect else DropEffect.NONE,
-            dropTargetKey = dropTargetKey
-        )
+        val event =
+            DragEndEvent(
+                x = active.cursorX,
+                y = active.cursorY,
+                dragSourceKey = active.sourceKey,
+                transfer = active.dataTransfer,
+                didDrop = didDrop,
+                finalDropEffect = if (didDrop) active.dataTransfer.dropEffect else DropEffect.NONE,
+                dropTargetKey = dropTargetKey,
+            )
         event.target = source
         EventBus.post(event)
     }
@@ -495,7 +520,7 @@ object DefaultDndEngine : DndEngine {
     private fun appendOriginalPreviewCommands(
         active: ActiveSession,
         ctx: UiMeasureContext,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         val source = active.sourceNode
         val dx = (active.previewX - active.previewOffsetX - source.bounds.x).toInt()
@@ -511,7 +536,7 @@ object DefaultDndEngine : DndEngine {
         root: DOMNode,
         active: ActiveSession,
         ctx: UiMeasureContext,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         if (!active.dataTransfer.ghostVisible) return
         val anchorX = (active.previewX - active.previewOffsetX).toInt()
@@ -520,21 +545,23 @@ object DefaultDndEngine : DndEngine {
 
         val customBuilder = active.previewBuilder
         if (customBuilder != null) {
-            val scope = DragPreviewScope(
-                dataTransfer = active.dataTransfer,
-                sourceBounds = sourceBounds,
-                anchorX = anchorX,
-                anchorY = anchorY
-            )
+            val scope =
+                DragPreviewScope(
+                    dataTransfer = active.dataTransfer,
+                    sourceBounds = sourceBounds,
+                    anchorX = anchorX,
+                    anchorY = anchorY,
+                )
             customBuilder.invoke(scope)
             out.addAll(scope.build())
             return
         }
 
         val previewSpec = active.dataTransfer.currentDragImageSpec()
-        val previewNode = previewSpec?.let { spec ->
-            findByKey(root, spec.nodeKey)
-        }
+        val previewNode =
+            previewSpec?.let { spec ->
+                findByKey(root, spec.nodeKey)
+            }
         if (previewNode != null && previewSpec != null) {
             val dx = (active.previewX - previewSpec.offsetX - previewNode.bounds.x).toInt()
             val dy = (active.previewY - previewSpec.offsetY - previewNode.bounds.y).toInt()
@@ -565,8 +592,8 @@ object DefaultDndEngine : DndEngine {
         }
     }
 
-    private fun isDropEffectAllowed(effect: DropEffect, allowed: EffectAllowed): Boolean {
-        return when (allowed) {
+    private fun isDropEffectAllowed(effect: DropEffect, allowed: EffectAllowed): Boolean =
+        when (allowed) {
             EffectAllowed.NONE -> false
             EffectAllowed.COPY -> effect == DropEffect.COPY
             EffectAllowed.MOVE -> effect == DropEffect.MOVE
@@ -576,13 +603,8 @@ object DefaultDndEngine : DndEngine {
             EffectAllowed.LINK_MOVE -> effect == DropEffect.LINK || effect == DropEffect.MOVE
             EffectAllowed.ALL -> effect != DropEffect.NONE
         }
-    }
 
-    private fun drawDefaultGhost(
-        active: ActiveSession,
-        ctx: UiMeasureContext,
-        out: MutableList<RenderCommand>
-    ) {
+    private fun drawDefaultGhost(active: ActiveSession, ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val label = active.dataTransfer.getData("text/plain") ?: "drag"
         val x = (active.previewX - active.previewOffsetX).toInt()
         val y = (active.previewY - active.previewOffsetY).toInt()
@@ -596,73 +618,84 @@ object DefaultDndEngine : DndEngine {
         out.add(RenderCommand.DrawText(label, x + 6, y + 4, DsglColors.WHITE))
     }
 
-    private fun shiftCommand(command: RenderCommand, dx: Int, dy: Int): RenderCommand {
-        return when (command) {
-            is RenderCommand.DrawRect -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+    private fun shiftCommand(command: RenderCommand, dx: Int, dy: Int): RenderCommand =
+        when (command) {
+            is RenderCommand.DrawRect ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawColorField -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawColorField ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawHueBar -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawHueBar ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawAlphaBar -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawAlphaBar ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawCheckerboard -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawCheckerboard ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawText -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawText ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawImage -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawImage ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.CaptureScreenRegion -> command.copy(
-                sourceX = command.sourceX + dx,
-                sourceY = command.sourceY + dy
-            )
+            is RenderCommand.CaptureScreenRegion ->
+                command.copy(
+                    sourceX = command.sourceX + dx,
+                    sourceY = command.sourceY + dy,
+                )
 
-            is RenderCommand.DrawCapturedScreenRegion -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawCapturedScreenRegion ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.DrawItemStack -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.DrawItemStack ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
-            is RenderCommand.PushClip -> command.copy(
-                x = command.x + dx,
-                y = command.y + dy
-            )
+            is RenderCommand.PushClip ->
+                command.copy(
+                    x = command.x + dx,
+                    y = command.y + dy,
+                )
 
             RenderCommand.PopClip -> RenderCommand.PopClip
-            is RenderCommand.PushTransform -> command.copy(
-                originX = command.originX + dx,
-                originY = command.originY + dy
-            )
+            is RenderCommand.PushTransform ->
+                command.copy(
+                    originX = command.originX + dx,
+                    originY = command.originY + dy,
+                )
             RenderCommand.PopTransform -> RenderCommand.PopTransform
             is RenderCommand.PushOpacity -> command
             RenderCommand.PopOpacity -> RenderCommand.PopOpacity
         }
-    }
 
     private fun isSameNode(prev: DOMNode?, current: DOMNode?): Boolean {
         if (prev === current) return true
@@ -671,9 +704,9 @@ object DefaultDndEngine : DndEngine {
         val currKey = current.key
         if (prevKey != null || currKey != null) {
             return prevKey != null &&
-                    currKey != null &&
-                    prevKey == currKey &&
-                    prev.javaClass == current.javaClass
+                currKey != null &&
+                prevKey == currKey &&
+                prev.javaClass == current.javaClass
         }
         return false
     }
@@ -748,13 +781,13 @@ object DefaultDndEngine : DndEngine {
             data = DndSystem.payload(id),
             cursorX = active.cursorX,
             cursorY = active.cursorY,
-            transform = Transform(
-                x = active.previewX - active.cursorX.toDouble(),
-                y = active.previewY - active.cursorY.toDouble()
-            ),
+            transform =
+                Transform(
+                    x = active.previewX - active.cursorX.toDouble(),
+                    y = active.previewY - active.cursorY.toDouble(),
+                ),
             dropEffect = active.dataTransfer.dropEffect,
-            dataTransfer = active.dataTransfer
+            dataTransfer = active.dataTransfer,
         )
     }
 }
-

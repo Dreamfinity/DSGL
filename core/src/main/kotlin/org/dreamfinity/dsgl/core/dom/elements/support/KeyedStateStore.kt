@@ -4,7 +4,7 @@ package org.dreamfinity.dsgl.core.dom.elements.support
  * Small keyed state store with bounded growth for node-persisted editor state.
  */
 internal class KeyedStateStore<S>(
-    private val maxEntries: Int = 1024
+    private val maxEntries: Int = 1024,
 ) {
     private val states: LinkedHashMap<Any, S> = LinkedHashMap()
 

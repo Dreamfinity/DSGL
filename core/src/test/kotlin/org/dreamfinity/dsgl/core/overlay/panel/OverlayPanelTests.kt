@@ -1,36 +1,44 @@
 package org.dreamfinity.dsgl.core.overlay.panel
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class OverlayPanelTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `panel uses native node path and does not expose legacy append commands api`() {
-        assertTrue(OverlayPanel::class.java.methods.none { it.name == "appendCommands" })
-
-        val panelState = OverlayPanelState().apply {
-            updateFromRect(Rect(30, 40, 240, 180))
-        }
-        val panel = OverlayPanel(
-            ownerId = "demo-owner",
-            panelState = panelState,
-            dragSession = OverlayPanelDragSession()
+        assertTrue(
+            OverlayPanel::class.java.methods
+                .none { it.name == "appendCommands" },
         )
+
+        val panelState =
+            OverlayPanelState().apply {
+                updateFromRect(Rect(30, 40, 240, 180))
+            }
+        val panel =
+            OverlayPanel(
+                ownerId = "demo-owner",
+                panelState = panelState,
+                dragSession = OverlayPanelDragSession(),
+            )
         panel.configure(title = "Demo", draggable = true)
         panel.setBodyContent(FillNode("body"))
 
@@ -46,15 +54,17 @@ class OverlayPanelTests {
 
     @Test
     fun `panel drag keeps persistent drag session and updates panel state`() {
-        val panelState = OverlayPanelState().apply {
-            updateFromRect(Rect(60, 70, 260, 180))
-        }
+        val panelState =
+            OverlayPanelState().apply {
+                updateFromRect(Rect(60, 70, 260, 180))
+            }
         val dragSession = OverlayPanelDragSession()
-        val panel = OverlayPanel(
-            ownerId = "drag-owner",
-            panelState = panelState,
-            dragSession = dragSession
-        )
+        val panel =
+            OverlayPanel(
+                ownerId = "drag-owner",
+                panelState = panelState,
+                dragSession = dragSession,
+            )
         panel.configure(title = "Drag", draggable = true)
 
         val header = panel.headerRect() ?: error("header rect missing")
@@ -70,10 +80,10 @@ class OverlayPanelTests {
                 mouseX = startX + 42,
                 mouseY = startY + 26,
                 viewportWidth = 1200,
-                viewportHeight = 800
+                viewportHeight = 800,
             ) { rect ->
                 lastRect = rect
-            }
+            },
         )
         val movedRect = panelState.currentRectOrNull() ?: error("panel rect missing")
         assertNotNull(lastRect)
@@ -86,10 +96,10 @@ class OverlayPanelTests {
                 mouseY = startY + 26,
                 button = MouseButton.LEFT,
                 viewportWidth = 1200,
-                viewportHeight = 800
+                viewportHeight = 800,
             ) { rect ->
                 lastRect = rect
-            }
+            },
         )
         assertFalse(dragSession.active)
         assertEquals(null, dragSession.ownerId)
@@ -98,14 +108,16 @@ class OverlayPanelTests {
 
     @Test
     fun `panel close button invokes close callback`() {
-        val panelState = OverlayPanelState().apply {
-            updateFromRect(Rect(12, 20, 220, 140))
-        }
-        val panel = OverlayPanel(
-            ownerId = Any(),
-            panelState = panelState,
-            dragSession = OverlayPanelDragSession()
-        )
+        val panelState =
+            OverlayPanelState().apply {
+                updateFromRect(Rect(12, 20, 220, 140))
+            }
+        val panel =
+            OverlayPanel(
+                ownerId = Any(),
+                panelState = panelState,
+                dragSession = OverlayPanelDragSession(),
+            )
         var closed = 0
         panel.configure(title = "Closable", draggable = true, onClose = { closed += 1 })
         val closeRect = panel.closeRect() ?: error("close rect missing")
@@ -115,13 +127,17 @@ class OverlayPanelTests {
     }
 
     private class FillNode(
-        key: Any?
+        key: Any?,
     ) : DOMNode(key) {
-        override fun measure(ctx: UiMeasureContext): Size {
-            return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-        }
+        override fun measure(ctx: UiMeasureContext): Size = Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-        override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        override fun render(
+            ctx: UiMeasureContext,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
             bounds = Rect(x, y, width, height)
         }
     }

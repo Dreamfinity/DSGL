@@ -1,12 +1,12 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.TextWrap
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 private const val WRAP_DEBUG_TEXT_A =
@@ -14,10 +14,7 @@ private const val WRAP_DEBUG_TEXT_A =
 private const val WRAP_DEBUG_TEXT_B =
     "Wrapped text B: this block should always appear below text A with no overlap."
 
-fun UiScope.layoutDebugSection(
-    onClearLogs: () -> Unit,
-    onInfo: (String) -> Unit
-) {
+fun UiScope.layoutDebugSection(onClearLogs: () -> Unit, onInfo: (String) -> Unit) {
     val minWidth = 96
     val maxWidth = 320
     var layoutDebugStrict by useState(LayoutDebug.strictBounds)
@@ -54,7 +51,7 @@ fun UiScope.layoutDebugSection(
                         LayoutDebug.strictBounds = layoutDebugStrict
                         onInfo("LayoutDebug.strict=$layoutDebugStrict")
                     }
-                }
+                },
             )
             button(
                 if (layoutDebugDraw) "draw bounds: on" else "draw bounds: off",
@@ -64,7 +61,7 @@ fun UiScope.layoutDebugSection(
                         LayoutDebug.drawBounds = layoutDebugDraw
                         onInfo("LayoutDebug.drawBounds=$layoutDebugDraw")
                     }
-                }
+                },
             )
             button("clear logs", {
                 onMouseClick = { onClearLogs() }
@@ -72,7 +69,7 @@ fun UiScope.layoutDebugSection(
         }
         text(
             "validatorViolations=${LayoutDebug.lastViolationCount} strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         input(
@@ -80,7 +77,7 @@ fun UiScope.layoutDebugSection(
                 value = wrapWidth.toLong(),
                 min = minWidth.toLong(),
                 max = maxWidth.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "layoutDebug.wrapWidth"
@@ -89,7 +86,7 @@ fun UiScope.layoutDebugSection(
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: wrapWidth.toLong()
                     layoutDebugWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
                 }
-            }
+            },
         )
         text("wrap test width=$wrapWidth", { style = { color = DEMO_MUTED } })
 
@@ -102,9 +99,11 @@ fun UiScope.layoutDebugSection(
                 backgroundColor = 0xFF2D3745.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border { width = 1.px; color = 0xFF70859C.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF70859C.toInt()
+                }
             }
-
         }) {
             text("Case: wrapped text stack", { style = { textWrap = TextWrap.Wrap } })
             text(WRAP_DEBUG_TEXT_A, { style = { textWrap = TextWrap.Wrap } })
@@ -118,5 +117,3 @@ fun UiScope.layoutDebugSection(
         }
     }
 }
-
-

@@ -1,10 +1,5 @@
 package org.dreamfinity.dsgl.core.inspector.internal
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -25,13 +20,21 @@ import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class SystemInspectorOverlayFocusIsolationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     private val clipboard = RecordingClipboardAccess()
 
@@ -46,12 +49,14 @@ class SystemInspectorOverlayFocusIsolationTests {
 
     @Test
     fun `text input keeps focus while inspector is mounted and rendered`() {
-        val appRoot = ContainerNode(key = "app-root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        val input = TextInputNode(text = "value", key = "app-input").apply {
-            bounds = Rect(24, 24, 180, 24)
-        }
+        val appRoot =
+            ContainerNode(key = "app-root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        val input =
+            TextInputNode(text = "value", key = "app-input").apply {
+                bounds = Rect(24, 24, 180, 24)
+            }
         input.applyParent(appRoot)
         val router = LayerDomInputRouter { appRoot }
 
@@ -76,12 +81,14 @@ class SystemInspectorOverlayFocusIsolationTests {
     fun `text selection drag and keyboard edit work while inspector is mounted`() {
         ClipboardBridge.install(clipboard)
 
-        val appRoot = ContainerNode(key = "app-root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        val input = TextInputNode(text = "abcdef", key = "app-input").apply {
-            bounds = Rect(24, 24, 180, 24)
-        }
+        val appRoot =
+            ContainerNode(key = "app-root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        val input =
+            TextInputNode(text = "abcdef", key = "app-input").apply {
+                bounds = Rect(24, 24, 180, 24)
+            }
         input.applyParent(appRoot)
         val router = LayerDomInputRouter { appRoot }
 
@@ -105,9 +112,10 @@ class SystemInspectorOverlayFocusIsolationTests {
 
     @Test
     fun `range drag works while inspector is mounted`() {
-        val appRoot = ContainerNode(key = "app-root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
+        val appRoot =
+            ContainerNode(key = "app-root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
         val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = "app-range")
         range.applyParent(appRoot)
         range.render(ctx, 24, 24, 120, 12)
@@ -126,12 +134,14 @@ class SystemInspectorOverlayFocusIsolationTests {
 
     @Test
     fun `focused app control keeps keyboard routing with inspector mounted`() {
-        val appRoot = ContainerNode(key = "app-root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        val input = TextInputNode(text = "x", key = "app-input").apply {
-            bounds = Rect(24, 24, 180, 24)
-        }
+        val appRoot =
+            ContainerNode(key = "app-root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        val input =
+            TextInputNode(text = "x", key = "app-input").apply {
+                bounds = Rect(24, 24, 180, 24)
+            }
         input.applyParent(appRoot)
         val router = LayerDomInputRouter { appRoot }
 
@@ -184,12 +194,14 @@ class SystemInspectorOverlayFocusIsolationTests {
     }
 
     private fun inspectedRoot(): ContainerNode {
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        val target = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        val target =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         target.applyParent(root)
         StyleEngine.setInspectorOverrideLiteral(target, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
         return root
@@ -197,10 +209,11 @@ class SystemInspectorOverlayFocusIsolationTests {
 
     private class RecordingClipboardAccess : ClipboardAccess {
         var value: String = ""
+
         override fun readText(): String = value
+
         override fun writeText(value: String) {
             this.value = value
         }
     }
 }
-

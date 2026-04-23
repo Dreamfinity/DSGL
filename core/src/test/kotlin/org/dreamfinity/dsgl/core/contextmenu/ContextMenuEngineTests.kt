@@ -13,41 +13,49 @@ import kotlin.test.assertTrue
 
 class ContextMenuEngineTests {
     private class FakeClock(
-        var now: Long = 0L
+        var now: Long = 0L,
     ) : ContextMenuClock {
         override fun nowMs(): Long = now
+
         fun advance(ms: Long) {
             now += ms
         }
     }
 
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `stack supports open submenu switch esc pop and outside close`() {
         val clock = FakeClock()
-        val style = ContextMenuStyle(
-            hoverOpenDelayMs = 80L,
-            submenuCloseDelayMs = 120L
-        )
+        val style =
+            ContextMenuStyle(
+                hoverOpenDelayMs = 80L,
+                submenuCloseDelayMs = 120L,
+            )
         val engine = ContextMenuEngine(clock = clock)
         engine.setStyle(style)
-        val model = contextMenu(id = "state.machine") {
-            submenu("More", id = "more") {
-                item("A")
-                item("B")
+        val model =
+            contextMenu(id = "state.machine") {
+                submenu("More", id = "more") {
+                    item("A")
+                    item("B")
+                }
+                submenu("Tools", id = "tools") {
+                    item("Hammer")
+                }
+                item("Leaf", id = "leaf")
             }
-            submenu("Tools", id = "tools") {
-                item("Hammer")
-            }
-            item("Leaf", id = "leaf")
-        }
 
         engine.openAtCursor(model, 20, 20)
         engine.onFrame(ctx, 320, 180, 1f)
@@ -64,7 +72,13 @@ class ContextMenuEngineTests {
         clock.advance(style.hoverOpenDelayMs + 1L)
         engine.onFrame(ctx, 320, 180, 1f)
         assertEquals(2, engine.snapshot().levelCount)
-        assertEquals(1, engine.snapshot().hoveredIndices.first())
+        assertEquals(
+            1,
+            engine
+                .snapshot()
+                .hoveredIndices
+                .first(),
+        )
 
         assertTrue(engine.handleKeyDown(KeyCodes.ESCAPE))
         assertEquals(1, engine.snapshot().levelCount)
@@ -82,10 +96,11 @@ class ContextMenuEngineTests {
     fun `overlay consumes pointer before base dispatch when menu is open`() {
         val clock = FakeClock()
         val engine = ContextMenuEngine(clock = clock)
-        val model = contextMenu(id = "overlay.order") {
-            item("Run")
-            item("Build")
-        }
+        val model =
+            contextMenu(id = "overlay.order") {
+                item("Run")
+                item("Build")
+            }
         engine.openAtCursor(model, 24, 24)
         engine.onFrame(ctx, 320, 180, 1f)
 
@@ -105,13 +120,14 @@ class ContextMenuEngineTests {
         val clock = FakeClock()
         val engine = ContextMenuEngine(clock = clock)
         var actionHits = 0
-        val model = contextMenu(id = "keyboard") {
-            submenu("RootSub") {
-                item("Leaf") {
-                    onClick { actionHits += 1 }
+        val model =
+            contextMenu(id = "keyboard") {
+                submenu("RootSub") {
+                    item("Leaf") {
+                        onClick { actionHits += 1 }
+                    }
                 }
             }
-        }
 
         engine.openAtCursor(model, 20, 20)
         engine.onFrame(ctx, 320, 180, 1f)
@@ -128,10 +144,11 @@ class ContextMenuEngineTests {
     @Test
     fun `open at cursor keeps root panel under click point`() {
         val engine = ContextMenuEngine()
-        val model = contextMenu(id = "placement.cursor") {
-            item("Open")
-            item("Rename")
-        }
+        val model =
+            contextMenu(id = "placement.cursor") {
+                item("Open")
+                item("Rename")
+            }
 
         val openX = 84
         val openY = 62
@@ -146,10 +163,11 @@ class ContextMenuEngineTests {
     @Test
     fun `open anchored positions root panel below anchor`() {
         val engine = ContextMenuEngine()
-        val model = contextMenu(id = "placement.anchor") {
-            item("Open")
-            item("Rename")
-        }
+        val model =
+            contextMenu(id = "placement.anchor") {
+                item("Open")
+                item("Rename")
+            }
 
         val anchor = Rect(48, 34, 96, 18)
         engine.openAnchored(model, anchor)
@@ -164,9 +182,10 @@ class ContextMenuEngineTests {
     @Test
     fun `menu model font size is used for rendered text`() {
         val engine = ContextMenuEngine()
-        val model = contextMenu(id = "font.size", fontSize = 24) {
-            item("Open")
-        }
+        val model =
+            contextMenu(id = "font.size", fontSize = 24) {
+                item("Open")
+            }
 
         engine.openAtCursor(model, 20, 20)
         engine.onFrame(ctx, 320, 180, 1f)
@@ -185,5 +204,6 @@ class ContextMenuEngineTests {
     }
 
     private fun centerX(rect: Rect): Int = rect.x + rect.width / 2
+
     private fun centerY(rect: Rect): Int = rect.y + rect.height / 2
 }

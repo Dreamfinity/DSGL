@@ -17,11 +17,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SelectNodeOwnerScopeTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -33,18 +36,20 @@ class SelectNodeOwnerScopeTests {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 300, 200)
         val ownerKey = "system-select-owner"
-        val select = SelectNode(
-            model = selectModel(id = "system.select.model") {
-                option("a", "Alpha")
-                option("b", "Beta")
-            },
-            ownerScope = OverlayOwnerScope.System,
-            key = ownerKey
-        ).apply {
-            width = 120
-            height = 20
-            bounds = Rect(20, 20, 120, 20)
-        }
+        val select =
+            SelectNode(
+                model =
+                    selectModel(id = "system.select.model") {
+                        option("a", "Alpha")
+                        option("b", "Beta")
+                    },
+                ownerScope = OverlayOwnerScope.System,
+                key = ownerKey,
+            ).apply {
+                width = 120
+                height = 20
+                bounds = Rect(20, 20, 120, 20)
+            }
         select.applyParent(root)
 
         val tree = DomTree(root)

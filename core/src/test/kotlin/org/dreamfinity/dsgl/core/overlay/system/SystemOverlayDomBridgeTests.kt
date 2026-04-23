@@ -1,10 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertSame
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -13,25 +8,34 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class SystemOverlayDomBridgeTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `renderer maps legacy commands to dom nodes`() {
         val host = ContainerNode(stackLayout = true, key = "host")
-        val commands = listOf(
-            RenderCommand.DrawRect(10, 12, 30, 14, 0xFF112233.toInt()),
-            RenderCommand.DrawText("Hello", 18, 20, 0xFFEEDDCC.toInt())
-        )
+        val commands =
+            listOf(
+                RenderCommand.DrawRect(10, 12, 30, 14, 0xFF112233.toInt()),
+                RenderCommand.DrawText("Hello", 18, 20, 0xFFEEDDCC.toInt()),
+            )
 
         SystemOverlayCommandDslRenderer.rebuildInto(host, commands, "test")
 
@@ -42,14 +46,16 @@ class SystemOverlayDomBridgeTests {
     @Test
     fun `renderer reuses raw nodes instead of recreating them`() {
         val host = ContainerNode(stackLayout = true, key = "host")
-        val first = listOf(
-            RenderCommand.DrawRect(2, 4, 12, 10, 0xFF223344.toInt()),
-            RenderCommand.DrawText("A", 6, 7, 0xFFFFFFFF.toInt())
-        )
-        val second = listOf(
-            RenderCommand.DrawRect(2, 4, 12, 10, 0xFF556677.toInt()),
-            RenderCommand.DrawText("B", 6, 7, 0xFFFFFFFF.toInt())
-        )
+        val first =
+            listOf(
+                RenderCommand.DrawRect(2, 4, 12, 10, 0xFF223344.toInt()),
+                RenderCommand.DrawText("A", 6, 7, 0xFFFFFFFF.toInt()),
+            )
+        val second =
+            listOf(
+                RenderCommand.DrawRect(2, 4, 12, 10, 0xFF556677.toInt()),
+                RenderCommand.DrawText("B", 6, 7, 0xFFFFFFFF.toInt()),
+            )
 
         SystemOverlayCommandDslRenderer.rebuildInto(host, first, "reuse")
         val firstNode0 = host.children[0]
@@ -64,12 +70,14 @@ class SystemOverlayDomBridgeTests {
     fun `system inspector overlay creates native dom children from controller frame`() {
         val controller = InspectorController()
         controller.toggle()
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 420, 280)
-        }
-        ContainerNode(key = "child").apply {
-            bounds = Rect(16, 18, 120, 28)
-        }.applyParent(root)
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 420, 280)
+            }
+        ContainerNode(key = "child")
+            .apply {
+                bounds = Rect(16, 18, 120, 28)
+            }.applyParent(root)
 
         val overlay = SystemInspectorOverlayNode(controller)
         overlay.bindInspectedTree(root, layoutRevision = 1L)
@@ -84,12 +92,14 @@ class SystemOverlayDomBridgeTests {
     fun `system inspector overlay retains focused native input across frame rebuild`() {
         val controller = InspectorController()
         controller.toggle()
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 1280, 720)
-        }
-        ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }.applyParent(root)
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 1280, 720)
+            }
+        ContainerNode(key = "target")
+            .apply {
+                bounds = Rect(980, 140, 120, 30)
+            }.applyParent(root)
 
         val overlay = SystemInspectorOverlayNode(controller)
         controller.onLayoutCommitted(root, 1L)
@@ -131,12 +141,14 @@ class SystemOverlayDomBridgeTests {
         assertEquals(focusedKey, focusedAfterRebuild.key)
         assertTrue(focusedAfterRebuild !== initialInput)
     }
+
     @Test
     fun `system inspector overlay mounts only while inspector is active`() {
         val controller = InspectorController()
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 420, 280)
-        }
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 420, 280)
+            }
         val overlay = SystemInspectorOverlayNode(controller)
 
         overlay.bindInspectedTree(root, layoutRevision = 1L)
@@ -153,8 +165,3 @@ class SystemOverlayDomBridgeTests {
         assertTrue(overlay.children.isEmpty())
     }
 }
-
-
-
-
-

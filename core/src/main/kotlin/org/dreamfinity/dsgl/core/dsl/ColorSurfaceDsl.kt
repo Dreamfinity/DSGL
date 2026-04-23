@@ -42,84 +42,76 @@ internal open class EyedropperMagnifierProps : ComponentProps() {
 }
 
 @DsglDsl
-internal fun UiScope.colorSwatch(
-    props: ColorSwatchProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(ColorSwatchProps().apply(props)) { props ->
-    ColorSwatchSurfaceNode(
-        allowEmpty = props.allowEmpty,
-        key = props.key
-    ).apply {
-        bind(style = props.palette, color = props.color, highlighted = props.highlighted)
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+internal fun UiScope.colorSwatch(props: ColorSwatchProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(ColorSwatchProps().apply(props)) { props ->
+        ColorSwatchSurfaceNode(
+            allowEmpty = props.allowEmpty,
+            key = props.key,
+        ).apply {
+            bind(style = props.palette, color = props.color, highlighted = props.highlighted)
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
     }
-}
 
 @DsglDsl
-internal fun UiScope.hueSlider(
-    props: HueSliderProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(HueSliderProps().apply(props)) { props ->
-    HueSurfaceNode(
-        key = props.key
-    ).apply {
-        bind(style = props.palette, hueDeg = props.hueDeg)
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+internal fun UiScope.hueSlider(props: HueSliderProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(HueSliderProps().apply(props)) { props ->
+        HueSurfaceNode(
+            key = props.key,
+        ).apply {
+            bind(style = props.palette, hueDeg = props.hueDeg)
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
     }
-}
 
 @DsglDsl
-internal fun UiScope.alphaSlider(
-    props: AlphaSliderProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(AlphaSliderProps().apply(props)) { props ->
-    AlphaSurfaceNode(
-        key = props.key
-    ).apply {
-        bind(style = props.palette, color = props.color)
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+internal fun UiScope.alphaSlider(props: AlphaSliderProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(AlphaSliderProps().apply(props)) { props ->
+        AlphaSurfaceNode(
+            key = props.key,
+        ).apply {
+            bind(style = props.palette, color = props.color)
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
     }
-}
 
 @DsglDsl
-internal fun UiScope.colorField(
-    props: ColorFieldProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(ColorFieldProps().apply(props)) { props ->
-    ColorFieldSurfaceNode(
-        key = props.key
-    ).apply {
-        bind(style = props.palette, color = props.color, hueDeg = props.hueDeg)
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+internal fun UiScope.colorField(props: ColorFieldProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(ColorFieldProps().apply(props)) { props ->
+        ColorFieldSurfaceNode(
+            key = props.key,
+        ).apply {
+            bind(style = props.palette, color = props.color, hueDeg = props.hueDeg)
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
     }
-}
 
 @DsglDsl
 internal fun UiScope.eyedropperMagnifier(
     props: EyedropperMagnifierProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
+    ref: RefTarget<ElementHandle>? = null,
 ) = withProps(EyedropperMagnifierProps().apply(props)) { props ->
     EyedropperMagnifierDrawNode(
-        key = props.key
+        key = props.key,
     ).apply {
         bind(
             columns = props.sourceColumns,
             rows = props.sourceRows,
             magnification = props.magnification,
             gridEnabled = props.showGrid,
-            gridColor = props.gridColor
+            gridColor = props.gridColor,
         )
         applyStyle(this, props.style)
         applyHandlers(this, props)

@@ -18,11 +18,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PositionedLayoutZIndexOrderingTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -49,12 +52,14 @@ class PositionedLayoutZIndexOrderingTests {
         var lowClicks = 0
         var highClicks = 0
 
-        button("low", zIndex = 0, position = PositionMode.Relative).apply {
-            onClick { lowClicks += 1 }
-        }.applyParent(root)
-        button("high", zIndex = 6, position = PositionMode.Relative).apply {
-            onClick { highClicks += 1 }
-        }.applyParent(root)
+        button("low", zIndex = 0, position = PositionMode.Relative)
+            .apply {
+                onClick { lowClicks += 1 }
+            }.applyParent(root)
+        button("high", zIndex = 6, position = PositionMode.Relative)
+            .apply {
+                onClick { highClicks += 1 }
+            }.applyParent(root)
 
         renderTree(root, width = 220, height = 140)
 
@@ -69,12 +74,16 @@ class PositionedLayoutZIndexOrderingTests {
         var firstClicks = 0
         var secondClicks = 0
 
-        val first = button("first", zIndex = 2, position = PositionMode.Relative).apply {
-            onClick { firstClicks += 1 }
-        }.applyParent(root)
-        val second = button("second", zIndex = 2, position = PositionMode.Relative).apply {
-            onClick { secondClicks += 1 }
-        }.applyParent(root)
+        val first =
+            button("first", zIndex = 2, position = PositionMode.Relative)
+                .apply {
+                    onClick { firstClicks += 1 }
+                }.applyParent(root)
+        val second =
+            button("second", zIndex = 2, position = PositionMode.Relative)
+                .apply {
+                    onClick { secondClicks += 1 }
+                }.applyParent(root)
 
         renderTree(root, width = 220, height = 140)
 
@@ -90,12 +99,16 @@ class PositionedLayoutZIndexOrderingTests {
         var staticClicks = 0
         var positionedClicks = 0
 
-        val staticNode = button("static", zIndex = 999, position = PositionMode.Static).apply {
-            onClick { staticClicks += 1 }
-        }.applyParent(root)
-        val positionedNode = button("positioned", zIndex = -100, position = PositionMode.Relative).apply {
-            onClick { positionedClicks += 1 }
-        }.applyParent(root)
+        val staticNode =
+            button("static", zIndex = 999, position = PositionMode.Static)
+                .apply {
+                    onClick { staticClicks += 1 }
+                }.applyParent(root)
+        val positionedNode =
+            button("positioned", zIndex = -100, position = PositionMode.Relative)
+                .apply {
+                    onClick { positionedClicks += 1 }
+                }.applyParent(root)
 
         renderTree(root, width = 220, height = 140)
 
@@ -129,12 +142,16 @@ class PositionedLayoutZIndexOrderingTests {
         var lowerClicks = 0
         var upperClicks = 0
 
-        val lower = button("lower", zIndex = 1, position = PositionMode.Relative).apply {
-            onClick { lowerClicks += 1 }
-        }.applyParent(root)
-        val upper = button("upper", zIndex = 3, position = PositionMode.Relative).apply {
-            onClick { upperClicks += 1 }
-        }.applyParent(root)
+        val lower =
+            button("lower", zIndex = 1, position = PositionMode.Relative)
+                .apply {
+                    onClick { lowerClicks += 1 }
+                }.applyParent(root)
+        val upper =
+            button("upper", zIndex = 3, position = PositionMode.Relative)
+                .apply {
+                    onClick { upperClicks += 1 }
+                }.applyParent(root)
 
         val tree = DomTree(root)
         tree.render(ctx, 220, 140)
@@ -156,12 +173,11 @@ class PositionedLayoutZIndexOrderingTests {
         DomTree(root).render(ctx, width, height)
     }
 
-    private fun button(key: String, zIndex: Int, position: PositionMode): ButtonNode {
-        return ButtonNode(key, key = key).apply {
+    private fun button(key: String, zIndex: Int, position: PositionMode): ButtonNode =
+        ButtonNode(key, key = key).apply {
             width = 80
             height = 24
             this.zIndex = zIndex
             this.position = position
         }
-    }
 }

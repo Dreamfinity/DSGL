@@ -10,11 +10,12 @@ import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWra
 class GlobalStateWindow : DsglWindow() {
     private var counter by state(0)
 
-    override fun render() = ui {
-        centeredFlexWrapper {
-            globalStateCounter(counter, { counter += 1 })
+    override fun render() =
+        ui {
+            centeredFlexWrapper {
+                globalStateCounter(counter, { counter += 1 })
+            }
         }
-    }
 }
 
 private fun UiScope.globalStateCounter(counter: Int, setCounter: (_: Event) -> Unit) {

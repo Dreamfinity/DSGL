@@ -15,45 +15,51 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ColorPickerInlineNodeTests {
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `controlled inline picker drag survives controlled rerender`() {
         var controlledValue = RgbaColor(1f, 0f, 0f, 1f)
 
-        fun createPicker(): ColorPickerInlineNode {
-            return ColorPickerInlineNode(
+        fun createPicker(): ColorPickerInlineNode =
+            ColorPickerInlineNode(
                 controlled = true,
                 value = controlledValue,
                 mode = ColorFormatMode.HSB,
                 alphaEnabled = true,
-                key = "picker"
+                key = "picker",
             ).apply {
                 closeOnSelect = false
                 onPreviewColor = { controlledValue = it }
                 onChangeColor = { controlledValue = it }
                 onCommitColor = { controlledValue = it }
             }
-        }
 
         val retained = createPicker()
         retained.render(ctx, 0, 0, 350, 392)
 
-        val layoutProbe = ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor(1f, 0f, 0f, 1f),
-                previous = RgbaColor(1f, 0f, 0f, 1f),
-                mode = ColorFormatMode.HSB,
-                alphaEnabled = true,
-                closeOnSelect = false
-            )
-        ).buildLayout(Rect(0, 0, 350, 392))
+        val layoutProbe =
+            ColorPickerController(
+                initial =
+                    ColorPickerState(
+                        color = RgbaColor(1f, 0f, 0f, 1f),
+                        previous = RgbaColor(1f, 0f, 0f, 1f),
+                        mode = ColorFormatMode.HSB,
+                        alphaEnabled = true,
+                        closeOnSelect = false,
+                    ),
+            ).buildLayout(Rect(0, 0, 350, 392))
 
         val startX = layoutProbe.colorFieldRect.x + 4
         val startY = layoutProbe.colorFieldRect.y + layoutProbe.colorFieldRect.height - 4
@@ -72,8 +78,8 @@ class ColorPickerInlineNodeTests {
                 lastMouseY = startY,
                 dx = endX - startX,
                 dy = endY - startY,
-                mouseButton = MouseButton.LEFT
-            ).also { it.target = retained }
+                mouseButton = MouseButton.LEFT,
+            ).also { it.target = retained },
         )
 
         assertTrue(afterPress.toArgbInt() != controlledValue.toArgbInt())
@@ -81,15 +87,16 @@ class ColorPickerInlineNodeTests {
 
     @Test
     fun `inline picker draws mode options after clicking mode selector`() {
-        val picker = ColorPickerInlineNode(
-            controlled = true,
-            value = RgbaColor.WHITE,
-            mode = ColorFormatMode.HEX,
-            alphaEnabled = true,
-            key = "picker"
-        ).apply {
-            closeOnSelect = false
-        }
+        val picker =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.HEX,
+                alphaEnabled = true,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
 
         picker.render(ctx, 0, 0, 350, 392)
         val probeLayout = layoutProbe(mode = ColorFormatMode.HEX, alphaEnabled = true)
@@ -98,29 +105,32 @@ class ColorPickerInlineNodeTests {
             MouseDownEvent(
                 probeLayout.modeSelectRect.x + 4,
                 probeLayout.modeSelectRect.y + 4,
-                MouseButton.LEFT
-            ).also { it.target = picker }
+                MouseButton.LEFT,
+            ).also { it.target = picker },
         )
 
         val commands = buildCommands(picker)
-        val modeTexts = commands.filterIsInstance<RenderCommand.DrawText>()
-            .map { it.text }
-            .filter { text -> ColorFormatMode.entries.any { it.name == text } }
+        val modeTexts =
+            commands
+                .filterIsInstance<RenderCommand.DrawText>()
+                .map { it.text }
+                .filter { text -> ColorFormatMode.entries.any { it.name == text } }
 
         assertTrue(modeTexts.size >= 5)
     }
 
     @Test
     fun `inline picker draws eyedropper overlay after clicking pipette`() {
-        val picker = ColorPickerInlineNode(
-            controlled = true,
-            value = RgbaColor.WHITE,
-            mode = ColorFormatMode.RGB,
-            alphaEnabled = true,
-            key = "picker"
-        ).apply {
-            closeOnSelect = false
-        }
+        val picker =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
 
         picker.render(ctx, 0, 0, 350, 392)
         val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
@@ -129,8 +139,8 @@ class ColorPickerInlineNodeTests {
             MouseDownEvent(
                 probeLayout.pipetteRect.x + 4,
                 probeLayout.pipetteRect.y + 4,
-                MouseButton.LEFT
-            ).also { it.target = picker }
+                MouseButton.LEFT,
+            ).also { it.target = picker },
         )
 
         val commands = buildGlobalEyedropperCommands(picker)
@@ -145,17 +155,18 @@ class ColorPickerInlineNodeTests {
         ScreenColorSamplerBridge.install(ScreenColorSampler { _, _ -> sampledArgb })
         try {
             var current = RgbaColor.WHITE
-            val picker = ColorPickerInlineNode(
-                controlled = true,
-                value = current,
-                mode = ColorFormatMode.RGB,
-                alphaEnabled = true,
-                key = "picker"
-            ).apply {
-                closeOnSelect = false
-                onPreviewColor = { current = it }
-                onChangeColor = { current = it }
-            }
+            val picker =
+                ColorPickerInlineNode(
+                    controlled = true,
+                    value = current,
+                    mode = ColorFormatMode.RGB,
+                    alphaEnabled = true,
+                    key = "picker",
+                ).apply {
+                    closeOnSelect = false
+                    onPreviewColor = { current = it }
+                    onChangeColor = { current = it }
+                }
 
             picker.render(ctx, 0, 0, 350, 392)
             val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
@@ -163,8 +174,8 @@ class ColorPickerInlineNodeTests {
                 MouseDownEvent(
                     probeLayout.pipetteRect.x + 4,
                     probeLayout.pipetteRect.y + 4,
-                    MouseButton.LEFT
-                ).also { it.target = picker }
+                    MouseButton.LEFT,
+                ).also { it.target = picker },
             )
 
             EventBus.post(
@@ -172,8 +183,8 @@ class ColorPickerInlineNodeTests {
                     mouseX = 1200,
                     mouseY = 900,
                     prevX = 300,
-                    prevY = 250
-                ).also { it.target = picker }
+                    prevY = 250,
+                ).also { it.target = picker },
             )
             picker.captureEyedropperSample()
 
@@ -189,19 +200,19 @@ class ColorPickerInlineNodeTests {
         ScreenColorSamplerBridge.install(ScreenColorSampler { _, _ -> sampledArgb })
         try {
             var current = RgbaColor.WHITE
-            fun createPicker(value: RgbaColor): ColorPickerInlineNode {
-                return ColorPickerInlineNode(
+
+            fun createPicker(value: RgbaColor): ColorPickerInlineNode =
+                ColorPickerInlineNode(
                     controlled = true,
                     value = value,
                     mode = ColorFormatMode.RGB,
                     alphaEnabled = true,
-                    key = "picker"
+                    key = "picker",
                 ).apply {
                     closeOnSelect = false
                     onPreviewColor = { current = it }
                     onChangeColor = { current = it }
                 }
-            }
 
             val retained = createPicker(current)
             retained.render(ctx, 0, 0, 350, 392)
@@ -210,8 +221,8 @@ class ColorPickerInlineNodeTests {
                 MouseDownEvent(
                     probeLayout.pipetteRect.x + 4,
                     probeLayout.pipetteRect.y + 4,
-                    MouseButton.LEFT
-                ).also { it.target = retained }
+                    MouseButton.LEFT,
+                ).also { it.target = retained },
             )
 
             val template = createPicker(current)
@@ -223,8 +234,8 @@ class ColorPickerInlineNodeTests {
                     mouseX = 1440,
                     mouseY = 820,
                     prevX = 300,
-                    prevY = 250
-                ).also { it.target = retained }
+                    prevY = 250,
+                ).also { it.target = retained },
             )
             retained.captureEyedropperSample()
 
@@ -237,15 +248,16 @@ class ColorPickerInlineNodeTests {
 
     @Test
     fun `external mode and alpha changes apply after non drag click`() {
-        val retained = ColorPickerInlineNode(
-            controlled = true,
-            value = RgbaColor.WHITE,
-            mode = ColorFormatMode.HEX,
-            alphaEnabled = true,
-            key = "picker"
-        ).apply {
-            closeOnSelect = false
-        }
+        val retained =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.HEX,
+                alphaEnabled = true,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
 
         retained.render(ctx, 0, 0, 350, 392)
         val firstLayout = layoutProbe(mode = ColorFormatMode.HEX, alphaEnabled = true)
@@ -253,26 +265,27 @@ class ColorPickerInlineNodeTests {
             MouseDownEvent(
                 firstLayout.modeSelectRect.x + 4,
                 firstLayout.modeSelectRect.y + 4,
-                MouseButton.LEFT
-            ).also { it.target = retained }
+                MouseButton.LEFT,
+            ).also { it.target = retained },
         )
         EventBus.post(
             MouseUpEvent(
                 firstLayout.modeSelectRect.x + 4,
                 firstLayout.modeSelectRect.y + 4,
-                MouseButton.LEFT
-            ).also { it.target = retained }
+                MouseButton.LEFT,
+            ).also { it.target = retained },
         )
 
-        val template = ColorPickerInlineNode(
-            controlled = true,
-            value = RgbaColor.WHITE,
-            mode = ColorFormatMode.RGB,
-            alphaEnabled = false,
-            key = "picker"
-        ).apply {
-            closeOnSelect = false
-        }
+        val template =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = false,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
 
         retained.syncFrom(template)
         retained.render(ctx, 0, 0, 350, 392)
@@ -295,20 +308,20 @@ class ColorPickerInlineNodeTests {
         picker.appendEyedropperOverlayCommands(
             viewportWidth = 1920,
             viewportHeight = 1080,
-            out = out
+            out = out,
         )
         return out
     }
 
-    private fun layoutProbe(mode: ColorFormatMode, alphaEnabled: Boolean): ColorPickerLayout {
-        return ColorPickerController(
-            initial = ColorPickerState(
-                color = RgbaColor.WHITE,
-                previous = RgbaColor.WHITE,
-                mode = mode,
-                alphaEnabled = alphaEnabled,
-                closeOnSelect = false
-            )
+    private fun layoutProbe(mode: ColorFormatMode, alphaEnabled: Boolean): ColorPickerLayout =
+        ColorPickerController(
+            initial =
+                ColorPickerState(
+                    color = RgbaColor.WHITE,
+                    previous = RgbaColor.WHITE,
+                    mode = mode,
+                    alphaEnabled = alphaEnabled,
+                    closeOnSelect = false,
+                ),
         ).buildLayout(Rect(0, 0, 350, 392))
-    }
 }

@@ -31,5 +31,5 @@ data class ContextMenuStyle(
     val hintTextColor: Int = 0xFFB6C2CF.toInt(),
     val separatorColor: Int = 0xFF4D5D6E.toInt(),
     val checkMarkColor: Int = 0xFF8BE39A.toInt(),
-    val submenuArrowColor: Int = 0xFFC7D4E1.toInt()
+    val submenuArrowColor: Int = 0xFFC7D4E1.toInt(),
 )

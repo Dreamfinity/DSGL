@@ -13,5 +13,5 @@ data class ResolvedTextMetrics(
     val ascenderPx: Float,
     val descenderPx: Float,
     val topLeadingPx: Float,
-    val bottomLeadingPx: Float
+    val bottomLeadingPx: Float,
 )

@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.select
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 
 class SelectMeasurementCache(
-    private val maxEntries: Int = 192
+    private val maxEntries: Int = 192,
 ) {
     data class EntrySnapshot(
         val kind: Int,
@@ -11,7 +11,7 @@ class SelectMeasurementCache(
         val optionId: String?,
         val label: String,
         val enabled: Boolean,
-        val depth: Int
+        val depth: Int,
     )
 
     data class Measurement(
@@ -21,7 +21,7 @@ class SelectMeasurementCache(
         val entryHeights: IntArray,
         val entryOffsets: IntArray,
         val totalContentHeight: Int,
-        val panelWidth: Int
+        val panelWidth: Int,
     )
 
     data class Key(
@@ -29,14 +29,13 @@ class SelectMeasurementCache(
         val styleHash: Int,
         val fontHash: Int,
         val dpiKey: Int,
-        val entriesHash: Int
+        val entriesHash: Int,
     )
 
     private val cache: MutableMap<Key, Measurement> =
         object : LinkedHashMap<Key, Measurement>(64, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, Measurement>?): Boolean {
-                return size > maxEntries
-            }
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, Measurement>?): Boolean =
+                size > maxEntries
         }
 
     var computeCount: Long = 0L
@@ -49,19 +48,20 @@ class SelectMeasurementCache(
         ctx: UiMeasureContext,
         dpiScale: Float,
         fontId: String?,
-        fontSize: Int?
+        fontSize: Int?,
     ): Measurement {
         val snapshots = flattenEntries(entries)
         val fingerprint = fingerprint(snapshots)
         val resolvedFontId = fontId ?: style.fontId
         val resolvedFontSize = fontSize ?: style.fontSize
-        val key = Key(
-            modelToken = modelToken,
-            styleHash = style.hashCode(),
-            fontHash = 31 * (resolvedFontId?.hashCode() ?: 0) + (resolvedFontSize ?: 0),
-            dpiKey = (dpiScale * 1000f).toInt(),
-            entriesHash = fingerprint
-        )
+        val key =
+            Key(
+                modelToken = modelToken,
+                styleHash = style.hashCode(),
+                fontHash = 31 * (resolvedFontId?.hashCode() ?: 0) + (resolvedFontSize ?: 0),
+                dpiKey = (dpiScale * 1000f).toInt(),
+                entriesHash = fingerprint,
+            )
         synchronized(cache) {
             cache[key]?.let { return it }
         }
@@ -80,26 +80,36 @@ class SelectMeasurementCache(
             entryHeights[index] = height
             offset += height + style.rowGap
 
-            val labelWidth = if (snapshot.label.isEmpty()) 0 else ctx.measureText(snapshot.label, resolvedFontId, resolvedFontSize)
-            val width = when (snapshot.kind) {
-                KIND_OPTION -> {
-                    style.rowPaddingX +
-                        style.markerColumnWidth +
-                        style.markerGap +
-                        snapshot.depth * style.groupIndentX +
-                        labelWidth +
-                        style.rowPaddingX
+            val labelWidth =
+                if (snapshot.label.isEmpty()) {
+                    0
+                } else {
+                    ctx.measureText(
+                        snapshot.label,
+                        resolvedFontId,
+                        resolvedFontSize,
+                    )
                 }
+            val width =
+                when (snapshot.kind) {
+                    KIND_OPTION -> {
+                        style.rowPaddingX +
+                            style.markerColumnWidth +
+                            style.markerGap +
+                            snapshot.depth * style.groupIndentX +
+                            labelWidth +
+                            style.rowPaddingX
+                    }
 
-                KIND_GROUP -> {
-                    style.rowPaddingX +
-                        snapshot.depth * style.groupIndentX +
-                        labelWidth +
-                        style.rowPaddingX
+                    KIND_GROUP -> {
+                        style.rowPaddingX +
+                            snapshot.depth * style.groupIndentX +
+                            labelWidth +
+                            style.rowPaddingX
+                    }
+
+                    else -> style.minPanelWidth
                 }
-
-                else -> style.minPanelWidth
-            }
             if (width > maxWidth) {
                 maxWidth = width
             }
@@ -109,15 +119,16 @@ class SelectMeasurementCache(
             offset -= style.rowGap
         }
 
-        val measurement = Measurement(
-            snapshots = snapshots,
-            rowHeight = rowHeight,
-            separatorHeight = separatorHeight,
-            entryHeights = entryHeights,
-            entryOffsets = entryOffsets,
-            totalContentHeight = offset,
-            panelWidth = maxWidth.coerceAtLeast(style.minPanelWidth)
-        )
+        val measurement =
+            Measurement(
+                snapshots = snapshots,
+                rowHeight = rowHeight,
+                separatorHeight = separatorHeight,
+                entryHeights = entryHeights,
+                entryOffsets = entryOffsets,
+                totalContentHeight = offset,
+                panelWidth = maxWidth.coerceAtLeast(style.minPanelWidth),
+            )
         synchronized(cache) {
             cache[key] = measurement
         }
@@ -135,36 +146,39 @@ class SelectMeasurementCache(
         entries.forEach { entry ->
             when (entry) {
                 is SelectEntry.Option -> {
-                    out += EntrySnapshot(
-                        kind = KIND_OPTION,
-                        id = entry.id,
-                        optionId = entry.id,
-                        label = entry.labelProvider.invoke(),
-                        enabled = entry.enabledProvider.invoke(),
-                        depth = depth
-                    )
+                    out +=
+                        EntrySnapshot(
+                            kind = KIND_OPTION,
+                            id = entry.id,
+                            optionId = entry.id,
+                            label = entry.labelProvider.invoke(),
+                            enabled = entry.enabledProvider.invoke(),
+                            depth = depth,
+                        )
                 }
 
                 is SelectEntry.Separator -> {
-                    out += EntrySnapshot(
-                        kind = KIND_SEPARATOR,
-                        id = entry.id,
-                        optionId = null,
-                        label = "",
-                        enabled = false,
-                        depth = depth
-                    )
+                    out +=
+                        EntrySnapshot(
+                            kind = KIND_SEPARATOR,
+                            id = entry.id,
+                            optionId = null,
+                            label = "",
+                            enabled = false,
+                            depth = depth,
+                        )
                 }
 
                 is SelectEntry.Group -> {
-                    out += EntrySnapshot(
-                        kind = KIND_GROUP,
-                        id = entry.id,
-                        optionId = null,
-                        label = entry.labelProvider.invoke(),
-                        enabled = false,
-                        depth = depth
-                    )
+                    out +=
+                        EntrySnapshot(
+                            kind = KIND_GROUP,
+                            id = entry.id,
+                            optionId = null,
+                            label = entry.labelProvider.invoke(),
+                            enabled = false,
+                            depth = depth,
+                        )
                     appendEntries(entry.entries, depth = depth + 1, out = out)
                 }
             }

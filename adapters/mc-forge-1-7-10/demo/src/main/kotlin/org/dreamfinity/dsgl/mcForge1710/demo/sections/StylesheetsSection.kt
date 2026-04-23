@@ -1,12 +1,12 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.hooks.useMemo
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 fun UiScope.stylesheetsSection(
@@ -14,7 +14,7 @@ fun UiScope.stylesheetsSection(
     onInfo: (String) -> Unit,
     loadStylesheetText: () -> String,
     saveStylesheetText: (String) -> Unit,
-    onReloadStylesheets: () -> Unit
+    onReloadStylesheets: () -> Unit,
 ) {
     val initialLoad by useMemo {
         runCatching { loadStylesheetText() }
@@ -27,8 +27,11 @@ fun UiScope.stylesheetsSection(
         if (initialLoad.isSuccess) {
             "loaded"
         } else {
-            "load failed: ${initialLoad.exceptionOrNull()?.javaClass?.simpleName ?: "unknown"}"
-        }
+            "load failed: ${initialLoad
+                .exceptionOrNull()
+                ?.javaClass
+                ?.simpleName ?: "unknown"}"
+        },
     )
 
     div({
@@ -51,7 +54,10 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border { width = 1.px; color = 0xFF5E6A77.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5E6A77.toInt()
+                }
             }
         }) {
             text("Demo stylesheet editor: showcase_styles.dss")
@@ -121,7 +127,7 @@ fun UiScope.stylesheetsSection(
             }
             text(
                 "status=$stylesheetEditorStatus; reloads=$stylesheetReloadCount; clicks=$stylesheetDemoClickCount",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
 
@@ -132,7 +138,10 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border { width = 1.px; color = 0xFF5E6A77.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5E6A77.toInt()
+                }
             }
         }) {
             text("Selector matrix", {
@@ -213,7 +222,10 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border { width = 1.px; color = 0xFF5E6A77.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5E6A77.toInt()
+                }
             }
         }) {
             text("Pseudo-states: :hover, :active, :focus, :disabled")
@@ -236,7 +248,7 @@ fun UiScope.stylesheetsSection(
                 input(
                     InputType.Text(
                         value = stylesheetDemoTextValue,
-                        placeholder = "Focus target"
+                        placeholder = "Focus target",
                     ),
                     {
                         key = "styles.state.focusInput"
@@ -247,7 +259,7 @@ fun UiScope.stylesheetsSection(
                             stylesheetDemoTextValue = event.value
                             onLogHook("styles.state.focusInput.onInput", event, "value=${event.value}")
                         }
-                    }
+                    },
                 )
                 button("Disabled", {
                     key = "styles.state.disabled"
@@ -265,7 +277,10 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 2.px
-                border { width = 1.px; color = 0xFF5E6A77.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5E6A77.toInt()
+                }
             }
         }) {
             text("Variable demo uses :root { --primary: ... } and var(--primary)")
@@ -284,7 +299,10 @@ fun UiScope.stylesheetsSection(
             style = {
                 padding = 4.px
                 gap = 3.px
-                border { width = 1.px; color = 0xFF5E6A77.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5E6A77.toInt()
+                }
             }
         }) {
             text("CSS units demo: px, em, %, vw, vh")

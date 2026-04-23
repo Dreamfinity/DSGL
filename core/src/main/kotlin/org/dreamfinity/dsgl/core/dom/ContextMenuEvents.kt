@@ -8,7 +8,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 
 fun DOMNode.onContextMenu(
     host: ContextMenuHost = ContextMenuRuntime.host,
-    handler: ContextMenuTriggerScope.() -> Unit
+    handler: ContextMenuTriggerScope.() -> Unit,
 ) {
     val previous = onMouseDown
     onMouseDown = { event ->
@@ -24,8 +24,8 @@ fun DOMNode.onContextMenu(
                     anchorRect = anchor,
                     inheritedFontId = sourceStyle?.fontId ?: sourceNode.fontId,
                     inheritedFontSize = sourceStyle?.fontSize ?: sourceNode.fontSize,
-                    host = host
-                )
+                    host = host,
+                ),
             )
             event.cancelled = true
         }
@@ -34,7 +34,7 @@ fun DOMNode.onContextMenu(
 
 fun DOMNode.onContextMenuModel(
     host: ContextMenuHost = ContextMenuRuntime.host,
-    modelProvider: () -> ContextMenuModel
+    modelProvider: () -> ContextMenuModel,
 ) {
     onContextMenu(host = host, handler = { openMenu(modelProvider()) })
 }

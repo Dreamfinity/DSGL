@@ -27,19 +27,21 @@ class SystemOverlayStyleIsolationTests {
 
     @Test
     fun `system overlay scope ignores user stylesheet rules`() {
-        val stylesDir = createTempStylesDir(
-            """
-            * { color: #FF5500; }
-            probe { color: #00CCAA; }
-            .app probe { color: #1133DD; }
-            """.trimIndent()
-        )
+        val stylesDir =
+            createTempStylesDir(
+                """
+                * { color: #FF5500; }
+                probe { color: #00CCAA; }
+                .app probe { color: #1133DD; }
+                """.trimIndent(),
+            )
         StyleEngine.setStylesDirectory(stylesDir)
         StyleEngine.forceReloadStylesheets()
 
-        val appRoot = ContainerNode(key = "app-root").apply {
-            addClass("app")
-        }
+        val appRoot =
+            ContainerNode(key = "app-root").apply {
+                addClass("app")
+            }
         val appProbe = ProbeNode(key = "app-probe").applyParent(appRoot)
         val appOverlayRoot = ApplicationOverlayRootNode()
         val appOverlayProbe = ProbeNode(key = "app-overlay-probe").applyParent(appOverlayRoot)
@@ -57,7 +59,7 @@ class SystemOverlayStyleIsolationTests {
             """
             * { color: #33AA55; }
             probe { color: #AA22EE; }
-            """.trimIndent()
+            """.trimIndent(),
         )
         StyleEngine.forceReloadStylesheets()
         StyleEngine.applyStylesRecursively(appRoot, StyleApplicationScope.Application)
@@ -75,7 +77,7 @@ class SystemOverlayStyleIsolationTests {
     }
 
     private class ProbeNode(
-        key: Any?
+        key: Any?,
     ) : DOMNode(key) {
         override val styleType: String = "probe"
         val defaultColor: Int = 0xFFABCDEF.toInt()
@@ -83,14 +85,17 @@ class SystemOverlayStyleIsolationTests {
 
         override fun measure(ctx: UiMeasureContext): Size = Size(10, 10)
 
-        override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        override fun render(
+            ctx: UiMeasureContext,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
             bounds = Rect(x, y, width, height)
         }
 
-        override fun buildRenderCommands(
-            ctx: UiMeasureContext,
-            out: MutableList<RenderCommand>
-        ) = Unit
+        override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
 
         override fun defaultForegroundColor(): Int = defaultColor
 

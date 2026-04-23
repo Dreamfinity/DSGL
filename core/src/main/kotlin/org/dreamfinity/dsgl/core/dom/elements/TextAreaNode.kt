@@ -17,7 +17,7 @@ import org.dreamfinity.dsgl.core.style.TextWrap
 class TextAreaNode(
     var text: String = "",
     var placeholder: String = "",
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     companion object {
         private data class UndoSnapshot(
@@ -25,7 +25,7 @@ class TextAreaNode(
             val caretIndex: Int,
             val selectionAnchor: Int?,
             val scrollY: Int,
-            val preferredColumn: Int?
+            val preferredColumn: Int?,
         )
 
         private data class PersistedState(
@@ -34,7 +34,7 @@ class TextAreaNode(
             val preferredColumn: Int?,
             val selectionAnchor: Int?,
             val undoHistory: List<UndoSnapshot>,
-            val redoHistory: List<UndoSnapshot>
+            val redoHistory: List<UndoSnapshot>,
         )
 
         private val persistedByKey: KeyedStateStore<PersistedState> = KeyedStateStore()
@@ -165,13 +165,10 @@ class TextAreaNode(
         }
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val lineHeight = resolveFontSize(ctx)
@@ -180,17 +177,19 @@ class TextAreaNode(
         lastLineHeight = lineHeight
         val display = text.ifEmpty { placeholder }
         val contentLimit = resolvedContentLimit(availableOuterWidth)
-        val naturalContentWidth = width ?: maxOf(
-            layoutForText(display, null, lineHeight, measure).maxLineWidth,
-            minContentWidth
-        )
+        val naturalContentWidth =
+            width ?: maxOf(
+                layoutForText(display, null, lineHeight, measure).maxLineWidth,
+                minContentWidth,
+            )
         val contentWidth = contentLimit?.let { minOf(it, naturalContentWidth) } ?: naturalContentWidth
-        val textLayout = layoutForText(
-            source = display,
-            contentWidth = if (textWrap == TextWrap.Wrap) contentWidth else null,
-            fontHeight = lineHeight,
-            measureText = measure
-        )
+        val textLayout =
+            layoutForText(
+                source = display,
+                contentWidth = if (textWrap == TextWrap.Wrap) contentWidth else null,
+                fontHeight = lineHeight,
+                measureText = measure,
+            )
         val contentHeight = height ?: maxOf(textLayout.totalHeight, minContentHeight)
         val totalWidth = contentWidth + padding.horizontal + border.horizontal
         val totalHeight = contentHeight + padding.vertical + border.vertical
@@ -243,16 +242,18 @@ class TextAreaNode(
         clampScroll()
 
         val showPlaceholder = text.isEmpty() && !focused && placeholder.isNotEmpty()
-        val drawLayout = if (showPlaceholder) {
-            layoutForText(placeholder, textInnerWidth, lineHeight, measure)
-        } else {
-            textLayout
-        }
+        val drawLayout =
+            if (showPlaceholder) {
+                layoutForText(placeholder, textInnerWidth, lineHeight, measure)
+            } else {
+                textLayout
+            }
         val color = if (showPlaceholder) placeholderColor else textColor
         val effectiveScroll = if (showPlaceholder) 0 else editState.scrollY.coerceIn(0, maxScroll)
         val firstVisibleLine = (effectiveScroll / lastLineHeight).coerceIn(0, drawLayout.lines.lastIndex)
-        val lastVisibleLine = ((effectiveScroll + innerHeight) / lastLineHeight + 1)
-            .coerceIn(0, drawLayout.lines.lastIndex)
+        val lastVisibleLine =
+            ((effectiveScroll + innerHeight) / lastLineHeight + 1)
+                .coerceIn(0, drawLayout.lines.lastIndex)
 
         if (textInnerWidth > 0 && innerHeight > 0) {
             out.add(RenderCommand.PushClip(innerX, innerY, textInnerWidth, innerHeight))
@@ -332,13 +333,10 @@ class TextAreaNode(
         return containsGlobalPoint(mouseX, mouseY)
     }
 
-    fun shouldCaptureAnyDrag(mouseX: Int, mouseY: Int): Boolean {
-        return shouldCaptureScrollbarDrag(mouseX, mouseY) || shouldCaptureTextSelectionDrag(mouseX, mouseY)
-    }
+    fun shouldCaptureAnyDrag(mouseX: Int, mouseY: Int): Boolean =
+        shouldCaptureScrollbarDrag(mouseX, mouseY) || shouldCaptureTextSelectionDrag(mouseX, mouseY)
 
-    override fun inspectorScrollOffset(): Pair<Int, Int>? {
-        return 0 to editState.scrollY
-    }
+    override fun inspectorScrollOffset(): Pair<Int, Int>? = 0 to editState.scrollY
 
     private fun handleKey(event: KeyboardKeyDownEvent) {
         editState.clampToLength(text.length)
@@ -370,8 +368,8 @@ class TextAreaNode(
         }
     }
 
-    private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean {
-        return TextEditShortcutDispatcher.dispatch(
+    private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean =
+        TextEditShortcutDispatcher.dispatch(
             event,
             TextShortcutCallbacks(
                 hasSelection = { editState.hasSelection() },
@@ -393,10 +391,9 @@ class TextAreaNode(
                     if (action != TextShortcutAction.COPY) {
                         persistState()
                     }
-                }
-            )
+                },
+            ),
         )
-    }
 
     private fun pushUndoSnapshot() {
         history.pushUndo(
@@ -405,20 +402,19 @@ class TextAreaNode(
                 caretIndex = editState.caretIndex,
                 selectionAnchor = editState.selectionAnchor,
                 scrollY = editState.scrollY,
-                preferredColumn = preferredColumn
-            )
+                preferredColumn = preferredColumn,
+            ),
         )
     }
 
-    private fun currentSnapshot(): UndoSnapshot {
-        return UndoSnapshot(
+    private fun currentSnapshot(): UndoSnapshot =
+        UndoSnapshot(
             text = text,
             caretIndex = editState.caretIndex,
             selectionAnchor = editState.selectionAnchor,
             scrollY = editState.scrollY,
-            preferredColumn = preferredColumn
+            preferredColumn = preferredColumn,
         )
-    }
 
     private fun undoLastEdit(): Boolean {
         val snapshot = history.undo(currentSnapshot()) ?: return false
@@ -454,9 +450,8 @@ class TextAreaNode(
         return true
     }
 
-    private fun shouldRecordTypingUndo(ch: Char): Boolean {
-        return typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
-    }
+    private fun shouldRecordTypingUndo(ch: Char): Boolean =
+        typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
 
     private fun resetTypingUndoGroup() {
         typingUndoGrouping.reset()
@@ -534,11 +529,12 @@ class TextAreaNode(
         val layout = currentTextLayout()
         val current = caretLineAndColumn(editState.caretIndex, layout)
         val line = layout.lines[current.first]
-        val next = if (start) {
-            line.startIndex
-        } else {
-            line.endIndexExclusive
-        }
+        val next =
+            if (start) {
+                line.startIndex
+            } else {
+                line.endIndexExclusive
+            }
         moveCaretTo(next, extend)
         preferredColumn = null
         ensureCaretVisible()
@@ -574,7 +570,12 @@ class TextAreaNode(
         return replaceRange(start, end, insert, recordUndo)
     }
 
-    private fun replaceRange(start: Int, end: Int, insert: String, recordUndo: Boolean = false): Boolean {
+    private fun replaceRange(
+        start: Int,
+        end: Int,
+        insert: String,
+        recordUndo: Boolean = false,
+    ): Boolean {
         val safeStart = start.coerceIn(0, text.length)
         val safeEnd = end.coerceIn(safeStart, text.length)
         val previous = text
@@ -636,9 +637,12 @@ class TextAreaNode(
 
     private fun maxScrollFor(source: String): Int {
         val visibleHeight = lastVisibleHeight.coerceAtLeast(lastLineHeight)
-        val layout = if (source == text) currentTextLayout() else {
-            layoutForText(source, textContentWrapWidth(), lastLineHeight, currentMeasure())
-        }
+        val layout =
+            if (source == text) {
+                currentTextLayout()
+            } else {
+                layoutForText(source, textContentWrapWidth(), lastLineHeight, currentMeasure())
+            }
         val totalHeight = layout.totalHeight
         return (totalHeight - visibleHeight).coerceAtLeast(0)
     }
@@ -649,7 +653,7 @@ class TextAreaNode(
         innerY: Int,
         innerWidth: Int,
         innerHeight: Int,
-        focused: Boolean
+        focused: Boolean,
     ) {
         val trackX = innerX + innerWidth - scrollbarWidth
         val trackWidth = scrollbarWidth.coerceAtLeast(1)
@@ -662,17 +666,18 @@ class TextAreaNode(
                 trackRect.y,
                 trackRect.width,
                 trackRect.height,
-                scrollbarTrackColor
-            )
+                scrollbarTrackColor,
+            ),
         )
 
         val thumbHeight = computeThumbHeight(trackHeight)
         val thumbTravel = (trackHeight - thumbHeight).coerceAtLeast(0)
-        val thumbOffset = if (lastMaxScroll <= 0 || thumbTravel <= 0) {
-            0
-        } else {
-            ((editState.scrollY.toDouble() / lastMaxScroll.toDouble()) * thumbTravel.toDouble()).toInt()
-        }
+        val thumbOffset =
+            if (lastMaxScroll <= 0 || thumbTravel <= 0) {
+                0
+            } else {
+                ((editState.scrollY.toDouble() / lastMaxScroll.toDouble()) * thumbTravel.toDouble()).toInt()
+            }
         val thumbY = innerY + thumbOffset
         val thumbRect = Rect(trackX, thumbY, trackWidth, thumbHeight)
         scrollbarThumbRect = thumbRect
@@ -687,7 +692,7 @@ class TextAreaNode(
         lastVisibleLine: Int,
         innerX: Int,
         innerY: Int,
-        effectiveScroll: Int
+        effectiveScroll: Int,
     ) {
         if (!editState.hasSelection()) return
         val startIndex = editState.selectionStart().coerceIn(0, text.length)
@@ -732,11 +737,12 @@ class TextAreaNode(
         FocusManager.requestFocus(this)
         activeScrollbarDragIdentity = dragIdentity()
         val thumb = scrollbarThumbRect
-        scrollbarDragAnchorY = if (thumb != null && thumb.contains(mouseX, mouseY)) {
-            (mouseY - thumb.y).coerceIn(0, thumb.height.coerceAtLeast(1))
-        } else {
-            computeThumbHeight(scrollbarTrackRect?.height ?: 0) / 2
-        }
+        scrollbarDragAnchorY =
+            if (thumb != null && thumb.contains(mouseX, mouseY)) {
+                (mouseY - thumb.y).coerceIn(0, thumb.height.coerceAtLeast(1))
+            } else {
+                computeThumbHeight(scrollbarTrackRect?.height ?: 0) / 2
+            }
         updateScrollbarFromDrag(mouseY)
         editState.resetBlinkClock()
         persistState()
@@ -756,8 +762,10 @@ class TextAreaNode(
             return
         }
         val desiredTop = (mouseY - track.y - scrollbarDragAnchorY).coerceIn(0, thumbTravel)
-        editState.scrollY = ((desiredTop.toDouble() / thumbTravel.toDouble()) * lastMaxScroll.toDouble()).toInt()
-            .coerceIn(0, lastMaxScroll)
+        editState.scrollY =
+            ((desiredTop.toDouble() / thumbTravel.toDouble()) * lastMaxScroll.toDouble())
+                .toInt()
+                .coerceIn(0, lastMaxScroll)
     }
 
     private fun caretIndexFromClick(mouseX: Int, mouseY: Int, scrollOffsetY: Int): Int {
@@ -792,17 +800,11 @@ class TextAreaNode(
         return lineText.length
     }
 
-    private fun selectedText(): String {
-        return TextEditOps.selectedText(text, editState)
-    }
+    private fun selectedText(): String = TextEditOps.selectedText(text, editState)
 
-    private fun isPrintable(ch: Char): Boolean {
-        return TextEditOps.isPrintable(ch)
-    }
+    private fun isPrintable(ch: Char): Boolean = TextEditOps.isPrintable(ch)
 
-    private fun dragIdentity(): Any {
-        return TextEditOps.dragIdentity(key, this)
-    }
+    private fun dragIdentity(): Any = TextEditOps.dragIdentity(key, this)
 
     private fun isActiveScrollbarDragTarget(): Boolean {
         val active = activeScrollbarDragIdentity ?: return false
@@ -829,8 +831,8 @@ class TextAreaNode(
                 preferredColumn = preferredColumn,
                 selectionAnchor = editState.selectionAnchor,
                 undoHistory = history.undoHistory(),
-                redoHistory = history.redoHistory()
-            )
+                redoHistory = history.redoHistory(),
+            ),
         )
     }
 
@@ -865,15 +867,13 @@ class TextAreaNode(
         }
     }
 
-    private fun currentMeasure(): (String) -> Int {
-        return lastMeasureText ?: { value: String -> value.length * 6 }
-    }
+    private fun currentMeasure(): (String) -> Int = lastMeasureText ?: { value: String -> value.length * 6 }
 
     private fun layoutForText(
         source: String,
         contentWidth: Int?,
         fontHeight: Int,
-        measureText: (String) -> Int
+        measureText: (String) -> Int,
     ): TextLayoutEngine.Layout {
         val wrapMode = if (this@TextAreaNode.textWrap == TextWrap.Wrap) TextWrap.Wrap else TextWrap.NoWrap
         val maxWidth = if (wrapMode == TextWrap.Wrap) contentWidth else null
@@ -882,7 +882,7 @@ class TextAreaNode(
             maxWidth = maxWidth,
             wrap = wrapMode,
             fontHeight = fontHeight.coerceAtLeast(1),
-            measureText = measureText
+            measureText = measureText,
         )
     }
 

@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.style.StyleEngine
 
 class ContextMenuEngine(
     private val clock: ContextMenuClock = SystemContextMenuClock,
-    private val measurementCache: ContextMenuMeasurementCache = ContextMenuMeasurementCache()
+    private val measurementCache: ContextMenuMeasurementCache = ContextMenuMeasurementCache(),
 ) : ContextMenuHost {
     private data class OpenLevel(
         val token: Long,
@@ -25,24 +25,24 @@ class ContextMenuEngine(
         var hoveredIndex: Int = -1,
         var selectedIndex: Int = -1,
         var scrollOffset: Int = 0,
-        var measurement: ContextMenuMeasurementCache.Measurement? = null
+        var measurement: ContextMenuMeasurementCache.Measurement? = null,
     )
 
     private data class PendingOpen(
         val parentLevel: Int,
         val parentEntryIndex: Int,
-        val dueMs: Long
+        val dueMs: Long,
     )
 
     private data class PendingTrim(
         val fromLevel: Int,
-        val dueMs: Long
+        val dueMs: Long,
     )
 
     data class StackSnapshot(
         val levelCount: Int,
         val hoveredIndices: List<Int>,
-        val selectedIndices: List<Int>
+        val selectedIndices: List<Int>,
     )
 
     private val levels: MutableList<OpenLevel> = ArrayList(4)
@@ -68,17 +68,14 @@ class ContextMenuEngine(
 
     fun measurementComputeCount(): Long = measurementCache.computeCount
 
-    fun snapshot(): StackSnapshot {
-        return StackSnapshot(
+    fun snapshot(): StackSnapshot =
+        StackSnapshot(
             levelCount = levels.size,
             hoveredIndices = levels.map { it.hoveredIndex },
-            selectedIndices = levels.map { it.selectedIndex }
+            selectedIndices = levels.map { it.selectedIndex },
         )
-    }
 
-    fun debugPanelRect(levelIndex: Int): Rect? {
-        return levels.getOrNull(levelIndex)?.panelRect
-    }
+    fun debugPanelRect(levelIndex: Int): Rect? = levels.getOrNull(levelIndex)?.panelRect
 
     fun debugEntryRect(levelIndex: Int, entryIndex: Int): Rect? {
         val level = levels.getOrNull(levelIndex) ?: return null
@@ -91,16 +88,17 @@ class ContextMenuEngine(
             return
         }
         levels.clear()
-        levels += OpenLevel(
-            token = model.token,
-            entries = model.entries,
-            placementMode = PLACEMENT_CURSOR,
-            fontId = model.fontId,
-            fontSize = model.fontSize,
-            anchorRect = Rect(x, y, 0, 0),
-            parentLevelIndex = -1,
-            parentEntryIndex = -1
-        )
+        levels +=
+            OpenLevel(
+                token = model.token,
+                entries = model.entries,
+                placementMode = PLACEMENT_CURSOR,
+                fontId = model.fontId,
+                fontSize = model.fontSize,
+                anchorRect = Rect(x, y, 0, 0),
+                parentLevelIndex = -1,
+                parentEntryIndex = -1,
+            )
         pendingOpen = null
         pendingTrim = null
         layoutDirty = true
@@ -112,16 +110,17 @@ class ContextMenuEngine(
             return
         }
         levels.clear()
-        levels += OpenLevel(
-            token = model.token,
-            entries = model.entries,
-            placementMode = PLACEMENT_ANCHORED,
-            fontId = model.fontId,
-            fontSize = model.fontSize,
-            anchorRect = anchorRect,
-            parentLevelIndex = -1,
-            parentEntryIndex = -1
-        )
+        levels +=
+            OpenLevel(
+                token = model.token,
+                entries = model.entries,
+                placementMode = PLACEMENT_ANCHORED,
+                fontId = model.fontId,
+                fontSize = model.fontSize,
+                anchorRect = anchorRect,
+                parentLevelIndex = -1,
+                parentEntryIndex = -1,
+            )
         pendingOpen = null
         pendingTrim = null
         layoutDirty = true
@@ -140,7 +139,7 @@ class ContextMenuEngine(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        viewportScale: Float = 1f
+        viewportScale: Float = 1f,
     ) {
         lastMeasureContext = measureContext
         if (this.viewportWidth != viewportWidth || this.viewportHeight != viewportHeight) {
@@ -165,14 +164,14 @@ class ContextMenuEngine(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         if (!isOpen()) return
         onFrame(
             measureContext = measureContext,
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,
-            viewportScale = viewportScale
+            viewportScale = viewportScale,
         )
         if (!isOpen()) return
 
@@ -212,18 +211,33 @@ class ContextMenuEngine(
                     return@forEach
                 }
 
-                val itemRect = Rect(
-                    rowRect.x,
-                    rowRect.y,
-                    rowRect.width,
-                    rowRect.height
-                )
+                val itemRect =
+                    Rect(
+                        rowRect.x,
+                        rowRect.y,
+                        rowRect.width,
+                        rowRect.height,
+                    )
                 val isHovered = index == level.hoveredIndex
                 val isSelected = index == level.selectedIndex
                 if (isHovered) {
-                    out += RenderCommand.DrawRect(itemRect.x, itemRect.y, itemRect.width, itemRect.height, style.itemHoverBackgroundColor)
+                    out +=
+                        RenderCommand.DrawRect(
+                            itemRect.x,
+                            itemRect.y,
+                            itemRect.width,
+                            itemRect.height,
+                            style.itemHoverBackgroundColor,
+                        )
                 } else if (isSelected) {
-                    out += RenderCommand.DrawRect(itemRect.x, itemRect.y, itemRect.width, itemRect.height, style.itemSelectedBackgroundColor)
+                    out +=
+                        RenderCommand.DrawRect(
+                            itemRect.x,
+                            itemRect.y,
+                            itemRect.width,
+                            itemRect.height,
+                            style.itemSelectedBackgroundColor,
+                        )
                 }
 
                 val textY = itemRect.y + ((itemRect.height - fontHeight).coerceAtLeast(0) / 2)
@@ -232,54 +246,62 @@ class ContextMenuEngine(
                 val labelX = indicatorX + measurement.indicatorWidth + style.contentSpacing
                 val textColor = if (snapshot.enabled) style.itemTextColor else style.disabledTextColor
 
-                val indicatorText = when {
-                    snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
-                    !snapshot.icon.isNullOrEmpty() -> snapshot.icon
-                    else -> null
-                }
+                val indicatorText =
+                    when {
+                        snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
+                        !snapshot.icon.isNullOrEmpty() -> snapshot.icon
+                        else -> null
+                    }
                 if (!indicatorText.isNullOrEmpty()) {
                     val indicatorColor = if (snapshot.checked) style.checkMarkColor else textColor
-                    out += RenderCommand.DrawText(
-                        text = indicatorText,
-                        x = indicatorX,
+                    out +=
+                        RenderCommand.DrawText(
+                            text = indicatorText,
+                            x = indicatorX,
+                            y = textY,
+                            color = indicatorColor,
+                            fontId = fontId,
+                            fontSize = fontSize,
+                        )
+                }
+
+                out +=
+                    RenderCommand.DrawText(
+                        text = snapshot.label,
+                        x = labelX,
                         y = textY,
-                        color = indicatorColor,
+                        color = textColor,
                         fontId = fontId,
-                        fontSize = fontSize
+                        fontSize = fontSize,
                     )
-                }
 
-                out += RenderCommand.DrawText(
-                    text = snapshot.label,
-                    x = labelX,
-                    y = textY,
-                    color = textColor,
-                    fontId = fontId,
-                    fontSize = fontSize
-                )
-
-                val hintText = when {
-                    snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU && snapshot.hint.isNullOrEmpty() -> ContextMenuGlyphs.SUBMENU_ARROW
-                    else -> snapshot.hint
-                }
+                val hintText =
+                    when {
+                        snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU &&
+                            snapshot.hint.isNullOrEmpty() -> ContextMenuGlyphs.SUBMENU_ARROW
+                        else -> snapshot.hint
+                    }
                 if (!hintText.isNullOrEmpty()) {
                     val hintWidth = measureContext.measureText(hintText, fontId, fontSize)
                     val hintX = itemRect.x + itemRect.width - style.rowPaddingX - hintWidth
-                    val hintColor = when {
-                        !snapshot.enabled -> style.disabledTextColor
-                        snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU && snapshot.hint.isNullOrEmpty() ->
-                            style.submenuArrowColor
+                    val hintColor =
+                        when {
+                            !snapshot.enabled -> style.disabledTextColor
+                            snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU &&
+                                snapshot.hint.isNullOrEmpty() ->
+                                style.submenuArrowColor
 
-                        else -> style.hintTextColor
-                    }
-                    out += RenderCommand.DrawText(
-                        text = hintText,
-                        x = hintX,
-                        y = textY,
-                        color = hintColor,
-                        fontId = fontId,
-                        fontSize = fontSize
-                    )
+                            else -> style.hintTextColor
+                        }
+                    out +=
+                        RenderCommand.DrawText(
+                            text = hintText,
+                            x = hintX,
+                            y = textY,
+                            color = hintColor,
+                            fontId = fontId,
+                            fontSize = fontSize,
+                        )
                 }
             }
 
@@ -311,7 +333,10 @@ class ContextMenuEngine(
             hitLevel.selectedIndex = hit.entryIndex
         }
 
-        val snapshot = hitLevel.measurement?.snapshots?.getOrNull(hit.entryIndex)
+        val snapshot =
+            hitLevel.measurement
+                ?.snapshots
+                ?.getOrNull(hit.entryIndex)
         if (snapshot != null && snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU && snapshot.enabled) {
             scheduleSubmenuOpen(hit.levelIndex, hit.entryIndex)
         } else {
@@ -405,7 +430,10 @@ class ContextMenuEngine(
             KeyCodes.RIGHT -> {
                 val index = normalizedSelection(level)
                 if (index >= 0) {
-                    val snapshot = level.measurement?.snapshots?.getOrNull(index)
+                    val snapshot =
+                        level.measurement
+                            ?.snapshots
+                            ?.getOrNull(index)
                     if (snapshot != null &&
                         snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU &&
                         snapshot.enabled
@@ -447,15 +475,16 @@ class ContextMenuEngine(
         var index = 0
         while (index < levels.size) {
             val level = levels[index]
-            val measurement = measurementCache.measure(
-                menuToken = level.token,
-                entries = level.entries,
-                style = style,
-                fontId = level.fontId ?: style.fontId,
-                fontSize = level.fontSize ?: style.fontSize,
-                ctx = ctx,
-                dpiScale = viewportScale
-            )
+            val measurement =
+                measurementCache.measure(
+                    menuToken = level.token,
+                    entries = level.entries,
+                    style = style,
+                    fontId = level.fontId ?: style.fontId,
+                    fontSize = level.fontSize ?: style.fontSize,
+                    ctx = ctx,
+                    dpiScale = viewportScale,
+                )
             level.measurement = measurement
             val panelWidth = measurement.panelWidth + style.panelPaddingX * 2
             val maxAvailableHeight = (viewportHeight - style.viewportPadding * 2).coerceAtLeast(1)
@@ -476,33 +505,36 @@ class ContextMenuEngine(
                 level.anchorRect = parentEntryRect
             }
 
-            val preferredRect = when (level.placementMode) {
-                PLACEMENT_CURSOR -> {
-                    Rect(level.anchorRect.x, level.anchorRect.y, panelWidth, panelHeight)
-                }
+            val preferredRect =
+                when (level.placementMode) {
+                    PLACEMENT_CURSOR -> {
+                        Rect(level.anchorRect.x, level.anchorRect.y, panelWidth, panelHeight)
+                    }
 
-                PLACEMENT_ANCHORED -> {
-                    Rect(level.anchorRect.x, level.anchorRect.y + level.anchorRect.height, panelWidth, panelHeight)
-                }
+                    PLACEMENT_ANCHORED -> {
+                        Rect(level.anchorRect.x, level.anchorRect.y + level.anchorRect.height, panelWidth, panelHeight)
+                    }
 
-                else -> {
-                    Rect(level.anchorRect.x + level.anchorRect.width, level.anchorRect.y, panelWidth, panelHeight)
+                    else -> {
+                        Rect(level.anchorRect.x + level.anchorRect.width, level.anchorRect.y, panelWidth, panelHeight)
+                    }
                 }
-            }
-            val flipCandidateX = if (level.placementMode == PLACEMENT_SUBMENU) {
-                level.anchorRect.x - panelWidth
-            } else {
-                null
-            }
-            val placement = PopupPlacement.resolve(
-                PopupPlacementRequest(
-                    preferredRect = preferredRect,
-                    popupSize = Size(panelWidth, panelHeight),
-                    viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
-                    padding = style.viewportPadding,
-                    horizontalFlipX = flipCandidateX
+            val flipCandidateX =
+                if (level.placementMode == PLACEMENT_SUBMENU) {
+                    level.anchorRect.x - panelWidth
+                } else {
+                    null
+                }
+            val placement =
+                PopupPlacement.resolve(
+                    PopupPlacementRequest(
+                        preferredRect = preferredRect,
+                        popupSize = Size(panelWidth, panelHeight),
+                        viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
+                        padding = style.viewportPadding,
+                        horizontalFlipX = flipCandidateX,
+                    ),
                 )
-            )
             level.panelRect = placement.rect
             val maxScroll = maxScroll(level)
             if (level.scrollOffset > maxScroll) {
@@ -522,9 +554,12 @@ class ContextMenuEngine(
         val measurement = level.measurement ?: return
         if (measurement.snapshots.isEmpty()) return
 
-        val start = if (level.selectedIndex >= 0) level.selectedIndex else {
-            if (direction >= 0) -1 else measurement.snapshots.size
-        }
+        val start =
+            if (level.selectedIndex >= 0) {
+                level.selectedIndex
+            } else {
+                if (direction >= 0) -1 else measurement.snapshots.size
+            }
         var index = start
         repeat(measurement.snapshots.size) {
             index += direction
@@ -567,7 +602,10 @@ class ContextMenuEngine(
     private fun activate(levelIndex: Int, entryIndex: Int) {
         val level = levels.getOrNull(levelIndex) ?: return
         val entry = level.entries.getOrNull(entryIndex) ?: return
-        val snapshot = level.measurement?.snapshots?.getOrNull(entryIndex) ?: return
+        val snapshot =
+            level.measurement
+                ?.snapshots
+                ?.getOrNull(entryIndex) ?: return
         if (!snapshot.enabled || snapshot.kind == ContextMenuMeasurementCache.KIND_SEPARATOR) {
             return
         }
@@ -604,16 +642,17 @@ class ContextMenuEngine(
             }
             trimLevels(parentLevelIndex + 1)
         }
-        levels += OpenLevel(
-            token = parentEntry.token,
-            entries = parentEntry.entries,
-            placementMode = PLACEMENT_SUBMENU,
-            fontId = parent.fontId,
-            fontSize = parent.fontSize,
-            anchorRect = parent.anchorRect,
-            parentLevelIndex = parentLevelIndex,
-            parentEntryIndex = parentEntryIndex
-        )
+        levels +=
+            OpenLevel(
+                token = parentEntry.token,
+                entries = parentEntry.entries,
+                placementMode = PLACEMENT_SUBMENU,
+                fontId = parent.fontId,
+                fontSize = parent.fontSize,
+                anchorRect = parent.anchorRect,
+                parentLevelIndex = parentLevelIndex,
+                parentEntryIndex = parentEntryIndex,
+            )
         pendingOpen = null
         pendingTrim = null
         layoutDirty = true
@@ -668,11 +707,12 @@ class ContextMenuEngine(
         }
         val due = clock.nowMs() + delayMs
         val current = pendingTrim
-        pendingTrim = if (current == null || fromLevel < current.fromLevel || due < current.dueMs) {
-            PendingTrim(fromLevel, due)
-        } else {
-            current
-        }
+        pendingTrim =
+            if (current == null || fromLevel < current.fromLevel || due < current.dueMs) {
+                PendingTrim(fromLevel, due)
+            } else {
+                current
+            }
     }
 
     private fun processTimers() {
@@ -696,7 +736,7 @@ class ContextMenuEngine(
 
     private data class Hit(
         val levelIndex: Int,
-        val entryIndex: Int
+        val entryIndex: Int,
     )
 
     private fun hitTest(mouseX: Int, mouseY: Int): Hit? {
@@ -770,4 +810,3 @@ class ContextMenuEngine(
         private const val PLACEMENT_SUBMENU: Int = 3
     }
 }
-

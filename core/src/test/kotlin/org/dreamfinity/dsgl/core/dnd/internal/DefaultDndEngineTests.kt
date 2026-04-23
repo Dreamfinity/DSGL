@@ -16,10 +16,11 @@ class DefaultDndEngineTests {
         val list = ContainerNode(key = "list")
         val folder = ContainerNode(key = "folder")
 
-        val selected = DefaultDndEngine.selectDropTargetCandidate(
-            candidates = listOf(list, folder),
-            previousTarget = list
-        )
+        val selected =
+            DefaultDndEngine.selectDropTargetCandidate(
+                candidates = listOf(list, folder),
+                previousTarget = list,
+            )
 
         assertSame(folder, selected)
     }
@@ -28,34 +29,37 @@ class DefaultDndEngineTests {
     fun `drop target selection keeps deepest candidate when already selected`() {
         val folder = ContainerNode(key = "folder")
 
-        val selected = DefaultDndEngine.selectDropTargetCandidate(
-            candidates = listOf(folder),
-            previousTarget = folder
-        )
+        val selected =
+            DefaultDndEngine.selectDropTargetCandidate(
+                candidates = listOf(folder),
+                previousTarget = folder,
+            )
 
         assertSame(folder, selected)
     }
 
     @Test
     fun `shiftCommand translates checkerboard command without changing checker offsets`() {
-        val shift = DefaultDndEngine::class.java.getDeclaredMethod(
-            "shiftCommand",
-            RenderCommand::class.java,
-            Int::class.javaPrimitiveType,
-            Int::class.javaPrimitiveType
-        )
+        val shift =
+            DefaultDndEngine::class.java.getDeclaredMethod(
+                "shiftCommand",
+                RenderCommand::class.java,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+            )
         shift.isAccessible = true
-        val command = RenderCommand.DrawCheckerboard(
-            x = 10,
-            y = 15,
-            width = 20,
-            height = 25,
-            cellSize = 4,
-            lightColor = 0xFFCCDDEE.toInt(),
-            darkColor = 0xFF445566.toInt(),
-            offsetX = 3,
-            offsetY = 7
-        )
+        val command =
+            RenderCommand.DrawCheckerboard(
+                x = 10,
+                y = 15,
+                width = 20,
+                height = 25,
+                cellSize = 4,
+                lightColor = 0xFFCCDDEE.toInt(),
+                darkColor = 0xFF445566.toInt(),
+                offsetX = 3,
+                offsetY = 7,
+            )
 
         val shifted = shift.invoke(DefaultDndEngine, command, 8, -5) as RenderCommand.DrawCheckerboard
 
@@ -67,10 +71,11 @@ class DefaultDndEngineTests {
 
     @Test
     fun `drop target selection returns null for empty candidates`() {
-        val selected = DefaultDndEngine.selectDropTargetCandidate(
-            candidates = emptyList(),
-            previousTarget = null
-        )
+        val selected =
+            DefaultDndEngine.selectDropTargetCandidate(
+                candidates = emptyList(),
+                previousTarget = null,
+            )
 
         assertNull(selected)
     }
@@ -78,27 +83,34 @@ class DefaultDndEngineTests {
     @Test
     fun `hover chain remains coherent for dnd candidate selection after core hover migration`() {
         val root = ContainerNode(key = "dnd-root")
-        val parent = ContainerNode(key = "dnd-parent").apply {
-            width = 120
-            height = 60
-            droppable = true
-        }.applyParent(root)
-        val child = ContainerNode(key = "dnd-child").apply {
-            width = 34
-            height = 16
-            droppable = true
-        }.applyParent(parent)
+        val parent =
+            ContainerNode(key = "dnd-parent")
+                .apply {
+                    width = 120
+                    height = 60
+                    droppable = true
+                }.applyParent(root)
+        val child =
+            ContainerNode(key = "dnd-child")
+                .apply {
+                    width = 34
+                    height = 16
+                    droppable = true
+                }.applyParent(parent)
 
         root.render(
-            ctx = object : UiMeasureContext {
-                override val fontHeight: Int = 9
-                override fun measureText(text: String): Int = text.length * 6
-                override fun paint(commands: List<RenderCommand>) = Unit
-            },
+            ctx =
+                object : UiMeasureContext {
+                    override val fontHeight: Int = 9
+
+                    override fun measureText(text: String): Int = text.length * 6
+
+                    override fun paint(commands: List<RenderCommand>) = Unit
+                },
             x = 0,
             y = 0,
             width = 260,
-            height = 140
+            height = 140,
         )
 
         val chain = collectHoverChain(root, 10, 10)

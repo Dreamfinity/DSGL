@@ -7,7 +7,7 @@ data class Insets(
     val top: Int,
     val right: Int,
     val bottom: Int,
-    val left: Int
+    val left: Int,
 ) {
     /** Combined left/right value. */
     val horizontal: Int

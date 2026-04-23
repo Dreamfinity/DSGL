@@ -1,22 +1,23 @@
 ﻿package org.dreamfinity.dsgl.core.text
 
-import org.dreamfinity.dsgl.core.font.MsdfFontMetaParser
 import org.dreamfinity.dsgl.core.dom.elements.support.TextLayoutEngine
+import org.dreamfinity.dsgl.core.font.MsdfFontMetaParser
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
 import kotlin.test.Test
-import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class MinecraftFormattingParserTests {
     @Test
     fun `parses legacy colors and reset into plain text with spans`() {
-        val parsed = MinecraftFormattingParser.parse(
-            text = "\u00A7aHi \u00A7bWorld\u00A7r!",
-            mode = TextFormatting.Minecraft
-        )
+        val parsed =
+            MinecraftFormattingParser.parse(
+                text = "\u00A7aHi \u00A7bWorld\u00A7r!",
+                mode = TextFormatting.Minecraft,
+            )
 
         assertEquals("Hi World!", parsed.plainText)
         val spans = MinecraftFormattingParser.resolveColorSpans(parsed, 0xFF336699.toInt())
@@ -67,10 +68,11 @@ class MinecraftFormattingParserTests {
 
     @Test
     fun `modern hex sequence is parsed when complete`() {
-        val parsed = MinecraftFormattingParser.parse(
-            text = "\u00A7x\u00A7F\u00A7F\u00A70\u00A70\u00A70\u00A70R",
-            mode = TextFormatting.Minecraft
-        )
+        val parsed =
+            MinecraftFormattingParser.parse(
+                text = "\u00A7x\u00A7F\u00A7F\u00A70\u00A70\u00A70\u00A70R",
+                mode = TextFormatting.Minecraft,
+            )
         assertEquals("R", parsed.plainText)
         val spans = MinecraftFormattingParser.resolveColorSpans(parsed, 0xAA000000.toInt())
         assertEquals(1, spans.size)
@@ -79,24 +81,27 @@ class MinecraftFormattingParserTests {
 
     @Test
     fun `format flags toggle and reset to base style`() {
-        val parsed = MinecraftFormattingParser.parse(
-            text = "\u00A7lA\u00A7oB\u00A7nC\u00A7mD\u00A7kE\u00A7rF",
-            mode = TextFormatting.Minecraft
-        )
+        val parsed =
+            MinecraftFormattingParser.parse(
+                text = "\u00A7lA\u00A7oB\u00A7nC\u00A7mD\u00A7kE\u00A7rF",
+                mode = TextFormatting.Minecraft,
+            )
         assertEquals("ABCDEF", parsed.plainText)
 
-        val baseFlags = TextStyleFlags(
-            bold = false,
-            italic = true,
-            underline = false,
-            strikethrough = false,
-            obfuscated = false
-        )
-        val spans = MinecraftFormattingParser.resolveStyleSpans(
-            parsed = parsed,
-            baseColor = 0xFF445566.toInt(),
-            baseFlags = baseFlags
-        )
+        val baseFlags =
+            TextStyleFlags(
+                bold = false,
+                italic = true,
+                underline = false,
+                strikethrough = false,
+                obfuscated = false,
+            )
+        val spans =
+            MinecraftFormattingParser.resolveStyleSpans(
+                parsed = parsed,
+                baseColor = 0xFF445566.toInt(),
+                baseFlags = baseFlags,
+            )
         assertTrue(spans.isNotEmpty())
         assertEquals(true, spans[0].flags.bold)
         assertEquals(true, spans[1].flags.bold)
@@ -104,8 +109,20 @@ class MinecraftFormattingParserTests {
         assertEquals(true, spans[2].flags.underline)
         assertEquals(true, spans[3].flags.strikethrough)
         assertEquals(true, spans[4].flags.obfuscated)
-        assertEquals(true, spans.last().flags.italic, "§r should reset to base italic=true")
-        assertEquals(false, spans.last().flags.bold, "§r should reset bold to base bold=false")
+        assertEquals(
+            true,
+            spans
+                .last()
+                .flags.italic,
+            "§r should reset to base italic=true",
+        )
+        assertEquals(
+            false,
+            spans
+                .last()
+                .flags.bold,
+            "§r should reset bold to base bold=false",
+        )
     }
 
     @Test
@@ -117,64 +134,70 @@ class MinecraftFormattingParserTests {
         assertEquals("ABC", plain)
 
         val baseWidth = meta.measureTextWidth(plain, 12)
-        val extra = TextStyleMetrics.boldExtraPxForRange(
-            plainText = plain,
-            spans = parsed.spans,
-            baseFlags = TextStyleFlags.NONE
-        )
+        val extra =
+            TextStyleMetrics.boldExtraPxForRange(
+                plainText = plain,
+                spans = parsed.spans,
+                baseFlags = TextStyleFlags.NONE,
+            )
         assertEquals(BOLD_ADVANCE_EXTRA_PX, extra)
         assertEquals(baseWidth + BOLD_ADVANCE_EXTRA_PX, baseWidth + extra)
     }
 
     @Test
     fun `obfuscation selector is deterministic and time-varying`() {
-        val fixedA = ObfuscationTextSelector.selectCandidateIndex(
-            sourceKey = "node.key",
-            lineIndex = 1,
-            glyphIndexInLine = 4,
-            timeSlice = 10L,
-            originalCodepoint = 'A'.code,
-            candidateCount = 16
-        )
-        val fixedB = ObfuscationTextSelector.selectCandidateIndex(
-            sourceKey = "node.key",
-            lineIndex = 1,
-            glyphIndexInLine = 4,
-            timeSlice = 10L,
-            originalCodepoint = 'A'.code,
-            candidateCount = 16
-        )
-        val changed = ObfuscationTextSelector.selectCandidateIndex(
-            sourceKey = "node.key",
-            lineIndex = 1,
-            glyphIndexInLine = 4,
-            timeSlice = 11L,
-            originalCodepoint = 'A'.code,
-            candidateCount = 16
-        )
+        val fixedA =
+            ObfuscationTextSelector.selectCandidateIndex(
+                sourceKey = "node.key",
+                lineIndex = 1,
+                glyphIndexInLine = 4,
+                timeSlice = 10L,
+                originalCodepoint = 'A'.code,
+                candidateCount = 16,
+            )
+        val fixedB =
+            ObfuscationTextSelector.selectCandidateIndex(
+                sourceKey = "node.key",
+                lineIndex = 1,
+                glyphIndexInLine = 4,
+                timeSlice = 10L,
+                originalCodepoint = 'A'.code,
+                candidateCount = 16,
+            )
+        val changed =
+            ObfuscationTextSelector.selectCandidateIndex(
+                sourceKey = "node.key",
+                lineIndex = 1,
+                glyphIndexInLine = 4,
+                timeSlice = 11L,
+                originalCodepoint = 'A'.code,
+                candidateCount = 16,
+            )
         assertEquals(fixedA, fixedB)
         assertTrue(fixedA in 0 until 16)
         assertTrue(changed in 0 until 16)
-        val rowA = (0 until 16).map { index ->
-            ObfuscationTextSelector.selectCandidateIndex(
-                sourceKey = "node.key",
-                lineIndex = 0,
-                glyphIndexInLine = index,
-                timeSlice = 25L,
-                originalCodepoint = 'X'.code,
-                candidateCount = 32
-            )
-        }
-        val rowB = (0 until 16).map { index ->
-            ObfuscationTextSelector.selectCandidateIndex(
-                sourceKey = "node.key",
-                lineIndex = 0,
-                glyphIndexInLine = index,
-                timeSlice = 26L,
-                originalCodepoint = 'X'.code,
-                candidateCount = 32
-            )
-        }
+        val rowA =
+            (0 until 16).map { index ->
+                ObfuscationTextSelector.selectCandidateIndex(
+                    sourceKey = "node.key",
+                    lineIndex = 0,
+                    glyphIndexInLine = index,
+                    timeSlice = 25L,
+                    originalCodepoint = 'X'.code,
+                    candidateCount = 32,
+                )
+            }
+        val rowB =
+            (0 until 16).map { index ->
+                ObfuscationTextSelector.selectCandidateIndex(
+                    sourceKey = "node.key",
+                    lineIndex = 0,
+                    glyphIndexInLine = index,
+                    timeSlice = 26L,
+                    originalCodepoint = 'X'.code,
+                    candidateCount = 32,
+                )
+            }
         assertTrue(rowA.toSet().size >= 8, "Obfuscated row should produce varied symbols")
         val changedSlots = rowA.indices.count { rowA[it] != rowB[it] }
         assertTrue(changedSlots >= 8, "Obfuscated symbols should refresh across time slices")
@@ -186,28 +209,31 @@ class MinecraftFormattingParserTests {
     fun `decoration spans can be split per wrapped line`() {
         val rawMeta = loadResource("fonts/minecraft/MinecraftDefault-Regular-meta.json")
         val meta = MsdfFontMetaParser.parse(rawMeta)
-        val parsed = MinecraftFormattingParser.parse(
-            text = "\u00A7nUnderline decoration wraps across multiple lines in a narrow panel",
-            mode = TextFormatting.Minecraft
-        )
+        val parsed =
+            MinecraftFormattingParser.parse(
+                text = "\u00A7nUnderline decoration wraps across multiple lines in a narrow panel",
+                mode = TextFormatting.Minecraft,
+            )
         val fontSize = 12
         val lineHeight = meta.lineHeightPx(fontSize)
-        val layout = TextLayoutEngine.layout(
-            text = parsed.plainText,
-            maxWidth = 72,
-            wrap = TextWrap.Wrap,
-            fontHeight = lineHeight,
-            measureText = { value -> meta.measureTextWidth(value, fontSize) }
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = parsed.plainText,
+                maxWidth = 72,
+                wrap = TextWrap.Wrap,
+                fontHeight = lineHeight,
+                measureText = { value -> meta.measureTextWidth(value, fontSize) },
+            )
         assertTrue(layout.lines.size >= 2)
         layout.lines.forEach { line ->
-            val lineSpans = MinecraftFormattingParser.resolveStyleSpans(
-                parsed = parsed,
-                baseColor = 0xFFFFFFFF.toInt(),
-                baseFlags = TextStyleFlags.NONE,
-                rangeStart = line.startIndex,
-                rangeEnd = line.endIndexExclusive
-            )
+            val lineSpans =
+                MinecraftFormattingParser.resolveStyleSpans(
+                    parsed = parsed,
+                    baseColor = 0xFFFFFFFF.toInt(),
+                    baseFlags = TextStyleFlags.NONE,
+                    rangeStart = line.startIndex,
+                    rangeEnd = line.endIndexExclusive,
+                )
             assertTrue(lineSpans.all { it.start >= 0 && it.end <= line.text.length })
             if (line.text.isNotEmpty()) {
                 assertTrue(lineSpans.any { it.flags.underline })
@@ -221,4 +247,3 @@ class MinecraftFormattingParserTests {
         return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
     }
 }
-

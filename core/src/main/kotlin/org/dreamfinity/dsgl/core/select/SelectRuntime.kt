@@ -8,12 +8,11 @@ object SelectRuntime {
     val engine: SelectEngine = applicationEngine
     val host: SelectHost = RoutedSelectHost()
 
-    fun engineFor(ownerScope: OverlayOwnerScope): SelectEngine {
-        return when (ownerScope) {
+    fun engineFor(ownerScope: OverlayOwnerScope): SelectEngine =
+        when (ownerScope) {
             OverlayOwnerScope.Application -> applicationEngine
             OverlayOwnerScope.System -> systemEngine
         }
-    }
 
     private class RoutedSelectHost : SelectHost {
         override fun open(request: SelectOpenRequest) {
@@ -33,12 +32,9 @@ object SelectRuntime {
             systemEngine.closeAll()
         }
 
-        override fun isOpenFor(owner: Any): Boolean {
-            return applicationEngine.isOpenFor(owner) || systemEngine.isOpenFor(owner)
-        }
+        override fun isOpenFor(owner: Any): Boolean =
+            applicationEngine.isOpenFor(owner) || systemEngine.isOpenFor(owner)
 
-        override fun isOpen(): Boolean {
-            return applicationEngine.isOpen() || systemEngine.isOpen()
-        }
+        override fun isOpen(): Boolean = applicationEngine.isOpen() || systemEngine.isOpen()
     }
 }

@@ -449,3 +449,13 @@ tasks.register("runDemoClient") {
     description = "Run Minecraft client with DSGL showcase demo module."
     dependsOn(":adapters:mc-forge-1-7-10:demo:runClient")
 }
+
+tasks.register<Exec>("installGitHooks") {
+    group = "setup"
+    description = "Configure git to use hooks from .githooks/. Run once after cloning."
+    commandLine("git", "config", "core.hooksPath", ".githooks")
+    doLast {
+        fileTree(".githooks").forEach { it.setExecutable(true) }
+        logger.lifecycle("Git hooks installed. Hook path set to .githooks/")
+    }
+}

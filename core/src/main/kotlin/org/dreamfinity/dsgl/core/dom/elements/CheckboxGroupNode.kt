@@ -16,7 +16,7 @@ class CheckboxGroupNode(
     selected: Set<String> = emptySet(),
     var minSelected: Int? = null,
     var maxSelected: Int? = null,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "input"
     override val focusable: Boolean = true
@@ -48,13 +48,10 @@ class CheckboxGroupNode(
 
     fun selected(): Set<String> = selectedIds.toSet()
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val fontHeight = resolveFontSize(ctx)
@@ -81,7 +78,13 @@ class CheckboxGroupNode(
         }
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
         val fontHeight = resolveFontSize(ctx)
         boxSize = maxOf(10, fontHeight - 2)
@@ -132,9 +135,11 @@ class CheckboxGroupNode(
         }
     }
 
-    private fun valueString(): String {
-        return selectedIds.toList().sorted().joinToString(",")
-    }
+    private fun valueString(): String =
+        selectedIds
+            .toList()
+            .sorted()
+            .joinToString(",")
 
     override fun defaultForegroundColor(): Int = textColor
 

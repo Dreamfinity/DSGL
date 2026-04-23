@@ -13,11 +13,7 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 
-fun UiScope.modalHost(
-    modals: List<ModalSpec>,
-    modalKey: String = "modal.host",
-    content: UiScope.() -> Unit
-) {
+fun UiScope.modalHost(modals: List<ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit) {
     ModalRuntime.onBuild(modalKey, modals)
     val hostNode = mount(ModalHostNode(modalKey))
     hostNode.onKeyDown = { event ->
@@ -47,10 +43,11 @@ fun UiScope.modalHost(
     modals.forEachIndexed { index, spec ->
         val isTopMost = index == modals.lastIndex
         val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
-        val backdropColor = when (spec.backdrop) {
-            BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
-            BackdropMode.False -> 0x00000000
-        }
+        val backdropColor =
+            when (spec.backdrop) {
+                BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
+                BackdropMode.False -> 0x00000000
+            }
         hostScope.div({
             key = "$modalKey.modal.${spec.key}.layer"
             onMouseDown = { event ->
@@ -91,27 +88,28 @@ fun UiScope.modalHost(
                 justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
                 padding { all((if (spec.centered) 6 else 10).px) }
             }
-
         }) {
             modalFrame(
                 spec = spec,
                 dialogKey = dialogKey,
-                scope = ModalScope(
-                    dismiss = spec.onHide,
-                    isTopMost = isTopMost,
-                    modalKey = spec.key
-                )
+                scope =
+                    ModalScope(
+                        dismiss = spec.onHide,
+                        isTopMost = isTopMost,
+                        modalKey = spec.key,
+                    ),
             )
         }
     }
 
     hostScope.div({
         key = "$modalKey.modal.lifecycle"
-        ref = RefTarget { handle ->
-            if (handle != null) {
-                ModalRuntime.onCommit(modalKey, modals)
+        ref =
+            RefTarget { handle ->
+                if (handle != null) {
+                    ModalRuntime.onCommit(modalKey, modals)
+                }
             }
-        }
         style = {
             width = 0.px
             height = 0.px
@@ -123,16 +121,17 @@ fun UiScope.modalHost(
 fun UiScope.modalFrame(
     spec: ModalSpec,
     dialogKey: String = "modal.dialog.${spec.key}",
-    scope: ModalScope = ModalScope(
-        dismiss = spec.onHide,
-        isTopMost = true,
-        modalKey = spec.key
-    )
+    scope: ModalScope =
+        ModalScope(
+            dismiss = spec.onHide,
+            isTopMost = true,
+            modalKey = spec.key,
+        ),
 ) {
     modalDialog(
         centered = spec.centered,
         size = spec.size,
-        modalKey = dialogKey
+        modalKey = dialogKey,
     ) {
         spec.content(this, scope)
     }
@@ -142,13 +141,14 @@ fun UiScope.modalDialog(
     centered: Boolean = false,
     size: ModalSize? = null,
     modalKey: Any? = null,
-    block: UiScope.() -> Unit
+    block: UiScope.() -> Unit,
 ) {
-    val presetWidth = when (size) {
-        ModalSize.Sm -> 132
-        ModalSize.Lg -> 232
-        null -> 184
-    }
+    val presetWidth =
+        when (size) {
+            ModalSize.Sm -> 132
+            ModalSize.Lg -> 232
+            null -> 184
+        }
     div({
         key = modalKey
         style = {
@@ -159,21 +159,24 @@ fun UiScope.modalDialog(
             gap = 0.px
             backgroundColor = 0xFF2F3A46.toInt()
             if (!centered) {
-                margin { top = 6.px; right = 0.px; bottom = 0.px; left = 0.px }
+                margin {
+                    top = 6.px
+                    right = 0.px
+                    bottom = 0.px
+                    left = 0.px
+                }
             }
-            border { width = 1.px; color = 0xFF6E7D8C.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6E7D8C.toInt()
+            }
         }
-
     }) {
         block()
     }
 }
 
-fun UiScope.modalHeader(
-    closeButton: Boolean = false,
-    onHide: (() -> Unit)? = null,
-    block: UiScope.() -> Unit = {}
-) {
+fun UiScope.modalHeader(closeButton: Boolean = false, onHide: (() -> Unit)? = null, block: UiScope.() -> Unit = {}) {
     div({
         key = "modal.header"
         style = {
@@ -204,10 +207,7 @@ fun UiScope.modalHeader(
     }
 }
 
-fun UiScope.modalTitle(
-    text: String,
-    modalTitleKey: Any? = null
-) {
+fun UiScope.modalTitle(text: String, modalTitleKey: Any? = null) {
     div({
         key = modalTitleKey
         style = {
@@ -220,10 +220,7 @@ fun UiScope.modalTitle(
     }
 }
 
-fun UiScope.modalBody(
-    modalBodyKey: Any? = null,
-    block: UiScope.() -> Unit
-) {
+fun UiScope.modalBody(modalBodyKey: Any? = null, block: UiScope.() -> Unit) {
     div({
         key = modalBodyKey
         style = {
@@ -238,10 +235,7 @@ fun UiScope.modalBody(
     }
 }
 
-fun UiScope.modalFooter(
-    modalFooterKey: Any? = null,
-    block: UiScope.() -> Unit
-) {
+fun UiScope.modalFooter(modalFooterKey: Any? = null, block: UiScope.() -> Unit) {
     div({
         key = modalFooterKey
         style = {
@@ -255,7 +249,6 @@ fun UiScope.modalFooter(
             justifyContent = JustifyContent.End
             alignItems = AlignItems.Center
         }
-
     }) {
         block()
     }
@@ -265,11 +258,11 @@ fun alertModal(
     modalKey: String,
     title: String,
     message: String,
-    onClose: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onClose: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onClose
+        onHide = onClose,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
@@ -283,7 +276,6 @@ fun alertModal(
             })
         }
     }
-}
 
 fun confirmModal(
     modalKey: String,
@@ -292,11 +284,11 @@ fun confirmModal(
     confirmText: String = "Confirm",
     cancelText: String = "Cancel",
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onCancel: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onCancel
+        onHide = onCancel,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
@@ -315,7 +307,6 @@ fun confirmModal(
             })
         }
     }
-}
 
 fun promptModal(
     modalKey: String,
@@ -325,24 +316,25 @@ fun promptModal(
     confirmText: String = "Apply",
     cancelText: String = "Cancel",
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onCancel: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onCancel
+        onHide = onCancel,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
         }
         modalBody {
             input(
-                InputType.Text(value = value, placeholder = "Enter value"), {
+                InputType.Text(value = value, placeholder = "Enter value"),
+                {
                     this.key = "modal.prompt.input.$key"
                     style = { width = 150.px }
                     onInput = { event ->
                         onValueInput(event.value)
                     }
-                }
+                },
             )
         }
         modalFooter {
@@ -354,7 +346,6 @@ fun promptModal(
             })
         }
     }
-}
 
 private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
     var node = target
@@ -364,4 +355,3 @@ private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
     }
     return false
 }
-

@@ -45,16 +45,14 @@ class SelectRuntimeOwnershipBridgeTests {
         assertTrue(SelectRuntime.systemEngine.isOpenFor(owner))
     }
 
-    private fun request(owner: Any, scope: OverlayOwnerScope): SelectOpenRequest {
-        return SelectOpenRequest(
+    private fun request(owner: Any, scope: OverlayOwnerScope): SelectOpenRequest =
+        SelectOpenRequest(
             owner = owner,
             modelToken = 1L,
             entries = listOf(SelectEntry.Option("a", labelProvider = { "Alpha" })),
             selectedId = "a",
             anchorRect = Rect(10, 10, 100, 20),
             closeOnSelect = true,
-            ownerScope = scope
+            ownerScope = scope,
         )
-    }
 }
-

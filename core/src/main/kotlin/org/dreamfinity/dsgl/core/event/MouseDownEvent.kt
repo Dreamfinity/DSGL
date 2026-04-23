@@ -6,7 +6,7 @@ package org.dreamfinity.dsgl.core.event
 data class MouseDownEvent(
     override var mouseX: Int,
     override var mouseY: Int,
-    var mouseButton: MouseButton
+    var mouseButton: MouseButton,
 ) : MouseEvent(mouseX, mouseY) {
     override val type: Events
         get() = Events.MOUSEDOWN

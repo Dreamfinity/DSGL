@@ -14,7 +14,7 @@ interface ElementHandle {
 }
 
 internal class NodeElementHandle(
-    node: DOMNode
+    node: DOMNode,
 ) : ElementHandle {
     private var nodeRef: DOMNode? = node
 

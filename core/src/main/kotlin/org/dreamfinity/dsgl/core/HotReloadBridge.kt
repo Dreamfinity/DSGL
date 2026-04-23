@@ -12,7 +12,5 @@ object HotReloadBridge {
     }
 
     @JvmStatic
-    fun consumeHotSwap(): Boolean {
-        return HOTSWAP_PENDING.getAndSet(false)
-    }
+    fun consumeHotSwap(): Boolean = HOTSWAP_PENDING.getAndSet(false)
 }

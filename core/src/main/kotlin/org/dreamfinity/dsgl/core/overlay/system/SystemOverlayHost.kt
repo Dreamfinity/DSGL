@@ -17,15 +17,15 @@ import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
-import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class SystemOverlayHost(
-    private val inspectorController: InspectorController
+    private val inspectorController: InspectorController,
 ) : OverlayLayerHost {
     override val layerId: UiLayerId = UiLayerId.SystemOverlay
 
@@ -34,37 +34,37 @@ class SystemOverlayHost(
     private val colorPickerEntry: ColorPickerOverlayEntry = ColorPickerOverlayEntry()
     private val colorPickerTransientEntry: SystemOverlayEntry = ColorPickerTransientOverlayEntry(colorPickerEntry)
     private val overlayPanelDemoEntry: OverlayPanelDemoOverlayEntry = OverlayPanelDemoOverlayEntry()
-    private val entryRegistry: SystemOverlayEntryRegistry = SystemOverlayEntryRegistry(
-        listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry)
-    )
+    private val entryRegistry: SystemOverlayEntryRegistry =
+        SystemOverlayEntryRegistry(
+            listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry),
+        )
     private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =
         SystemOverlayTransientOwnershipRegistry()
-    private val tree: DomTree = DomTree(
-        root = rootNode,
-        styleScope = StyleApplicationScope.SystemOverlay
-    )
-    private var frameContext: SystemOverlayFrameContext = SystemOverlayFrameContext(
-        inspectedRoot = null,
-        inspectedLayoutRevision = 0L,
-        cursorX = 0,
-        cursorY = 0,
-        inspectorPointerCaptured = false
-    )
+    private val tree: DomTree =
+        DomTree(
+            root = rootNode,
+            styleScope = StyleApplicationScope.SystemOverlay,
+        )
+    private var frameContext: SystemOverlayFrameContext =
+        SystemOverlayFrameContext(
+            inspectedRoot = null,
+            inspectedLayoutRevision = 0L,
+            cursorX = 0,
+            cursorY = 0,
+            inspectorPointerCaptured = false,
+        )
     private var knownViewportWidth: Int = 1
     private var knownViewportHeight: Int = 1
-    private val domInputRouter: LayerDomInputRouter = LayerDomInputRouter(
-        rootProvider = {
-            if (activeEntriesTopFirst().any { it.enablesDomInputFallbackRouting() }) rootNode else null
-        }
-    )
+    private val domInputRouter: LayerDomInputRouter =
+        LayerDomInputRouter(
+            rootProvider = {
+                if (activeEntriesTopFirst().any { it.enablesDomInputFallbackRouting() }) rootNode else null
+            },
+        )
 
-    fun systemInspectorColorPickerPopupHost(): InspectorColorPickerHost {
-        return colorPickerEntry
-    }
+    fun systemInspectorColorPickerPopupHost(): InspectorColorPickerHost = colorPickerEntry
 
-    fun isSystemColorPickerOpen(): Boolean {
-        return colorPickerEntry.isOpen()
-    }
+    fun isSystemColorPickerOpen(): Boolean = colorPickerEntry.isOpen()
 
     fun captureSystemColorPickerEyedropperSample() {
         colorPickerEntry.captureEyedropperSample()
@@ -74,9 +74,7 @@ class SystemOverlayHost(
         overlayPanelDemoEntry.toggle(anchorX, anchorY, knownViewportWidth, knownViewportHeight)
     }
 
-    fun isOverlayPanelDemoOpen(): Boolean {
-        return overlayPanelDemoEntry.isOpen()
-    }
+    fun isOverlayPanelDemoOpen(): Boolean = overlayPanelDemoEntry.isOpen()
 
     fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         knownViewportWidth = viewportWidth.coerceAtLeast(1)
@@ -92,15 +90,16 @@ class SystemOverlayHost(
         inspectedLayoutRevision: Long,
         cursorX: Int,
         cursorY: Int,
-        inspectorPointerCaptured: Boolean
+        inspectorPointerCaptured: Boolean,
     ) {
-        frameContext = SystemOverlayFrameContext(
-            inspectedRoot = inspectedRoot,
-            inspectedLayoutRevision = inspectedLayoutRevision,
-            cursorX = cursorX,
-            cursorY = cursorY,
-            inspectorPointerCaptured = inspectorPointerCaptured
-        )
+        frameContext =
+            SystemOverlayFrameContext(
+                inspectedRoot = inspectedRoot,
+                inspectedLayoutRevision = inspectedLayoutRevision,
+                cursorX = cursorX,
+                cursorY = cursorY,
+                inspectorPointerCaptured = inspectorPointerCaptured,
+            )
         rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)
         entryRegistry.allEntries().forEach { entry ->
             entry.sync(frameContext)
@@ -115,44 +114,37 @@ class SystemOverlayHost(
         tree.render(ctx, width, height)
     }
 
-    override fun paint(ctx: UiMeasureContext): List<RenderCommand> {
-        return tree.paint(ctx, applyStyles = true)
-    }
+    override fun paint(ctx: UiMeasureContext): List<RenderCommand> = tree.paint(ctx, applyStyles = true)
 
-    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
-        return dispatchManualThenDomFallback(
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
+        dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleMouseMove(mouseX, mouseY) } },
-            domFallbackDispatch = { domInputRouter.handleMouseMove(mouseX, mouseY) }
+            domFallbackDispatch = { domInputRouter.handleMouseMove(mouseX, mouseY) },
         )
-    }
 
-    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        return dispatchManualThenDomFallback(
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleMouseDown(mouseX, mouseY, button) } },
-            domFallbackDispatch = { domInputRouter.handleMouseDown(mouseX, mouseY, button) }
+            domFallbackDispatch = { domInputRouter.handleMouseDown(mouseX, mouseY, button) },
         )
-    }
 
-    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-        return dispatchManualThenDomFallback(
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleMouseUp(mouseX, mouseY, button) } },
-            domFallbackDispatch = { domInputRouter.handleMouseUp(mouseX, mouseY, button) }
+            domFallbackDispatch = { domInputRouter.handleMouseUp(mouseX, mouseY, button) },
         )
-    }
 
-    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
-        return dispatchManualThenDomFallback(
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleMouseWheel(mouseX, mouseY, delta) } },
-            domFallbackDispatch = { domInputRouter.handleMouseWheel(mouseX, mouseY, delta) }
+            domFallbackDispatch = { domInputRouter.handleMouseWheel(mouseX, mouseY, delta) },
         )
-    }
 
-    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        return dispatchManualThenDomFallback(
+    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
+        dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleKeyDown(keyCode, keyChar) } },
-            domFallbackDispatch = { domInputRouter.handleKeyDown(keyCode, keyChar) }
+            domFallbackDispatch = { domInputRouter.handleKeyDown(keyCode, keyChar) },
         )
-    }
 
     override fun clearRefs() {
         tree.clearRefs()
@@ -162,117 +154,97 @@ class SystemOverlayHost(
         domInputRouter.clear()
     }
 
-    internal fun debugEntryState(id: SystemOverlayEntryId): SystemOverlayEntryState? {
-        return entryRegistry.entry(id)?.state
-    }
+    internal fun debugEntryState(id: SystemOverlayEntryId): SystemOverlayEntryState? = entryRegistry.entry(id)?.state
 
-    internal fun debugEntryNode(id: SystemOverlayEntryId): DOMNode? {
-        return entryRegistry.entry(id)?.node
-    }
+    internal fun debugEntryNode(id: SystemOverlayEntryId): DOMNode? = entryRegistry.entry(id)?.node
 
-    internal fun debugRegisteredEntryIds(): List<SystemOverlayEntryId> {
-        return entryRegistry.allEntries().map { it.state.id }
-    }
+    internal fun debugRegisteredEntryIds(): List<SystemOverlayEntryId> = entryRegistry.allEntries().map { it.state.id }
 
     internal fun debugMountedEntryIds(): List<SystemOverlayEntryId> {
         val entriesByNode = entryRegistry.allEntries().associateBy { it.node }
-        val mountedNodes = buildList {
-            addAll(rootNode.mountedLaneNodes(SystemOverlayLane.PanelContent))
-            addAll(rootNode.mountedLaneNodes(SystemOverlayLane.Transient))
-        }
+        val mountedNodes =
+            buildList {
+                addAll(rootNode.mountedLaneNodes(SystemOverlayLane.PanelContent))
+                addAll(rootNode.mountedLaneNodes(SystemOverlayLane.Transient))
+            }
         return mountedNodes.mapNotNull { node ->
             entriesByNode[node]?.state?.id
         }
     }
 
-    internal fun resolveTransientSession(ownerToken: Any): SystemOverlayTransientSession {
-        return transientOwnershipRegistry.resolve(ownerToken)
-    }
+    internal fun resolveTransientSession(ownerToken: Any): SystemOverlayTransientSession =
+        transientOwnershipRegistry.resolve(ownerToken)
 
-    internal fun resolveTransientSession(ownerToken: Any, cursorX: Int, cursorY: Int): SystemOverlayTransientSession {
-        return transientOwnershipRegistry.resolve(ownerToken, cursorX, cursorY)
-    }
+    internal fun resolveTransientSession(ownerToken: Any, cursorX: Int, cursorY: Int): SystemOverlayTransientSession =
+        transientOwnershipRegistry.resolve(ownerToken, cursorX, cursorY)
 
-    internal fun releaseTransientSession(ownerToken: Any): Boolean {
-        return transientOwnershipRegistry.release(ownerToken)
-    }
+    internal fun releaseTransientSession(ownerToken: Any): Boolean = transientOwnershipRegistry.release(ownerToken)
 
-    internal fun debugTransientSessionCount(): Int {
-        return transientOwnershipRegistry.activeSessions().size
-    }
+    internal fun debugTransientSessionCount(): Int = transientOwnershipRegistry.activeSessions().size
 
-    internal fun debugSystemColorPickerHeaderRect(): Rect? {
-        return colorPickerEntry.debugHeaderRect()
-    }
+    internal fun debugSystemColorPickerHeaderRect(): Rect? = colorPickerEntry.debugHeaderRect()
 
-    internal fun debugSystemColorPickerCloseRect(): Rect? {
-        return colorPickerEntry.debugCloseRect()
-    }
+    internal fun debugSystemColorPickerCloseRect(): Rect? = colorPickerEntry.debugCloseRect()
 
-    internal fun debugSystemColorPickerBodyLayout(): ColorPickerLayout? {
-        return colorPickerEntry.debugBodyLayout()
-    }
+    internal fun debugSystemColorPickerBodyLayout(): ColorPickerLayout? = colorPickerEntry.debugBodyLayout()
 
-    internal fun debugSystemColorPickerState(): ColorPickerState? {
-        return colorPickerEntry.debugState()
-    }
+    internal fun debugSystemColorPickerState(): ColorPickerState? = colorPickerEntry.debugState()
 
-    internal fun debugSystemColorPickerPopupOwnerScope(): OverlayOwnerScope? {
-        return colorPickerEntry.debugOwnerScope()
-    }
+    internal fun debugSystemColorPickerPopupOwnerScope(): OverlayOwnerScope? = colorPickerEntry.debugOwnerScope()
 
-    internal fun debugRootBounds(): Rect {
-        return rootNode.bounds
-    }
+    internal fun debugRootBounds(): Rect = rootNode.bounds
 
     private fun reconcileMountedEntries() {
         val activeEntries = entryRegistry.allEntries().filter { it.state.active }
-        val panelNodes = activeEntries
-            .filter { it.state.lane == SystemOverlayLane.PanelContent }
-            .map { it.node }
-        val transientNodes = activeEntries
-            .filter { it.state.lane == SystemOverlayLane.Transient }
-            .map { it.node }
+        val panelNodes =
+            activeEntries
+                .filter { it.state.lane == SystemOverlayLane.PanelContent }
+                .map { it.node }
+        val transientNodes =
+            activeEntries
+                .filter { it.state.lane == SystemOverlayLane.Transient }
+                .map { it.node }
         rootNode.setLaneChildren(
             panelNodes = panelNodes,
-            transientNodes = transientNodes
+            transientNodes = transientNodes,
         )
     }
 
-    private fun activeEntriesTopFirst(): List<SystemOverlayEntry> {
-        return entryRegistry.allEntries()
+    private fun activeEntriesTopFirst(): List<SystemOverlayEntry> =
+        entryRegistry
+            .allEntries()
             .filter { it.state.active }
             .sortedWith(
                 compareBy<SystemOverlayEntry> { it.state.lane.zOrder }
-                    .thenBy { it.state.order }
-            )
-            .asReversed()
-    }
+                    .thenBy { it.state.order },
+            ).asReversed()
 
-    private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean {
-        return activeEntriesTopFirst()
+    private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean =
+        activeEntriesTopFirst()
             .asSequence()
             .filter { entry -> !entry.participatesInDomInput() }
             .any(handler)
-    }
 
     private class InspectorOverlayEntry(
-        private val inspectorController: InspectorController
+        private val inspectorController: InspectorController,
     ) : SystemOverlayEntry {
-        override val state: SystemOverlayEntryState = SystemOverlayEntryState(
-            id = SystemOverlayEntryId.Inspector,
-            order = 100,
-            lane = SystemOverlayLane.PanelContent
-        )
-        private val overlayPanel: OverlayPanel = OverlayPanel(
-            ownerId = state.id,
-            panelState = state.panelState,
-            dragSession = state.dragSession
-        )
-        override val node: SystemInspectorOverlayNode = SystemInspectorOverlayNode(
-            controller = inspectorController,
-            overlayPanel = overlayPanel
-        )
+        override val state: SystemOverlayEntryState =
+            SystemOverlayEntryState(
+                id = SystemOverlayEntryId.Inspector,
+                order = 100,
+                lane = SystemOverlayLane.PanelContent,
+            )
+        private val overlayPanel: OverlayPanel =
+            OverlayPanel(
+                ownerId = state.id,
+                panelState = state.panelState,
+                dragSession = state.dragSession,
+            )
+        override val node: SystemInspectorOverlayNode =
+            SystemInspectorOverlayNode(
+                controller = inspectorController,
+                overlayPanel = overlayPanel,
+            )
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
 
@@ -307,7 +279,7 @@ class SystemOverlayHost(
                     minWidth = 240,
                     minHeight = 160,
                     style = inspectorPanelStyle(),
-                    onClose = inspectorController::onPanelMinimizeTogglePressed
+                    onClose = inspectorController::onPanelMinimizeTogglePressed,
                 )
                 val panelRect = inspectorController.overlayExpandedPanelRect()
                 if (panelRect != null) {
@@ -323,7 +295,7 @@ class SystemOverlayHost(
                         mouseX = frame.cursorX,
                         mouseY = frame.cursorY,
                         viewportWidth = viewportWidth,
-                        viewportHeight = viewportHeight
+                        viewportHeight = viewportHeight,
                     ) { rect ->
                         inspectorController.onOverlayPanelRectChanged(rect, viewportWidth, viewportHeight)
                     }
@@ -337,23 +309,28 @@ class SystemOverlayHost(
         }
     }
 
-    private class ColorPickerOverlayEntry : SystemOverlayEntry, InspectorColorPickerHost {
-        override val state: SystemOverlayEntryState = SystemOverlayEntryState(
-            id = SystemOverlayEntryId.ColorPickerPopup,
-            order = 200,
-            lane = SystemOverlayLane.PanelContent
-        )
+    private class ColorPickerOverlayEntry :
+        SystemOverlayEntry,
+        InspectorColorPickerHost {
+        override val state: SystemOverlayEntryState =
+            SystemOverlayEntryState(
+                id = SystemOverlayEntryId.ColorPickerPopup,
+                order = 200,
+                lane = SystemOverlayLane.PanelContent,
+            )
         private val ownerToken: Any = Any()
         private val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-        private val overlayPanel: OverlayPanel = OverlayPanel(
-            ownerId = state.id,
-            panelState = state.panelState,
-            dragSession = state.dragSession
-        )
-        override val node: SystemColorPickerOverlayNode = SystemColorPickerOverlayNode(
-            popupEngine = popupEngine,
-            overlayPanel = overlayPanel
-        )
+        private val overlayPanel: OverlayPanel =
+            OverlayPanel(
+                ownerId = state.id,
+                panelState = state.panelState,
+                dragSession = state.dragSession,
+            )
+        override val node: SystemColorPickerOverlayNode =
+            SystemColorPickerOverlayNode(
+                popupEngine = popupEngine,
+                overlayPanel = overlayPanel,
+            )
         private val transientNode: SystemColorPickerTransientOverlayNode =
             SystemColorPickerTransientOverlayNode(popupEngine = popupEngine)
         private var draggable: Boolean = true
@@ -373,10 +350,12 @@ class SystemOverlayHost(
             overlayPanel.configure(
                 title = popupEngine.debugTitle(ownerToken) ?: "Color Picker",
                 draggable = draggable,
-                style = popupEngine.debugStyle(ownerToken)
-                    ?.let { toOverlayPanelStyle(it) }
-                    ?: OverlayPanelStyle(),
-                onClose = ::close
+                style =
+                    popupEngine
+                        .debugStyle(ownerToken)
+                        ?.let { toOverlayPanelStyle(it) }
+                        ?: OverlayPanelStyle(),
+                onClose = ::close,
             )
             val panelRect = popupEngine.debugPanelRect(ownerToken)
             if (panelRect != null) {
@@ -389,7 +368,7 @@ class SystemOverlayHost(
                     mouseX = frame.cursorX,
                     mouseY = frame.cursorY,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 ) { rect ->
                     popupEngine.forcePanelRect(ownerToken, rect)
                 }
@@ -412,7 +391,7 @@ class SystemOverlayHost(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 ) { rect ->
                     popupEngine.forcePanelRect(ownerToken, rect)
                 }
@@ -443,7 +422,7 @@ class SystemOverlayHost(
                     mouseY = mouseY,
                     button = button,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 ) { rect ->
                     popupEngine.forcePanelRect(ownerToken, rect)
                 }
@@ -485,7 +464,7 @@ class SystemOverlayHost(
             onPreview: ((RgbaColor) -> Unit)?,
             onChange: ((RgbaColor) -> Unit)?,
             onCommit: ((RgbaColor) -> Unit)?,
-            onClose: (() -> Unit)?
+            onClose: (() -> Unit)?,
         ) {
             this.draggable = draggable
             popupEngine.open(
@@ -502,8 +481,8 @@ class SystemOverlayHost(
                     onPreview = onPreview,
                     onChange = onChange,
                     onCommit = onCommit,
-                    onClose = onClose
-                )
+                    onClose = onClose,
+                ),
             )
         }
 
@@ -514,53 +493,39 @@ class SystemOverlayHost(
             state.active = false
         }
 
-        override fun isOpen(): Boolean {
-            return popupEngine.isOpenFor(ownerToken)
-        }
+        override fun isOpen(): Boolean = popupEngine.isOpenFor(ownerToken)
 
-        fun transientOverlayNode(): DOMNode {
-            return transientNode
-        }
+        fun transientOverlayNode(): DOMNode = transientNode
 
         fun isTransientActive(): Boolean {
             val controller = popupEngine.debugController(ownerToken) ?: return false
             return controller.viewModeDropdownOpen() || controller.isEyedropperActive()
         }
 
-        fun debugHeaderRect(): Rect? {
-            return overlayPanel.headerRect()
-        }
+        fun debugHeaderRect(): Rect? = overlayPanel.headerRect()
 
-        fun debugCloseRect(): Rect? {
-            return overlayPanel.closeRect()
-        }
+        fun debugCloseRect(): Rect? = overlayPanel.closeRect()
 
-        fun debugBodyLayout(): ColorPickerLayout? {
-            return popupEngine.debugBodyLayout(ownerToken)
-        }
+        fun debugBodyLayout(): ColorPickerLayout? = popupEngine.debugBodyLayout(ownerToken)
 
-        fun debugState(): ColorPickerState? {
-            return popupEngine.debugController(ownerToken)?.snapshot()
-        }
+        fun debugState(): ColorPickerState? = popupEngine.debugController(ownerToken)?.snapshot()
 
         fun captureEyedropperSample() {
             popupEngine.captureEyedropperSample()
         }
 
-        fun debugOwnerScope(): OverlayOwnerScope? {
-            return popupEngine.debugOwnerScope(ownerToken)
-        }
+        fun debugOwnerScope(): OverlayOwnerScope? = popupEngine.debugOwnerScope(ownerToken)
     }
 
-
     private class ColorPickerTransientOverlayEntry(
-        private val panelEntry: ColorPickerOverlayEntry
+        private val panelEntry: ColorPickerOverlayEntry,
     ) : SystemOverlayEntry {
-        override val state: SystemOverlayEntryState = SystemOverlayEntryState(
-            id = SystemOverlayEntryId.ColorPickerTransient,
-            order = 210,
-            lane = SystemOverlayLane.Transient
-        )
+        override val state: SystemOverlayEntryState =
+            SystemOverlayEntryState(
+                id = SystemOverlayEntryId.ColorPickerTransient,
+                order = 210,
+                lane = SystemOverlayLane.Transient,
+            )
         override val node: DOMNode = panelEntry.transientOverlayNode()
 
         override fun sync(frame: SystemOverlayFrameContext) {
@@ -569,16 +534,18 @@ class SystemOverlayHost(
     }
 
     private class OverlayPanelDemoOverlayEntry : SystemOverlayEntry {
-        override val state: SystemOverlayEntryState = SystemOverlayEntryState(
-            id = SystemOverlayEntryId.PanelDemo,
-            order = 300,
-            lane = SystemOverlayLane.PanelContent
-        )
-        private val overlayPanel: OverlayPanel = OverlayPanel(
-            ownerId = state.id,
-            panelState = state.panelState,
-            dragSession = state.dragSession
-        )
+        override val state: SystemOverlayEntryState =
+            SystemOverlayEntryState(
+                id = SystemOverlayEntryId.PanelDemo,
+                order = 300,
+                lane = SystemOverlayLane.PanelContent,
+            )
+        private val overlayPanel: OverlayPanel =
+            OverlayPanel(
+                ownerId = state.id,
+                panelState = state.panelState,
+                dragSession = state.dragSession,
+            )
         private val demoNode: SystemOverlayPanelDemoNode = SystemOverlayPanelDemoNode(overlayPanel)
         override val node: DOMNode = demoNode
         private var opened: Boolean = false
@@ -586,7 +553,12 @@ class SystemOverlayHost(
         private var viewportHeight: Int = 1
         private var buttonClicks: Int = 0
 
-        fun toggle(anchorX: Int, anchorY: Int, viewportWidth: Int, viewportHeight: Int) {
+        fun toggle(
+            anchorX: Int,
+            anchorY: Int,
+            viewportWidth: Int,
+            viewportHeight: Int,
+        ) {
             if (opened) {
                 close()
                 return
@@ -624,7 +596,7 @@ class SystemOverlayHost(
                 title = "Overlay PanelF",
                 draggable = true,
                 style = OverlayPanelStyle(fontSize = 16),
-                onClose = ::close
+                onClose = ::close,
             )
             overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
             demoNode.setButtonClicks(buttonClicks)
@@ -632,7 +604,7 @@ class SystemOverlayHost(
                 mouseX = frame.cursorX,
                 mouseY = frame.cursorY,
                 viewportWidth = viewportWidth,
-                viewportHeight = viewportHeight
+                viewportHeight = viewportHeight,
             ) { rect ->
                 state.panelState.updateFromRect(rect)
             }
@@ -649,7 +621,7 @@ class SystemOverlayHost(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 ) { rect ->
                     state.panelState.updateFromRect(rect)
                 }
@@ -685,7 +657,7 @@ class SystemOverlayHost(
                     mouseY = mouseY,
                     button = button,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 ) { rect ->
                     state.panelState.updateFromRect(rect)
                 }
@@ -698,8 +670,8 @@ class SystemOverlayHost(
     }
 
     private companion object {
-        private fun inspectorPanelStyle(): OverlayPanelStyle {
-            return OverlayPanelStyle(
+        private fun inspectorPanelStyle(): OverlayPanelStyle =
+            OverlayPanelStyle(
                 headerHeight = 52,
                 panelPadding = 6,
                 resizeHandleSize = 8,
@@ -712,12 +684,11 @@ class SystemOverlayHost(
                 closeButtonBorderColor = 0x775E738C,
                 textColor = 0xFFE6EDF6.toInt(),
                 fontSize = 24,
-                closeGlyph = "-"
+                closeGlyph = "-",
             )
-        }
 
-        private fun toOverlayPanelStyle(style: ColorPickerStyle): OverlayPanelStyle {
-            return OverlayPanelStyle(
+        private fun toOverlayPanelStyle(style: ColorPickerStyle): OverlayPanelStyle =
+            OverlayPanelStyle(
                 panelBackgroundColor = style.panelBackgroundColor,
                 panelBorderColor = style.panelBorderColor,
                 panelShadowColor = style.panelShadowColor,
@@ -726,8 +697,7 @@ class SystemOverlayHost(
                 closeButtonBackgroundColor = style.buttonBackgroundColor,
                 closeButtonBorderColor = style.inputBorderColor,
                 textColor = style.textColor,
-                fontSize = style.fontSize
+                fontSize = style.fontSize,
             )
-        }
     }
 }

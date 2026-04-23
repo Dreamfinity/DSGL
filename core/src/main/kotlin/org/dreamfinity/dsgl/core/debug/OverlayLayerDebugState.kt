@@ -12,7 +12,7 @@ data class OverlayLayerDebugSnapshot(
     val frameFps: Int,
     val frameTimeMs: Float,
     val frameFpsWindow: Int,
-    val frameTimeWindowMs: Float
+    val frameTimeWindowMs: Float,
 )
 
 object OverlayLayerDebugState {
@@ -24,6 +24,7 @@ object OverlayLayerDebugState {
 
     @Volatile
     var applicationOverlayRenderEnabled: Boolean = true
+
     @Volatile
     var applicationOverlayTintEnabled: Boolean = false
 
@@ -53,35 +54,33 @@ object OverlayLayerDebugState {
 
     val controlsEnabled: Boolean
         get() {
-            return controlsEnabledOverride ?: java.lang.Boolean.getBoolean("dsgl.overlay.controls")
+            return controlsEnabledOverride ?: java.lang.Boolean
+                .getBoolean("dsgl.overlay.controls")
         }
 
-    fun isRenderEnabled(layer: UiLayerId): Boolean {
-        return when (layer) {
+    fun isRenderEnabled(layer: UiLayerId): Boolean =
+        when (layer) {
             UiLayerId.ApplicationOverlay -> applicationOverlayRenderEnabled
             UiLayerId.SystemOverlay -> systemOverlayRenderEnabled
             UiLayerId.Debug -> true
             UiLayerId.ApplicationRoot -> true
         }
-    }
 
-    fun isTintEnabled(layer: UiLayerId): Boolean {
-        return when (layer) {
+    fun isTintEnabled(layer: UiLayerId): Boolean =
+        when (layer) {
             UiLayerId.ApplicationOverlay -> applicationOverlayTintEnabled
             UiLayerId.SystemOverlay -> systemOverlayTintEnabled
             UiLayerId.Debug -> true
             UiLayerId.ApplicationRoot -> true
         }
-    }
 
-    fun isInputEnabled(layer: UiLayerId): Boolean {
-        return when (layer) {
+    fun isInputEnabled(layer: UiLayerId): Boolean =
+        when (layer) {
             UiLayerId.ApplicationOverlay -> applicationOverlayInputEnabled
             UiLayerId.SystemOverlay -> systemOverlayInputEnabled
             UiLayerId.Debug -> true
             UiLayerId.ApplicationRoot -> true
         }
-    }
 
     fun resetAll() {
         applicationOverlayRenderEnabled = true
@@ -97,14 +96,19 @@ object OverlayLayerDebugState {
         frameTimeWindowWriteIndex = 0
         frameTimeWindowCount = 0
         frameTimeWindowSumSeconds = 0.0
-        java.util.Arrays.fill(frameTimeWindowSeconds, 0.0)
+        java.util.Arrays
+            .fill(frameTimeWindowSeconds, 0.0)
     }
 
     @Synchronized
     fun updateFrameTiming(dtSeconds: Double) {
         val safeDt = dtSeconds.coerceAtLeast(1.0 / 1000.0)
         frameTimeMs = (safeDt * 1000.0).toFloat()
-        frameFps = kotlin.math.round(1.0 / safeDt).toInt().coerceAtLeast(0)
+        frameFps =
+            kotlin.math
+                .round(1.0 / safeDt)
+                .toInt()
+                .coerceAtLeast(0)
 
         if (frameTimeWindowCount == FRAME_TIMING_WINDOW_SIZE) {
             frameTimeWindowSumSeconds -= frameTimeWindowSeconds[frameTimeWindowWriteIndex]
@@ -115,17 +119,22 @@ object OverlayLayerDebugState {
         frameTimeWindowSumSeconds += safeDt
         frameTimeWindowWriteIndex = (frameTimeWindowWriteIndex + 1) % FRAME_TIMING_WINDOW_SIZE
 
-        val averageDt = if (frameTimeWindowCount > 0) {
-            frameTimeWindowSumSeconds / frameTimeWindowCount.toDouble()
-        } else {
-            safeDt
-        }
+        val averageDt =
+            if (frameTimeWindowCount > 0) {
+                frameTimeWindowSumSeconds / frameTimeWindowCount.toDouble()
+            } else {
+                safeDt
+            }
         frameTimeWindowMs = (averageDt * 1000.0).toFloat()
-        frameFpsWindow = kotlin.math.round(1.0 / averageDt).toInt().coerceAtLeast(0)
+        frameFpsWindow =
+            kotlin.math
+                .round(1.0 / averageDt)
+                .toInt()
+                .coerceAtLeast(0)
     }
 
-    fun snapshot(): OverlayLayerDebugSnapshot {
-        return OverlayLayerDebugSnapshot(
+    fun snapshot(): OverlayLayerDebugSnapshot =
+        OverlayLayerDebugSnapshot(
             applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
             applicationOverlayTintEnabled = applicationOverlayTintEnabled,
             applicationOverlayInputEnabled = applicationOverlayInputEnabled,
@@ -135,9 +144,8 @@ object OverlayLayerDebugState {
             frameFps = frameFps,
             frameTimeMs = frameTimeMs,
             frameFpsWindow = frameFpsWindow,
-            frameTimeWindowMs = frameTimeWindowMs
+            frameTimeWindowMs = frameTimeWindowMs,
         )
-    }
 
     private var controlsEnabledOverride: Boolean? = null
 

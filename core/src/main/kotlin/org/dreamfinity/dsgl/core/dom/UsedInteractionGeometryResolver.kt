@@ -8,13 +8,13 @@ internal data class UsedInteractionProjection(
     val worldTransform: AffineTransform2D,
     val childInputClipRect: Rect?,
     val canTraverseChildren: Boolean,
-    val selfContainsPoint: Boolean
+    val selfContainsPoint: Boolean,
 )
 
 internal data class UsedInteractionNodeGeometry(
     val usedBorderRect: Rect,
     val usedClipRect: Rect?,
-    val visibleBorderRect: Rect?
+    val visibleBorderRect: Rect?,
 )
 
 internal object UsedInteractionGeometryResolver {
@@ -23,7 +23,7 @@ internal object UsedInteractionGeometryResolver {
         mouseX: Int,
         mouseY: Int,
         parentTransform: AffineTransform2D,
-        parentInputClipRect: Rect?
+        parentInputClipRect: Rect?,
     ): UsedInteractionProjection? {
         val worldTransform = parentTransform.times(node.localTransformMatrix())
         val inverse = worldTransform.inverseOrNull() ?: return null
@@ -42,38 +42,33 @@ internal object UsedInteractionGeometryResolver {
             worldTransform = worldTransform,
             childInputClipRect = childInputClipRect,
             canTraverseChildren = canTraverseChildren,
-            selfContainsPoint = selfContainsPoint
+            selfContainsPoint = selfContainsPoint,
         )
     }
 
-    fun orderedChildrenForHitTraversal(node: DOMNode): List<DOMNode> {
-        return node.orderedChildrenForHitTestingTraversal()
-    }
+    fun orderedChildrenForHitTraversal(node: DOMNode): List<DOMNode> = node.orderedChildrenForHitTestingTraversal()
 
     fun resolveNodeGeometry(node: DOMNode): UsedInteractionNodeGeometry {
         val usedClipRect = resolveNodeSelfInputClipRect(node)
         val usedBorderRect = resolveUsedBorderRect(node)
-        val visibleBorderRect = when (usedClipRect) {
-            null -> usedBorderRect
-            else -> usedBorderRect.intersection(usedClipRect)
-        }
+        val visibleBorderRect =
+            when (usedClipRect) {
+                null -> usedBorderRect
+                else -> usedBorderRect.intersection(usedClipRect)
+            }
         return UsedInteractionNodeGeometry(
             usedBorderRect = usedBorderRect,
             usedClipRect = usedClipRect,
-            visibleBorderRect = visibleBorderRect
+            visibleBorderRect = visibleBorderRect,
         )
     }
 
-    private fun resolveSelfInputClipRect(
-        node: DOMNode,
-        parentInputClipRect: Rect?
-    ): Rect? {
-        return if (node.position == PositionMode.Fixed) {
+    private fun resolveSelfInputClipRect(node: DOMNode, parentInputClipRect: Rect?): Rect? =
+        if (node.position == PositionMode.Fixed) {
             node.fixedViewportClipRectForPromotedParticipation()
         } else {
             parentInputClipRect
         }
-    }
 
     private fun resolveNodeSelfInputClipRect(node: DOMNode): Rect? {
         val chain = ArrayList<DOMNode>(8)
@@ -109,10 +104,24 @@ internal object UsedInteractionGeometryResolver {
         val minY = minOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
         val maxY = maxOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
 
-        val x = kotlin.math.floor(minX.toDouble()).toInt()
-        val y = kotlin.math.floor(minY.toDouble()).toInt()
-        val width = kotlin.math.ceil((maxX - minX).toDouble()).toInt().coerceAtLeast(0)
-        val height = kotlin.math.ceil((maxY - minY).toDouble()).toInt().coerceAtLeast(0)
+        val x =
+            kotlin.math
+                .floor(minX.toDouble())
+                .toInt()
+        val y =
+            kotlin.math
+                .floor(minY.toDouble())
+                .toInt()
+        val width =
+            kotlin.math
+                .ceil((maxX - minX).toDouble())
+                .toInt()
+                .coerceAtLeast(0)
+        val height =
+            kotlin.math
+                .ceil((maxY - minY).toDouble())
+                .toInt()
+                .coerceAtLeast(0)
         return Rect(x, y, width, height)
     }
 }

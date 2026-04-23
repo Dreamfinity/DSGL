@@ -8,16 +8,14 @@ class PasswordInputNode(
     placeholder: String = "",
     minLength: Int? = null,
     maxLength: Int? = null,
-    key: Any? = null
+    key: Any? = null,
 ) : SingleLineInputNode(text, placeholder, key) {
     init {
         this.minLength = minLength
         this.maxLength = maxLength
     }
 
-    override fun displayText(): String {
-        return if (text.isEmpty()) "" else "*".repeat(text.length)
-    }
+    override fun displayText(): String = if (text.isEmpty()) "" else "*".repeat(text.length)
 
     override fun allowClipboardCopy(): Boolean = false
 

@@ -74,11 +74,10 @@ class UseContextTests {
     private class DefaultOnlyContextWindow : DsglWindow() {
         var lastSeen: String? = null
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 lastSeen = useContext(ThemeContext)
             }
-        }
     }
 
     private class NestedProviderWindow : DsglWindow() {
@@ -86,8 +85,8 @@ class UseContextTests {
         var innerSeen: String? = null
         var afterNestedSeen: String? = null
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 provideContext(ThemeContext, "Outer") {
                     outerSeen = useContext(ThemeContext)
                     provideContext(ThemeContext, "Inner") {
@@ -96,15 +95,14 @@ class UseContextTests {
                     afterNestedSeen = useContext(ThemeContext)
                 }
             }
-        }
     }
 
     private class ProviderValueChangeWindow : DsglWindow() {
         var pendingProviderValue: String? = null
         var lastSeen: String? = null
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 var providerValue by useState("Light")
                 pendingProviderValue?.let { next ->
                     providerValue = next
@@ -114,15 +112,14 @@ class UseContextTests {
                     lastSeen = useContext(ThemeContext)
                 }
             }
-        }
     }
 
     private class ConditionalProviderWindow : DsglWindow() {
         var showProvider: Boolean = true
         var lastSeen: String? = null
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 if (showProvider) {
                     provideContext(ThemeContext, "Provided") {
                         lastSeen = useContext(ThemeContext)
@@ -131,6 +128,5 @@ class UseContextTests {
                     lastSeen = useContext(ThemeContext)
                 }
             }
-        }
     }
 }

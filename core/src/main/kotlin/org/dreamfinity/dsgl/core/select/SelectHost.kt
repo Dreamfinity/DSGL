@@ -5,9 +5,13 @@ import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 
 interface SelectHost {
     fun open(request: SelectOpenRequest)
+
     fun close(owner: Any)
+
     fun closeAll()
+
     fun isOpenFor(owner: Any): Boolean
+
     fun isOpen(): Boolean
 }
 

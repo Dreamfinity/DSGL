@@ -8,13 +8,13 @@ data class PopupPlacementRequest(
     val popupSize: Size,
     val viewport: Rect,
     val padding: Int = 6,
-    val horizontalFlipX: Int? = null
+    val horizontalFlipX: Int? = null,
 )
 
 data class PopupPlacementResult(
     val rect: Rect,
     val flippedHorizontally: Boolean,
-    val clampedVertically: Boolean
+    val clampedVertically: Boolean,
 )
 
 object PopupPlacement {
@@ -25,8 +25,12 @@ object PopupPlacement {
         val maxY = request.viewport.y + request.viewport.height - request.padding
         val widthLimit = (maxX - minX).coerceAtLeast(1)
         val heightLimit = (maxY - minY).coerceAtLeast(1)
-        val resolvedWidth = request.popupSize.width.coerceIn(1, widthLimit)
-        val resolvedHeight = request.popupSize.height.coerceIn(1, heightLimit)
+        val resolvedWidth =
+            request.popupSize.width
+                .coerceIn(1, widthLimit)
+        val resolvedHeight =
+            request.popupSize.height
+                .coerceIn(1, heightLimit)
         val maxPanelX = (maxX - resolvedWidth).coerceAtLeast(minX)
         val maxPanelY = (maxY - resolvedHeight).coerceAtLeast(minY)
 
@@ -54,7 +58,7 @@ object PopupPlacement {
         return PopupPlacementResult(
             rect = Rect(x, clampedY, resolvedWidth, resolvedHeight),
             flippedHorizontally = flipped,
-            clampedVertically = verticallyClamped
+            clampedVertically = verticallyClamped,
         )
     }
 }

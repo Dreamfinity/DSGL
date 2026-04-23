@@ -3,55 +3,60 @@
 import kotlinx.serialization.json.Json
 
 object MsdfFontMetaParser {
-    val json: Json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        explicitNulls = false
-    }
+    val json: Json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            explicitNulls = false
+        }
 
     fun parse(rawJson: String): MsdfFontMeta {
         val parsed = json.decodeFromString<MsdfMetaJson>(rawJson)
         validate(parsed)
 
-        val atlas = MsdfAtlasInfo(
-            type = parsed.atlas.type,
-            distanceRange = parsed.atlas.distanceRange,
-            size = parsed.atlas.size,
-            width = parsed.atlas.width,
-            height = parsed.atlas.height,
-            yOrigin = parsed.atlas.yOrigin
-        )
+        val atlas =
+            MsdfAtlasInfo(
+                type = parsed.atlas.type,
+                distanceRange = parsed.atlas.distanceRange,
+                size = parsed.atlas.size,
+                width = parsed.atlas.width,
+                height = parsed.atlas.height,
+                yOrigin = parsed.atlas.yOrigin,
+            )
 
-        val metrics = MsdfMetrics(
-            emSize = parsed.metrics.emSize,
-            lineHeight = parsed.metrics.lineHeight,
-            ascender = parsed.metrics.ascender,
-            descender = parsed.metrics.descender,
-            underlineY = parsed.metrics.underlineY,
-            underlineThickness = parsed.metrics.underlineThickness
-        )
+        val metrics =
+            MsdfMetrics(
+                emSize = parsed.metrics.emSize,
+                lineHeight = parsed.metrics.lineHeight,
+                ascender = parsed.metrics.ascender,
+                descender = parsed.metrics.descender,
+                underlineY = parsed.metrics.underlineY,
+                underlineThickness = parsed.metrics.underlineThickness,
+            )
 
         val anyExplicitGlyphIndex = parsed.glyphs.any { it.glyphIndex >= 0 }
         val glyphsByIndex = linkedMapOf<Int, MsdfGlyph>()
         val glyphsByCodepoint = linkedMapOf<Int, MsdfGlyph>()
 
         parsed.glyphs.forEachIndexed { listIndex, glyph ->
-            val resolvedGlyphIndex = when {
-                glyph.glyphIndex >= 0 -> glyph.glyphIndex
-                !anyExplicitGlyphIndex -> listIndex
-                else -> throw IllegalArgumentException(
-                    "Glyph metadata has mixed explicit/implicit glyph indices. " +
-                        "Provide a stable glyph index field for every glyph entry."
-                )
-            }
+            val resolvedGlyphIndex =
+                when {
+                    glyph.glyphIndex >= 0 -> glyph.glyphIndex
+                    !anyExplicitGlyphIndex -> listIndex
+                    else -> throw IllegalArgumentException(
+                        "Glyph metadata has mixed explicit/implicit glyph indices. " +
+                            "Provide a stable glyph index field for every glyph entry.",
+                    )
+                }
 
-            val runtimeGlyph = MsdfGlyph(
-                glyphIndex = resolvedGlyphIndex,
-                codepoint = glyph.unicodeCodepoint,
-                advance = glyph.advance,
-                planeBounds = glyph.planeBounds?.toRuntime(),
-                atlasBounds = glyph.atlasBounds?.toRuntime()
-            )
+            val runtimeGlyph =
+                MsdfGlyph(
+                    glyphIndex = resolvedGlyphIndex,
+                    codepoint = glyph.unicodeCodepoint,
+                    advance = glyph.advance,
+                    planeBounds = glyph.planeBounds?.toRuntime(),
+                    atlasBounds = glyph.atlasBounds?.toRuntime(),
+                )
 
             val previous = glyphsByIndex.putIfAbsent(resolvedGlyphIndex, runtimeGlyph)
             if (previous != null) {
@@ -78,16 +83,18 @@ object MsdfFontMetaParser {
             }
         }
 
-        val replacementCodepoint = when {
-            glyphsByCodepoint.containsKey(0xFFFD) -> 0xFFFD
-            glyphsByCodepoint.containsKey('?'.code) -> '?'.code
-            else -> glyphsByCodepoint.keys.firstOrNull()
-        }
-        val replacementGlyphIndex = when {
-            replacementCodepoint != null -> glyphsByCodepoint[replacementCodepoint]?.glyphIndex
-            glyphsByIndex.containsKey(0) -> 0
-            else -> glyphsByIndex.keys.firstOrNull()
-        }
+        val replacementCodepoint =
+            when {
+                glyphsByCodepoint.containsKey(0xFFFD) -> 0xFFFD
+                glyphsByCodepoint.containsKey('?'.code) -> '?'.code
+                else -> glyphsByCodepoint.keys.firstOrNull()
+            }
+        val replacementGlyphIndex =
+            when {
+                replacementCodepoint != null -> glyphsByCodepoint[replacementCodepoint]?.glyphIndex
+                glyphsByIndex.containsKey(0) -> 0
+                else -> glyphsByIndex.keys.firstOrNull()
+            }
 
         return MsdfFontMeta(
             atlas = atlas,
@@ -97,7 +104,7 @@ object MsdfFontMetaParser {
             kerningPairsByIndex = kerningByIndex,
             kerningPairsByCodepoint = kerningByCodepoint,
             replacementGlyphIndex = replacementGlyphIndex,
-            replacementCodepoint = replacementCodepoint
+            replacementCodepoint = replacementCodepoint,
         )
     }
 
@@ -113,22 +120,19 @@ object MsdfFontMetaParser {
         }
     }
 
-    private fun MsdfPlaneBoundsJson.toRuntime(): MsdfPlaneBounds {
-        return MsdfPlaneBounds(
+    private fun MsdfPlaneBoundsJson.toRuntime(): MsdfPlaneBounds =
+        MsdfPlaneBounds(
             left = left,
             bottom = bottom,
             right = right,
-            top = top
+            top = top,
         )
-    }
 
-    private fun MsdfAtlasBoundsJson.toRuntime(): MsdfAtlasBounds {
-        return MsdfAtlasBounds(
+    private fun MsdfAtlasBoundsJson.toRuntime(): MsdfAtlasBounds =
+        MsdfAtlasBounds(
             left = left,
             bottom = bottom,
             right = right,
-            top = top
+            top = top,
         )
-    }
 }
-

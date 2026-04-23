@@ -14,7 +14,7 @@ interface State<T> {
  */
 class MutableState<T>(
     initial: T,
-    private val onChange: () -> Unit = {}
+    private val onChange: () -> Unit = {},
 ) : State<T> {
     private var _value: T = initial
 
@@ -34,6 +34,4 @@ class MutableState<T>(
 }
 
 /** Creates mutable state with an optional change callback. */
-fun <T> mutableStateOf(initial: T, onChange: () -> Unit = {}): MutableState<T> {
-    return MutableState(initial, onChange)
-}
+fun <T> mutableStateOf(initial: T, onChange: () -> Unit = {}): MutableState<T> = MutableState(initial, onChange)

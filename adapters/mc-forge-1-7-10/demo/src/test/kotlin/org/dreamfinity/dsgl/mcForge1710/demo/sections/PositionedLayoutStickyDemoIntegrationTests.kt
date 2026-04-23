@@ -26,11 +26,14 @@ class PositionedLayoutStickyDemoIntegrationTests {
     private val width = 1024
     private val height = 720
 
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -94,7 +97,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         val topViewport = topScroller.scrollContainerState().viewportRect
         assertTrue(
             intersects(topRect, topViewport),
-            "Sticky top target must remain visible in its scroller viewport; targetRect=$topRect viewport=$topViewport"
+            "Sticky top target must remain visible in its scroller viewport; targetRect=$topRect viewport=$topViewport",
         )
 
         val topPoint = findPointInsideTarget(fixture.tree.root, topTarget, topRect)
@@ -104,7 +107,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         assertNotNull(
             topPoint,
             "Expected a hover-resolvable point inside sticky top target. " +
-                "targetRect=$topRect viewport=$topViewport centerWinner=$topCenterWinner"
+                "targetRect=$topRect viewport=$topViewport centerWinner=$topCenterWinner",
         )
         assertEquals(topTarget, collectHoverChain(fixture.tree.root, topPoint.first, topPoint.second).lastOrNull())
 
@@ -133,7 +136,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
             "onNativeDomExpandedPanelRect",
             Rect(700, 30, 280, 260),
             width,
-            height
+            height,
         )
         inspector.onCursorMoved(xyPoint.first, xyPoint.second)
         invokeInspectorInternalByName(inspector, "buildDomSnapshot", width, height)
@@ -146,22 +149,23 @@ class PositionedLayoutStickyDemoIntegrationTests {
 
     private data class Fixture(
         val window: ShowcaseWindow,
-        val tree: DomTree
+        val tree: DomTree,
     )
+
     private fun renderFixture(): Fixture {
         val window = ShowcaseWindow()
         window.onResize(width, height)
         window.selectedSection = DemoSection.POSITIONED_LAYOUT
         window.beginRenderBuild()
-        val tree = try {
-            window.render()
-        } finally {
-            window.endRenderBuild()
-        }
+        val tree =
+            try {
+                window.render()
+            } finally {
+                window.endRenderBuild()
+            }
         tree.render(ctx, width, height)
         return Fixture(window = window, tree = tree)
     }
-
 
     private fun scrollMainSectionToSticky(fixture: Fixture) {
         val sectionScroller = requireContainer(fixture.tree.root, "section.positionedLayout")
@@ -176,14 +180,11 @@ class PositionedLayoutStickyDemoIntegrationTests {
         fixture.tree.render(ctx, width, height)
     }
 
-    private fun requireContainer(root: DOMNode, key: String): ContainerNode {
-        return requireNode(root, key) as? ContainerNode
+    private fun requireContainer(root: DOMNode, key: String): ContainerNode =
+        requireNode(root, key) as? ContainerNode
             ?: error("Expected container with key '$key'")
-    }
 
-    private fun requireNode(root: DOMNode, key: String): DOMNode {
-        return findByKey(root, key) ?: error("Node with key '$key' not found")
-    }
+    private fun requireNode(root: DOMNode, key: String): DOMNode = findByKey(root, key) ?: error("Node with key '$key' not found")
 
     private fun findByKey(root: DOMNode, key: String): DOMNode? {
         if (root.key?.toString() == key) return root
@@ -236,9 +237,11 @@ class PositionedLayoutStickyDemoIntegrationTests {
         }
     }
 
-    private fun hoverWinnerKey(root: DOMNode, x: Int, y: Int): String? {
-        return collectHoverChain(root, x, y).lastOrNull()?.key?.toString()
-    }
+    private fun hoverWinnerKey(root: DOMNode, x: Int, y: Int): String? =
+        collectHoverChain(root, x, y)
+            .lastOrNull()
+            ?.key
+            ?.toString()
 
     private fun intersects(a: Rect, b: Rect): Boolean {
         val noOverlapX = a.x + a.width <= b.x || b.x + b.width <= a.x
@@ -255,11 +258,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
         return borderRectField.get(snapshot) as? Rect
     }
 
-    private fun invokeInspectorInternalByName(
-        inspector: InspectorController,
-        methodName: String,
-        vararg args: Any?
-    ): Any? {
+    private fun invokeInspectorInternalByName(inspector: InspectorController, methodName: String, vararg args: Any?): Any? {
         val method = findMethodByNameAndArity(inspector.javaClass, methodName, args.size)
         method.isAccessible = true
         return method.invoke(inspector, *args)
@@ -275,32 +274,26 @@ class PositionedLayoutStickyDemoIntegrationTests {
         error("Field '$fieldName' not found on ${clazz.name}")
     }
 
-    private fun findMethod(
-        clazz: Class<*>,
-        methodName: String,
-        parameterTypes: Array<Class<*>>
-    ): Method {
+    private fun findMethod(clazz: Class<*>, methodName: String, parameterTypes: Array<Class<*>>): Method {
         var current: Class<*>? = clazz
         while (current != null) {
-            val method = current.declaredMethods.firstOrNull {
-                it.name == methodName && it.parameterTypes.contentEquals(parameterTypes)
-            }
+            val method =
+                current.declaredMethods.firstOrNull {
+                    it.name == methodName && it.parameterTypes.contentEquals(parameterTypes)
+                }
             if (method != null) return method
             current = current.superclass
         }
         error("Method '$methodName' not found on ${clazz.name}")
     }
 
-    private fun findMethodByNameAndArity(
-        clazz: Class<*>,
-        methodName: String,
-        arity: Int
-    ): Method {
+    private fun findMethodByNameAndArity(clazz: Class<*>, methodName: String, arity: Int): Method {
         var current: Class<*>? = clazz
         while (current != null) {
-            val method = current.declaredMethods.firstOrNull {
-                (it.name == methodName || it.name.startsWith("$methodName$")) && it.parameterCount == arity
-            }
+            val method =
+                current.declaredMethods.firstOrNull {
+                    (it.name == methodName || it.name.startsWith("$methodName$")) && it.parameterCount == arity
+                }
             if (method != null) return method
             current = current.superclass
         }

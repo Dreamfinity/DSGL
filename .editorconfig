@@ -1,0 +1,45 @@
+root = true
+
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+tab_width = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+
+[*.md]
+trim_trailing_whitespace = false
+
+
+[*.{yml,yaml,toml,json}]
+indent_size = 2
+
+
+[*.{kt,kts}]
+max_line_length = 120
+ktlint_code_style = ktlint_official
+ktlint_experimental = disabled
+ij_kotlin_imports_layout = *,java.**,javax.**,kotlin.**,^
+ij_kotlin_packages_to_use_import_on_demand = org.dreamfinity.dsgl.core.animation.*,org.dreamfinity.dsgl.core.colorpicker.*,org.dreamfinity.dsgl.core.dnd.*,org.dreamfinity.dsgl.core.dom.elements.*,org.dreamfinity.dsgl.core.dom.elements.support.*,org.dreamfinity.dsgl.core.dom.layout.*,org.dreamfinity.dsgl.core.dsl.*,org.dreamfinity.dsgl.core.event.*,org.dreamfinity.dsgl.core.font.*,org.dreamfinity.dsgl.core.inspector.*,org.dreamfinity.dsgl.core.style.*,org.dreamfinity.dsgl.core.text.*,org.lwjgl.opengl.*
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+ij_kotlin_indent_before_arrow_on_new_line = false
+ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4
+ktlint_function_signature_body_expression_wrapping = multiline
+ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 1
+ktlint_chain_method_rule_force_multiline_when_chain_operator_count_greater_or_equal_than = 3
+ktlint_function_naming_ignore_when_annotated_with = Composable,DsglDsl
+ktlint_ignore_back_ticked_identifier = true
+ktlint_standard_multiline-expression-wrapping = enabled
+ij_formatter_tags_enabled = true
+ij_formatter_off_tag = @formatter:off
+ij_formatter_on_tag = @formatter:on
+
+[**/src/test/kotlin/**/*.kt]
+max_line_length = 160
+ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 4
+ij_kotlin_packages_to_use_import_on_demand = kotlin.test.*,org.dreamfinity.dsgl.core.colorpicker.*,org.dreamfinity.dsgl.core.dnd.*,org.dreamfinity.dsgl.core.event.*

@@ -1,22 +1,22 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 fun UiScope.focusRebuildSection(
     renderPasses: Int,
     onManualInvalidate: (String) -> Unit,
     onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
+    onLogHook: (String, Event, String?) -> Unit,
 ) {
     var focusStableValue by useState("")
     var focusUnstableValue by useState("")
@@ -32,14 +32,15 @@ fun UiScope.focusRebuildSection(
         onManualInvalidate(reason)
     }
 
-    div({
-        key = "section.focusRebuild"
-        style = {
-            gap = 4.px
-            display = Display.Flex
-            flexDirection = FlexDirection.Column
-        }
-    }
+    div(
+        {
+            key = "section.focusRebuild"
+            style = {
+                gap = 4.px
+                display = Display.Flex
+                flexDirection = FlexDirection.Column
+            }
+        },
     ) {
         text("Stable key focus test: focus first field, press Enter to rebuild, keep typing.")
         text("Unstable key field changes key version and demonstrates focus/key instability.", {
@@ -48,17 +49,17 @@ fun UiScope.focusRebuildSection(
 
         text(
             "renderPasses=$renderPasses autoState=$autoRebuildCounter manualInvalidates=$manualInvalidateCount",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
         text(
             "stableEnterRebuilds=$focusStableEnterRebuilds unstableKeyVersion=$focusKeyVersion",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         input(
             InputType.Text(
                 value = focusStableValue,
-                placeholder = "Stable key input (press Enter to rebuild)"
+                placeholder = "Stable key input (press Enter to rebuild)",
             ),
             {
                 key = "focus.stable.input"
@@ -76,13 +77,13 @@ fun UiScope.focusRebuildSection(
                 onKeyUp = { event ->
                     onLogHook("focus.stable.onKeyUp", event, null)
                 }
-            }
+            },
         )
 
         input(
             InputType.Text(
                 value = focusUnstableValue,
-                placeholder = "Unstable key input"
+                placeholder = "Unstable key input",
             ),
             {
                 key = "focus.unstable.input.$focusKeyVersion"
@@ -91,7 +92,7 @@ fun UiScope.focusRebuildSection(
                     focusUnstableValue = applyTextMutation(focusUnstableValue, event, maxLength = 28)
                     onLogHook("focus.unstable.onKeyDown", event, null)
                 }
-            }
+            },
         )
 
         div({
@@ -131,7 +132,7 @@ fun UiScope.focusRebuildSection(
             })
             text(
                 "lastManualReason=$lastManualReason",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
     }
@@ -141,7 +142,7 @@ private fun applyTextMutation(
     current: String,
     event: KeyboardKeyDownEvent,
     allowedChars: String? = null,
-    maxLength: Int? = null
+    maxLength: Int? = null,
 ): String {
     if (event.keyCode == KeyCodes.BACKSPACE) {
         if (current.isEmpty()) return current
@@ -156,4 +157,3 @@ private fun applyTextMutation(
     if (maxLength != null && next.length > maxLength) return current
     return next
 }
-

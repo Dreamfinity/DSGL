@@ -21,11 +21,14 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
 
 class InspectorDragScrollDomMigrationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -52,7 +55,12 @@ class InspectorDragScrollDomMigrationTests {
 
         assertFalse(fixture.inspector.isDraggingPanel)
         assertFalse(fixture.inspector.isPointerCaptured)
-        assertTrue(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertTrue(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
 
         assertTrue(fixture.host.handleMouseMove(moveX, moveY))
         syncAndRender(fixture, moveX, moveY)
@@ -64,7 +72,12 @@ class InspectorDragScrollDomMigrationTests {
 
         assertFalse(fixture.inspector.isDraggingPanel)
         assertFalse(fixture.inspector.isPointerCaptured)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
     }
 
     @Test
@@ -84,7 +97,7 @@ class InspectorDragScrollDomMigrationTests {
         val afterDomDrag = fixture.inspector.overlayPanelRect() ?: error("expected moved panel rect")
         assertTrue(
             afterDomDrag.x > before.x || afterDomDrag.y > before.y,
-            "expected drag move to advance panel: before=$before afterDomDrag=$afterDomDrag"
+            "expected drag move to advance panel: before=$before afterDomDrag=$afterDomDrag",
         )
 
         syncAndRender(fixture, downX, downY)
@@ -93,13 +106,13 @@ class InspectorDragScrollDomMigrationTests {
         if (afterDomDrag.x > before.x) {
             assertTrue(
                 afterStaleSync.x >= afterDomDrag.x,
-                "stale sync cursor regressed panel x: before=$before dom=$afterDomDrag stale=$afterStaleSync"
+                "stale sync cursor regressed panel x: before=$before dom=$afterDomDrag stale=$afterStaleSync",
             )
         }
         if (afterDomDrag.y > before.y) {
             assertTrue(
                 afterStaleSync.y >= afterDomDrag.y,
-                "stale sync cursor regressed panel y: before=$before dom=$afterDomDrag stale=$afterStaleSync"
+                "stale sync cursor regressed panel y: before=$before dom=$afterDomDrag stale=$afterStaleSync",
             )
         }
 
@@ -108,12 +121,17 @@ class InspectorDragScrollDomMigrationTests {
         val afterNextMove = fixture.inspector.overlayPanelRect() ?: error("expected panel rect after next drag move")
         assertTrue(
             afterNextMove.x >= afterStaleSync.x && afterNextMove.y >= afterStaleSync.y,
-            "expected monotonic drag progression across sync/render cycle: stale=$afterStaleSync next=$afterNextMove"
+            "expected monotonic drag progression across sync/render cycle: stale=$afterStaleSync next=$afterNextMove",
         )
 
         assertTrue(fixture.host.handleMouseUp(dragX + 28, dragY + 16, MouseButton.LEFT))
         syncAndRender(fixture, dragX + 28, dragY + 16)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
     }
 
     @Test
@@ -133,7 +151,12 @@ class InspectorDragScrollDomMigrationTests {
         assertTrue(after > before)
         assertFalse(fixture.inspector.isPointerCaptured)
         assertFalse(fixture.inspector.isDraggingPanel)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
     }
 
     @Test
@@ -154,7 +177,12 @@ class InspectorDragScrollDomMigrationTests {
 
         assertFalse(fixture.inspector.isPointerCaptured)
         assertFalse(fixture.inspector.isDraggingPanel)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
 
         assertTrue(fixture.host.handleMouseMove(dragX, startY + 40))
         syncAndRender(fixture, dragX, startY + 40)
@@ -163,7 +191,12 @@ class InspectorDragScrollDomMigrationTests {
 
         assertTrue(fixture.host.handleMouseUp(dragX, startY + 40, MouseButton.LEFT))
         syncAndRender(fixture, dragX, startY + 40)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
     }
 
     @Test
@@ -179,14 +212,24 @@ class InspectorDragScrollDomMigrationTests {
         val startY = thumb.y + thumb.height / 2
         assertTrue(fixture.host.handleMouseDown(dragX, startY, MouseButton.LEFT))
         syncAndRender(fixture, dragX, startY)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
 
         assertTrue(fixture.host.handleMouseMove(dragX, startY + 22))
         syncAndRender(fixture, dragX, startY + 22)
         val afterFirstMove = fixture.inspector.panelScrollOffsetY
 
         syncAndRender(fixture, dragX, startY + 22)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
 
         assertTrue(fixture.host.handleMouseMove(dragX, startY + 54))
         syncAndRender(fixture, dragX, startY + 54)
@@ -195,7 +238,12 @@ class InspectorDragScrollDomMigrationTests {
 
         assertTrue(fixture.host.handleMouseUp(dragX, startY + 54, MouseButton.LEFT))
         syncAndRender(fixture, dragX, startY + 54)
-        assertFalse(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertFalse(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
     }
 
     @Test
@@ -210,7 +258,12 @@ class InspectorDragScrollDomMigrationTests {
         syncAndRender(fixture, downX, downY)
         assertFalse(fixture.inspector.isDraggingPanel)
         assertFalse(fixture.inspector.isPointerCaptured)
-        assertTrue(fixture.host.debugEntryState(SystemOverlayEntryId.Inspector)?.dragSession?.active == true)
+        assertTrue(
+            fixture.host
+                .debugEntryState(SystemOverlayEntryId.Inspector)
+                ?.dragSession
+                ?.active == true,
+        )
 
         assertTrue(fixture.host.handleMouseUp(downX, downY, MouseButton.LEFT))
         syncAndRender(fixture, downX, downY)
@@ -237,8 +290,11 @@ class InspectorDragScrollDomMigrationTests {
     fun `dropdown migration remains intact after drag-scroll migration`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val row = findVisibleSelectRow(fixture)
-        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
-            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val rowIndex =
+            fixture.inspector
+                .overlayStyleEditorRows()
+                .indexOfFirst { it.property == row.property }
+                .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
         val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val trigger = visibleControlRect(fixture, row)
         val clickX = trigger.x + 2
@@ -282,7 +338,7 @@ class InspectorDragScrollDomMigrationTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -290,14 +346,15 @@ class InspectorDragScrollDomMigrationTests {
         assertTrue(host.handleMouseUp(984, 144, MouseButton.LEFT))
         inspector.setPickMode(false)
 
-        val fixture = Fixture(
-            inspector = inspector,
-            host = host,
-            root = root,
-            revision = 2L,
-            viewportWidth = 1280,
-            viewportHeight = 720
-        )
+        val fixture =
+            Fixture(
+                inspector = inspector,
+                host = host,
+                root = root,
+                revision = 2L,
+                viewportWidth = 1280,
+                viewportHeight = 720,
+            )
         syncAndRender(fixture, 984, 144)
         return fixture
     }
@@ -315,7 +372,7 @@ class InspectorDragScrollDomMigrationTests {
             inspectedLayoutRevision = fixture.revision++,
             cursorX = cursorX,
             cursorY = cursorY,
-            inspectorPointerCaptured = fixture.inspector.isPointerCaptured
+            inspectorPointerCaptured = fixture.inspector.isPointerCaptured,
         )
         fixture.host.render(ctx, fixture.viewportWidth, fixture.viewportHeight)
         fixture.host.paint(ctx)
@@ -333,22 +390,25 @@ class InspectorDragScrollDomMigrationTests {
 
     private fun findVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
-            val rows = fixture.inspector.overlayStyleEditorRows().filter { row ->
-                row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
-            }
+            val rows =
+                fixture.inspector.overlayStyleEditorRows().filter { row ->
+                    row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
+                }
             val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
-            rows.firstOrNull { row ->
-                val rect = Rect(
-                    row.controlRect.x,
-                    row.controlRect.y - bodyScrollY,
-                    row.controlRect.width,
-                    row.controlRect.height
-                )
-                val centerX = rect.x + (rect.width / 2).coerceAtLeast(1)
-                val centerY = rect.y + (rect.height / 2).coerceAtLeast(1)
-                contentRect.contains(centerX, centerY)
-            }?.let { return it }
+            rows
+                .firstOrNull { row ->
+                    val rect =
+                        Rect(
+                            row.controlRect.x,
+                            row.controlRect.y - bodyScrollY,
+                            row.controlRect.width,
+                            row.controlRect.height,
+                        )
+                    val centerX = rect.x + (rect.width / 2).coerceAtLeast(1)
+                    val centerY = rect.y + (rect.height / 2).coerceAtLeast(1)
+                    contentRect.contains(centerX, centerY)
+                }?.let { return it }
 
             scrollInspectorBodyDown(fixture, steps = 1)
         }
@@ -361,7 +421,7 @@ class InspectorDragScrollDomMigrationTests {
             row.controlRect.x,
             row.controlRect.y - bodyScrollY,
             row.controlRect.width,
-            row.controlRect.height
+            row.controlRect.height,
         )
     }
 
@@ -384,12 +444,14 @@ class InspectorDragScrollDomMigrationTests {
     }
 
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
-        val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
-            ?: error("inspector entry missing")
+        val inspectorNode =
+            fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
+                ?: error("inspector entry missing")
         val contentRect = fixture.inspector.overlayContentRect()
-        val candidates = collectNodes(inspectorNode)
-            .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
+        val candidates =
+            collectNodes(inspectorNode)
+                .filterIsInstance<TextInputNode>()
+                .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
 
         return candidates.firstOrNull { node ->
             val probeX = node.bounds.x + 2
@@ -401,15 +463,17 @@ class InspectorDragScrollDomMigrationTests {
     private fun inspectedRoot(withManyChildren: Boolean): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        val target = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val target =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         target.applyParent(root)
         if (withManyChildren) {
             repeat(60) { index ->
-                ContainerNode(key = "child-$index").apply {
-                    bounds = Rect(980, 180 + index * 12, 180, 10)
-                }.applyParent(target)
+                ContainerNode(key = "child-$index")
+                    .apply {
+                        bounds = Rect(980, 180 + index * 12, 180, 10)
+                    }.applyParent(target)
             }
         }
         StyleEngine.setInspectorOverrideLiteral(target, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
@@ -418,6 +482,7 @@ class InspectorDragScrollDomMigrationTests {
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -432,8 +497,6 @@ class InspectorDragScrollDomMigrationTests {
         val root: ContainerNode,
         var revision: Long,
         var viewportWidth: Int,
-        var viewportHeight: Int
+        var viewportHeight: Int,
     )
 }
-
-

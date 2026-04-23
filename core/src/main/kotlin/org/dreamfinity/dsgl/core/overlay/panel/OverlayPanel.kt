@@ -1,6 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.panel
 
-import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
@@ -10,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.elements.TextSource
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
@@ -35,26 +35,27 @@ data class OverlayPanelStyle(
     val closeButtonBorderColor: Int = 0xFF607A95.toInt(),
     val textColor: Int = 0xFFFFFFFF.toInt(),
     val fontSize: Int = 20,
-    val closeGlyph: String = "x"
+    val closeGlyph: String = "x",
 )
 
 data class OverlayPanelFrame(
     val panelRect: Rect,
     val headerRect: Rect,
     val bodyRect: Rect,
-    val closeRect: Rect
+    val closeRect: Rect,
 )
 
 class OverlayPanel(
     private val ownerId: Any,
     private val panelState: OverlayPanelState,
     private val dragSession: OverlayPanelDragSession,
-    private var style: OverlayPanelStyle = OverlayPanelStyle()
+    private var style: OverlayPanelStyle = OverlayPanelStyle(),
 ) {
-    private val rootNode: OverlayPanelRootNode = OverlayPanelRootNode(
-        owner = this,
-        key = "dsgl-overlay-panel-$ownerId"
-    )
+    private val rootNode: OverlayPanelRootNode =
+        OverlayPanelRootNode(
+            owner = this,
+            key = "dsgl-overlay-panel-$ownerId",
+        )
     private val shadowNode: ContainerNode
     private val panelNode: ContainerNode
     private val headerNode: ContainerNode
@@ -77,39 +78,44 @@ class OverlayPanel(
 
     init {
         val scope = UiScope(rootNode)
-        shadowNode = scope.div({
-            key = "dsgl-overlay-panel-shadow-$ownerId"
-            style = {
-                display = Display.Block
-            }
-        })
-        panelNode = scope.div({
-            key = "dsgl-overlay-panel-frame-$ownerId"
-            style = {
-                display = Display.Block
-            }
-        })
-        headerNode = scope.div({
-            key = "dsgl-overlay-panel-header-$ownerId"
-            style = {
-                display = Display.Flex
-                flexDirection = FlexDirection.Row
-            }
-        })
-        titleNode = scope.text(props = {
-            key = "dsgl-overlay-panel-title-$ownerId"
-            value = ""
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
-        })
-        closeButtonNode = scope.button(style.closeGlyph, {
-            key = "dsgl-overlay-panel-close-$ownerId"
-            onMouseClick = {
-                onClose?.invoke()
-                it.cancelled = true
-            }
-        })
+        shadowNode =
+            scope.div({
+                key = "dsgl-overlay-panel-shadow-$ownerId"
+                style = {
+                    display = Display.Block
+                }
+            })
+        panelNode =
+            scope.div({
+                key = "dsgl-overlay-panel-frame-$ownerId"
+                style = {
+                    display = Display.Block
+                }
+            })
+        headerNode =
+            scope.div({
+                key = "dsgl-overlay-panel-header-$ownerId"
+                style = {
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            })
+        titleNode =
+            scope.text(props = {
+                key = "dsgl-overlay-panel-title-$ownerId"
+                value = ""
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
+        closeButtonNode =
+            scope.button(style.closeGlyph, {
+                key = "dsgl-overlay-panel-close-$ownerId"
+                onMouseClick = {
+                    onClose?.invoke()
+                    it.cancelled = true
+                }
+            })
         applyStyleToNodes(style)
         rebuildFrameFromState()
     }
@@ -137,7 +143,7 @@ class OverlayPanel(
         minWidth: Int = this.minWidth,
         minHeight: Int = this.minHeight,
         style: OverlayPanelStyle = this.style,
-        onClose: (() -> Unit)? = this.onClose
+        onClose: (() -> Unit)? = this.onClose,
     ) {
         val titleChanged = this.title != title
         val styleChanged = this.style != style
@@ -191,7 +197,7 @@ class OverlayPanel(
         mouseX: Int,
         mouseY: Int,
         button: MouseButton,
-        includeCloseButton: Boolean = true
+        includeCloseButton: Boolean = true,
     ): Boolean {
         val localFrame = frame ?: return false
         if (button != MouseButton.LEFT) return false
@@ -208,7 +214,7 @@ class OverlayPanel(
                     pointerX = mouseX,
                     pointerY = mouseY,
                     panelState = panelState,
-                    resizeHandle = resizeHandle
+                    resizeHandle = resizeHandle,
                 )
                 return true
             }
@@ -224,7 +230,7 @@ class OverlayPanel(
         mouseY: Int,
         viewportWidth: Int,
         viewportHeight: Int,
-        onDragRectChanged: (Rect) -> Unit
+        onDragRectChanged: (Rect) -> Unit,
     ): Boolean {
         if (!dragSession.active) return false
         dragSession.update(mouseX, mouseY)
@@ -241,7 +247,7 @@ class OverlayPanel(
         button: MouseButton,
         viewportWidth: Int,
         viewportHeight: Int,
-        onDragRectChanged: (Rect) -> Unit
+        onDragRectChanged: (Rect) -> Unit,
     ): Boolean {
         if (button != MouseButton.LEFT || !dragSession.active) return false
         dragSession.update(mouseX, mouseY)
@@ -253,12 +259,11 @@ class OverlayPanel(
         return true
     }
 
-    private fun buildDraggedRect(viewportWidth: Int, viewportHeight: Int): Rect {
-        return when (dragSession.type) {
+    private fun buildDraggedRect(viewportWidth: Int, viewportHeight: Int): Rect =
+        when (dragSession.type) {
             OverlayPanelDragType.PanelResize -> buildResizedRect(viewportWidth, viewportHeight)
             else -> buildMovedRect(viewportWidth, viewportHeight)
         }
-    }
 
     private fun beginMoveDrag(mouseX: Int, mouseY: Int) {
         dragSession.begin(
@@ -267,19 +272,20 @@ class OverlayPanel(
             pointerX = mouseX,
             pointerY = mouseY,
             panelState = panelState,
-            resizeHandle = null
+            resizeHandle = null,
         )
     }
 
     private fun buildMovedRect(viewportWidth: Int, viewportHeight: Int): Rect {
         val dx = dragSession.currentPointerX - dragSession.startPointerX
         val dy = dragSession.currentPointerY - dragSession.startPointerY
-        val raw = Rect(
-            x = dragSession.startPanelX + dx,
-            y = dragSession.startPanelY + dy,
-            width = dragSession.startPanelWidth,
-            height = dragSession.startPanelHeight
-        )
+        val raw =
+            Rect(
+                x = dragSession.startPanelX + dx,
+                y = dragSession.startPanelY + dy,
+                width = dragSession.startPanelWidth,
+                height = dragSession.startPanelHeight,
+            )
         return clampPanel(raw, viewportWidth, viewportHeight)
     }
 
@@ -296,22 +302,26 @@ class OverlayPanel(
         when (handle) {
             OverlayPanelResizeHandle.Left,
             OverlayPanelResizeHandle.TopLeft,
-            OverlayPanelResizeHandle.BottomLeft -> left += dx
+            OverlayPanelResizeHandle.BottomLeft,
+            -> left += dx
 
             OverlayPanelResizeHandle.Right,
             OverlayPanelResizeHandle.TopRight,
-            OverlayPanelResizeHandle.BottomRight -> right += dx
+            OverlayPanelResizeHandle.BottomRight,
+            -> right += dx
 
             else -> Unit
         }
         when (handle) {
             OverlayPanelResizeHandle.Top,
             OverlayPanelResizeHandle.TopLeft,
-            OverlayPanelResizeHandle.TopRight -> top += dy
+            OverlayPanelResizeHandle.TopRight,
+            -> top += dy
 
             OverlayPanelResizeHandle.Bottom,
             OverlayPanelResizeHandle.BottomLeft,
-            OverlayPanelResizeHandle.BottomRight -> bottom += dy
+            OverlayPanelResizeHandle.BottomRight,
+            -> bottom += dy
 
             else -> Unit
         }
@@ -320,11 +330,13 @@ class OverlayPanel(
             when (handle) {
                 OverlayPanelResizeHandle.Left,
                 OverlayPanelResizeHandle.TopLeft,
-                OverlayPanelResizeHandle.BottomLeft -> left = right - minWidth
+                OverlayPanelResizeHandle.BottomLeft,
+                -> left = right - minWidth
 
                 OverlayPanelResizeHandle.Right,
                 OverlayPanelResizeHandle.TopRight,
-                OverlayPanelResizeHandle.BottomRight -> right = left + minWidth
+                OverlayPanelResizeHandle.BottomRight,
+                -> right = left + minWidth
 
                 else -> right = left + minWidth
             }
@@ -333,11 +345,13 @@ class OverlayPanel(
             when (handle) {
                 OverlayPanelResizeHandle.Top,
                 OverlayPanelResizeHandle.TopLeft,
-                OverlayPanelResizeHandle.TopRight -> top = bottom - minHeight
+                OverlayPanelResizeHandle.TopRight,
+                -> top = bottom - minHeight
 
                 OverlayPanelResizeHandle.Bottom,
                 OverlayPanelResizeHandle.BottomLeft,
-                OverlayPanelResizeHandle.BottomRight -> bottom = top + minHeight
+                OverlayPanelResizeHandle.BottomRight,
+                -> bottom = top + minHeight
 
                 else -> bottom = top + minHeight
             }
@@ -351,69 +365,77 @@ class OverlayPanel(
         when (handle) {
             OverlayPanelResizeHandle.Left,
             OverlayPanelResizeHandle.TopLeft,
-            OverlayPanelResizeHandle.BottomLeft -> left = left.coerceIn(minX, right - minWidth)
+            OverlayPanelResizeHandle.BottomLeft,
+            -> left = left.coerceIn(minX, right - minWidth)
 
             OverlayPanelResizeHandle.Right,
             OverlayPanelResizeHandle.TopRight,
-            OverlayPanelResizeHandle.BottomRight -> right = right.coerceIn(left + minWidth, maxRight)
+            OverlayPanelResizeHandle.BottomRight,
+            -> right = right.coerceIn(left + minWidth, maxRight)
 
             else -> Unit
         }
         when (handle) {
             OverlayPanelResizeHandle.Top,
             OverlayPanelResizeHandle.TopLeft,
-            OverlayPanelResizeHandle.TopRight -> top = top.coerceIn(minY, bottom - minHeight)
+            OverlayPanelResizeHandle.TopRight,
+            -> top = top.coerceIn(minY, bottom - minHeight)
 
             OverlayPanelResizeHandle.Bottom,
             OverlayPanelResizeHandle.BottomLeft,
-            OverlayPanelResizeHandle.BottomRight -> bottom = bottom.coerceIn(top + minHeight, maxBottom)
+            OverlayPanelResizeHandle.BottomRight,
+            -> bottom = bottom.coerceIn(top + minHeight, maxBottom)
 
             else -> Unit
         }
 
         val width = (right - left).coerceAtLeast(minWidth)
         val height = (bottom - top).coerceAtLeast(minHeight)
-        val clamped = clampPanel(
-            Rect(left, top, width, height),
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight
-        )
+        val clamped =
+            clampPanel(
+                Rect(left, top, width, height),
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+            )
         return Rect(
             x = clamped.x,
             y = clamped.y,
             width = clamped.width.coerceAtLeast(minWidth),
-            height = clamped.height.coerceAtLeast(minHeight)
+            height = clamped.height.coerceAtLeast(minHeight),
         )
     }
 
     private fun rebuildFrameFromState() {
         val panelRect = panelState.currentRectOrNull()
-        frame = if (panelRect == null) {
-            null
-        } else {
-            buildFrame(panelRect)
-        }
+        frame =
+            if (panelRect == null) {
+                null
+            } else {
+                buildFrame(panelRect)
+            }
     }
 
     private fun buildFrame(panelRect: Rect): OverlayPanelFrame {
         val headerRect = Rect(panelRect.x, panelRect.y, panelRect.width, style.headerHeight)
-        val bodyRect = Rect(
-            x = panelRect.x + style.panelPadding,
-            y = panelRect.y + style.headerHeight + style.panelPadding,
-            width = (panelRect.width - style.panelPadding * 2).coerceAtLeast(1),
-            height = (panelRect.height - style.headerHeight - style.panelPadding * 2).coerceAtLeast(1)
-        )
-        val closeRect = Rect(
-            x = panelRect.x + panelRect.width - style.closeButtonMarginRight - style.closeButtonWidth,
-            y = panelRect.y + style.closeButtonMarginTop,
-            width = style.closeButtonWidth,
-            height = style.closeButtonHeight
-        )
+        val bodyRect =
+            Rect(
+                x = panelRect.x + style.panelPadding,
+                y = panelRect.y + style.headerHeight + style.panelPadding,
+                width = (panelRect.width - style.panelPadding * 2).coerceAtLeast(1),
+                height = (panelRect.height - style.headerHeight - style.panelPadding * 2).coerceAtLeast(1),
+            )
+        val closeRect =
+            Rect(
+                x = panelRect.x + panelRect.width - style.closeButtonMarginRight - style.closeButtonWidth,
+                y = panelRect.y + style.closeButtonMarginTop,
+                width = style.closeButtonWidth,
+                height = style.closeButtonHeight,
+            )
         return OverlayPanelFrame(
             panelRect = panelRect,
             headerRect = headerRect,
             bodyRect = bodyRect,
-            closeRect = closeRect
+            closeRect = closeRect,
         )
     }
 
@@ -426,7 +448,7 @@ class OverlayPanel(
             x = rect.x.coerceIn(minX, maxX),
             y = rect.y.coerceIn(minY, maxY),
             width = rect.width,
-            height = rect.height
+            height = rect.height,
         )
     }
 
@@ -456,11 +478,17 @@ class OverlayPanel(
         }
         panelNode.applyStyle {
             backgroundColor = style.panelBackgroundColor
-            border { width = 1.px; color = style.panelBorderColor }
+            border {
+                width = 1.px
+                color = style.panelBorderColor
+            }
         }
         headerNode.applyStyle {
             backgroundColor = style.headerBackgroundColor
-            border { width = 1.px; color = style.headerBorderColor }
+            border {
+                width = 1.px
+                color = style.headerBorderColor
+            }
         }
         titleNode.applyStyle {
             color = style.textColor
@@ -469,7 +497,10 @@ class OverlayPanel(
         }
         closeButtonNode.applyStyle {
             backgroundColor = style.closeButtonBackgroundColor
-            border { width = 1.px; color = style.closeButtonBorderColor }
+            border {
+                width = 1.px
+                color = style.closeButtonBorderColor
+            }
             color = style.textColor
             fontSize = style.fontSize.px
             width = style.closeButtonWidth.px
@@ -482,10 +513,11 @@ class OverlayPanel(
         val oldNode = titleNode
         val oldIndex = rootNode.children.indexOf(oldNode)
         detachNode(oldNode)
-        val newNode = TextNode(
-            textSource = TextSource.Static(title),
-            key = "dsgl-overlay-panel-title-$ownerId"
-        )
+        val newNode =
+            TextNode(
+                textSource = TextSource.Static(title),
+                key = "dsgl-overlay-panel-title-$ownerId",
+            )
         newNode.applyStyle {
             textWrap = TextWrap.NoWrap
         }
@@ -556,63 +588,68 @@ class OverlayPanel(
             panelRect.x + 2,
             panelRect.y + 2,
             panelRect.width,
-            panelRect.height
+            panelRect.height,
         )
         panelNode.render(
             ctx,
             panelRect.x,
             panelRect.y,
             panelRect.width,
-            panelRect.height
+            panelRect.height,
         )
         headerNode.render(
             ctx,
             headerRect.x,
             headerRect.y,
             headerRect.width,
-            headerRect.height
+            headerRect.height,
         )
         titleNode.render(
             ctx,
             titleX,
             titleY,
             titleWidth,
-            titleHeight
+            titleHeight,
         )
         closeButtonNode.render(
             ctx,
             closeRect.x,
             closeRect.y,
             closeRect.width,
-            closeRect.height
+            closeRect.height,
         )
         bodyContentNode?.render(
             ctx,
             bodyRect.x,
             bodyRect.y,
             bodyRect.width,
-            bodyRect.height
+            bodyRect.height,
         )
         overlayContentNode?.render(
             ctx,
             viewportRect.x,
             viewportRect.y,
             viewportRect.width,
-            viewportRect.height
+            viewportRect.height,
         )
     }
 
     private class OverlayPanelRootNode(
         private val owner: OverlayPanel,
-        key: Any?
+        key: Any?,
     ) : DOMNode(key) {
         override val styleType: String = "dsgl-overlay-panel"
 
-        override fun measure(ctx: UiMeasureContext): Size {
-            return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-        }
+        override fun measure(ctx: UiMeasureContext): Size =
+            Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-        override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        override fun render(
+            ctx: UiMeasureContext,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
             bounds = Rect(x, y, width, height)
             owner.renderInto(ctx, bounds)
         }

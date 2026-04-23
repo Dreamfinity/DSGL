@@ -16,7 +16,7 @@ class ColorPickerPopupPaneNode(
     previousValue: RgbaColor? = null,
     mode: ColorFormatMode = ColorFormatMode.HEX,
     alphaEnabled: Boolean = true,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "color-picker-popup"
     override val focusable: Boolean = true
@@ -50,7 +50,13 @@ class ColorPickerPopupPaneNode(
             this@ColorPickerPopupPaneNode.addEventListener(Events.MOUSEDOWN) { event: MouseDownEvent ->
                 if (this@ColorPickerPopupPaneNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
-                if (!this@ColorPickerPopupPaneNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
+                if (!this@ColorPickerPopupPaneNode.containsGlobalPoint(
+                        event.mouseX,
+                        event.mouseY,
+                    )
+                ) {
+                    return@addEventListener
+                }
                 FocusManager.requestFocus(this@ColorPickerPopupPaneNode)
                 if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
                     ColorPickerRuntime.host.close(ownerToken)
@@ -62,13 +68,10 @@ class ColorPickerPopupPaneNode(
         }
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val label = ColorTextCodec.format(effectiveColor(), mode, alphaEnabled)
@@ -99,35 +102,46 @@ class ColorPickerPopupPaneNode(
         addBorderCommands(out)
         val swatchSize = (rect.height - 8).coerceAtLeast(10)
         val swatchRect = Rect(rect.x + 4, rect.y + ((rect.height - swatchSize) / 2), swatchSize, swatchSize)
-        out += RenderCommand.DrawRect(swatchRect.x, swatchRect.y, swatchRect.width, swatchRect.height, effectiveColor().toArgbInt())
+        out +=
+            RenderCommand.DrawRect(
+                swatchRect.x,
+                swatchRect.y,
+                swatchRect.width,
+                swatchRect.height,
+                effectiveColor().toArgbInt(),
+            )
         out += RenderCommand.DrawRect(swatchRect.x, swatchRect.y, swatchRect.width, 1, borderColor)
-        out += RenderCommand.DrawRect(swatchRect.x, swatchRect.y + swatchRect.height - 1, swatchRect.width, 1, borderColor)
+        out +=
+            RenderCommand.DrawRect(swatchRect.x, swatchRect.y + swatchRect.height - 1, swatchRect.width, 1, borderColor)
         out += RenderCommand.DrawRect(swatchRect.x, swatchRect.y, 1, swatchRect.height, borderColor)
-        out += RenderCommand.DrawRect(swatchRect.x + swatchRect.width - 1, swatchRect.y, 1, swatchRect.height, borderColor)
-        out += drawTextCommand(
-            ctx,
-            text = ColorTextCodec.format(effectiveColor(), mode, alphaEnabled),
-            x = swatchRect.x + swatchRect.width + 6,
-            y = rect.y + 3,
-            color = textColor
-        )
-        out += if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
+        out +=
+            RenderCommand.DrawRect(swatchRect.x + swatchRect.width - 1, swatchRect.y, 1, swatchRect.height, borderColor)
+        out +=
             drawTextCommand(
                 ctx,
-                text = "^",
-                x = rect.x + rect.width - 14,
+                text = ColorTextCodec.format(effectiveColor(), mode, alphaEnabled),
+                x = swatchRect.x + swatchRect.width + 6,
                 y = rect.y + 3,
-                color = textColor
+                color = textColor,
             )
-        } else {
-            drawTextCommand(
-                ctx,
-                text = "v",
-                x = rect.x + rect.width - 14,
-                y = rect.y + 3,
-                color = textColor
-            )
-        }
+        out +=
+            if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
+                drawTextCommand(
+                    ctx,
+                    text = "^",
+                    x = rect.x + rect.width - 14,
+                    y = rect.y + 3,
+                    color = textColor,
+                )
+            } else {
+                drawTextCommand(
+                    ctx,
+                    text = "v",
+                    x = rect.x + rect.width - 14,
+                    y = rect.y + 3,
+                    color = textColor,
+                )
+            }
     }
 
     internal fun syncFrom(template: ColorPickerPopupPaneNode) {
@@ -179,18 +193,19 @@ class ColorPickerPopupPaneNode(
         setOpenState(true)
     }
 
-    private fun openRequest(): ColorPickerPopupRequest {
-        return ColorPickerPopupRequest(
+    private fun openRequest(): ColorPickerPopupRequest =
+        ColorPickerPopupRequest(
             owner = ownerToken,
             anchorRect = bounds,
             title = popupTitle,
-            state = ColorPickerState(
-                color = effectiveColor(),
-                previous = effectivePreviousColor(),
-                mode = mode,
-                alphaEnabled = alphaEnabled,
-                closeOnSelect = closeOnSelect
-            ),
+            state =
+                ColorPickerState(
+                    color = effectiveColor(),
+                    previous = effectivePreviousColor(),
+                    mode = mode,
+                    alphaEnabled = alphaEnabled,
+                    closeOnSelect = closeOnSelect,
+                ),
             width = popupWidth,
             draggable = popupDraggable,
             closeOnOutsideClick = popupCloseOnOutsideClick,
@@ -218,23 +233,20 @@ class ColorPickerPopupPaneNode(
             },
             onClose = {
                 setOpenState(false)
-            }
+            },
         )
-    }
 
-    private fun effectiveColor(): RgbaColor {
-        return if (controlled) {
+    private fun effectiveColor(): RgbaColor =
+        if (controlled) {
             (controlledValue ?: defaultValue).normalized()
         } else {
             uncontrolledValue.normalized()
         }
-    }
 
-    private fun effectivePreviousColor(): RgbaColor {
-        return if (controlled) {
+    private fun effectivePreviousColor(): RgbaColor =
+        if (controlled) {
             (previousValue ?: controlledValue ?: defaultValue).normalized()
         } else {
             (previousValue ?: uncontrolledPrevious).normalized()
         }
-    }
 }

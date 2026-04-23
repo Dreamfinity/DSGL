@@ -38,9 +38,10 @@ class ContextMenuEventsTests {
         val host = RecordingHost()
         val node = ContainerNode()
         node.bounds = Rect(10, 15, 120, 30)
-        val model = contextMenu(id = "events.cursor") {
-            item("Open")
-        }
+        val model =
+            contextMenu(id = "events.cursor") {
+                item("Open")
+            }
         node.onContextMenu(host = host) {
             openMenu(model)
         }
@@ -58,9 +59,10 @@ class ContextMenuEventsTests {
         val host = RecordingHost()
         val node = ContainerNode()
         node.bounds = Rect(22, 41, 86, 19)
-        val model = contextMenu(id = "events.anchor") {
-            item("Open")
-        }
+        val model =
+            contextMenu(id = "events.anchor") {
+                item("Open")
+            }
         node.onContextMenu(host = host) {
             openMenuAnchored(model)
         }
@@ -82,9 +84,10 @@ class ContextMenuEventsTests {
         node.bounds = Rect(22, 41, 86, 19)
         node.fontId = "test-font"
         node.fontSize = 24
-        val model = contextMenu(id = "events.font") {
-            item("Open")
-        }
+        val model =
+            contextMenu(id = "events.font") {
+                item("Open")
+            }
         node.onContextMenu(host = host) {
             openMenu(model)
         }
@@ -110,9 +113,10 @@ class ContextMenuEventsTests {
         child.bounds = Rect(10, 10, 60, 16)
         child.fontId = "child-font"
         child.fontSize = 28
-        val model = contextMenu(id = "events.target.font") {
-            item("Open")
-        }
+        val model =
+            contextMenu(id = "events.target.font") {
+                item("Open")
+            }
         parent.onContextMenu(host = host) {
             openMenu(model)
         }

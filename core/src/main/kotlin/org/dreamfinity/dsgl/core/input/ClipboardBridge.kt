@@ -5,6 +5,7 @@ package org.dreamfinity.dsgl.core.input
  */
 interface ClipboardAccess {
     fun readText(): String
+
     fun writeText(value: String)
 }
 
@@ -16,9 +17,7 @@ object ClipboardBridge {
         provider = access
     }
 
-    fun readText(): String {
-        return provider?.readText() ?: ""
-    }
+    fun readText(): String = provider?.readText() ?: ""
 
     fun writeText(value: String) {
         provider?.writeText(value)

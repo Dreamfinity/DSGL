@@ -11,21 +11,54 @@ import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.keyframes
 import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalHost
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mcForge1710.McItemStackRef
-import org.dreamfinity.dsgl.core.dsl.*
-import org.dreamfinity.dsgl.mcForge1710.demo.sections.*
-import org.dreamfinity.dsgl.mcForge1710.demo.support.*
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.McFeaturesShellProps
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.animationsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.colorPickerSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.contextMenuSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.cssCascadeCombinatorsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.displaySection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.dragNDropSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.focusRebuildSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.hooksSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.inputEventsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.inputsGallerySection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.inspectorSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.interactionsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.layoutDebugSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.layoutStyleSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.mcFeaturesSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.modalsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.msdfFontsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.overflowScrollSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.overviewSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.positionedLayoutSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.stylesheetsSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.textEditingSection
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.textWrapSection
+import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityChecklistCatalog
+import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityId
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_ACCENT
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_BG
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_OK
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_SURFACE
+import org.dreamfinity.dsgl.mcForge1710.demo.support.DemoSection
+import org.dreamfinity.dsgl.mcForge1710.demo.support.EventLogEntry
+import org.dreamfinity.dsgl.mcForge1710.demo.support.formatEventLine
+import org.dreamfinity.dsgl.mcForge1710.demo.support.renderChecklistPanel
+import org.dreamfinity.dsgl.mcForge1710.demo.support.renderEventInspectorPanel
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
 class ShowcaseWindow : DsglWindow() {
-
     private var viewportWidth: Int = 320
     private var viewportHeight: Int = 240
     internal val viewportWidthPx: Int
@@ -97,7 +130,7 @@ class ShowcaseWindow : DsglWindow() {
                                 color = DEMO_MUTED
                                 padding = 4.px
                             }
-                        }
+                        },
                     )
 
                     div({
@@ -117,9 +150,11 @@ class ShowcaseWindow : DsglWindow() {
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border { width = 1.px; color = DsglColors.BORDER }
+                                border {
+                                    width = 1.px
+                                    color = DsglColors.BORDER
+                                }
                             }
-
                         }) {
                             text("Sections", { style = { color = DsglColors.WHITE } })
                             DemoSection.entries.forEach { section ->
@@ -143,144 +178,174 @@ class ShowcaseWindow : DsglWindow() {
                                 gap = 4.px
                                 backgroundColor = DEMO_SURFACE
                                 color = DsglColors.TEXT
-                                border { width = 1.px; color = DsglColors.BORDER }
+                                border {
+                                    width = 1.px
+                                    color = DsglColors.BORDER
+                                }
                             }
                         }) {
                             text(selectedSection.title, { style = { color = DsglColors.WHITE } })
                             text(selectedSection.subtitle, { style = { color = DEMO_MUTED } })
                             when (selectedSection) {
-                                DemoSection.OVERVIEW -> overviewSection(
-                                    implementedCapabilities = implementedCapabilities,
-                                    onManualInvalidate = ::requestManualInvalidate,
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.OVERVIEW ->
+                                    overviewSection(
+                                        implementedCapabilities = implementedCapabilities,
+                                        onManualInvalidate = ::requestManualInvalidate,
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.INSPECTOR -> inspectorSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.INSPECTOR ->
+                                    inspectorSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.LAYOUT_STYLE -> layoutStyleSection(
-                                    onInfo = ::appendInfo,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
+                                DemoSection.LAYOUT_STYLE ->
+                                    layoutStyleSection(
+                                        onInfo = ::appendInfo,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
 
-                                DemoSection.LAYOUT_DEBUG -> layoutDebugSection(
-                                    onClearLogs = ::clearEventLogs,
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.LAYOUT_DEBUG ->
+                                    layoutDebugSection(
+                                        onClearLogs = ::clearEventLogs,
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.POSITIONED_LAYOUT -> positionedLayoutSection(
-                                    viewportWidthPx = viewportWidthPx
-                                )
+                                DemoSection.POSITIONED_LAYOUT ->
+                                    positionedLayoutSection(
+                                        viewportWidthPx = viewportWidthPx,
+                                    )
 
-                                DemoSection.OVERFLOW_SCROLL -> overflowScrollSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.OVERFLOW_SCROLL ->
+                                    overflowScrollSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.DISPLAY -> displaySection(
-                                    onInfo = ::appendInfo,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
+                                DemoSection.DISPLAY ->
+                                    displaySection(
+                                        onInfo = ::appendInfo,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
 
-                                DemoSection.TEXT_WRAP -> textWrapSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.TEXT_WRAP ->
+                                    textWrapSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.MSDF_FONTS -> msdfFontsSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.MSDF_FONTS ->
+                                    msdfFontsSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.ANIMATIONS -> animationsSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.ANIMATIONS ->
+                                    animationsSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.MODALS -> modalsSection(
-                                    modals = demoModals,
-                                    onPushModal = ::pushModal,
-                                    onRemoveModal = ::removeModal,
-                                    onPopTopModal = ::popTopModal,
-                                    onClearModals = { demoModals = emptyList() },
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.MODALS ->
+                                    modalsSection(
+                                        modals = demoModals,
+                                        onPushModal = ::pushModal,
+                                        onRemoveModal = ::removeModal,
+                                        onPopTopModal = ::popTopModal,
+                                        onClearModals = { demoModals = emptyList() },
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.CONTEXT_MENU -> contextMenuSection(
-                                    onInfo = ::appendInfo
-                                )
+                                DemoSection.CONTEXT_MENU ->
+                                    contextMenuSection(
+                                        onInfo = ::appendInfo,
+                                    )
 
-                                DemoSection.STYLESHEETS -> stylesheetsSection(
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
-                                    onInfo = ::appendInfo,
-                                    loadStylesheetText = { loadStylesheetEditorFromFile("styles section load") },
-                                    saveStylesheetText = { content ->
-                                        saveStylesheetEditorToFile(
-                                            content,
-                                            "styles section save"
-                                        )
-                                    },
-                                    onReloadStylesheets = { reloadStylesheetsProgrammatically("styles section button") }
-                                )
+                                DemoSection.STYLESHEETS ->
+                                    stylesheetsSection(
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                        onInfo = ::appendInfo,
+                                        loadStylesheetText = { loadStylesheetEditorFromFile("styles section load") },
+                                        saveStylesheetText = { content ->
+                                            saveStylesheetEditorToFile(
+                                                content,
+                                                "styles section save",
+                                            )
+                                        },
+                                        onReloadStylesheets = {
+                                            reloadStylesheetsProgrammatically(
+                                                "styles section button",
+                                            )
+                                        },
+                                    )
 
-                                DemoSection.CSS_CASCADE -> cssCascadeCombinatorsSection(
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
+                                DemoSection.CSS_CASCADE ->
+                                    cssCascadeCombinatorsSection(
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
 
-                                DemoSection.INPUTS -> inputsGallerySection(
-                                    clippingScrollDemoText = clippingScrollDemoText,
-                                    onClippingScrollDemoTextChange = { clippingScrollDemoText = it }
-                                )
+                                DemoSection.INPUTS ->
+                                    inputsGallerySection(
+                                        clippingScrollDemoText = clippingScrollDemoText,
+                                        onClippingScrollDemoTextChange = { clippingScrollDemoText = it },
+                                    )
 
-                                DemoSection.INPUT_EVENTS -> inputEventsSection(
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
+                                DemoSection.INPUT_EVENTS ->
+                                    inputEventsSection(
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
 
                                 DemoSection.COLOR_PICKER -> colorPickerSection()
 
-                                DemoSection.TEXT_EDITING -> textEditingSection(
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
-
-                                DemoSection.REFS -> hooksSection(
-                                    onInfo = ::appendInfo,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
-
-                                DemoSection.DRAG_DROP -> dragNDropSection(
-                                    onInfo = ::appendInfo,
-                                    onClearLogs = ::clearEventLogs,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
-
-                                DemoSection.INTERACTIONS -> interactionsSection(
-                                    onInfo = ::appendInfo,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
-
-                                DemoSection.FOCUS_REBUILD -> focusRebuildSection(
-                                    renderPasses = renderPasses,
-                                    onManualInvalidate = ::requestManualInvalidate,
-                                    onInfo = ::appendInfo,
-                                    onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
-                                )
-
-                                DemoSection.MC_FEATURES -> mcFeaturesSection(
-                                    props = McFeaturesShellProps(
-                                        viewportWidthPx = viewportWidthPx,
-                                        viewportHeightPx = viewportHeightPx,
-                                        mediaReady = mediaReady,
-                                        resourceImageSource = resourceImageSource,
-                                        fileImageSource = fileImageSource,
-                                        httpImageSource = httpImageSource,
-                                        flatItemRef = flatItemRef,
-                                        blockItemRef = blockItemRef,
-                                        clippingScrollDemoText = clippingScrollDemoText,
-                                        onClippingScrollDemoTextChange = { clippingScrollDemoText = it },
-                                        currentGuiScale = ::currentGuiScale,
-                                        guiScaleLabel = ::guiScaleLabel,
-                                        setGuiScale = ::setGuiScale,
-                                        cycleGuiScale = ::cycleGuiScale,
-                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) }
+                                DemoSection.TEXT_EDITING ->
+                                    textEditingSection(
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
                                     )
-                                )
+
+                                DemoSection.REFS ->
+                                    hooksSection(
+                                        onInfo = ::appendInfo,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
+
+                                DemoSection.DRAG_DROP ->
+                                    dragNDropSection(
+                                        onInfo = ::appendInfo,
+                                        onClearLogs = ::clearEventLogs,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
+
+                                DemoSection.INTERACTIONS ->
+                                    interactionsSection(
+                                        onInfo = ::appendInfo,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
+
+                                DemoSection.FOCUS_REBUILD ->
+                                    focusRebuildSection(
+                                        renderPasses = renderPasses,
+                                        onManualInvalidate = ::requestManualInvalidate,
+                                        onInfo = ::appendInfo,
+                                        onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                    )
+
+                                DemoSection.MC_FEATURES ->
+                                    mcFeaturesSection(
+                                        props =
+                                            McFeaturesShellProps(
+                                                viewportWidthPx = viewportWidthPx,
+                                                viewportHeightPx = viewportHeightPx,
+                                                mediaReady = mediaReady,
+                                                resourceImageSource = resourceImageSource,
+                                                fileImageSource = fileImageSource,
+                                                httpImageSource = httpImageSource,
+                                                flatItemRef = flatItemRef,
+                                                blockItemRef = blockItemRef,
+                                                clippingScrollDemoText = clippingScrollDemoText,
+                                                onClippingScrollDemoTextChange = { clippingScrollDemoText = it },
+                                                currentGuiScale = ::currentGuiScale,
+                                                guiScaleLabel = ::guiScaleLabel,
+                                                setGuiScale = ::setGuiScale,
+                                                cycleGuiScale = ::cycleGuiScale,
+                                                onLogHook = { hookName, event, note -> logHook(hookName, event, note) },
+                                            ),
+                                    )
                             }
                         }
 
@@ -297,14 +362,14 @@ class ShowcaseWindow : DsglWindow() {
                                 eventLogs = eventLogs,
                                 maxEventLogs = maxEventLogs,
                                 visibleEventLines = visibleEventLines,
-                                onClearLogs = ::clearEventLogs
+                                onClearLogs = ::clearEventLogs,
                             )
                             renderChecklistPanel(
                                 implementedCapabilities = implementedCapabilities,
                                 checklistPage = checklistPage,
                                 checklistPageSize = checklistPageSize,
                                 onSetChecklistPage = { checklistPage = it },
-                                onMoveChecklistPage = ::moveChecklistPage
+                                onMoveChecklistPage = ::moveChecklistPage,
                             )
                         }
                     }
@@ -348,7 +413,12 @@ class ShowcaseWindow : DsglWindow() {
         invalidate()
     }
 
-    internal fun logHook(hookName: String, event: Event, note: String? = null, color: Int = DsglColors.TEXT) {
+    internal fun logHook(
+        hookName: String,
+        event: Event,
+        note: String? = null,
+        color: Int = DsglColors.TEXT,
+    ) {
         val line = formatEventLine(hookName, event, note)
         appendLog(line, color)
     }
@@ -357,19 +427,20 @@ class ShowcaseWindow : DsglWindow() {
         appendLog(message, DEMO_OK)
     }
 
-    internal fun currentGuiScale(): Int {
-        return Minecraft.getMinecraft().gameSettings.guiScale.coerceIn(0, 4)
-    }
+    internal fun currentGuiScale(): Int =
+        Minecraft
+            .getMinecraft()
+            .gameSettings.guiScale
+            .coerceIn(0, 4)
 
-    internal fun guiScaleLabel(value: Int = currentGuiScale()): String {
-        return when (value.coerceIn(0, 4)) {
+    internal fun guiScaleLabel(value: Int = currentGuiScale()): String =
+        when (value.coerceIn(0, 4)) {
             0 -> "Auto"
             1 -> "1x"
             2 -> "2x"
             3 -> "3x"
             else -> "4x"
         }
-    }
 
     internal fun setGuiScale(value: Int) {
         val mc = Minecraft.getMinecraft()
@@ -438,12 +509,12 @@ class ShowcaseWindow : DsglWindow() {
             writeDemoImage(
                 File(dataDir, "dsgl/demo/local_showcase.png"),
                 0xFF3B71A5.toInt(),
-                0xFFF7B25B.toInt()
+                0xFFF7B25B.toInt(),
             )
             writeDemoImage(
                 File(dataDir, "dsgl/cache/downloads/demo.local/assets/showcase_http.png"),
                 0xFF2D8757.toInt(),
-                0xFFC8E66B.toInt()
+                0xFFC8E66B.toInt(),
             )
             writeDemoFolderIcon(File(dataDir, "dsgl/demo/folder.png"))
             writeDemoDocumentIcon(File(dataDir, "dsgl/demo/document.png"))
@@ -596,7 +667,7 @@ class ShowcaseWindow : DsglWindow() {
                       border-width: 1px;
                       padding: 2px 4px;
                     }
-                    """.trimIndent()
+                    """.trimIndent(),
                 )
                 appendInfo("Created demo stylesheet: ${stylesheetFile.name}")
                 created = true
@@ -654,7 +725,7 @@ class ShowcaseWindow : DsglWindow() {
                           border-width: 1px;
                           padding: 2px 4px;
                         }
-                        """.trimIndent()
+                        """.trimIndent(),
                     )
                     appendInfo("Patched demo stylesheet with CSS units section")
                     created = true
@@ -689,7 +760,7 @@ class ShowcaseWindow : DsglWindow() {
                           border-color: #555555;
                           color: #8E8E8E;
                         }
-                        """.trimIndent()
+                        """.trimIndent(),
                     )
                     appendInfo("Patched demo stylesheet with select styles")
                     created = true
@@ -711,7 +782,10 @@ class ShowcaseWindow : DsglWindow() {
                 color = 0xFFFF6B6B.toInt()
             }
             at(50f) {
-                transform { rotate(180f); scale(1.08f) }
+                transform {
+                    rotate(180f)
+                    scale(1.08f)
+                }
                 opacity = 1f
                 color = 0xFF6BCB77.toInt()
             }
@@ -846,7 +920,7 @@ class ShowcaseWindow : DsglWindow() {
                 .cascade-mixed > .header + .body .title {
                   color: #F6D66F;
                 }
-                """.trimIndent()
+                """.trimIndent(),
             )
             StyleEngine.forceReloadStylesheets()
         } catch (ex: Exception) {
@@ -950,6 +1024,3 @@ class ShowcaseWindow : DsglWindow() {
         return out.toString()
     }
 }
-
-
-

@@ -1,11 +1,8 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertSame
-import kotlin.test.assertTrue
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.toggle
+import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
@@ -13,19 +10,27 @@ import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.dsl.toggle
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.dsl.ui
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class ToggleNodeTests {
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -91,29 +96,35 @@ class ToggleNodeTests {
 
     @Test
     fun `uncontrolled toggle keeps value after reconcile`() {
-        val current = ui {
-            toggle({
-                key = "toggle.reconcile"
-                defaultChecked = false
-            })
-        }
+        val current =
+            ui {
+                toggle({
+                    key = "toggle.reconcile"
+                    defaultChecked = false
+                })
+            }
         current.render(ctx, 80, 40)
-        val retainedBefore = current.root.children.single() as ToggleNode
+        val retainedBefore =
+            current.root.children
+                .single() as ToggleNode
 
         val click = MouseClickEvent(mouseX = 6, mouseY = 6, mouseButton = MouseButton.LEFT)
         click.target = retainedBefore
         EventBus.post(click)
         assertTrue(retainedBefore.isChecked())
 
-        val next = ui {
-            toggle({
-                key = "toggle.reconcile"
-                defaultChecked = false
-            })
-        }
+        val next =
+            ui {
+                toggle({
+                    key = "toggle.reconcile"
+                    defaultChecked = false
+                })
+            }
 
         current.reconcileWith(next)
-        val retainedAfter = current.root.children.single() as ToggleNode
+        val retainedAfter =
+            current.root.children
+                .single() as ToggleNode
         assertSame(retainedBefore, retainedAfter)
         assertTrue(retainedAfter.isChecked())
     }

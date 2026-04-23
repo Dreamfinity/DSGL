@@ -3,22 +3,22 @@ package org.dreamfinity.dsgl.core.style
 import org.dreamfinity.dsgl.core.dom.layout.Insets
 import kotlin.math.roundToInt
 
-enum class CssUnit(val token: String) {
+enum class CssUnit(
+    val token: String,
+) {
     Px("px"),
     Rem("rem"),
     Em("em"),
     Vw("vw"),
     Vh("vh"),
-    Percent("%")
+    Percent("%"),
 }
 
 data class CssLength(
     val value: Float,
-    val unit: CssUnit
+    val unit: CssUnit,
 ) {
-    override fun toString(): String {
-        return toCssLiteral()
-    }
+    override fun toString(): String = toCssLiteral()
 
     companion object {
         val ZERO_PX: CssLength = CssLength(0f, CssUnit.Px)
@@ -27,53 +27,39 @@ data class CssLength(
     }
 }
 
-fun CssLength.coerceAtLeast(minimumValue: Int): String {
-    return CssLength(value.coerceAtLeast(minimumValue.toFloat()), unit).toCssLiteral()
-}
+fun CssLength.coerceAtLeast(minimumValue: Int): String =
+    CssLength(value.coerceAtLeast(minimumValue.toFloat()), unit).toCssLiteral()
 
-fun Number.px(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Px)
-}
+fun Number.px(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Px)
 
-fun Number.em(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Em)
-}
+fun Number.em(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Em)
 
-fun Number.rem(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Rem)
-}
+fun Number.rem(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Rem)
 
-fun Number.vw(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Vw)
-}
+fun Number.vw(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Vw)
 
-fun Number.vh(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Vh)
-}
+fun Number.vh(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Vh)
 
-fun Number.percent(): CssLength {
-    return CssLength(value = this.toFloat(), unit = CssUnit.Percent)
-}
+fun Number.percent(): CssLength = CssLength(value = this.toFloat(), unit = CssUnit.Percent)
 
 data class LengthInsets(
     val top: CssLength,
     val right: CssLength,
     val bottom: CssLength,
-    val left: CssLength
+    val left: CssLength,
 ) {
     companion object {
         val ZERO: LengthInsets = all(CssLength.ZERO_PX)
 
         fun all(value: CssLength): LengthInsets = LengthInsets(value, value, value, value)
 
-        fun fromInsets(insets: Insets): LengthInsets {
-            return LengthInsets(
+        fun fromInsets(insets: Insets): LengthInsets =
+            LengthInsets(
                 top = CssLength.px(insets.top),
                 right = CssLength.px(insets.right),
                 bottom = CssLength.px(insets.bottom),
-                left = CssLength.px(insets.left)
+                left = CssLength.px(insets.left),
             )
-        }
     }
 }
 
@@ -81,7 +67,7 @@ enum class LengthPercentBase {
     ContainerWidth,
     ContainerHeight,
     CurrentFontSize,
-    InheritedFontSize
+    InheritedFontSize,
 }
 
 data class LengthResolveContext(
@@ -91,7 +77,7 @@ data class LengthResolveContext(
     val containingBlockHeightPx: Float? = null,
     val rootFontSizePx: Float = 16f,
     val currentFontSizePx: Float = 16f,
-    val inheritedFontSizePx: Float = 16f
+    val inheritedFontSizePx: Float = 16f,
 )
 
 fun interface StyleWarningReporter {
@@ -100,48 +86,58 @@ fun interface StyleWarningReporter {
 
 private val knownLengthUnits: Set<String> = linkedSetOf("px", "rem", "em", "vw", "vh", "%")
 private val knownLengthUnitsPattern = knownLengthUnits.joinToString("|") { Regex.escape(it) }
-private val cssLengthRegex = Regex(
-    pattern = """^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:($knownLengthUnitsPattern))?$""",
-    option = RegexOption.IGNORE_CASE
-)
-private val cssLengthAnyUnitRegex = Regex(
-    pattern = """^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:([a-zA-Z%]+))?$""",
-    option = RegexOption.IGNORE_CASE
-)
+private val cssLengthRegex =
+    Regex(
+        pattern = """^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:($knownLengthUnitsPattern))?$""",
+        option = RegexOption.IGNORE_CASE,
+    )
+private val cssLengthAnyUnitRegex =
+    Regex(
+        pattern = """^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:([a-zA-Z%]+))?$""",
+        option = RegexOption.IGNORE_CASE,
+    )
 
-fun parseCssLength(
-    raw: String,
-    allowUnitlessZero: Boolean = true
-): CssLength {
+fun parseCssLength(raw: String, allowUnitlessZero: Boolean = true): CssLength {
     val trimmed = raw.trim()
-    val match = cssLengthRegex.matchEntire(trimmed)
-        ?: run {
-            val anyUnitMatch = cssLengthAnyUnitRegex.matchEntire(trimmed)
-            if (anyUnitMatch != null) {
-                val unknownUnit = anyUnitMatch.groupValues.getOrNull(2).orEmpty().trim()
-                if (unknownUnit.isNotEmpty()) {
-                    error("Unknown length unit '$unknownUnit'. Supported units: px, rem, em, vw, vh, %.")
+    val match =
+        cssLengthRegex.matchEntire(trimmed)
+            ?: run {
+                val anyUnitMatch = cssLengthAnyUnitRegex.matchEntire(trimmed)
+                if (anyUnitMatch != null) {
+                    val unknownUnit =
+                        anyUnitMatch.groupValues
+                            .getOrNull(2)
+                            .orEmpty()
+                            .trim()
+                    if (unknownUnit.isNotEmpty()) {
+                        error("Unknown length unit '$unknownUnit'. Supported units: px, rem, em, vw, vh, %.")
+                    }
                 }
+                error("Expected CSS length but got '$raw'.")
             }
-            error("Expected CSS length but got '$raw'.")
-        }
     val value = match.groupValues[1].toFloat()
-    val unitToken = match.groupValues.getOrNull(2).orEmpty().trim().lowercase()
+    val unitToken =
+        match.groupValues
+            .getOrNull(2)
+            .orEmpty()
+            .trim()
+            .lowercase()
     if (unitToken.isEmpty()) {
         if (allowUnitlessZero && value == 0f) {
             return CssLength.ZERO_PX
         }
         error("Expected explicit unit in '$raw'.")
     }
-    val unit = when (unitToken) {
-        "px" -> CssUnit.Px
-        "rem" -> CssUnit.Rem
-        "em" -> CssUnit.Em
-        "vw" -> CssUnit.Vw
-        "vh" -> CssUnit.Vh
-        "%" -> CssUnit.Percent
-        else -> error("Unknown length unit '$unitToken'. Supported units: px, rem, em, vw, vh, %.")
-    }
+    val unit =
+        when (unitToken) {
+            "px" -> CssUnit.Px
+            "rem" -> CssUnit.Rem
+            "em" -> CssUnit.Em
+            "vw" -> CssUnit.Vw
+            "vh" -> CssUnit.Vh
+            "%" -> CssUnit.Percent
+            else -> error("Unknown length unit '$unitToken'. Supported units: px, rem, em, vw, vh, %.")
+        }
     return CssLength(value = value, unit = unit)
 }
 
@@ -156,19 +152,17 @@ fun CssLength.toCssLiteral(): String {
         return "0px"
     }
     val asLong = value.toLong()
-    val number = if (asLong.toFloat() == value) {
-        asLong.toString()
-    } else {
-        value.toString()
-    }
+    val number =
+        if (asLong.toFloat() == value) {
+            asLong.toString()
+        } else {
+            value.toString()
+        }
     return number + unit.token
 }
 
-fun CssLength.resolvePx(
-    context: LengthResolveContext,
-    percentBase: LengthPercentBase
-): Float {
-    return when (unit) {
+fun CssLength.resolvePx(context: LengthResolveContext, percentBase: LengthPercentBase): Float =
+    when (unit) {
         CssUnit.Px -> value
         CssUnit.Rem -> value * context.rootFontSizePx
         CssUnit.Em -> value * context.currentFontSizePx
@@ -176,28 +170,27 @@ fun CssLength.resolvePx(
         CssUnit.Vh -> (value / 100f) * context.viewportHeightPx
         CssUnit.Percent -> (value / 100f) * percentBaseValue(context, percentBase)
     }
-}
 
-fun LengthInsets.resolveToInsets(context: LengthResolveContext): Insets {
-    return Insets(
+fun LengthInsets.resolveToInsets(context: LengthResolveContext): Insets =
+    Insets(
         top = top.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt(),
         right = right.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt(),
         bottom = bottom.resolvePx(context, LengthPercentBase.ContainerHeight).roundToInt(),
-        left = left.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt()
+        left = left.resolvePx(context, LengthPercentBase.ContainerWidth).roundToInt(),
     )
-}
 
 fun parseLengthPx(
     raw: String,
     allowNegative: Boolean,
     percentBase: LengthPercentBase = LengthPercentBase.ContainerWidth,
     context: LengthResolveContext = LengthResolveContext(),
-    allowUnitlessZero: Boolean = true
+    allowUnitlessZero: Boolean = true,
 ): Float {
-    val px = parseCssLength(
-        raw = raw,
-        allowUnitlessZero = allowUnitlessZero
-    ).resolvePx(context, percentBase)
+    val px =
+        parseCssLength(
+            raw = raw,
+            allowUnitlessZero = allowUnitlessZero,
+        ).resolvePx(context, percentBase)
     if (!allowNegative && px < 0f) {
         error("Negative length is not allowed: '$raw'.")
     }
@@ -209,23 +202,22 @@ fun parseLengthPxInt(
     allowNegative: Boolean,
     percentBase: LengthPercentBase = LengthPercentBase.ContainerWidth,
     context: LengthResolveContext = LengthResolveContext(),
-    allowUnitlessZero: Boolean = true
-): Int {
-    return parseLengthPx(
+    allowUnitlessZero: Boolean = true,
+): Int =
+    parseLengthPx(
         raw = raw,
         allowNegative = allowNegative,
         percentBase = percentBase,
         context = context,
-        allowUnitlessZero = allowUnitlessZero
+        allowUnitlessZero = allowUnitlessZero,
     ).roundToInt()
-}
 
 fun parseOptionalLengthPxInt(
     raw: String,
     allowNegative: Boolean,
     percentBase: LengthPercentBase = LengthPercentBase.ContainerWidth,
     context: LengthResolveContext = LengthResolveContext(),
-    allowUnitlessZero: Boolean = true
+    allowUnitlessZero: Boolean = true,
 ): Int? {
     val normalized = raw.trim().lowercase()
     if (normalized == "auto") return null
@@ -234,15 +226,14 @@ fun parseOptionalLengthPxInt(
         allowNegative = allowNegative,
         percentBase = percentBase,
         context = context,
-        allowUnitlessZero = allowUnitlessZero
+        allowUnitlessZero = allowUnitlessZero,
     )
 }
 
-private fun percentBaseValue(context: LengthResolveContext, base: LengthPercentBase): Float {
-    return when (base) {
+private fun percentBaseValue(context: LengthResolveContext, base: LengthPercentBase): Float =
+    when (base) {
         LengthPercentBase.ContainerWidth -> context.containingBlockWidthPx ?: 0f
         LengthPercentBase.ContainerHeight -> context.containingBlockHeightPx ?: 0f
         LengthPercentBase.CurrentFontSize -> context.currentFontSizePx
         LengthPercentBase.InheritedFontSize -> context.inheritedFontSizePx
     }
-}

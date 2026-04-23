@@ -1,5 +1,6 @@
 plugins {
     id("dsgl-core.conventions")
+    id("dsgl-linter.conventions")
     id("dsgl-releaseable-module.conventions")
     id("org.jetbrains.kotlin.plugin.serialization")
     jacoco
@@ -11,9 +12,10 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
-val minLineCoverageRatio = providers
-    .gradleProperty("dsgl.jacoco.min.line")
-    .orElse("0.35")
+val minLineCoverageRatio =
+    providers
+        .gradleProperty("dsgl.jacoco.min.line")
+        .orElse("0.35")
 
 jacoco {
     toolVersion = "0.8.12"
@@ -51,13 +53,14 @@ tasks.check {
 }
 
 tasks.processResources {
-    val allowedCoreFontBases = setOf(
-        "fonts/minecraft/MinecraftDefault-Regular",
-        "fonts/ubuntu/Ubuntu-Regular",
-        "fonts/noto/Noto_Sans/NotoSans-Regular",
-        "fonts/jetbrains_mono/JetBrainsMono-Regular",
-        "fonts/telegrafico/telegrafico"
-    )
+    val allowedCoreFontBases =
+        setOf(
+            "fonts/minecraft/MinecraftDefault-Regular",
+            "fonts/ubuntu/Ubuntu-Regular",
+            "fonts/noto/Noto_Sans/NotoSans-Regular",
+            "fonts/jetbrains_mono/JetBrainsMono-Regular",
+            "fonts/telegrafico/telegrafico",
+        )
 
     eachFile {
         if (isDirectory || !path.startsWith("fonts/")) {
@@ -65,17 +68,18 @@ tasks.processResources {
         }
         val isAllowedFontArtifact =
             path.endsWith(".ttf") ||
-                    path.endsWith(".json") ||
-                    path.endsWith(".rgba.deflate")
+                path.endsWith(".json") ||
+                path.endsWith(".rgba.deflate")
         if (!isAllowedFontArtifact) {
             exclude()
             return@eachFile
         }
-        val isAllowedCoreFontArtifact = allowedCoreFontBases.any { base ->
-            path == "$base.ttf" ||
+        val isAllowedCoreFontArtifact =
+            allowedCoreFontBases.any { base ->
+                path == "$base.ttf" ||
                     path == "$base-meta.json" ||
                     path == "$base-mtsdf.rgba.deflate"
-        }
+            }
         if (!isAllowedCoreFontArtifact) {
             exclude()
         }

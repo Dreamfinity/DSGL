@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -13,7 +14,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class ColorPickerPopupEngineTests {
     @Test
@@ -24,8 +24,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = "owner",
                 anchorRect = Rect(120, 80, 40, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
 
         assertTrue(engine.isOpen())
@@ -42,8 +42,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = "owner",
                 anchorRect = Rect(40, 40, 20, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
 
         assertFalse(engine.handleKeyDown(KeyCodes.ESCAPE))
@@ -59,8 +59,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(100, 80, 32, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val panel = engine.debugPanelRect(owner) ?: error("panel missing")
         val closeX = panel.x + panel.width - 14
@@ -74,11 +74,12 @@ class ColorPickerPopupEngineTests {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"
         engine.onFrame(640, 360)
-        val request = ColorPickerPopupRequest(
-            owner = owner,
-            anchorRect = Rect(100, 80, 32, 20),
-            state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-        )
+        val request =
+            ColorPickerPopupRequest(
+                owner = owner,
+                anchorRect = Rect(100, 80, 32, 20),
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            )
 
         engine.open(request)
         assertNotNull(engine.debugPanelRect(owner))
@@ -100,8 +101,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(100, 80, 32, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
 
         val firstController = engine.debugController(owner) ?: error("controller missing")
@@ -109,8 +110,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 90, 32, 20),
-                state = ColorPickerState(color = RgbaColor(0f, 0f, 0f, 1f), closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor(0f, 0f, 0f, 1f), closeOnSelect = false),
+            ),
         )
 
         val secondController = engine.debugController(owner) ?: error("controller missing")
@@ -127,8 +128,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val panelBeforeFieldDrag = engine.debugPanelRect(owner) ?: error("panel missing")
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
@@ -160,8 +161,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val x = layout.colorFieldRect.x + 12
@@ -185,8 +186,8 @@ class ColorPickerPopupEngineTests {
                 anchorRect = Rect(180, 120, 32, 20),
                 state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
                 onPreview = { previews += it },
-                onCommit = { committed = it }
-            )
+                onCommit = { committed = it },
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val startX = layout.colorFieldRect.x + 4
@@ -202,7 +203,12 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseUp(endX, endY, MouseButton.LEFT))
 
         assertTrue(previews.size >= 2)
-        assertTrue(previews.map { it.toArgbInt() }.distinct().size >= 2)
+        assertTrue(
+            previews
+                .map { it.toArgbInt() }
+                .distinct()
+                .size >= 2,
+        )
         assertEquals(previews.last().toArgbInt(), committed?.toArgbInt())
     }
 
@@ -217,8 +223,8 @@ class ColorPickerPopupEngineTests {
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
                 state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
-                onCommit = { committed = it }
-            )
+                onCommit = { committed = it },
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val startX = layout.hueRect.x + 4
@@ -228,9 +234,17 @@ class ColorPickerPopupEngineTests {
 
         assertTrue(engine.handleMouseDown(startX, y, MouseButton.LEFT))
         assertTrue(engine.handleMouseMove(midX, y))
-        val midColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        val midColor =
+            engine
+                .debugController(owner)
+                ?.snapshot()
+                ?.color ?: error("controller missing")
         assertTrue(engine.handleMouseMove(endX, y))
-        val endColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        val endColor =
+            engine
+                .debugController(owner)
+                ?.snapshot()
+                ?.color ?: error("controller missing")
         assertTrue(engine.handleMouseUp(endX, y, MouseButton.LEFT))
 
         assertTrue(midColor.toArgbInt() != endColor.toArgbInt())
@@ -248,14 +262,15 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
-                state = ColorPickerState(
-                    color = RgbaColor(0.5f, 0.4f, 0.3f, 1f),
-                    closeOnSelect = false,
-                    alphaEnabled = true
-                ),
+                state =
+                    ColorPickerState(
+                        color = RgbaColor(0.5f, 0.4f, 0.3f, 1f),
+                        closeOnSelect = false,
+                        alphaEnabled = true,
+                    ),
                 onPreview = { previews += it },
-                onCommit = { committed = it }
-            )
+                onCommit = { committed = it },
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val alphaRect = layout.alphaRect ?: error("alpha rect missing")
@@ -283,8 +298,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 100, 20, 20),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val header = engine.debugHeaderRect(owner) ?: error("header missing")
         val startX = header.x + 6
@@ -299,8 +314,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(20, 20, 16, 16),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val reopened = engine.debugPanelRect(owner) ?: error("panel missing")
         assertEquals(moved.x, reopened.x)
@@ -320,8 +335,8 @@ class ColorPickerPopupEngineTests {
                     owner = owner,
                     anchorRect = Rect(120, 80, 18, 18),
                     state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
-                    onCommit = { commits++ }
-                )
+                    onCommit = { commits++ },
+                ),
             )
             val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
             assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
@@ -344,12 +359,14 @@ class ColorPickerPopupEngineTests {
 
     @Test
     fun `pipette samples from capture pass before commit`() {
-        ScreenColorSamplerBridge.install(ScreenColorSampler { x, y ->
-            val r = (x and 0xFF)
-            val g = (y and 0xFF)
-            val b = 0x44
-            (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-        })
+        ScreenColorSamplerBridge.install(
+            ScreenColorSampler { x, y ->
+                val r = (x and 0xFF)
+                val g = (y and 0xFF)
+                val b = 0x44
+                (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            },
+        )
         try {
             val engine = ColorPickerPopupEngine()
             val owner = "owner"
@@ -360,8 +377,8 @@ class ColorPickerPopupEngineTests {
                     owner = owner,
                     anchorRect = Rect(120, 80, 18, 18),
                     state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
-                    onCommit = { committed = it }
-                )
+                    onCommit = { committed = it },
+                ),
             )
             val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
             assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
@@ -379,12 +396,14 @@ class ColorPickerPopupEngineTests {
 
     @Test
     fun `pipette capture updates preview continuously while moving`() {
-        ScreenColorSamplerBridge.install(ScreenColorSampler { x, y ->
-            val r = (x and 0xFF)
-            val g = (y and 0xFF)
-            val b = 0x55
-            (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-        })
+        ScreenColorSamplerBridge.install(
+            ScreenColorSampler { x, y ->
+                val r = (x and 0xFF)
+                val g = (y and 0xFF)
+                val b = 0x55
+                (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            },
+        )
         try {
             val engine = ColorPickerPopupEngine()
             val owner = "owner"
@@ -395,19 +414,27 @@ class ColorPickerPopupEngineTests {
                     owner = owner,
                     anchorRect = Rect(120, 80, 18, 18),
                     state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
-                    onPreview = { previews += it }
-                )
+                    onPreview = { previews += it },
+                ),
             )
             val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
             assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
 
             engine.handleMouseMove(40, 72)
             engine.captureEyedropperSample()
-            val first = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+            val first =
+                engine
+                    .debugController(owner)
+                    ?.snapshot()
+                    ?.color ?: error("controller missing")
 
             engine.handleMouseMove(96, 24)
             engine.captureEyedropperSample()
-            val second = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+            val second =
+                engine
+                    .debugController(owner)
+                    ?.snapshot()
+                    ?.color ?: error("controller missing")
 
             assertNotEquals(first.toArgbInt(), second.toArgbInt())
             assertTrue(previews.isNotEmpty())
@@ -427,8 +454,8 @@ class ColorPickerPopupEngineTests {
                 owner = owner,
                 ownerScope = OverlayOwnerScope.Application,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
@@ -439,7 +466,10 @@ class ColorPickerPopupEngineTests {
 
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.Application, engine.debugActiveOwnerScope())
-        assertEquals(UiLayerId.ApplicationOverlay, OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!))
+        assertEquals(
+            UiLayerId.ApplicationOverlay,
+            OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!),
+        )
     }
 
     @Test
@@ -452,8 +482,8 @@ class ColorPickerPopupEngineTests {
                 owner = owner,
                 ownerScope = OverlayOwnerScope.System,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
@@ -464,7 +494,10 @@ class ColorPickerPopupEngineTests {
 
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.System, engine.debugActiveOwnerScope())
-        assertEquals(UiLayerId.SystemOverlay, OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!))
+        assertEquals(
+            UiLayerId.SystemOverlay,
+            OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!),
+        )
     }
 
     @Test
@@ -476,8 +509,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val initialLayout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertTrue(initialLayout.modeOptionsRect == null)
@@ -485,8 +518,8 @@ class ColorPickerPopupEngineTests {
             engine.handleMouseDown(
                 initialLayout.modeSelectRect.x + 2,
                 initialLayout.modeSelectRect.y + 2,
-                MouseButton.LEFT
-            )
+                MouseButton.LEFT,
+            ),
         )
         val openedLayout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertNotNull(openedLayout.modeOptionsRect)
@@ -504,15 +537,16 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(
-                    color = RgbaColor.WHITE,
-                    mode = ColorFormatMode.RGB,
-                    alphaEnabled = true,
-                    closeOnSelect = false
-                ),
+                state =
+                    ColorPickerState(
+                        color = RgbaColor.WHITE,
+                        mode = ColorFormatMode.RGB,
+                        alphaEnabled = true,
+                        closeOnSelect = false,
+                    ),
                 onPreview = { previews += it },
-                onCommit = { committed = it }
-            )
+                onCommit = { committed = it },
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val redInput = layout.inputSlots.firstOrNull { it.key == "r" } ?: error("red input missing")
@@ -548,8 +582,8 @@ class ColorPickerPopupEngineTests {
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
                 title = "Popup Test",
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         engine.onFrame(900, 700)
 
@@ -571,8 +605,8 @@ class ColorPickerPopupEngineTests {
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
                 state = ColorPickerState(color = RgbaColor(1f, 0f, 0f, 1f), closeOnSelect = false),
-                onPreview = { previews += it }
-            )
+                onPreview = { previews += it },
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         val startX = layout.colorFieldRect.x + 4
@@ -584,19 +618,27 @@ class ColorPickerPopupEngineTests {
 
         assertTrue(engine.handleMouseDown(startX, startY, MouseButton.LEFT))
         assertTrue(engine.handleMouseMove(midX, midY))
-        val midColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        val midColor =
+            engine
+                .debugController(owner)
+                ?.snapshot()
+                ?.color ?: error("controller missing")
 
         engine.sync(
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(180, 120, 32, 20),
-                state = ColorPickerState(color = RgbaColor(0f, 1f, 0f, 1f), closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor(0f, 1f, 0f, 1f), closeOnSelect = false),
+            ),
         )
         assertTrue(engine.handleMouseMove(endX, endY))
         assertTrue(engine.handleMouseUp(endX, endY, MouseButton.LEFT))
 
-        val finalColor = engine.debugController(owner)?.snapshot()?.color ?: error("controller missing")
+        val finalColor =
+            engine
+                .debugController(owner)
+                ?.snapshot()
+                ?.color ?: error("controller missing")
         assertNotEquals(midColor.toArgbInt(), finalColor.toArgbInt())
         assertTrue(previews.size >= 2)
     }
@@ -610,8 +652,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         val layout = engine.debugBodyLayout(owner) ?: error("layout missing")
         assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
@@ -621,8 +663,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor(0.2f, 0.3f, 0.4f, 1f), closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor(0.2f, 0.3f, 0.4f, 1f), closeOnSelect = false),
+            ),
         )
 
         assertTrue(engine.debugController(owner)?.isEyedropperActive() == true)
@@ -637,8 +679,8 @@ class ColorPickerPopupEngineTests {
             ColorPickerPopupRequest(
                 owner = owner,
                 anchorRect = Rect(120, 80, 18, 18),
-                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false)
-            )
+                state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            ),
         )
         assertFalse(engine.hasActiveEyedropper())
 
@@ -647,6 +689,7 @@ class ColorPickerPopupEngineTests {
 
         assertTrue(engine.hasActiveEyedropper())
     }
+
     @Test
     fun `manager reuses same owner token`() {
         val fakeHost = FakeColorPickerHost()
@@ -654,12 +697,12 @@ class ColorPickerPopupEngineTests {
         manager.open(
             anchorRect = Rect(10, 10, 10, 10),
             title = "A",
-            state = ColorPickerState(RgbaColor.WHITE)
+            state = ColorPickerState(RgbaColor.WHITE),
         )
         manager.open(
             anchorRect = Rect(20, 20, 10, 10),
             title = "B",
-            state = ColorPickerState(RgbaColor(0f, 0f, 0f, 1f))
+            state = ColorPickerState(RgbaColor(0f, 0f, 0f, 1f)),
         )
 
         assertEquals(2, fakeHost.opened.size)
@@ -678,13 +721,13 @@ class ColorPickerPopupEngineTests {
         manager.open(
             anchorRect = Rect(10, 10, 10, 10),
             title = "App",
-            state = ColorPickerState(RgbaColor.WHITE)
+            state = ColorPickerState(RgbaColor.WHITE),
         )
         manager.open(
             ownerScope = OverlayOwnerScope.System,
             anchorRect = Rect(20, 20, 10, 10),
             title = "System",
-            state = ColorPickerState(RgbaColor.WHITE)
+            state = ColorPickerState(RgbaColor.WHITE),
         )
 
         assertEquals(2, fakeHost.opened.size)
@@ -713,5 +756,3 @@ class ColorPickerPopupEngineTests {
         override fun isOpen(): Boolean = false
     }
 }
-
-

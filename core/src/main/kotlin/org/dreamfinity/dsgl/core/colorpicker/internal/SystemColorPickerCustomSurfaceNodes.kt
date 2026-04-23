@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.style.Display
 import kotlin.math.roundToInt
 
 internal class EyedropperCaptureNode(
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-eyedropper-capture"
 
@@ -25,11 +25,16 @@ internal class EyedropperCaptureNode(
         this.fallbackColor = fallbackColor
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
@@ -37,18 +42,19 @@ internal class EyedropperCaptureNode(
         if (display == Display.None) return
         val source = sourceRect ?: return
         if (source.width <= 0 || source.height <= 0) return
-        out += RenderCommand.CaptureScreenRegion(
-            sourceX = source.x,
-            sourceY = source.y,
-            sourceWidth = source.width,
-            sourceHeight = source.height,
-            fallbackColor = fallbackColor
-        )
+        out +=
+            RenderCommand.CaptureScreenRegion(
+                sourceX = source.x,
+                sourceY = source.y,
+                sourceWidth = source.width,
+                sourceHeight = source.height,
+                fallbackColor = fallbackColor,
+            )
     }
 }
 
 internal class EyedropperMagnifierDrawNode(
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-eyedropper-magnifier"
 
@@ -58,7 +64,13 @@ internal class EyedropperMagnifierDrawNode(
     private var gridEnabled: Boolean = true
     private var gridColor: Int = 0x66FFFFFF
 
-    fun bind(columns: Int, rows: Int, magnification: Int, gridEnabled: Boolean, gridColor: Int) {
+    fun bind(
+        columns: Int,
+        rows: Int,
+        magnification: Int,
+        gridEnabled: Boolean,
+        gridColor: Int,
+    ) {
         val nextColumns = columns.coerceAtLeast(1)
         val nextRows = rows.coerceAtLeast(1)
         val nextMagnification = magnification.coerceAtLeast(1)
@@ -77,38 +89,45 @@ internal class EyedropperMagnifierDrawNode(
         this.gridColor = gridColor
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (display == Display.None) return
         if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawCapturedScreenRegion(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height,
-            gridOverlay = if (gridEnabled) {
-                RenderCommand.CapturedGridOverlay(
-                    columns = columns,
-                    rows = rows,
-                    magnification = magnification,
-                    color = gridColor
-                )
-            } else {
-                null
-            }
-        )
+        out +=
+            RenderCommand.DrawCapturedScreenRegion(
+                x = bounds.x,
+                y = bounds.y,
+                width = bounds.width,
+                height = bounds.height,
+                gridOverlay =
+                    if (gridEnabled) {
+                        RenderCommand.CapturedGridOverlay(
+                            columns = columns,
+                            rows = rows,
+                            magnification = magnification,
+                            color = gridColor,
+                        )
+                    } else {
+                        null
+                    },
+            )
     }
 }
 
 internal class ColorFieldSurfaceNode(
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-color-field"
 
@@ -149,23 +168,29 @@ internal class ColorFieldSurfaceNode(
         brightness = typedTemplate.brightness
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawColorField(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height,
-            hueDeg = hueDeg
-        )
+        out +=
+            RenderCommand.DrawColorField(
+                x = bounds.x,
+                y = bounds.y,
+                width = bounds.width,
+                height = bounds.height,
+                hueDeg = hueDeg,
+            )
         drawBorder(out, bounds, style.inputBorderColor)
         val thumbX = bounds.x + (saturation * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
         val thumbY =
@@ -176,7 +201,7 @@ internal class ColorFieldSurfaceNode(
 }
 
 internal class HueSurfaceNode(
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-hue-slider"
 
@@ -200,22 +225,28 @@ internal class HueSurfaceNode(
         hueDeg = typedTemplate.hueDeg
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawHueBar(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height
-        )
+        out +=
+            RenderCommand.DrawHueBar(
+                x = bounds.x,
+                y = bounds.y,
+                width = bounds.width,
+                height = bounds.height,
+            )
         drawBorder(out, bounds, style.inputBorderColor)
         val thumbX = bounds.x + ((hueDeg / 360f) * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
         out += RenderCommand.DrawRect(thumbX - 1, bounds.y - 1, 3, bounds.height + 2, style.thumbOutlineColor)
@@ -223,7 +254,7 @@ internal class HueSurfaceNode(
 }
 
 internal class AlphaSurfaceNode(
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-alpha-slider"
 
@@ -247,24 +278,30 @@ internal class AlphaSurfaceNode(
         color = typedTemplate.color
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (bounds.width <= 0 || bounds.height <= 0) return
         drawChecker(out, bounds, style)
-        out += RenderCommand.DrawAlphaBar(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height,
-            rgbColor = color.copy(a = 1f).toArgbInt()
-        )
+        out +=
+            RenderCommand.DrawAlphaBar(
+                x = bounds.x,
+                y = bounds.y,
+                width = bounds.width,
+                height = bounds.height,
+                rgbColor = color.copy(a = 1f).toArgbInt(),
+            )
         drawBorder(out, bounds, style.inputBorderColor)
         val thumbX = bounds.x + (color.a * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
         out += RenderCommand.DrawRect(thumbX - 1, bounds.y - 1, 3, bounds.height + 2, style.thumbOutlineColor)
@@ -273,7 +310,7 @@ internal class AlphaSurfaceNode(
 
 internal class ColorSwatchSurfaceNode(
     private val allowEmpty: Boolean = false,
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-swatch"
 
@@ -303,11 +340,16 @@ internal class ColorSwatchSurfaceNode(
         highlighted = typedTemplate.highlighted
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
@@ -320,28 +362,30 @@ internal class ColorSwatchSurfaceNode(
             return
         }
         drawChecker(out, bounds, style)
-        out += RenderCommand.DrawRect(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            (localColor ?: RgbaColor.WHITE).toArgbInt()
-        )
+        out +=
+            RenderCommand.DrawRect(
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height,
+                (localColor ?: RgbaColor.WHITE).toArgbInt(),
+            )
         drawBorder(out, bounds, if (highlighted) style.inputActiveBorderColor else style.inputBorderColor)
     }
 }
 
 private fun drawChecker(out: MutableList<RenderCommand>, rect: Rect, style: ColorPickerStyle) {
     if (rect.width <= 0 || rect.height <= 0) return
-    out += RenderCommand.DrawCheckerboard(
-        x = rect.x,
-        y = rect.y,
-        width = rect.width,
-        height = rect.height,
-        cellSize = 4,
-        lightColor = style.checkerLightColor,
-        darkColor = style.checkerDarkColor
-    )
+    out +=
+        RenderCommand.DrawCheckerboard(
+            x = rect.x,
+            y = rect.y,
+            width = rect.width,
+            height = rect.height,
+            cellSize = 4,
+            lightColor = style.checkerLightColor,
+            darkColor = style.checkerDarkColor,
+        )
 }
 
 private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {
@@ -351,4 +395,3 @@ private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) 
     out += RenderCommand.DrawRect(rect.x, rect.y, 1, rect.height, color)
     out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
 }
-

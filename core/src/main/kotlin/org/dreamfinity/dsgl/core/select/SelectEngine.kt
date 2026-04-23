@@ -12,7 +12,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class SelectEngine(
     private val clock: SelectClock = SystemSelectClock,
-    private val measurementCache: SelectMeasurementCache = SelectMeasurementCache()
+    private val measurementCache: SelectMeasurementCache = SelectMeasurementCache(),
 ) : SelectHost {
     private data class PopupState(
         val owner: Any,
@@ -31,7 +31,7 @@ class SelectEngine(
         var highlightedIndex: Int = -1,
         var scrollOffset: Int = 0,
         var scrollbarDragging: Boolean = false,
-        var scrollbarDragThumbOffsetY: Int = 0
+        var scrollbarDragThumbOffsetY: Int = 0,
     )
 
     data class Snapshot(
@@ -40,14 +40,14 @@ class SelectEngine(
         val highlightedIndex: Int,
         val hoveredIndex: Int,
         val scrollOffset: Int,
-        val animationProgress: Float
+        val animationProgress: Float,
     )
 
     private enum class VisibilityState {
         Hidden,
         Opening,
         Open,
-        Closing
+        Closing,
     }
 
     private var popup: PopupState? = null
@@ -96,18 +96,19 @@ class SelectEngine(
             animationProgress = 0f
             onClose?.invoke()
         }
-        popup = PopupState(
-            owner = request.owner,
-            modelToken = request.modelToken,
-            entries = request.entries,
-            selectedId = request.selectedId,
-            anchorRect = request.anchorRect,
-            closeOnSelect = request.closeOnSelect,
-            onSelect = request.onSelect,
-            onClose = request.onClose,
-            fontId = request.fontId,
-            fontSize = request.fontSize
-        )
+        popup =
+            PopupState(
+                owner = request.owner,
+                modelToken = request.modelToken,
+                entries = request.entries,
+                selectedId = request.selectedId,
+                anchorRect = request.anchorRect,
+                closeOnSelect = request.closeOnSelect,
+                onSelect = request.onSelect,
+                onClose = request.onClose,
+                fontId = request.fontId,
+                fontSize = request.fontSize,
+            )
         typeAheadBuffer = ""
         typeAheadLastInputMs = 0L
         ensureHighlightValid(popup!!)
@@ -158,7 +159,7 @@ class SelectEngine(
             highlightedIndex = current?.highlightedIndex ?: -1,
             hoveredIndex = current?.hoveredIndex ?: -1,
             scrollOffset = current?.scrollOffset ?: 0,
-            animationProgress = animationProgress
+            animationProgress = animationProgress,
         )
     }
 
@@ -178,7 +179,7 @@ class SelectEngine(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        viewportScale: Float = 1f
+        viewportScale: Float = 1f,
     ) {
         lastMeasureContext = measureContext
         if (this.viewportWidth != viewportWidth || this.viewportHeight != viewportHeight) {
@@ -198,7 +199,7 @@ class SelectEngine(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         if (!isOpen()) return
         onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
@@ -215,15 +216,16 @@ class SelectEngine(
         if (progress < 0.999f) {
             val scale = style.openStartScale + (1f - style.openStartScale) * progress
             val translateY = style.openStartOffsetYPx * (1f - progress)
-            out += RenderCommand.PushTransform(
-                originX = panel.x + panel.width * 0.5f,
-                originY = panel.y.toFloat(),
-                translateX = 0f,
-                translateY = translateY,
-                scaleX = scale,
-                scaleY = scale,
-                rotateDeg = 0f
-            )
+            out +=
+                RenderCommand.PushTransform(
+                    originX = panel.x + panel.width * 0.5f,
+                    originY = panel.y.toFloat(),
+                    translateX = 0f,
+                    translateY = translateY,
+                    scaleX = scale,
+                    scaleY = scale,
+                    rotateDeg = 0f,
+                )
             out += RenderCommand.PushOpacity(progress)
         }
 
@@ -268,59 +270,65 @@ class SelectEngine(
                 val isHovered = index == current.hoveredIndex
                 val isSelected = snapshot.optionId != null && snapshot.optionId == current.selectedId
                 if (isHovered && snapshot.kind == SelectMeasurementCache.KIND_OPTION) {
-                    out += RenderCommand.DrawRect(
-                        rowRect.x,
-                        rowRect.y,
-                        rowRect.width,
-                        rowRect.height,
-                        style.optionHoverBackgroundColor
-                    )
+                    out +=
+                        RenderCommand.DrawRect(
+                            rowRect.x,
+                            rowRect.y,
+                            rowRect.width,
+                            rowRect.height,
+                            style.optionHoverBackgroundColor,
+                        )
                 } else if (isSelected && snapshot.kind == SelectMeasurementCache.KIND_OPTION) {
-                    out += RenderCommand.DrawRect(
-                        rowRect.x,
-                        rowRect.y,
-                        rowRect.width,
-                        rowRect.height,
-                        style.optionSelectedBackgroundColor
-                    )
+                    out +=
+                        RenderCommand.DrawRect(
+                            rowRect.x,
+                            rowRect.y,
+                            rowRect.width,
+                            rowRect.height,
+                            style.optionSelectedBackgroundColor,
+                        )
                 }
 
                 val textY = rowRect.y + ((rowRect.height - fontHeight).coerceAtLeast(0) / 2)
                 if (snapshot.kind == SelectMeasurementCache.KIND_OPTION) {
                     val markerX = rowRect.x + style.rowPaddingX
                     if (isSelected) {
-                        out += RenderCommand.DrawText(
-                            text = style.checkGlyph,
-                            x = markerX,
-                            y = textY,
-                            color = style.markerColor,
-                            fontId = fontId,
-                            fontSize = fontSize
-                        )
+                        out +=
+                            RenderCommand.DrawText(
+                                text = style.checkGlyph,
+                                x = markerX,
+                                y = textY,
+                                color = style.markerColor,
+                                fontId = fontId,
+                                fontSize = fontSize,
+                            )
                     }
-                    val labelX = markerX +
-                        style.markerColumnWidth +
-                        style.markerGap +
-                        snapshot.depth * style.groupIndentX
+                    val labelX =
+                        markerX +
+                            style.markerColumnWidth +
+                            style.markerGap +
+                            snapshot.depth * style.groupIndentX
                     val color = if (snapshot.enabled) style.optionTextColor else style.disabledTextColor
-                    out += RenderCommand.DrawText(
-                        text = snapshot.label,
-                        x = labelX,
-                        y = textY,
-                        color = color,
-                        fontId = fontId,
-                        fontSize = fontSize
-                    )
+                    out +=
+                        RenderCommand.DrawText(
+                            text = snapshot.label,
+                            x = labelX,
+                            y = textY,
+                            color = color,
+                            fontId = fontId,
+                            fontSize = fontSize,
+                        )
                 } else if (snapshot.kind == SelectMeasurementCache.KIND_GROUP) {
                     val labelX = rowRect.x + style.rowPaddingX + snapshot.depth * style.groupIndentX
-                    out += RenderCommand.DrawText(
-                        text = snapshot.label,
-                        x = labelX,
-                        y = textY,
-                        color = style.groupTextColor,
-                        fontId = fontId,
-                        fontSize = fontSize
-                    )
+                    out +=
+                        RenderCommand.DrawText(
+                            text = snapshot.label,
+                            x = labelX,
+                            y = textY,
+                            color = style.groupTextColor,
+                            fontId = fontId,
+                            fontSize = fontSize,
+                        )
                 }
             }
         }
@@ -330,22 +338,24 @@ class SelectEngine(
         if (hasScrollbar) {
             val track = scrollbarTrackRect(current)
             if (track != null) {
-                out += RenderCommand.DrawRect(
-                    track.x,
-                    track.y,
-                    track.width,
-                    track.height,
-                    style.scrollbarTrackColor
-                )
+                out +=
+                    RenderCommand.DrawRect(
+                        track.x,
+                        track.y,
+                        track.width,
+                        track.height,
+                        style.scrollbarTrackColor,
+                    )
                 val thumb = scrollbarThumbRect(current, track)
                 if (thumb != null) {
-                    out += RenderCommand.DrawRect(
-                        thumb.x,
-                        thumb.y,
-                        thumb.width,
-                        thumb.height,
-                        style.scrollbarThumbColor
-                    )
+                    out +=
+                        RenderCommand.DrawRect(
+                            thumb.x,
+                            thumb.y,
+                            thumb.width,
+                            thumb.height,
+                            style.scrollbarThumbColor,
+                        )
                 }
             }
         }
@@ -370,7 +380,10 @@ class SelectEngine(
         val hit = entryAt(current, mouseX, mouseY)
         current.hoveredIndex = hit
         if (hit >= 0) {
-            val snapshot = current.measurement?.snapshots?.getOrNull(hit)
+            val snapshot =
+                current.measurement
+                    ?.snapshots
+                    ?.getOrNull(hit)
             if (snapshot != null && snapshot.kind == SelectMeasurementCache.KIND_OPTION && snapshot.enabled) {
                 current.highlightedIndex = hit
             }
@@ -483,25 +496,28 @@ class SelectEngine(
         val ctx = lastMeasureContext ?: return
         if (!layoutDirty) return
 
-        val measurement = measurementCache.measure(
-            modelToken = current.modelToken,
-            entries = current.entries,
-            style = style,
-            ctx = ctx,
-            dpiScale = viewportScale,
-            fontId = current.fontId,
-            fontSize = current.fontSize
-        )
+        val measurement =
+            measurementCache.measure(
+                modelToken = current.modelToken,
+                entries = current.entries,
+                style = style,
+                ctx = ctx,
+                dpiScale = viewportScale,
+                fontId = current.fontId,
+                fontSize = current.fontSize,
+            )
         current.measurement = measurement
         val desiredHeight = measurement.totalContentHeight + style.panelPaddingY * 2
         val maxPanelHeight = (viewportHeight - style.maxPanelHeightPadding * 2).coerceAtLeast(1)
         val panelHeight = desiredHeight.coerceIn(1, maxPanelHeight)
         val overflow = measurement.totalContentHeight > (panelHeight - style.panelPaddingY * 2).coerceAtLeast(1)
-        val desiredWidth = maxOf(
-            current.anchorRect.width.coerceAtLeast(1),
-            measurement.panelWidth + style.panelPaddingX * 2 + if (overflow) scrollbarReservedWidth() else 0,
-            style.minPanelWidth
-        )
+        val desiredWidth =
+            maxOf(
+                current.anchorRect.width
+                    .coerceAtLeast(1),
+                measurement.panelWidth + style.panelPaddingX * 2 + if (overflow) scrollbarReservedWidth() else 0,
+                style.minPanelWidth,
+            )
         val maxPanelWidth = (viewportWidth - style.maxPanelWidthPadding * 2).coerceAtLeast(1)
         val panelWidth = desiredWidth.coerceIn(1, maxPanelWidth)
 
@@ -511,14 +527,15 @@ class SelectEngine(
         val aboveSpace = current.anchorRect.y - style.viewportPadding
         val preferredY = if (belowSpace < panelHeight && aboveSpace > belowSpace) aboveY else belowY
 
-        val placement = PopupPlacement.resolve(
-            PopupPlacementRequest(
-                preferredRect = Rect(current.anchorRect.x, preferredY, panelWidth, panelHeight),
-                popupSize = Size(panelWidth, panelHeight),
-                viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
-                padding = style.viewportPadding
+        val placement =
+            PopupPlacement.resolve(
+                PopupPlacementRequest(
+                    preferredRect = Rect(current.anchorRect.x, preferredY, panelWidth, panelHeight),
+                    popupSize = Size(panelWidth, panelHeight),
+                    viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
+                    padding = style.viewportPadding,
+                ),
             )
-        )
         current.panelRect = placement.rect
         val maxScroll = maxScroll(current)
         current.scrollOffset = current.scrollOffset.coerceIn(0, maxScroll)
@@ -544,13 +561,14 @@ class SelectEngine(
     private fun moveSelection(current: PopupState, direction: Int) {
         val measurement = current.measurement ?: return
         if (measurement.snapshots.isEmpty()) return
-        val start = if (current.highlightedIndex >= 0) {
-            current.highlightedIndex
-        } else if (direction >= 0) {
-            -1
-        } else {
-            measurement.snapshots.size
-        }
+        val start =
+            if (current.highlightedIndex >= 0) {
+                current.highlightedIndex
+            } else if (direction >= 0) {
+                -1
+            } else {
+                measurement.snapshots.size
+            }
         var index = start
         repeat(measurement.snapshots.size) {
             index += direction
@@ -642,7 +660,8 @@ class SelectEngine(
         val measurement = current.measurement ?: return null
         if (entryIndex !in measurement.entryOffsets.indices) return null
         val rowX = current.panelRect.x + style.panelPaddingX
-        val rowY = current.panelRect.y + style.panelPaddingY + measurement.entryOffsets[entryIndex] - current.scrollOffset
+        val rowY =
+            current.panelRect.y + style.panelPaddingY + measurement.entryOffsets[entryIndex] - current.scrollOffset
         val rowW = contentWidth(current)
         val rowH = measurement.entryHeights[entryIndex]
         return Rect(rowX, rowY, rowW, rowH)
@@ -669,18 +688,15 @@ class SelectEngine(
         current.scrollOffset = current.scrollOffset.coerceIn(0, maxScroll(current))
     }
 
-    private fun contentHeight(current: PopupState): Int {
-        return (current.panelRect.height - style.panelPaddingY * 2).coerceAtLeast(1)
-    }
+    private fun contentHeight(current: PopupState): Int =
+        (current.panelRect.height - style.panelPaddingY * 2).coerceAtLeast(1)
 
     private fun contentWidth(current: PopupState): Int {
         val reserved = if (maxScroll(current) > 0) scrollbarReservedWidth() else 0
         return (current.panelRect.width - style.panelPaddingX * 2 - reserved).coerceAtLeast(1)
     }
 
-    private fun scrollbarReservedWidth(): Int {
-        return (style.scrollbarGap + style.scrollbarWidth).coerceAtLeast(0)
-    }
+    private fun scrollbarReservedWidth(): Int = (style.scrollbarGap + style.scrollbarWidth).coerceAtLeast(0)
 
     private fun scrollbarTrackRect(current: PopupState): Rect? {
         if (maxScroll(current) <= 0) return null
@@ -700,15 +716,17 @@ class SelectEngine(
         val trackHeight = trackRect.height.coerceAtLeast(1)
         val visibleHeight = contentHeight(current).coerceAtLeast(1)
         val rawThumb = ((visibleHeight.toLong() * trackHeight.toLong()) / totalContentHeight.toLong()).toInt()
-        val thumbHeight = rawThumb
-            .coerceAtLeast(style.scrollbarMinThumbHeight.coerceAtLeast(1))
-            .coerceAtMost(trackHeight)
+        val thumbHeight =
+            rawThumb
+                .coerceAtLeast(style.scrollbarMinThumbHeight.coerceAtLeast(1))
+                .coerceAtMost(trackHeight)
         val travel = (trackHeight - thumbHeight).coerceAtLeast(0)
-        val thumbOffset = if (travel == 0) {
-            0
-        } else {
-            ((current.scrollOffset.toLong() * travel.toLong()) / maxScroll.toLong()).toInt().coerceIn(0, travel)
-        }
+        val thumbOffset =
+            if (travel == 0) {
+                0
+            } else {
+                ((current.scrollOffset.toLong() * travel.toLong()) / maxScroll.toLong()).toInt().coerceIn(0, travel)
+            }
         return Rect(trackRect.x, trackRect.y + thumbOffset, trackRect.width, thumbHeight)
     }
 
@@ -720,11 +738,12 @@ class SelectEngine(
         if (thumbRect == null || maxScroll <= 0) return false
         current.scrollbarDragging = true
         current.hoveredIndex = -1
-        current.scrollbarDragThumbOffsetY = if (thumbRect.contains(mouseX, mouseY)) {
-            (mouseY - thumbRect.y).coerceIn(0, thumbRect.height.coerceAtLeast(1) - 1)
-        } else {
-            (thumbRect.height / 2).coerceAtLeast(0)
-        }
+        current.scrollbarDragThumbOffsetY =
+            if (thumbRect.contains(mouseX, mouseY)) {
+                (mouseY - thumbRect.y).coerceIn(0, thumbRect.height.coerceAtLeast(1) - 1)
+            } else {
+                (thumbRect.height / 2).coerceAtLeast(0)
+            }
         updateScrollbarDrag(current, mouseY)
         return true
     }
@@ -756,11 +775,12 @@ class SelectEngine(
         val duration = animationDurationMs.coerceAtLeast(1L)
         val elapsed = (clock.nowMs() - animationStartedAtMs).coerceAtLeast(0L)
         val t = (elapsed.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-        val eased = when (visibilityState) {
-            VisibilityState.Opening -> Easings.EASE_OUT.map(t)
-            VisibilityState.Closing -> Easings.EASE_IN.map(t)
-            else -> t
-        }
+        val eased =
+            when (visibilityState) {
+                VisibilityState.Opening -> Easings.EASE_OUT.map(t)
+                VisibilityState.Closing -> Easings.EASE_IN.map(t)
+                else -> t
+            }
         animationProgress = animationFrom + (animationTo - animationFrom) * eased
         if (t >= 1f) {
             if (animationTo >= 0.999f) {
@@ -786,11 +806,12 @@ class SelectEngine(
         animationTo = target.coerceIn(0f, 1f)
         animationDurationMs = durationMs.coerceAtLeast(1L)
         animationStartedAtMs = clock.nowMs()
-        visibilityState = when {
-            animationTo >= 0.999f -> if (from >= 0.999f) VisibilityState.Open else VisibilityState.Opening
-            animationTo <= 0.001f -> if (from <= 0.001f) VisibilityState.Hidden else VisibilityState.Closing
-            else -> VisibilityState.Opening
-        }
+        visibilityState =
+            when {
+                animationTo >= 0.999f -> if (from >= 0.999f) VisibilityState.Open else VisibilityState.Opening
+                animationTo <= 0.001f -> if (from <= 0.001f) VisibilityState.Hidden else VisibilityState.Closing
+                else -> VisibilityState.Opening
+            }
         if (visibilityState == VisibilityState.Hidden) {
             val onClose = current.onClose
             popup = null

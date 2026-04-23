@@ -6,10 +6,7 @@ import org.lwjgl.opengl.GL11
 /**
  * Executes a block with an OpenGL matrix/attribute stack push/pop.
  */
-inline fun withStack(
-    attributes: List<Int>,
-    block: () -> Unit
-) {
+inline fun withStack(attributes: List<Int>, block: () -> Unit) {
     val attributesBitMask = attributes.reduce { a, b -> a or b }
     withStack(attributesBitMask) { block() }
 }
@@ -17,10 +14,7 @@ inline fun withStack(
 /**
  * Executes a block with an OpenGL matrix/attribute stack push/pop.
  */
-inline fun withStack(
-    attributesBitMask: Int = 0,
-    block: () -> Unit
-) {
+inline fun withStack(attributesBitMask: Int = 0, block: () -> Unit) {
     if (attributesBitMask > 0) {
         GL11.glPushAttrib(attributesBitMask)
     }
@@ -38,11 +32,7 @@ inline fun withStack(
 /**
  * Enables and disables GL capabilities for the duration of [block].
  */
-inline fun withAttributes(
-    enable: List<Int> = emptyList(),
-    disable: List<Int> = emptyList(),
-    block: () -> Unit
-) {
+inline fun withAttributes(enable: List<Int> = emptyList(), disable: List<Int> = emptyList(), block: () -> Unit) {
     for (capability in enable) {
         GL11.glEnable(capability)
     }
@@ -64,11 +54,7 @@ inline fun withAttributes(
 /**
  * Executes a block with an OpenGL matrix/attribute stack push/pop.
  */
-inline fun withAttributes(
-    enableBitMask: Int? = null,
-    disableBitMask: Int? = null,
-    block: () -> Unit
-) {
+inline fun withAttributes(enableBitMask: Int? = null, disableBitMask: Int? = null, block: () -> Unit) {
     enableBitMask?.let { GL11.glEnable(it) }
     disableBitMask?.let { GL11.glDisable(it) }
     try {

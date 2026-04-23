@@ -20,11 +20,14 @@ import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
 
 class InspectorDropdownCorrectiveTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -96,8 +99,9 @@ class InspectorDropdownCorrectiveTests {
         val (trigger, ownerKey) = openInspectorSelectDropdown(fixture, requireScrollable = false)
         val popup = selectPanelRect(ownerKey, fixture)
 
-        val expectedX = trigger.x
-            .coerceIn(2, (fixture.viewportWidth - popup.width - 2).coerceAtLeast(2))
+        val expectedX =
+            trigger.x
+                .coerceIn(2, (fixture.viewportWidth - popup.width - 2).coerceAtLeast(2))
         assertEquals(expectedX, popup.x)
     }
 
@@ -151,7 +155,7 @@ class InspectorDropdownCorrectiveTests {
             inspectedLayoutRevision = 1L,
             cursorX = 984,
             cursorY = 144,
-            inspectorPointerCaptured = false
+            inspectorPointerCaptured = false,
         )
         host.render(ctx, 1280, 720)
         host.paint(ctx)
@@ -159,14 +163,15 @@ class InspectorDropdownCorrectiveTests {
         assertTrue(host.handleMouseUp(984, 144, MouseButton.LEFT))
         inspector.setPickMode(false)
 
-        val fixture = Fixture(
-            inspector = inspector,
-            host = host,
-            root = root,
-            revision = 2L,
-            viewportWidth = 1280,
-            viewportHeight = 720
-        )
+        val fixture =
+            Fixture(
+                inspector = inspector,
+                host = host,
+                root = root,
+                revision = 2L,
+                viewportWidth = 1280,
+                viewportHeight = 720,
+            )
         syncAndRender(fixture, 984, 144)
         return fixture
     }
@@ -184,7 +189,7 @@ class InspectorDropdownCorrectiveTests {
             inspectedLayoutRevision = fixture.revision++,
             cursorX = cursorX,
             cursorY = cursorY,
-            inspectorPointerCaptured = fixture.inspector.isPointerCaptured
+            inspectorPointerCaptured = fixture.inspector.isPointerCaptured,
         )
         fixture.host.render(ctx, fixture.viewportWidth, fixture.viewportHeight)
         fixture.host.paint(ctx)
@@ -209,34 +214,40 @@ class InspectorDropdownCorrectiveTests {
         }
     }
 
-    private fun openVisibleInspectorSelectDropdownWithoutBodyScroll(
-        fixture: Fixture
-    ): Pair<Rect, String> {
+    private fun openVisibleInspectorSelectDropdownWithoutBodyScroll(fixture: Fixture): Pair<Rect, String> {
         val contentRect = fixture.inspector.overlayContentRect()
         val bodyScrollY = fixture.inspector.panelScrollOffsetY
-        val row = fixture.inspector.overlayStyleEditorRows().firstOrNull { row ->
-            if (row.editorKind != InspectorEditorKind.EnumSelect && row.editorKind != InspectorEditorKind.FontSelect) {
-                return@firstOrNull false
-            }
-            val visibleRect = Rect(
+        val row =
+            fixture.inspector.overlayStyleEditorRows().firstOrNull { row ->
+                if (row.editorKind != InspectorEditorKind.EnumSelect &&
+                    row.editorKind != InspectorEditorKind.FontSelect
+                ) {
+                    return@firstOrNull false
+                }
+                val visibleRect =
+                    Rect(
+                        row.controlRect.x,
+                        row.controlRect.y - bodyScrollY,
+                        row.controlRect.width,
+                        row.controlRect.height,
+                    )
+                val centerX = visibleRect.x + (visibleRect.width / 2).coerceAtLeast(1)
+                val centerY = visibleRect.y + (visibleRect.height / 2).coerceAtLeast(1)
+                contentRect.contains(centerX, centerY)
+            } ?: error("expected visible inspector select row without body scrolling")
+
+        val triggerRect =
+            Rect(
                 row.controlRect.x,
                 row.controlRect.y - bodyScrollY,
                 row.controlRect.width,
-                row.controlRect.height
+                row.controlRect.height,
             )
-            val centerX = visibleRect.x + (visibleRect.width / 2).coerceAtLeast(1)
-            val centerY = visibleRect.y + (visibleRect.height / 2).coerceAtLeast(1)
-            contentRect.contains(centerX, centerY)
-        } ?: error("expected visible inspector select row without body scrolling")
-
-        val triggerRect = Rect(
-            row.controlRect.x,
-            row.controlRect.y - bodyScrollY,
-            row.controlRect.width,
-            row.controlRect.height
-        )
-        val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
-            .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
+        val rowIndex =
+            fixture.inspector
+                .overlayStyleEditorRows()
+                .indexOfFirst { it.property == row.property }
+                .takeIf { it >= 0 } ?: error("expected style row index for ${row.property.key}")
         val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val clickX = triggerRect.x + 2
         val clickY = triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1)
@@ -248,37 +259,42 @@ class InspectorDropdownCorrectiveTests {
         return triggerRect to ownerKey
     }
 
-    private fun openInspectorSelectDropdown(
-        fixture: Fixture,
-        requireScrollable: Boolean
-    ): Pair<Rect, String> {
+    private fun openInspectorSelectDropdown(fixture: Fixture, requireScrollable: Boolean): Pair<Rect, String> {
         repeat(120) {
             val contentRect = fixture.inspector.overlayContentRect()
             val bodyScrollY = fixture.inspector.panelScrollOffsetY
-            val visibleSelectRows = fixture.inspector.overlayStyleEditorRows().filter { row ->
-                if (row.editorKind != InspectorEditorKind.EnumSelect && row.editorKind != InspectorEditorKind.FontSelect) {
-                    return@filter false
+            val visibleSelectRows =
+                fixture.inspector.overlayStyleEditorRows().filter { row ->
+                    if (row.editorKind != InspectorEditorKind.EnumSelect &&
+                        row.editorKind != InspectorEditorKind.FontSelect
+                    ) {
+                        return@filter false
+                    }
+                    val visibleRect =
+                        Rect(
+                            row.controlRect.x,
+                            row.controlRect.y - bodyScrollY,
+                            row.controlRect.width,
+                            row.controlRect.height,
+                        )
+                    val centerX = visibleRect.x + (visibleRect.width / 2).coerceAtLeast(1)
+                    val centerY = visibleRect.y + (visibleRect.height / 2).coerceAtLeast(1)
+                    contentRect.contains(centerX, centerY)
                 }
-                val visibleRect = Rect(
-                    row.controlRect.x,
-                    row.controlRect.y - bodyScrollY,
-                    row.controlRect.width,
-                    row.controlRect.height
-                )
-                val centerX = visibleRect.x + (visibleRect.width / 2).coerceAtLeast(1)
-                val centerY = visibleRect.y + (visibleRect.height / 2).coerceAtLeast(1)
-                contentRect.contains(centerX, centerY)
-            }
 
             visibleSelectRows.forEach { row ->
-                val triggerRect = Rect(
-                    row.controlRect.x,
-                    row.controlRect.y - bodyScrollY,
-                    row.controlRect.width,
-                    row.controlRect.height
-                )
-                val rowIndex = fixture.inspector.overlayStyleEditorRows().indexOfFirst { it.property == row.property }
-                    .takeIf { it >= 0 } ?: return@forEach
+                val triggerRect =
+                    Rect(
+                        row.controlRect.x,
+                        row.controlRect.y - bodyScrollY,
+                        row.controlRect.width,
+                        row.controlRect.height,
+                    )
+                val rowIndex =
+                    fixture.inspector
+                        .overlayStyleEditorRows()
+                        .indexOfFirst { it.property == row.property }
+                        .takeIf { it >= 0 } ?: return@forEach
                 val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
                 val clickX = triggerRect.x + 2
                 val clickY = triggerRect.y + (triggerRect.height / 2).coerceAtLeast(1)
@@ -311,22 +327,29 @@ class InspectorDropdownCorrectiveTests {
             ?: error("expected system select popup for owner=$ownerKey")
     }
 
-    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
-                fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
-    }
+    private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+            fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
 
-    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
-                fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
-    }
+    private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+            fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
 
-    private fun dispatchSystemMouseWheel(fixture: Fixture, x: Int, y: Int, delta: Int): Boolean {
-        return SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
-                fixture.host.handleMouseWheel(x, y, delta)
-    }
+    private fun dispatchSystemMouseWheel(
+        fixture: Fixture,
+        x: Int,
+        y: Int,
+        delta: Int,
+    ): Boolean =
+        SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
+            fixture.host.handleMouseWheel(x, y, delta)
 
-    private fun waitForSystemSelectClosed(fixture: Fixture, ownerKey: String, cursorX: Int, cursorY: Int) {
+    private fun waitForSystemSelectClosed(
+        fixture: Fixture,
+        ownerKey: String,
+        cursorX: Int,
+        cursorY: Int,
+    ) {
         repeat(30) {
             if (!SelectRuntime.systemEngine.isOpenFor(ownerKey)) return
             Thread.sleep(5)
@@ -355,12 +378,14 @@ class InspectorDropdownCorrectiveTests {
     }
 
     private fun findVisibleInputNode(fixture: Fixture, propertyKey: String): TextInputNode {
-        val inspectorNode = fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
-            ?: error("inspector entry missing")
+        val inspectorNode =
+            fixture.host.debugEntryNode(SystemOverlayEntryId.Inspector)
+                ?: error("inspector entry missing")
         val contentRect = fixture.inspector.overlayContentRect()
-        val candidates = collectNodes(inspectorNode)
-            .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
+        val candidates =
+            collectNodes(inspectorNode)
+                .filterIsInstance<TextInputNode>()
+                .filter { (it.key?.toString() ?: "") == "dsgl-system-inspector-editor-numeric-input-$propertyKey" }
 
         return candidates.firstOrNull { node ->
             val probeX = node.bounds.x + 2
@@ -372,15 +397,17 @@ class InspectorDropdownCorrectiveTests {
     private fun inspectedRoot(withManyChildren: Boolean): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        val target = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val target =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         target.applyParent(root)
         if (withManyChildren) {
             repeat(24) { index ->
-                ContainerNode(key = "child-$index").apply {
-                    bounds = Rect(980, 170 + index * 14, 120, 10)
-                }.applyParent(target)
+                ContainerNode(key = "child-$index")
+                    .apply {
+                        bounds = Rect(980, 170 + index * 14, 120, 10)
+                    }.applyParent(target)
             }
         }
         StyleEngine.setInspectorOverrideLiteral(target, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
@@ -389,6 +416,7 @@ class InspectorDropdownCorrectiveTests {
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -403,8 +431,6 @@ class InspectorDropdownCorrectiveTests {
         val root: ContainerNode,
         var revision: Long,
         var viewportWidth: Int,
-        var viewportHeight: Int
+        var viewportHeight: Int,
     )
 }
-
-

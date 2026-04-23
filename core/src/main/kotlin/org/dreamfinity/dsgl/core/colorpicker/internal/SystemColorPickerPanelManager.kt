@@ -19,7 +19,7 @@ interface InspectorColorPickerHost {
         onPreview: ((RgbaColor) -> Unit)? = null,
         onChange: ((RgbaColor) -> Unit)? = null,
         onCommit: ((RgbaColor) -> Unit)? = null,
-        onClose: (() -> Unit)? = null
+        onClose: (() -> Unit)? = null,
     )
 
     fun close()
@@ -28,7 +28,7 @@ interface InspectorColorPickerHost {
 }
 
 internal class SystemColorPickerPanelManager(
-    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager()
+    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager(),
 ) : InspectorColorPickerHost {
     override fun open(
         anchorRect: Rect,
@@ -41,7 +41,7 @@ internal class SystemColorPickerPanelManager(
         onPreview: ((RgbaColor) -> Unit)?,
         onChange: ((RgbaColor) -> Unit)?,
         onCommit: ((RgbaColor) -> Unit)?,
-        onClose: (() -> Unit)?
+        onClose: (() -> Unit)?,
     ) {
         delegate.open(
             ownerScope = OverlayOwnerScope.System,
@@ -55,7 +55,7 @@ internal class SystemColorPickerPanelManager(
             onPreview = onPreview,
             onChange = onChange,
             onCommit = onCommit,
-            onClose = onClose
+            onClose = onClose,
         )
     }
 
@@ -65,4 +65,3 @@ internal class SystemColorPickerPanelManager(
 
     override fun isOpen(): Boolean = delegate.isOpen()
 }
-

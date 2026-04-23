@@ -1,26 +1,28 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
-private val OVERFLOW_MODES = listOf(
-    Overflow.Visible,
-    Overflow.Hidden,
-    Overflow.Scroll,
-    Overflow.Auto
-)
+private val OVERFLOW_MODES =
+    listOf(
+        Overflow.Visible,
+        Overflow.Hidden,
+        Overflow.Scroll,
+        Overflow.Auto,
+    )
 
-private fun Overflow.label(): String = when (this) {
-    Overflow.Visible -> "visible"
-    Overflow.Hidden -> "hidden"
-    Overflow.Scroll -> "scroll"
-    Overflow.Auto -> "auto"
-}
+private fun Overflow.label(): String =
+    when (this) {
+        Overflow.Visible -> "visible"
+        Overflow.Hidden -> "hidden"
+        Overflow.Scroll -> "scroll"
+        Overflow.Auto -> "auto"
+    }
 
 private fun nextOverflow(current: Overflow): Overflow {
     val idx = OVERFLOW_MODES.indexOf(current)
@@ -64,7 +66,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
         text("Overflow/scroll viewport playground")
         text(
             "Scrollbar presence is state-only for now, but gutters already reduce viewport size.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -107,7 +109,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                 value = viewportWidth.toLong(),
                 min = viewportMinWidth.toLong(),
                 max = viewportMaxWidth.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "section.overflowScroll.viewportWidth"
@@ -116,7 +118,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: viewportWidth.toLong()
                     overflowDemoViewportWidth = next.coerceIn(viewportMinWidth.toLong(), viewportMaxWidth.toLong())
                 }
-            }
+            },
         )
         text("Viewport width = $viewportWidth", { style = { color = DEMO_MUTED } })
 
@@ -125,7 +127,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                 value = viewportHeight.toLong(),
                 min = viewportMinHeight.toLong(),
                 max = viewportMaxHeight.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "section.overflowScroll.viewportHeight"
@@ -134,7 +136,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: viewportHeight.toLong()
                     overflowDemoViewportHeight = next.coerceIn(viewportMinHeight.toLong(), viewportMaxHeight.toLong())
                 }
-            }
+            },
         )
         text("Viewport height = $viewportHeight", { style = { color = DEMO_MUTED } })
 
@@ -143,7 +145,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                 value = demoContentWidth.toLong(),
                 min = contentMinWidth.toLong(),
                 max = contentMaxWidth.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "section.overflowScroll.contentWidth"
@@ -152,7 +154,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: demoContentWidth.toLong()
                     overflowDemoContentWidth = next.coerceIn(contentMinWidth.toLong(), contentMaxWidth.toLong())
                 }
-            }
+            },
         )
         text("Content width = $demoContentWidth", { style = { color = DEMO_MUTED } })
 
@@ -161,7 +163,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                 value = demoContentHeight.toLong(),
                 min = contentMinHeight.toLong(),
                 max = contentMaxHeight.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "section.overflowScroll.contentHeight"
@@ -170,13 +172,13 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: demoContentHeight.toLong()
                     overflowDemoContentHeight = next.coerceIn(contentMinHeight.toLong(), contentMaxHeight.toLong())
                 }
-            }
+            },
         )
         text("Content height = $demoContentHeight", { style = { color = DEMO_MUTED } })
 
         text(
             "Clicks: visible=$overflowDemoVisibleClicks edge=$overflowDemoEdgeClicks (edge click only when visible)",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         overflowDemoCard(
@@ -196,7 +198,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
             onEdgeClick = {
                 overflowDemoEdgeClicks += 1
                 onInfo("Overflow demo edge click")
-            }
+            },
         )
 
         overflowDemoCard(
@@ -210,7 +212,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
             overflowY = Overflow.Scroll,
             keyPrefix = "section.overflowScroll.preset.scroll",
             onVisibleClick = {},
-            onEdgeClick = {}
+            onEdgeClick = {},
         )
 
         overflowDemoCard(
@@ -224,7 +226,7 @@ fun UiScope.overflowScrollSection(onInfo: (String) -> Unit) {
             overflowY = Overflow.Auto,
             keyPrefix = "section.overflowScroll.preset.cross",
             onVisibleClick = {},
-            onEdgeClick = {}
+            onEdgeClick = {},
         )
     }
 }
@@ -240,7 +242,7 @@ private fun UiScope.overflowDemoCard(
     overflowY: Overflow,
     keyPrefix: String,
     onVisibleClick: () -> Unit,
-    onEdgeClick: () -> Unit
+    onEdgeClick: () -> Unit,
 ) {
     div({
         key = "$keyPrefix.card"
@@ -251,14 +253,17 @@ private fun UiScope.overflowDemoCard(
             gap = 2.px
             padding = 2.px
             backgroundColor = 0xFF2B3440.toInt()
-            border { width = 1.px; color = 0xFF5E7286.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF5E7286.toInt()
+            }
         }
     }) {
         text(title)
         text(note, { style = { color = DEMO_MUTED } })
         text(
             "viewport=${viewportWidth}x$viewportHeight content=${contentWidth}x$contentHeight overflow-x=${overflowX.label()} overflow-y=${overflowY.label()}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -268,7 +273,10 @@ private fun UiScope.overflowDemoCard(
                 height = viewportHeight.px
                 this.overflowX = overflowX
                 this.overflowY = overflowY
-                border { width = 1.px; color = 0xFF8AA0B5.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8AA0B5.toInt()
+                }
                 backgroundColor = 0xFF23303D.toInt()
                 padding = 2.px
             }
@@ -281,7 +289,10 @@ private fun UiScope.overflowDemoCard(
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
                     gap = 1.px
-                    border { width = 1.px; color = 0xFF7992AA.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF7992AA.toInt()
+                    }
                     backgroundColor = 0xFF384C60.toInt()
                     padding = 2.px
                 }

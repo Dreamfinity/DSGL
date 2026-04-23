@@ -1,22 +1,25 @@
 package org.dreamfinity.dsgl.core.overlay
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayRootNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class OverlayDebugVisualizationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -36,16 +39,24 @@ class OverlayDebugVisualizationTests {
         val appCommands = appTree.paint(ctx, applyStyles = true)
         val systemCommands = systemTree.paint(ctx, applyStyles = true)
 
-        assertFalse(appCommands.any { command ->
-            command is RenderCommand.DrawRect &&
-                    (command.color == OverlayDebugVisualization.applicationOverlayFillColor ||
-                            command.color == OverlayDebugVisualization.applicationOverlayBorderColor)
-        })
-        assertFalse(systemCommands.any { command ->
-            command is RenderCommand.DrawRect &&
-                    (command.color == OverlayDebugVisualization.systemOverlayFillColor ||
-                            command.color == OverlayDebugVisualization.systemOverlayBorderColor)
-        })
+        assertFalse(
+            appCommands.any { command ->
+                command is RenderCommand.DrawRect &&
+                    (
+                        command.color == OverlayDebugVisualization.applicationOverlayFillColor ||
+                            command.color == OverlayDebugVisualization.applicationOverlayBorderColor
+                    )
+            },
+        )
+        assertFalse(
+            systemCommands.any { command ->
+                command is RenderCommand.DrawRect &&
+                    (
+                        command.color == OverlayDebugVisualization.systemOverlayFillColor ||
+                            command.color == OverlayDebugVisualization.systemOverlayBorderColor
+                    )
+            },
+        )
     }
 
     @Test
@@ -62,16 +73,23 @@ class OverlayDebugVisualizationTests {
         val appCommands = appTree.paint(ctx, applyStyles = true)
         val systemCommands = systemTree.paint(ctx, applyStyles = true)
 
-        assertTrue(appCommands.any { command ->
-            command is RenderCommand.DrawRect &&
-                    (command.color == OverlayDebugVisualization.applicationOverlayFillColor ||
-                            command.color == OverlayDebugVisualization.applicationOverlayBorderColor)
-        })
-        assertTrue(systemCommands.any { command ->
-            command is RenderCommand.DrawRect &&
-                    (command.color == OverlayDebugVisualization.systemOverlayFillColor ||
-                            command.color == OverlayDebugVisualization.systemOverlayBorderColor)
-        })
+        assertTrue(
+            appCommands.any { command ->
+                command is RenderCommand.DrawRect &&
+                    (
+                        command.color == OverlayDebugVisualization.applicationOverlayFillColor ||
+                            command.color == OverlayDebugVisualization.applicationOverlayBorderColor
+                    )
+            },
+        )
+        assertTrue(
+            systemCommands.any { command ->
+                command is RenderCommand.DrawRect &&
+                    (
+                        command.color == OverlayDebugVisualization.systemOverlayFillColor ||
+                            command.color == OverlayDebugVisualization.systemOverlayBorderColor
+                    )
+            },
+        )
     }
 }
-

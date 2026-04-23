@@ -23,22 +23,23 @@ import org.dreamfinity.dsgl.core.style.TextWrap
 internal class SystemInspectorOverlayNode(
     private val controller: InspectorController,
     private val overlayPanel: OverlayPanel,
-    key: Any? = "dsgl-system-inspector"
+    key: Any? = "dsgl-system-inspector",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-inspector"
     override val focusable: Boolean = true
 
     internal constructor(
         controller: InspectorController,
-        key: Any? = "dsgl-system-inspector"
+        key: Any? = "dsgl-system-inspector",
     ) : this(
         controller = controller,
-        overlayPanel = OverlayPanel(
-            ownerId = "standalone-system-inspector",
-            panelState = OverlayPanelState(),
-            dragSession = OverlayPanelDragSession()
-        ),
-        key = key
+        overlayPanel =
+            OverlayPanel(
+                ownerId = "standalone-system-inspector",
+                panelState = OverlayPanelState(),
+                dragSession = OverlayPanelDragSession(),
+            ),
+        key = key,
     )
 
     private var inspectedRoot: DOMNode? = null
@@ -58,7 +59,7 @@ internal class SystemInspectorOverlayNode(
         val startRect: Rect,
         var currentPointerX: Int,
         var currentPointerY: Int,
-        var moved: Boolean = false
+        var moved: Boolean = false,
     )
 
     init {
@@ -103,16 +104,18 @@ internal class SystemInspectorOverlayNode(
     private fun handleOverlayPanelMouseDown(event: MouseDownEvent): Boolean {
         if (event.mouseButton != MouseButton.LEFT) return false
         val bodyRect = controller.overlayContentRect()
-        val pointerInsideBody = bodyRect.width > 0 &&
+        val pointerInsideBody =
+            bodyRect.width > 0 &&
                 bodyRect.height > 0 &&
                 bodyRect.contains(event.mouseX, event.mouseY)
         if (pointerInsideBody) return false
-        val handled = overlayPanel.handleMouseDown(
-            mouseX = event.mouseX,
-            mouseY = event.mouseY,
-            button = event.mouseButton,
-            includeCloseButton = false
-        )
+        val handled =
+            overlayPanel.handleMouseDown(
+                mouseX = event.mouseX,
+                mouseY = event.mouseY,
+                button = event.mouseButton,
+                includeCloseButton = false,
+            )
         if (handled) {
             controller.onOverlayPanelPointerCaptureChanged(true)
         }
@@ -120,14 +123,15 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun handleOverlayPanelDrag(mouseX: Int, mouseY: Int): Boolean {
-        val handled = overlayPanel.handleMouseMove(
-            mouseX = mouseX,
-            mouseY = mouseY,
-            viewportWidth = lastViewportWidth,
-            viewportHeight = lastViewportHeight
-        ) { rect ->
-            controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
-        }
+        val handled =
+            overlayPanel.handleMouseMove(
+                mouseX = mouseX,
+                mouseY = mouseY,
+                viewportWidth = lastViewportWidth,
+                viewportHeight = lastViewportHeight,
+            ) { rect ->
+                controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
+            }
         if (handled) {
             overlayPanelDragUpdatedByDomInput = true
             controller.onOverlayPanelPointerCaptureChanged(true)
@@ -136,15 +140,16 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun handleOverlayPanelMouseUp(event: MouseUpEvent): Boolean {
-        val handled = overlayPanel.handleMouseUp(
-            mouseX = event.mouseX,
-            mouseY = event.mouseY,
-            button = event.mouseButton,
-            viewportWidth = lastViewportWidth,
-            viewportHeight = lastViewportHeight
-        ) { rect ->
-            controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
-        }
+        val handled =
+            overlayPanel.handleMouseUp(
+                mouseX = event.mouseX,
+                mouseY = event.mouseY,
+                button = event.mouseButton,
+                viewportWidth = lastViewportWidth,
+                viewportHeight = lastViewportHeight,
+            ) { rect ->
+                controller.onOverlayPanelRectChanged(rect, lastViewportWidth, lastViewportHeight)
+            }
         if (handled) {
             overlayPanelDragUpdatedByDomInput = false
             controller.onOverlayPanelPointerCaptureChanged(false)
@@ -175,11 +180,16 @@ internal class SystemInspectorOverlayNode(
         bounds = resolveInputBounds(viewportRect, controller.overlayPanelRect())
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         val viewportRect = Rect(x, y, width, height)
         bounds = resolveInputBounds(viewportRect, controller.overlayPanelRect())
         inspectedRoot?.let { root ->
@@ -248,7 +258,7 @@ internal class SystemInspectorOverlayNode(
             x = left,
             y = top,
             width = (right - left).coerceAtLeast(0),
-            height = (bottom - top).coerceAtLeast(0)
+            height = (bottom - top).coerceAtLeast(0),
         )
     }
 
@@ -277,9 +287,15 @@ internal class SystemInspectorOverlayNode(
 
     private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect) {
         val panelRect = snapshot.panelRect
-        val bodyRect = snapshot.bodyRect
-            ?: overlayPanel.bodyRect()
-            ?: Rect(panelRect.x + 6, panelRect.y + 58, panelRect.width - 12, (panelRect.height - 64).coerceAtLeast(24))
+        val bodyRect =
+            snapshot.bodyRect
+                ?: overlayPanel.bodyRect()
+                ?: Rect(
+                    panelRect.x + 6,
+                    panelRect.y + 58,
+                    panelRect.width - 12,
+                    (panelRect.height - 64).coerceAtLeast(24),
+                )
         val scope = UiScope(this)
 
         renderHighlights(scope, ctx)
@@ -288,12 +304,13 @@ internal class SystemInspectorOverlayNode(
 
         renderExpandedChrome(scope, ctx, panelRect)
 
-        val body = scope.div({
-            key = "dsgl-system-inspector-body"
-            style = {
-                display = Display.Block
-            }
-        })
+        val body =
+            scope.div({
+                key = "dsgl-system-inspector-body"
+                style = {
+                    display = Display.Block
+                }
+            })
         body.backgroundColor = 0x18212C39
         body.overflow = Overflow.Hidden
         body.overflowX = Overflow.Hidden
@@ -308,56 +325,60 @@ internal class SystemInspectorOverlayNode(
         val bodyScrollY = persistedBodyScrollSession?.resolvedY?.coerceAtLeast(0) ?: 0
         var y = bodyRect.y + 2 - bodyScrollY
 
-        y = renderBodyInfoLines(
-            scope = bodyScope,
-            ctx = ctx,
-            infoLines = snapshot.infoLines,
-            contentX = contentX,
-            contentW = contentW,
-            startY = y,
-            lineHeightPx = lineHeightPx
-        )
+        y =
+            renderBodyInfoLines(
+                scope = bodyScope,
+                ctx = ctx,
+                infoLines = snapshot.infoLines,
+                contentX = contentX,
+                contentW = contentW,
+                startY = y,
+                lineHeightPx = lineHeightPx,
+            )
 
-        y = renderParentRow(
-            scope = bodyScope,
-            ctx = ctx,
-            parentLabel = snapshot.parentLabel,
-            contentX = contentX,
-            contentW = contentW,
-            startY = y,
-            rowHeightPx = rowHeightPx
-        )
-        y = renderChildRows(
-            scope = bodyScope,
-            ctx = ctx,
-            childLabels = snapshot.childLabels,
-            contentX = contentX,
-            contentW = contentW,
-            startY = y,
-            rowHeightPx = rowHeightPx
-        )
+        y =
+            renderParentRow(
+                scope = bodyScope,
+                ctx = ctx,
+                parentLabel = snapshot.parentLabel,
+                contentX = contentX,
+                contentW = contentW,
+                startY = y,
+                rowHeightPx = rowHeightPx,
+            )
+        y =
+            renderChildRows(
+                scope = bodyScope,
+                ctx = ctx,
+                childLabels = snapshot.childLabels,
+                contentX = contentX,
+                contentW = contentW,
+                startY = y,
+                rowHeightPx = rowHeightPx,
+            )
         renderStyleEditorHeading(
             scope = bodyScope,
             ctx = ctx,
             contentX = contentX,
             contentW = contentW,
             y = y,
-            lineHeightPx = lineHeightPx
+            lineHeightPx = lineHeightPx,
         )
 
         val styleRows = controller.overlayStyleEditorRows()
         renderStyleEditorRows(bodyScope, body, ctx, bodyScrollY, styleRows)
         y += snapshot.styleEditorHeight
 
-        y = renderComputedStyleLines(
-            scope = bodyScope,
-            ctx = ctx,
-            styleLines = snapshot.styleLines,
-            contentX = contentX,
-            contentW = contentW,
-            startY = y,
-            lineHeightPx = lineHeightPx
-        )
+        y =
+            renderComputedStyleLines(
+                scope = bodyScope,
+                ctx = ctx,
+                styleLines = snapshot.styleLines,
+                contentX = contentX,
+                contentW = contentW,
+                startY = y,
+                lineHeightPx = lineHeightPx,
+            )
         controller.onNativeDomDropdownSnapshots(emptyList())
         body.restoreScrollSessionSnapshot(persistedBodyScrollSession)
         val bodyState = body.scrollContainerState()
@@ -366,7 +387,7 @@ internal class SystemInspectorOverlayNode(
         controller.onNativeDomBodyScrollState(
             scrollY = bodyState.scrollY,
             trackRect = bodyScrollbarVisual?.trackRect,
-            thumbRect = bodyScrollbarVisual?.thumbRect
+            thumbRect = bodyScrollbarVisual?.thumbRect,
         )
         renderTooltip(
             scope,
@@ -374,7 +395,7 @@ internal class SystemInspectorOverlayNode(
             "dsgl-system-inspector-variable-tooltip",
             controller.overlayVariableTooltip(),
             0xEE141A22.toInt(),
-            0xCC60758F.toInt()
+            0xCC60758F.toInt(),
         )
         renderTooltip(
             scope,
@@ -382,21 +403,18 @@ internal class SystemInspectorOverlayNode(
             "dsgl-system-inspector-cursor-tooltip",
             controller.overlayCursorTooltip(),
             0xDD11151A.toInt(),
-            0xCC3F4A57.toInt()
+            0xCC3F4A57.toInt(),
         )
     }
 
-    private fun renderMinimizedChip(
-        scope: UiScope,
-        ctx: UiMeasureContext,
-        snapshot: InspectorDomSnapshot
-    ) {
-        val chip = scope.div({
-            key = "dsgl-system-inspector-chip"
-            style = {
-                display = Display.Block
-            }
-        })
+    private fun renderMinimizedChip(scope: UiScope, ctx: UiMeasureContext, snapshot: InspectorDomSnapshot) {
+        val chip =
+            scope.div({
+                key = "dsgl-system-inspector-chip"
+                style = {
+                    display = Display.Block
+                }
+            })
         chip.backgroundColor = 0xDD1A202A.toInt()
         chip.border = Border.all(1, 0xCC4F6076.toInt())
         chip.onMouseDown = { event ->
@@ -423,13 +441,14 @@ internal class SystemInspectorOverlayNode(
         var lineY =
             snapshot.panelRect.y + ((snapshot.panelRect.height - compactLineHeight * snapshot.minimizedLines.size) / 2)
         snapshot.minimizedLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
-                key = "dsgl-system-inspector-chip-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
+            val lineNode =
+                scope.text(props = {
+                    key = "dsgl-system-inspector-chip-line-$index"
+                    value = line
+                    style = {
+                        textWrap = TextWrap.NoWrap
+                    }
+                })
             lineNode.color = 0xFFE6EDF6.toInt()
             lineNode.fontSize = 14
             renderNode(
@@ -439,30 +458,29 @@ internal class SystemInspectorOverlayNode(
                     snapshot.panelRect.x + 8,
                     lineY,
                     (snapshot.panelRect.width - 16).coerceAtLeast(1),
-                    compactLineHeight
-                )
+                    compactLineHeight,
+                ),
             )
             lineY += compactLineHeight
         }
     }
 
-    private fun renderExpandedChrome(
-        scope: UiScope,
-        ctx: UiMeasureContext,
-        panelRect: Rect
-    ) {
-        val pickRect = controller.overlayPickToggleBounds()
-            ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
-        val minimizeRect = controller.overlayMinimizeBounds()
-            ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
+    private fun renderExpandedChrome(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
+        val pickRect =
+            controller.overlayPickToggleBounds()
+                ?: Rect(panelRect.x + panelRect.width - 264, panelRect.y + 8, 160, 36)
+        val minimizeRect =
+            controller.overlayMinimizeBounds()
+                ?: Rect(panelRect.x + panelRect.width - 96, panelRect.y + 8, 86, 36)
         renderPickToggleButton(scope, ctx, pickRect)
         renderMinimizeButton(scope, ctx, minimizeRect)
     }
 
     private fun renderPickToggleButton(scope: UiScope, ctx: UiMeasureContext, rect: Rect) {
-        val pickButton = scope.button("Select Element", {
-            key = "dsgl-system-inspector-pick-toggle"
-        })
+        val pickButton =
+            scope.button("Select Element", {
+                key = "dsgl-system-inspector-pick-toggle"
+            })
         pickButton.backgroundColor = 0x3346596E
         pickButton.border = Border.all(1, 0x775E738C)
         pickButton.textColor = 0xFFE6EDF6.toInt()
@@ -474,9 +492,10 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun renderMinimizeButton(scope: UiScope, ctx: UiMeasureContext, rect: Rect) {
-        val minimizeButton = scope.button("Minimize", {
-            key = "dsgl-system-inspector-minimize"
-        })
+        val minimizeButton =
+            scope.button("Minimize", {
+                key = "dsgl-system-inspector-minimize"
+            })
         minimizeButton.backgroundColor = 0x3346596E
         minimizeButton.border = Border.all(1, 0x775E738C)
         minimizeButton.textColor = 0xFFE6EDF6.toInt()
@@ -494,17 +513,18 @@ internal class SystemInspectorOverlayNode(
         contentX: Int,
         contentW: Int,
         startY: Int,
-        lineHeightPx: Int
+        lineHeightPx: Int,
     ): Int {
         var y = startY
         infoLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
-                key = "dsgl-system-inspector-info-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
+            val lineNode =
+                scope.text(props = {
+                    key = "dsgl-system-inspector-info-line-$index"
+                    value = line
+                    style = {
+                        textWrap = TextWrap.NoWrap
+                    }
+                })
             lineNode.color = 0xFFDCE5EF.toInt()
             lineNode.fontSize = 24
             renderNode(
@@ -524,13 +544,14 @@ internal class SystemInspectorOverlayNode(
         contentX: Int,
         contentW: Int,
         startY: Int,
-        rowHeightPx: Int
+        rowHeightPx: Int,
     ): Int {
         var y = startY
         parentLabel?.let { label ->
-            val parentButton = scope.button(label, {
-                key = "dsgl-system-inspector-parent-row"
-            })
+            val parentButton =
+                scope.button(label, {
+                    key = "dsgl-system-inspector-parent-row"
+                })
             parentButton.backgroundColor = 0x1E263241
             parentButton.border = Border.all(1, 0x55394654)
             parentButton.textColor = 0xFFDCE5EF.toInt()
@@ -555,13 +576,14 @@ internal class SystemInspectorOverlayNode(
         contentX: Int,
         contentW: Int,
         startY: Int,
-        rowHeightPx: Int
+        rowHeightPx: Int,
     ): Int {
         var y = startY
         childLabels.forEachIndexed { index, label ->
-            val childButton = scope.button(label, {
-                key = "dsgl-system-inspector-child-row-$index"
-            })
+            val childButton =
+                scope.button(label, {
+                    key = "dsgl-system-inspector-child-row-$index"
+                })
             childButton.backgroundColor = 0x1E263241
             childButton.border = Border.all(1, 0x55394654)
             childButton.textColor = 0xFFDCE5EF.toInt()
@@ -585,15 +607,16 @@ internal class SystemInspectorOverlayNode(
         contentX: Int,
         contentW: Int,
         y: Int,
-        lineHeightPx: Int
+        lineHeightPx: Int,
     ) {
-        val styleEditorHeader = scope.text(props = {
-            key = "dsgl-system-inspector-editor-header"
-            value = "Style editor (live overrides):"
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
-        })
+        val styleEditorHeader =
+            scope.text(props = {
+                key = "dsgl-system-inspector-editor-header"
+                value = "Style editor (live overrides):"
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
         styleEditorHeader.color = 0xFFDCE5EF.toInt()
         styleEditorHeader.fontSize = 24
         renderNode(
@@ -610,17 +633,18 @@ internal class SystemInspectorOverlayNode(
         contentX: Int,
         contentW: Int,
         startY: Int,
-        lineHeightPx: Int
+        lineHeightPx: Int,
     ): Int {
         var y = startY
         styleLines.forEachIndexed { index, line ->
-            val lineNode = scope.text(props = {
-                key = "dsgl-system-inspector-style-line-$index"
-                value = line
-                style = {
-                    textWrap = TextWrap.NoWrap
-                }
-            })
+            val lineNode =
+                scope.text(props = {
+                    key = "dsgl-system-inspector-style-line-$index"
+                    value = line
+                    style = {
+                        textWrap = TextWrap.NoWrap
+                    }
+                })
             lineNode.color = 0xFFDCE5EF.toInt()
             lineNode.fontSize = 24
             renderNode(
@@ -634,12 +658,13 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun renderPanelOccluder(scope: UiScope, ctx: UiMeasureContext, panelRect: Rect) {
-        val occluder = scope.div({
-            key = "dsgl-system-inspector-panel-occluder"
-            style = {
-                display = Display.Block
-            }
-        })
+        val occluder =
+            scope.div({
+                key = "dsgl-system-inspector-panel-occluder"
+                style = {
+                    display = Display.Block
+                }
+            })
         occluder.backgroundColor = 0xFF141820.toInt()
         occluder.border = Border.NONE
         renderNode(ctx, occluder, panelRect)
@@ -653,7 +678,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-margin-fill",
                 highlight.marginRect,
                 0x44F3B33D,
-                null
+                null,
             )
             renderHighlightRect(
                 scope,
@@ -661,7 +686,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-padding-fill",
                 highlight.paddingRect,
                 0x4426A69A,
-                null
+                null,
             )
             renderHighlightRect(
                 scope,
@@ -669,7 +694,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-content-fill",
                 highlight.contentRect,
                 0x444285F4,
-                null
+                null,
             )
             renderHighlightRect(
                 scope,
@@ -677,7 +702,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-margin-outline",
                 highlight.marginRect,
                 null,
-                0x99F3B33D.toInt()
+                0x99F3B33D.toInt(),
             )
             renderHighlightRect(
                 scope,
@@ -685,7 +710,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-border-outline",
                 highlight.borderRect,
                 null,
-                0xCCFF9800.toInt()
+                0xCCFF9800.toInt(),
             )
             renderHighlightRect(
                 scope,
@@ -693,7 +718,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-padding-outline",
                 highlight.paddingRect,
                 null,
-                0x9926A69A.toInt()
+                0x9926A69A.toInt(),
             )
             renderHighlightRect(
                 scope,
@@ -701,7 +726,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-selected-content-outline",
                 highlight.contentRect,
                 null,
-                0x994285F4.toInt()
+                0x994285F4.toInt(),
             )
             highlight.parentContentRect?.let { parentRect ->
                 renderHighlightRect(
@@ -710,7 +735,7 @@ internal class SystemInspectorOverlayNode(
                     "dsgl-system-inspector-selected-parent-outline",
                     parentRect,
                     null,
-                    0x66FF5252
+                    0x66FF5252,
                 )
             }
         }
@@ -721,7 +746,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-hovered-content-fill",
                 highlight.contentRect,
                 0x3A47A0FF,
-                null
+                null,
             )
             renderHighlightRect(
                 scope,
@@ -729,7 +754,7 @@ internal class SystemInspectorOverlayNode(
                 "dsgl-system-inspector-hovered-border-outline",
                 highlight.borderRect,
                 null,
-                0xCC47A0FF.toInt()
+                0xCC47A0FF.toInt(),
             )
         }
     }
@@ -740,15 +765,16 @@ internal class SystemInspectorOverlayNode(
         key: String,
         rect: Rect,
         fillColor: Int?,
-        borderColor: Int?
+        borderColor: Int?,
     ) {
         if (rect.width <= 0 || rect.height <= 0) return
-        val layer = scope.div({
-            this.key = key
-            style = {
-                display = Display.Block
-            }
-        })
+        val layer =
+            scope.div({
+                this.key = key
+                style = {
+                    display = Display.Block
+                }
+            })
         layer.backgroundColor = fillColor ?: 0
         layer.border = if (borderColor != null) Border.all(1, borderColor) else Border.NONE
         renderNode(ctx, layer, rect)
@@ -759,7 +785,7 @@ internal class SystemInspectorOverlayNode(
         parentNode: DOMNode,
         ctx: UiMeasureContext,
         bodyScrollY: Int,
-        rows: List<InspectorStyleEditorRowSnapshot>
+        rows: List<InspectorStyleEditorRowSnapshot>,
     ) {
         rows.forEachIndexed { index, row ->
             val rowRect = translateRectY(row.rowRect, -bodyScrollY)
@@ -769,7 +795,8 @@ internal class SystemInspectorOverlayNode(
 
             when (row.editorKind) {
                 InspectorEditorKind.EnumSelect,
-                InspectorEditorKind.FontSelect -> {
+                InspectorEditorKind.FontSelect,
+                -> {
                     renderStyleEditorSelectButton(scope, ctx, bodyScrollY, row, index)
                 }
 
@@ -787,13 +814,19 @@ internal class SystemInspectorOverlayNode(
         renderStyleEditorFooterActions(scope, ctx, bodyScrollY)
     }
 
-    private fun renderStyleEditorRowContainer(scope: UiScope, ctx: UiMeasureContext, rowRect: Rect, index: Int) {
-        val rowNode = scope.div({
-            key = "dsgl-system-inspector-editor-row-$index"
-            style = {
-                display = Display.Block
-            }
-        })
+    private fun renderStyleEditorRowContainer(
+        scope: UiScope,
+        ctx: UiMeasureContext,
+        rowRect: Rect,
+        index: Int,
+    ) {
+        val rowNode =
+            scope.div({
+                key = "dsgl-system-inspector-editor-row-$index"
+                style = {
+                    display = Display.Block
+                }
+            })
         rowNode.backgroundColor = 0x1B293746
         rowNode.border = Border.all(1, 0x553F4A57)
         renderNode(ctx, rowNode, rowRect)
@@ -804,15 +837,16 @@ internal class SystemInspectorOverlayNode(
         ctx: UiMeasureContext,
         rowRect: Rect,
         row: InspectorStyleEditorRowSnapshot,
-        index: Int
+        index: Int,
     ) {
-        val labelNode = scope.text(props = {
-            key = "dsgl-system-inspector-editor-label-$index"
-            value = row.labelText
-            style = {
-                textWrap = TextWrap.Wrap
-            }
-        })
+        val labelNode =
+            scope.text(props = {
+                key = "dsgl-system-inspector-editor-label-$index"
+                value = row.labelText
+                style = {
+                    textWrap = TextWrap.Wrap
+                }
+            })
         labelNode.color = 0xFFDCE5EF.toInt()
         labelNode.fontSize = 18
         renderNode(
@@ -822,7 +856,7 @@ internal class SystemInspectorOverlayNode(
                 rowRect.x + 8,
                 rowRect.y + 5,
                 (row.controlRect.x - row.rowRect.x - 14).coerceAtLeast(40),
-                rowRect.height - 10
+                rowRect.height - 10,
             ),
         )
     }
@@ -832,11 +866,12 @@ internal class SystemInspectorOverlayNode(
         ctx: UiMeasureContext,
         bodyScrollY: Int,
         row: InspectorStyleEditorRowSnapshot,
-        index: Int
+        index: Int,
     ) {
-        val resetButton = scope.button("x", {
-            key = "dsgl-system-inspector-editor-reset-$index"
-        })
+        val resetButton =
+            scope.button("x", {
+                key = "dsgl-system-inspector-editor-reset-$index"
+            })
         resetButton.backgroundColor = 0x3346596E
         resetButton.border = Border.all(1, 0x775E738C)
         resetButton.textColor = 0xFFDCE5EF.toInt()
@@ -852,17 +887,18 @@ internal class SystemInspectorOverlayNode(
         ctx: UiMeasureContext,
         bodyScrollY: Int,
         row: InspectorStyleEditorRowSnapshot,
-        index: Int
+        index: Int,
     ) {
-        val selector = buildSystemOwnedSelectControl(
-            scope = scope,
-            key = "dsgl-system-inspector-editor-select-$index",
-            selectedValue = row.controlValue,
-            options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = false),
-            hovered = row.controlHovered
-        ) { selected ->
-            controller.onSelectValueOptionPressed(row.property, selected)
-        }
+        val selector =
+            buildSystemOwnedSelectControl(
+                scope = scope,
+                key = "dsgl-system-inspector-editor-select-$index",
+                selectedValue = row.controlValue,
+                options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = false),
+                hovered = row.controlHovered,
+            ) { selected ->
+                controller.onSelectValueOptionPressed(row.property, selected)
+            }
         renderNode(ctx, selector, translateRectY(row.controlRect, -bodyScrollY))
     }
 
@@ -871,12 +907,13 @@ internal class SystemInspectorOverlayNode(
         parentNode: DOMNode,
         ctx: UiMeasureContext,
         bodyScrollY: Int,
-        row: InspectorStyleEditorRowSnapshot
+        row: InspectorStyleEditorRowSnapshot,
     ) {
-        val input = TextInputNode(
-            text = row.controlValue.replace("|", ""),
-            key = "dsgl-system-inspector-editor-input-${row.property.key}"
-        )
+        val input =
+            TextInputNode(
+                text = row.controlValue.replace("|", ""),
+                key = "dsgl-system-inspector-editor-input-${row.property.key}",
+            )
         input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
         input.focusedBackgroundColor = input.backgroundColor
         input.border = Border.all(1, if (row.inputActive) 0xFFA8C6E6.toInt() else 0x77607084)
@@ -898,13 +935,14 @@ internal class SystemInspectorOverlayNode(
         ctx: UiMeasureContext,
         bodyScrollY: Int,
         row: InspectorStyleEditorRowSnapshot,
-        index: Int
+        index: Int,
     ) {
         row.colorPreviewRect?.let { previewRect ->
             val shiftedPreviewRect = translateRectY(previewRect, -bodyScrollY)
-            val preview = scope.button("", {
-                key = "dsgl-system-inspector-editor-color-preview-$index"
-            })
+            val preview =
+                scope.button("", {
+                    key = "dsgl-system-inspector-editor-color-preview-$index"
+                })
             preview.backgroundColor = row.colorPreviewColor ?: 0x663F4A57
             preview.border = Border.all(1, 0xCC9BB2C9.toInt())
             preview.onClick {
@@ -920,12 +958,13 @@ internal class SystemInspectorOverlayNode(
         ctx: UiMeasureContext,
         bodyScrollY: Int,
         row: InspectorStyleEditorRowSnapshot,
-        index: Int
+        index: Int,
     ) {
         row.decrementRect?.let { rect ->
-            val dec = scope.button("-", {
-                key = "dsgl-system-inspector-editor-dec-$index"
-            })
+            val dec =
+                scope.button("-", {
+                    key = "dsgl-system-inspector-editor-dec-$index"
+                })
             dec.backgroundColor = 0x3346596E
             dec.border = Border.all(1, 0x775E738C)
             dec.textColor = 0xFFDCE5EF.toInt()
@@ -936,10 +975,11 @@ internal class SystemInspectorOverlayNode(
             renderNode(ctx, dec, translateRectY(rect, -bodyScrollY))
         }
         row.inputRect?.let { rect ->
-            val input = TextInputNode(
-                text = row.controlValue.replace("|", ""),
-                key = "dsgl-system-inspector-editor-numeric-input-${row.property.key}"
-            )
+            val input =
+                TextInputNode(
+                    text = row.controlValue.replace("|", ""),
+                    key = "dsgl-system-inspector-editor-numeric-input-${row.property.key}",
+                )
             input.allowedChars = "-0123456789."
             input.backgroundColor = if (row.inputActive) 0x334D5D70 else 0x22313D4B
             input.focusedBackgroundColor = input.backgroundColor
@@ -958,9 +998,10 @@ internal class SystemInspectorOverlayNode(
         }
 
         row.incrementRect?.let { rect ->
-            val inc = scope.button("+", {
-                key = "dsgl-system-inspector-editor-inc-$index"
-            })
+            val inc =
+                scope.button("+", {
+                    key = "dsgl-system-inspector-editor-inc-$index"
+                })
             inc.backgroundColor = 0x3346596E
             inc.border = Border.all(1, 0x775E738C)
             inc.textColor = 0xFFDCE5EF.toInt()
@@ -972,15 +1013,16 @@ internal class SystemInspectorOverlayNode(
         }
         row.unitRect?.let { rect ->
             val unitValue = row.unitValue ?: "px"
-            val unit = buildSystemOwnedSelectControl(
-                scope = scope,
-                key = "dsgl-system-inspector-editor-unit-$index",
-                selectedValue = unitValue,
-                options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = true),
-                hovered = false
-            ) { selected ->
-                controller.onSelectUnitOptionPressed(row.property, selected)
-            }
+            val unit =
+                buildSystemOwnedSelectControl(
+                    scope = scope,
+                    key = "dsgl-system-inspector-editor-unit-$index",
+                    selectedValue = unitValue,
+                    options = controller.resolveDropdownOptionsForProperty(row.property, unitSelect = true),
+                    hovered = false,
+                ) { selected ->
+                    controller.onSelectUnitOptionPressed(row.property, selected)
+                }
             renderNode(ctx, unit, translateRectY(rect, -bodyScrollY))
         }
     }
@@ -991,22 +1033,30 @@ internal class SystemInspectorOverlayNode(
         selectedValue: String,
         options: List<String>,
         hovered: Boolean,
-        onSelected: (String) -> Unit
+        onSelected: (String) -> Unit,
     ): DOMNode {
         val open = SelectRuntime.host.isOpenFor(key)
-        val selectNode = scope.select(
-            props = {
-                this.key = key
-                ownerScope = OverlayOwnerScope.System
-                value = selectedValue
-                onInput = { onSelected(it.value) }
+        val selectNode =
+            scope.select(
+                props = {
+                    this.key = key
+                    ownerScope = OverlayOwnerScope.System
+                    value = selectedValue
+                    onInput = { onSelected(it.value) }
+                },
+            ) {
+                options.forEach { option ->
+                    option(id = option, label = option)
+                }
             }
-        ) {
-            options.forEach { option ->
-                option(id = option, label = option)
+        selectNode.backgroundColor =
+            if (open) {
+                0x334D5D70
+            } else if (hovered) {
+                0x2A425164
+            } else {
+                0x22313D4B
             }
-        }
-        selectNode.backgroundColor = if (open) 0x334D5D70 else if (hovered) 0x2A425164 else 0x22313D4B
         selectNode.border = Border.all(1, if (open) 0xFFA8C6E6.toInt() else 0x77607084)
         selectNode.textColor = 0xFFE6EDF6.toInt()
         selectNode.fontSize = 18
@@ -1017,9 +1067,10 @@ internal class SystemInspectorOverlayNode(
     private fun renderStyleEditorFooterActions(scope: UiScope, ctx: UiMeasureContext, bodyScrollY: Int) {
         val resetRect = controller.overlayStyleEditorResetRect()
         if (resetRect.width > 0 && resetRect.height > 0) {
-            val resetButton = scope.button("Reset node", {
-                key = "dsgl-system-inspector-reset-node"
-            })
+            val resetButton =
+                scope.button("Reset node", {
+                    key = "dsgl-system-inspector-reset-node"
+                })
             resetButton.backgroundColor = 0x2A465968
             resetButton.border = Border.all(1, 0x775E738C)
             resetButton.textColor = 0xFFDCE5EF.toInt()
@@ -1032,9 +1083,10 @@ internal class SystemInspectorOverlayNode(
 
         val clearRect = controller.overlayStyleEditorClearRect()
         if (clearRect.width > 0 && clearRect.height > 0) {
-            val clearButton = scope.button("Clear all", {
-                key = "dsgl-system-inspector-clear-all"
-            })
+            val clearButton =
+                scope.button("Clear all", {
+                    key = "dsgl-system-inspector-clear-all"
+                })
             clearButton.backgroundColor = 0x2A4E3F56
             clearButton.border = Border.all(1, 0x777A5C84)
             clearButton.textColor = 0xFFDCE5EF.toInt()
@@ -1047,14 +1099,15 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun startMinimizedChipDrag(panelRect: Rect, mouseX: Int, mouseY: Int) {
-        minimizedChipDragSession = MinimizedChipDragSession(
-            startPointerX = mouseX,
-            startPointerY = mouseY,
-            startRect = panelRect,
-            currentPointerX = mouseX,
-            currentPointerY = mouseY,
-            moved = false
-        )
+        minimizedChipDragSession =
+            MinimizedChipDragSession(
+                startPointerX = mouseX,
+                startPointerY = mouseY,
+                startRect = panelRect,
+                currentPointerX = mouseX,
+                currentPointerY = mouseY,
+                moved = false,
+            )
         controller.onOverlayPanelPointerCaptureChanged(true)
     }
 
@@ -1075,7 +1128,7 @@ internal class SystemInspectorOverlayNode(
             x = session.startRect.x + dx,
             y = session.startRect.y + dy,
             viewportWidth = lastViewportWidth,
-            viewportHeight = lastViewportHeight
+            viewportHeight = lastViewportHeight,
         )
     }
 
@@ -1105,26 +1158,28 @@ internal class SystemInspectorOverlayNode(
         keyPrefix: String,
         tooltip: InspectorTooltipSnapshot?,
         backgroundColor: Int,
-        borderColor: Int
+        borderColor: Int,
     ) {
         if (tooltip == null) return
-        val box = scope.div({
-            key = "$keyPrefix-box"
-            style = {
-                display = Display.Block
-            }
-        })
+        val box =
+            scope.div({
+                key = "$keyPrefix-box"
+                style = {
+                    display = Display.Block
+                }
+            })
         box.backgroundColor = backgroundColor
         box.border = Border.all(1, borderColor)
         renderNode(ctx, box, tooltip.rect)
 
-        val textNode = scope.text(props = {
-            key = "$keyPrefix-text"
-            value = tooltip.text
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
-        })
+        val textNode =
+            scope.text(props = {
+                key = "$keyPrefix-text"
+                value = tooltip.text
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
         textNode.color = 0xFFE6EDF6.toInt()
         textNode.fontSize = 18
         renderNode(
@@ -1134,8 +1189,8 @@ internal class SystemInspectorOverlayNode(
                 tooltip.rect.x + 6,
                 tooltip.rect.y + 4,
                 (tooltip.rect.width - 10).coerceAtLeast(20),
-                (tooltip.rect.height - 8).coerceAtLeast(16)
-            )
+                (tooltip.rect.height - 8).coerceAtLeast(16),
+            ),
         )
     }
 
@@ -1163,12 +1218,11 @@ internal class SystemInspectorOverlayNode(
         }
     }
 
-    private fun findNodeByKey(targetKey: String): DOMNode? {
-        return collectNodes(this).firstOrNull { it.key == targetKey }
-    }
+    private fun findNodeByKey(targetKey: String): DOMNode? = collectNodes(this).firstOrNull { it.key == targetKey }
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -1191,15 +1245,9 @@ internal class SystemInspectorOverlayNode(
         return false
     }
 
-    private fun translateRectY(rect: Rect, deltaY: Int): Rect {
-        return Rect(rect.x, rect.y + deltaY, rect.width, rect.height)
-    }
+    private fun translateRectY(rect: Rect, deltaY: Int): Rect = Rect(rect.x, rect.y + deltaY, rect.width, rect.height)
 
-    private fun renderNode(
-        ctx: UiMeasureContext,
-        node: DOMNode,
-        rect: Rect
-    ) {
+    private fun renderNode(ctx: UiMeasureContext, node: DOMNode, rect: Rect) {
         if (rect.width <= 0 || rect.height <= 0) {
             node.display = Display.None
             node.render(ctx, 0, 0, 0, 0)

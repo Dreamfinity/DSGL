@@ -12,14 +12,15 @@ class TransitionBuilder internal constructor() {
         property: AnimatedStyleProperty,
         durationMs: Int,
         delayMs: Int = 0,
-        easing: Easing = Easings.EASE
+        easing: Easing = Easings.EASE,
     ) {
-        specs += TransitionPropertySpec(
-            property = property,
-            durationMs = durationMs.coerceAtLeast(0),
-            delayMs = delayMs.coerceAtLeast(0),
-            easing = easing
-        )
+        specs +=
+            TransitionPropertySpec(
+                property = property,
+                durationMs = durationMs.coerceAtLeast(0),
+                delayMs = delayMs.coerceAtLeast(0),
+                easing = easing,
+            )
     }
 
     internal fun build(): TransitionSpec = TransitionSpec(specs.toList())
@@ -36,32 +37,27 @@ class AnimationListBuilder internal constructor() {
         iterationCount: IterationCount = IterationCount.Count(1),
         direction: AnimationDirection = AnimationDirection.Normal,
         fillMode: AnimationFillMode = AnimationFillMode.None,
-        playState: AnimationPlayState = AnimationPlayState.Running
+        playState: AnimationPlayState = AnimationPlayState.Running,
     ) {
-        specs += AnimationSpec(
-            name = name,
-            durationMs = durationMs.coerceAtLeast(0),
-            delayMs = delayMs.coerceAtLeast(0),
-            easing = easing,
-            iterationCount = iterationCount,
-            direction = direction,
-            fillMode = fillMode,
-            playState = playState
-        )
+        specs +=
+            AnimationSpec(
+                name = name,
+                durationMs = durationMs.coerceAtLeast(0),
+                delayMs = delayMs.coerceAtLeast(0),
+                easing = easing,
+                iterationCount = iterationCount,
+                direction = direction,
+                fillMode = fillMode,
+                playState = playState,
+            )
     }
 
     internal fun build(): List<AnimationSpec> = specs.toList()
 }
 
-fun keyframes(
-    name: String,
-    block: KeyframesBuilder.() -> Unit
-) {
+fun keyframes(name: String, block: KeyframesBuilder.() -> Unit) {
     val definition = KeyframesBuilder(name).apply(block).build()
     KeyframesRegistry.register(definition)
 }
 
-fun transform(block: UiTransformBuilder.() -> Unit): UiTransform {
-    return UiTransformBuilder().apply(block).build()
-}
-
+fun transform(block: UiTransformBuilder.() -> Unit): UiTransform = UiTransformBuilder().apply(block).build()

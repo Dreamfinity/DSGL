@@ -4,8 +4,11 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 
 interface ContextMenuHost {
     fun openAtCursor(model: ContextMenuModel, x: Int, y: Int)
+
     fun openAnchored(model: ContextMenuModel, anchorRect: Rect)
+
     fun closeAll()
+
     fun isOpen(): Boolean
 }
 
@@ -23,7 +26,7 @@ data class ContextMenuTriggerScope(
     val anchorRect: Rect?,
     private val inheritedFontId: String?,
     private val inheritedFontSize: Int?,
-    private val host: ContextMenuHost
+    private val host: ContextMenuHost,
 ) {
     fun openMenu(model: ContextMenuModel) {
         host.openAtCursor(resolveModel(model), mouseX, mouseY)
@@ -41,7 +44,7 @@ data class ContextMenuTriggerScope(
         if (model.fontId != null && model.fontSize != null) return model
         return model.copy(
             fontId = model.fontId ?: inheritedFontId,
-            fontSize = model.fontSize ?: inheritedFontSize
+            fontSize = model.fontSize ?: inheritedFontSize,
         )
     }
 }

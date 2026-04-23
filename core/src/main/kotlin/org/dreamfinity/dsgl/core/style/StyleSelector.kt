@@ -4,13 +4,13 @@ enum class StyleCombinator {
     Descendant,
     Child,
     AdjacentSibling,
-    GeneralSibling
+    GeneralSibling,
 }
 
 data class StyleSpecificity(
     val idCount: Int = 0,
     val classLikeCount: Int = 0,
-    val typeCount: Int = 0
+    val typeCount: Int = 0,
 ) : Comparable<StyleSpecificity> {
     override fun compareTo(other: StyleSpecificity): Int {
         if (idCount != other.idCount) return idCount.compareTo(other.idCount)
@@ -18,13 +18,12 @@ data class StyleSpecificity(
         return typeCount.compareTo(other.typeCount)
     }
 
-    operator fun plus(other: StyleSpecificity): StyleSpecificity {
-        return StyleSpecificity(
+    operator fun plus(other: StyleSpecificity): StyleSpecificity =
+        StyleSpecificity(
             idCount = idCount + other.idCount,
             classLikeCount = classLikeCount + other.classLikeCount,
-            typeCount = typeCount + other.typeCount
+            typeCount = typeCount + other.typeCount,
         )
-    }
 }
 
 data class StyleSelectorPart(
@@ -32,30 +31,29 @@ data class StyleSelectorPart(
     val classes: Set<String> = emptySet(),
     val id: String? = null,
     val pseudoState: StylePseudoState? = null,
-    val universal: Boolean = false
+    val universal: Boolean = false,
 ) {
     init {
         require(
-            universal || typeName != null || id != null || classes.isNotEmpty() || pseudoState != null
+            universal || typeName != null || id != null || classes.isNotEmpty() || pseudoState != null,
         ) { "Selector part must not be empty." }
     }
 
-    fun specificity(): StyleSpecificity {
-        return StyleSpecificity(
+    fun specificity(): StyleSpecificity =
+        StyleSpecificity(
             idCount = if (id != null) 1 else 0,
             classLikeCount = classes.size + if (pseudoState != null) 1 else 0,
-            typeCount = if (typeName != null) 1 else 0
+            typeCount = if (typeName != null) 1 else 0,
         )
-    }
 }
 
 data class StyleSelectorStep(
     val part: StyleSelectorPart,
-    val combinatorToLeft: StyleCombinator? = null
+    val combinatorToLeft: StyleCombinator? = null,
 )
 
 data class StyleSelector(
-    val steps: List<StyleSelectorStep>
+    val steps: List<StyleSelectorStep>,
 ) {
     init {
         require(steps.isNotEmpty()) { "Selector must contain at least one step." }
@@ -67,17 +65,41 @@ data class StyleSelector(
     val hasCombinators: Boolean = steps.size > 1
 
     val typeName: String?
-        get() = if (steps.size == 1) steps.first().part.typeName else null
+        get() =
+            if (steps.size == 1) {
+                steps
+                    .first()
+                    .part.typeName
+            } else {
+                null
+            }
     val className: String?
         get() {
             if (steps.size != 1) return null
-            val classes = steps.first().part.classes
+            val classes =
+                steps
+                    .first()
+                    .part.classes
             return if (classes.size == 1) classes.first() else null
         }
     val id: String?
-        get() = if (steps.size == 1) steps.first().part.id else null
+        get() =
+            if (steps.size == 1) {
+                steps
+                    .first()
+                    .part.id
+            } else {
+                null
+            }
     val pseudoState: StylePseudoState?
-        get() = if (steps.size == 1) steps.first().part.pseudoState else null
+        get() =
+            if (steps.size == 1) {
+                steps
+                    .first()
+                    .part.pseudoState
+            } else {
+                null
+            }
 
     fun rightMostPart(): StyleSelectorPart = steps.last().part
 
@@ -108,12 +130,13 @@ data class StyleSelector(
 
                 if (trimmed[index] == '>' || trimmed[index] == '+' || trimmed[index] == '~') {
                     require(steps.isNotEmpty()) { "Selector cannot start with a combinator." }
-                    pendingCombinator = when (trimmed[index]) {
-                        '>' -> StyleCombinator.Child
-                        '+' -> StyleCombinator.AdjacentSibling
-                        '~' -> StyleCombinator.GeneralSibling
-                        else -> error("Unsupported combinator")
-                    }
+                    pendingCombinator =
+                        when (trimmed[index]) {
+                            '>' -> StyleCombinator.Child
+                            '+' -> StyleCombinator.AdjacentSibling
+                            '~' -> StyleCombinator.GeneralSibling
+                            else -> error("Unsupported combinator")
+                        }
                     index++
                     continue
                 }
@@ -129,10 +152,17 @@ data class StyleSelector(
                     index++
                 }
                 val token = trimmed.substring(tokenStart, index)
-                val step = StyleSelectorStep(
-                    part = parsePartToken(token, rawSelector),
-                    combinatorToLeft = if (steps.isEmpty()) null else pendingCombinator ?: StyleCombinator.Descendant
-                )
+                val step =
+                    StyleSelectorStep(
+                        part = parsePartToken(token, rawSelector),
+                        combinatorToLeft =
+                            if (steps.isEmpty()) {
+                                null
+                            } else {
+                                pendingCombinator
+                                    ?: StyleCombinator.Descendant
+                            },
+                    )
                 steps += step
                 pendingCombinator = null
             }
@@ -155,7 +185,9 @@ data class StyleSelector(
                 index++
             } else if (token[index].isLetter()) {
                 val typeStart = index
-                while (index < token.length && (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')) {
+                while (index < token.length &&
+                    (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')
+                ) {
                     index++
                 }
                 val typeCandidate = token.substring(typeStart, index)
@@ -168,7 +200,9 @@ data class StyleSelector(
                     '.' -> {
                         index++
                         val classStart = index
-                        while (index < token.length && (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')) {
+                        while (index < token.length &&
+                            (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')
+                        ) {
                             index++
                         }
                         val classValue = token.substring(classStart, index)
@@ -179,7 +213,9 @@ data class StyleSelector(
                     '#' -> {
                         index++
                         val idStart = index
-                        while (index < token.length && (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')) {
+                        while (index < token.length &&
+                            (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')
+                        ) {
                             index++
                         }
                         val idValue = token.substring(idStart, index)
@@ -193,14 +229,17 @@ data class StyleSelector(
                         while (index < token.length && token[index].isLetter()) {
                             index++
                         }
-                        val parsedPseudo = when (val pseudoValue = token.substring(pseudoStart, index).lowercase()) {
-                            "hover" -> StylePseudoState.HOVER
-                            "active" -> StylePseudoState.ACTIVE
-                            "focus" -> StylePseudoState.FOCUS
-                            "disabled" -> StylePseudoState.DISABLED
-                            "open" -> StylePseudoState.OPEN
-                            else -> throw IllegalArgumentException("Unsupported pseudo-state '$pseudoValue' in '$rawSelector'.")
-                        }
+                        val parsedPseudo =
+                            when (val pseudoValue = token.substring(pseudoStart, index).lowercase()) {
+                                "hover" -> StylePseudoState.HOVER
+                                "active" -> StylePseudoState.ACTIVE
+                                "focus" -> StylePseudoState.FOCUS
+                                "disabled" -> StylePseudoState.DISABLED
+                                "open" -> StylePseudoState.OPEN
+                                else -> throw IllegalArgumentException(
+                                    "Unsupported pseudo-state '$pseudoValue' in '$rawSelector'.",
+                                )
+                            }
                         pseudoState = parsedPseudo
                     }
 
@@ -213,7 +252,7 @@ data class StyleSelector(
                 classes = classes,
                 id = id,
                 pseudoState = pseudoState,
-                universal = universal
+                universal = universal,
             )
         }
     }
@@ -223,12 +262,12 @@ data class StyleRule(
     val selector: StyleSelector,
     val declarations: StyleDeclarations,
     val sourceOrder: Int,
-    val fileName: String
+    val fileName: String,
 )
 
 data class StylesheetData(
     val rules: List<StyleRule>,
     val rootVariables: Map<String, String>,
     val source: String,
-    val warnings: List<String> = emptyList()
+    val warnings: List<String> = emptyList(),
 )

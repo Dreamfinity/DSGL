@@ -1,10 +1,5 @@
 package org.dreamfinity.dsgl.core.dom
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -16,17 +11,25 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
+import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
-import org.dreamfinity.dsgl.core.style.StyleDeclarations
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class RangeInputScrollFastPathTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -61,7 +64,10 @@ class RangeInputScrollFastPathTests {
     @Test
     fun `range track follows bounds during scrollbar thumb drag fast path`() {
         val fixture = createFixture(includeSticky = false)
-        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val visual =
+            fixture.viewport
+                .debugScrollbarVisualState()
+                .vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
 
@@ -133,7 +139,10 @@ class RangeInputScrollFastPathTests {
     fun `sticky remains correct while thumb dragging with range input present`() {
         val fixture = createFixture(includeSticky = true)
         val sticky = assertNotNull(fixture.sticky)
-        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val visual =
+            fixture.viewport
+                .debugScrollbarVisualState()
+                .vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
 
@@ -154,18 +163,27 @@ class RangeInputScrollFastPathTests {
     @Test
     fun `high frequency tiny thumb drag deltas keep range track aligned`() {
         val fixture = createFixture(includeSticky = false)
-        val visual = fixture.viewport.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
+        val visual =
+            fixture.viewport
+                .debugScrollbarVisualState()
+                .vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
 
         assertTrue(fixture.router.handleMouseDown(dragX, startY, MouseButton.LEFT))
-        var previousScroll = fixture.viewport.scrollContainerState().scrollY
+        var previousScroll =
+            fixture.viewport
+                .scrollContainerState()
+                .scrollY
         var previousTrackY = expectedTrackRect(fixture.range).y
 
         repeat(32) { step ->
             assertTrue(fixture.router.handleMouseMove(dragX, startY + step + 1))
             val commands = fixture.tree.paint(ctx)
-            val scrollY = fixture.viewport.scrollContainerState().scrollY
+            val scrollY =
+                fixture.viewport
+                    .scrollContainerState()
+                    .scrollY
             val trackY = expectedTrackRect(fixture.range).y
             assertTrue(scrollY >= previousScroll)
             assertTrue(trackY <= previousTrackY)
@@ -193,41 +211,52 @@ class RangeInputScrollFastPathTests {
 
     private fun createFixture(includeSticky: Boolean): Fixture {
         val root = ContainerNode(key = "range-fast-root")
-        val viewport = ContainerNode(key = "range-fast-viewport").apply {
-            width = 170
-            height = 90
-            overflowX = Overflow.Hidden
-            overflowY = Overflow.Auto
-        }.applyParent(root)
+        val viewport =
+            ContainerNode(key = "range-fast-viewport")
+                .apply {
+                    width = 170
+                    height = 90
+                    overflowX = Overflow.Hidden
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
 
-        val sticky = if (includeSticky) {
-            ContainerNode(key = "range-fast-sticky").apply {
+        val sticky =
+            if (includeSticky) {
+                ContainerNode(key = "range-fast-sticky")
+                    .apply {
+                        width = 170
+                        height = 18
+                        inlineStyleDeclarations =
+                            styleDeclarations(
+                                StyleProperty.POSITION to "sticky",
+                                StyleProperty.TOP to "0px",
+                            )
+                    }.applyParent(viewport)
+            } else {
+                null
+            }
+
+        val controls =
+            ContainerNode(key = "range-fast-controls")
+                .apply {
+                    width = 170
+                }.applyParent(viewport)
+        ContainerNode(key = "range-fast-spacer")
+            .apply {
                 width = 170
-                height = 18
-                inlineStyleDeclarations = styleDeclarations(
-                    StyleProperty.POSITION to "sticky",
-                    StyleProperty.TOP to "0px"
-                )
-            }.applyParent(viewport)
-        } else {
-            null
-        }
-
-        val controls = ContainerNode(key = "range-fast-controls").apply {
-            width = 170
-        }.applyParent(viewport)
-        ContainerNode(key = "range-fast-spacer").apply {
-            width = 170
-            height = 42
-        }.applyParent(controls)
-        val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range-fast-input").apply {
-            width = 150
-            height = 16
-        }.applyParent(controls)
-        ContainerNode(key = "range-fast-filler").apply {
-            width = 170
-            height = 360
-        }.applyParent(controls)
+                height = 42
+            }.applyParent(controls)
+        val range =
+            RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range-fast-input")
+                .apply {
+                    width = 150
+                    height = 16
+                }.applyParent(controls)
+        ContainerNode(key = "range-fast-filler")
+            .apply {
+                width = 170
+                height = 360
+            }.applyParent(controls)
 
         val tree = DomTree(root)
         tree.render(ctx, 420, 260)
@@ -241,42 +270,52 @@ class RangeInputScrollFastPathTests {
             sticky = sticky,
             router = router,
             baseRangeY = range.bounds.y,
-            baseStickyY = sticky?.bounds?.y ?: 0
+            baseStickyY = sticky?.bounds?.y ?: 0,
         )
     }
 
     private fun createNestedFixture(): NestedFixture {
         val root = ContainerNode(key = "range-nested-root")
-        val outer = ContainerNode(key = "range-nested-outer").apply {
-            width = 200
-            height = 120
-            overflowY = Overflow.Auto
-        }.applyParent(root)
-        ContainerNode(key = "range-nested-outer-spacer").apply {
-            width = 200
-            height = 26
-        }.applyParent(outer)
-        val inner = ContainerNode(key = "range-nested-inner").apply {
-            width = 180
-            height = 80
-            overflowY = Overflow.Auto
-        }.applyParent(outer)
-        ContainerNode(key = "range-nested-inner-spacer").apply {
-            width = 180
-            height = 20
-        }.applyParent(inner)
-        val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range-nested-input").apply {
-            width = 150
-            height = 16
-        }.applyParent(inner)
-        ContainerNode(key = "range-nested-inner-filler").apply {
-            width = 180
-            height = 280
-        }.applyParent(inner)
-        ContainerNode(key = "range-nested-outer-filler").apply {
-            width = 200
-            height = 260
-        }.applyParent(outer)
+        val outer =
+            ContainerNode(key = "range-nested-outer")
+                .apply {
+                    width = 200
+                    height = 120
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
+        ContainerNode(key = "range-nested-outer-spacer")
+            .apply {
+                width = 200
+                height = 26
+            }.applyParent(outer)
+        val inner =
+            ContainerNode(key = "range-nested-inner")
+                .apply {
+                    width = 180
+                    height = 80
+                    overflowY = Overflow.Auto
+                }.applyParent(outer)
+        ContainerNode(key = "range-nested-inner-spacer")
+            .apply {
+                width = 180
+                height = 20
+            }.applyParent(inner)
+        val range =
+            RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range-nested-input")
+                .apply {
+                    width = 150
+                    height = 16
+                }.applyParent(inner)
+        ContainerNode(key = "range-nested-inner-filler")
+            .apply {
+                width = 180
+                height = 280
+            }.applyParent(inner)
+        ContainerNode(key = "range-nested-outer-filler")
+            .apply {
+                width = 200
+                height = 260
+            }.applyParent(outer)
 
         val tree = DomTree(root)
         tree.render(ctx, 520, 320)
@@ -289,24 +328,25 @@ class RangeInputScrollFastPathTests {
             inner = inner,
             range = range,
             router = router,
-            baseRangeY = range.bounds.y
+            baseRangeY = range.bounds.y,
         )
     }
 
     private fun assertTrackMatchesBounds(commands: List<RenderCommand>, range: RangeInputNode) {
         val expected = expectedTrackRect(range)
-        val match = commands
-            .filterIsInstance<RenderCommand.DrawRect>()
-            .firstOrNull { command ->
-                command.x == expected.x &&
-                    command.y == expected.y &&
-                    command.width == expected.width &&
-                    command.height == expected.height &&
-                    command.color == range.trackColor
-            }
+        val match =
+            commands
+                .filterIsInstance<RenderCommand.DrawRect>()
+                .firstOrNull { command ->
+                    command.x == expected.x &&
+                        command.y == expected.y &&
+                        command.width == expected.width &&
+                        command.height == expected.height &&
+                        command.color == range.trackColor
+                }
         assertNotNull(
             match,
-            "Range track command did not match expected geometry: expected=$expected bounds=${range.bounds}"
+            "Range track command did not match expected geometry: expected=$expected bounds=${range.bounds}",
         )
     }
 
@@ -317,7 +357,7 @@ class RangeInputScrollFastPathTests {
             x = range.bounds.x,
             y = trackY,
             width = range.bounds.width,
-            height = trackHeight
+            height = trackHeight,
         )
     }
 
@@ -326,13 +366,12 @@ class RangeInputScrollFastPathTests {
         return geometry.visibleBorderRect ?: geometry.usedBorderRect
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 
     private data class Fixture(
         val tree: DomTree,
@@ -342,7 +381,7 @@ class RangeInputScrollFastPathTests {
         val sticky: ContainerNode?,
         val router: LayerDomInputRouter,
         val baseRangeY: Int,
-        val baseStickyY: Int
+        val baseStickyY: Int,
     )
 
     private data class NestedFixture(
@@ -352,6 +391,6 @@ class RangeInputScrollFastPathTests {
         val inner: ContainerNode,
         val range: RangeInputNode,
         val router: LayerDomInputRouter,
-        val baseRangeY: Int
+        val baseRangeY: Int,
     )
 }

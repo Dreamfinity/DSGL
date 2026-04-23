@@ -1,9 +1,7 @@
 package org.dreamfinity.dsgl.core.text
 
 object ObfuscationTextSelector {
-    fun shouldObfuscateCodepoint(codepoint: Int): Boolean {
-        return !TextStyleMetrics.isWhitespaceCodepoint(codepoint)
-    }
+    fun shouldObfuscateCodepoint(codepoint: Int): Boolean = !TextStyleMetrics.isWhitespaceCodepoint(codepoint)
 
     fun selectCandidateIndex(
         sourceKey: String,
@@ -11,7 +9,7 @@ object ObfuscationTextSelector {
         glyphIndexInLine: Int,
         timeSlice: Long,
         originalCodepoint: Int,
-        candidateCount: Int
+        candidateCount: Int,
     ): Int {
         if (candidateCount <= 0) return 0
         var seed = 17

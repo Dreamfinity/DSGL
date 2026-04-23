@@ -1,23 +1,27 @@
 package org.dreamfinity.dsgl.core.debug
 
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.render.RenderCommand
+import java.util.Locale
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
-import java.util.Locale
 
 class OverlayDebugControlHostTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
+
     @AfterTest
     fun cleanup() {
         OverlayLayerDebugState.resetAll()
@@ -71,13 +75,25 @@ class OverlayDebugControlHostTests {
         host.render(960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
 
-        assertTrue(host.handleMouseDown(layout.appOverlayRenderRect.x + 2, layout.appOverlayRenderRect.y + 2, MouseButton.LEFT))
+        assertTrue(
+            host.handleMouseDown(
+                layout.appOverlayRenderRect.x + 2,
+                layout.appOverlayRenderRect.y + 2,
+                MouseButton.LEFT,
+            ),
+        )
         assertFalse(OverlayLayerDebugState.applicationOverlayRenderEnabled)
         assertTrue(OverlayLayerDebugState.applicationOverlayInputEnabled)
         assertTrue(OverlayLayerDebugState.systemOverlayRenderEnabled)
         assertTrue(OverlayLayerDebugState.systemOverlayInputEnabled)
 
-        assertTrue(host.handleMouseDown(layout.systemOverlayInputRect.x + 2, layout.systemOverlayInputRect.y + 2, MouseButton.LEFT))
+        assertTrue(
+            host.handleMouseDown(
+                layout.systemOverlayInputRect.x + 2,
+                layout.systemOverlayInputRect.y + 2,
+                MouseButton.LEFT,
+            ),
+        )
         assertFalse(OverlayLayerDebugState.systemOverlayInputEnabled)
         assertFalse(OverlayLayerDebugState.applicationOverlayRenderEnabled)
     }
@@ -91,15 +107,18 @@ class OverlayDebugControlHostTests {
         host.render(960, 540)
         host.paint(ctx)
         val commands = host.paint(ctx)
-        val drawTexts = commands
-            .filterIsInstance<RenderCommand.DrawText>()
-        val statusTexts = drawTexts
-            .filter { it.sourceKey == "dsgl-overlay-debug-status" }
-            .map { it.text }
-        val statusTextValue = assertNotNull(
-            statusTexts.lastOrNull { it.isNotBlank() } ?: statusTexts.lastOrNull(),
-            "draw texts: ${drawTexts.joinToString { "${it.sourceKey}:${it.text}" }}"
-        )
+        val drawTexts =
+            commands
+                .filterIsInstance<RenderCommand.DrawText>()
+        val statusTexts =
+            drawTexts
+                .filter { it.sourceKey == "dsgl-overlay-debug-status" }
+                .map { it.text }
+        val statusTextValue =
+            assertNotNull(
+                statusTexts.lastOrNull { it.isNotBlank() } ?: statusTexts.lastOrNull(),
+                "draw texts: ${drawTexts.joinToString { "${it.sourceKey}:${it.text}" }}",
+            )
         val expectedFps = OverlayLayerDebugState.frameFps
         val expectedFrameMs = String.format(Locale.US, "%.1f", OverlayLayerDebugState.frameTimeMs)
         val expectedWindowFps = OverlayLayerDebugState.frameFpsWindow
@@ -118,19 +137,29 @@ class OverlayDebugControlHostTests {
 
         host.render(960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
-        val initialText = host.paint(ctx)
-            .filterIsInstance<RenderCommand.DrawText>()
-            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
-            ?.text
+        val initialText =
+            host
+                .paint(ctx)
+                .filterIsInstance<RenderCommand.DrawText>()
+                .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+                ?.text
         assertEquals("ON", initialText)
 
-        assertTrue(host.handleMouseDown(layout.appOverlayRenderRect.x + 2, layout.appOverlayRenderRect.y + 2, MouseButton.LEFT))
+        assertTrue(
+            host.handleMouseDown(
+                layout.appOverlayRenderRect.x + 2,
+                layout.appOverlayRenderRect.y + 2,
+                MouseButton.LEFT,
+            ),
+        )
 
         host.render(960, 540)
-        val updatedText = host.paint(ctx)
-            .filterIsInstance<RenderCommand.DrawText>()
-            .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
-            ?.text
+        val updatedText =
+            host
+                .paint(ctx)
+                .filterIsInstance<RenderCommand.DrawText>()
+                .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+                ?.text
         assertEquals("OFF", updatedText)
     }
 
@@ -180,9 +209,9 @@ class OverlayDebugControlHostTests {
                 frameFps = 0,
                 frameTimeMs = 0f,
                 frameFpsWindow = 0,
-                frameTimeWindowMs = 0f
+                frameTimeWindowMs = 0f,
             ),
-            OverlayLayerDebugState.snapshot()
+            OverlayLayerDebugState.snapshot(),
         )
     }
 }

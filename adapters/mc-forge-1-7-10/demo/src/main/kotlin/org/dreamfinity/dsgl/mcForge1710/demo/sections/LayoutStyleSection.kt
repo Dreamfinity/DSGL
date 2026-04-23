@@ -1,22 +1,19 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseDragEvent
 import org.dreamfinity.dsgl.core.hooks.ref.useRef
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_SURFACE_ALT
 import kotlin.math.abs
 
-fun UiScope.layoutStyleSection(
-    onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
-) {
+fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit) {
     var styleUseMargin by useState(true)
     var styleUsePadding by useState(true)
     var styleUseBorder by useState(true)
@@ -54,7 +51,7 @@ fun UiScope.layoutStyleSection(
         }) {
             text(
                 "Toggle values and click boxes to verify row/column behavior.",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
 
             div({
@@ -71,7 +68,8 @@ fun UiScope.layoutStyleSection(
                             styleLargeGap = !styleLargeGap
                             onInfo("Layout: gap=${if (styleLargeGap) "large" else "compact"}")
                         }
-                    })
+                    },
+                )
                 button(
                     if (styleFixedSize) "Size: Fixed" else "Size: Auto",
                     {
@@ -79,7 +77,7 @@ fun UiScope.layoutStyleSection(
                             styleFixedSize = !styleFixedSize
                             onInfo("Layout: fixedSize=$styleFixedSize")
                         }
-                    }
+                    },
                 )
             }
 
@@ -102,7 +100,10 @@ fun UiScope.layoutStyleSection(
                             height = fixedSize?.px
                             padding = 2.px
                             backgroundColor = 0xFF3A4A5A.toInt()
-                            border { width = 1.px; color = 0xFF5E89B5.toInt() }
+                            border {
+                                width = 1.px
+                                color = 0xFF5E89B5.toInt()
+                            }
                         }
                     }) {
                         text("R${index + 1}")
@@ -128,7 +129,10 @@ fun UiScope.layoutStyleSection(
                             width = if (styleFixedSize) 72.px else null
                             padding = 2.px
                             backgroundColor = 0xFF43404F.toInt()
-                            border { width = 1.px; color = 0xFF786AA6.toInt() }
+                            border {
+                                width = 1.px
+                                color = 0xFF786AA6.toInt()
+                            }
                         }
                     }) {
                         text("Column box ${index + 1}")
@@ -147,19 +151,19 @@ fun UiScope.layoutStyleSection(
                     if (styleUseMargin) "Margin ON" else "Margin OFF",
                     {
                         onMouseClick = { styleUseMargin = !styleUseMargin }
-                    }
+                    },
                 )
                 button(
                     if (styleUsePadding) "Padding ON" else "Padding OFF",
                     {
                         onMouseClick = { styleUsePadding = !styleUsePadding }
-                    }
+                    },
                 )
                 button(
                     if (styleUseBorder) "Border ON" else "Border OFF",
                     {
                         onMouseClick = { styleUseBorder = !styleUseBorder }
-                    }
+                    },
                 )
             }
 
@@ -171,15 +175,27 @@ fun UiScope.layoutStyleSection(
                 style = {
                     width = 100.percent
                     backgroundColor = DEMO_SURFACE_ALT
-                    if (styleUseMargin) margin { top = 4.px; right = 0.px; bottom = 0.px; left = 8.px }
+                    if (styleUseMargin) {
+                        margin {
+                            top = 4.px
+                            right = 0.px
+                            bottom = 0.px
+                            left = 8.px
+                        }
+                    }
                     if (styleUsePadding) padding { all(4.px) }
-                    if (styleUseBorder) border { width = 1.px; color = 0xFF90A4AE.toInt() }
+                    if (styleUseBorder) {
+                        border {
+                            width = 1.px
+                            color = 0xFF90A4AE.toInt()
+                        }
+                    }
                 }
             }) {
                 text("Style target (margin/padding/border)")
                 text(
                     "margin=$styleUseMargin padding=$styleUsePadding border=$styleUseBorder",
-                    { style = { color = DEMO_MUTED } }
+                    { style = { color = DEMO_MUTED } },
                 )
             }
 
@@ -197,7 +213,7 @@ fun UiScope.layoutStyleSection(
                             stackOverlayEnabled = !stackOverlayEnabled
                             onInfo("Layout: stackOverlay=$stackOverlayEnabled")
                         }
-                    }
+                    },
                 )
                 button("Reset Overlay", {
                     onMouseClick = {
@@ -210,7 +226,7 @@ fun UiScope.layoutStyleSection(
                 })
                 text(
                     "Overlay: $layoutOverlayX,$layoutOverlayY clicks=$overlayClicks",
-                    { style = { color = DEMO_MUTED } }
+                    { style = { color = DEMO_MUTED } },
                 )
             }
         }
@@ -223,9 +239,17 @@ fun UiScope.layoutStyleSection(
                     val overlayNode = findNodeInPath(event.target, "layout.stack.overlay") ?: return@onMouseDown
                     layoutOverlayDragging = true
                     overlayDragAnchorXRef.current =
-                        (event.mouseX - overlayNode.bounds.x).coerceIn(0, overlayNode.bounds.width.coerceAtLeast(1))
+                        (event.mouseX - overlayNode.bounds.x).coerceIn(
+                            0,
+                            overlayNode.bounds.width
+                                .coerceAtLeast(1),
+                        )
                     overlayDragAnchorYRef.current =
-                        (event.mouseY - overlayNode.bounds.y).coerceIn(0, overlayNode.bounds.height.coerceAtLeast(1))
+                        (event.mouseY - overlayNode.bounds.y).coerceIn(
+                            0,
+                            overlayNode.bounds.height
+                                .coerceAtLeast(1),
+                        )
                     overlayDragMovedRef.current = false
                 }
                 onMouseDrag = { event ->
@@ -237,7 +261,7 @@ fun UiScope.layoutStyleSection(
                         currentX = layoutOverlayX,
                         currentY = layoutOverlayY,
                         anchorX = overlayDragAnchorXRef.current ?: 0,
-                        anchorY = overlayDragAnchorYRef.current ?: 0
+                        anchorY = overlayDragAnchorYRef.current ?: 0,
                     ) { nextX, nextY, moved ->
                         if (moved) {
                             overlayDragMovedRef.current = true
@@ -263,14 +287,22 @@ fun UiScope.layoutStyleSection(
                     width = overlayWidth.px
                     height = overlayHeight.px
                     backgroundColor = 0xCC5A3131.toInt()
-                    margin { top = layoutOverlayY.px; right = 0.px; bottom = 0.px; left = layoutOverlayX.px }
+                    margin {
+                        top = layoutOverlayY.px
+                        right = 0.px
+                        bottom = 0.px
+                        left = layoutOverlayX.px
+                    }
                     padding { all(4.px) }
-                    border { width = 1.px; color = 0xFF8D4848.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF8D4848.toInt()
+                    }
                 }
             }) {
                 text(
                     if (layoutOverlayDragging) "Overlay (dragging...)" else "Overlay (drag me)",
-                    { style = { color = 0xFFF5F7FA.toInt() } }
+                    { style = { color = 0xFFF5F7FA.toInt() } },
                 )
             }
         }
@@ -286,7 +318,7 @@ private fun updateOverlayDrag(
     currentY: Int,
     anchorX: Int,
     anchorY: Int,
-    onUpdate: (nextX: Int, nextY: Int, moved: Boolean) -> Unit
+    onUpdate: (nextX: Int, nextY: Int, moved: Boolean) -> Unit,
 ) {
     if (!isDragging) return
     val stackNode = findNodeInPath(event.target, "section.layoutStyle.stack") ?: return

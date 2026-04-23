@@ -1,14 +1,14 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.McItemStackRef
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import kotlin.math.roundToLong
@@ -28,7 +28,7 @@ data class McFeaturesShellProps(
     val guiScaleLabel: (Int) -> String,
     val setGuiScale: (Int) -> Unit,
     val cycleGuiScale: (Int) -> Unit,
-    val onLogHook: (String, Event, String?) -> Unit
+    val onLogHook: (String, Event, String?) -> Unit,
 )
 
 fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
@@ -36,7 +36,9 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
     var itemRotX by useState(-11.0)
 
     fun itemRotYLong(): Long = itemRotY.roundToLong().coerceIn(0L, 360L)
+
     fun itemRotXLong(): Long = itemRotX.roundToLong().coerceIn(-89L, 89L)
+
     fun adjustItemRotation(deltaY: Double = 0.0, deltaX: Double = 0.0) {
         var normalized = (itemRotY + deltaY) % 360.0
         if (normalized < 0.0) normalized += 360.0
@@ -55,12 +57,14 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
         }
     }) {
         text(
-            "DSGL viewport=${props.viewportWidthPx}x${props.viewportHeightPx}px, guiScale=${props.guiScaleLabel(guiScaleValue)}",
-            { style = { color = DsglColors.WHITE } }
+            "DSGL viewport=${props.viewportWidthPx}x${props.viewportHeightPx}px, guiScale=${props.guiScaleLabel(
+                guiScaleValue,
+            )}",
+            { style = { color = DsglColors.WHITE } },
         )
         text(
             "Change guiScale below: vanilla UI changes, DSGL layout should stay pixel-stable.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -116,7 +120,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                 width = 100.percent
                 maxWidth = 360.px
                 padding = 4.px
-                border { width = 1.px; color = 0xFF5D6A76.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5D6A76.toInt()
+                }
                 backgroundColor = 0xFF1A222A.toInt()
                 gap = 4.px
                 display = Display.Flex
@@ -136,7 +143,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                             style = {
                                 width = 18.px
                                 height = 10.px
-                                border { width = 1.px; color = 0xFF3F4B56.toInt() }
+                                border {
+                                    width = 1.px
+                                    color = 0xFF3F4B56.toInt()
+                                }
                                 backgroundColor = if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt()
                             }
                         }) {}
@@ -158,7 +168,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                         width = 160.px
                         height = 102.px
                         padding = 4.px
-                        border { width = 1.px; color = 0xFF6A7784.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF6A7784.toInt()
+                        }
                         backgroundColor = 0xFF111922.toInt()
                         gap = 3.px
                         display = Display.Flex
@@ -247,7 +260,7 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
         text("Image sources: resource + file:// + http(s):// cached path.")
         text(
             "mediaReady=${props.mediaReady} file=${if (props.mediaReady) "prepared" else "failed"}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -271,7 +284,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                     style = {
                         width = 36.px
                         height = 36.px
-                        border { width = 1.px; color = 0xFF66737F.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF66737F.toInt()
+                        }
                     }
                 })
             }
@@ -289,7 +305,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                     style = {
                         width = 36.px
                         height = 36.px
-                        border { width = 1.px; color = 0xFF66737F.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF66737F.toInt()
+                        }
                     }
                 })
             }
@@ -307,7 +326,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                     style = {
                         width = 36.px
                         height = 36.px
-                        border { width = 1.px; color = 0xFF66737F.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF66737F.toInt()
+                        }
                     }
                 })
             }
@@ -327,7 +349,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                 key = "mc.item.2d"
                 style = {
                     width = 64.px
-                    border { width = 1.px; color = 0xFF586A7A.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF586A7A.toInt()
+                    }
                 }
             })
             itemStack(props.blockItemRef, {
@@ -337,7 +362,10 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                 key = "mc.item.3d"
                 style = {
                     width = 70.px
-                    border { width = 1.px; color = 0xFF586A7A.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF586A7A.toInt()
+                    }
                 }
             })
         }
@@ -345,14 +373,14 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
         text("Rotation controls (drag sliders or use step buttons)")
         text(
             "Drag outside slider bounds: value should keep updating until mouse up.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
         input(
             InputType.Range(
                 value = itemRotYLong(),
                 min = 0,
                 max = 360,
-                step = 5
+                step = 5,
             ),
             {
                 key = "mc.rotation.slider.yaw"
@@ -373,7 +401,7 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                     itemRotY = next.toDouble()
                     props.onLogHook("mc.rotY.onChange", event, "rotY=${itemRotYLong()}")
                 }
-            }
+            },
         )
 
         input(
@@ -381,7 +409,7 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                 value = itemRotXLong(),
                 min = -89,
                 max = 89,
-                step = 1
+                step = 1,
             ),
             {
                 key = "mc.rotation.slider.pitch"
@@ -402,7 +430,7 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                     itemRotX = next.toDouble()
                     props.onLogHook("mc.rotX.onChange", event, "rotX=${itemRotXLong()}")
                 }
-            }
+            },
         )
 
         div({
@@ -434,7 +462,7 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
 
         text(
             "rotY=${itemRotYLong()} rotX=${itemRotXLong()}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }

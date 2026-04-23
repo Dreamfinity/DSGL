@@ -4,7 +4,7 @@ internal enum class ColorPickerDragTarget {
     None,
     Field,
     Hue,
-    Alpha
+    Alpha,
 }
 
 internal class ColorPickerTextInputSession {

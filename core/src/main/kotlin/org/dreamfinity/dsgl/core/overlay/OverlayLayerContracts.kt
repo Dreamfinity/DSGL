@@ -6,43 +6,43 @@ enum class UiLayerId {
     Debug,
     ApplicationRoot,
     ApplicationOverlay,
-    SystemOverlay
+    SystemOverlay,
 }
 
 enum class OverlayOwnerScope {
     Application,
-    System
+    System,
 }
 
 object OverlayLayerContracts {
-    val paintOrder: List<UiLayerId> = listOf(
-        UiLayerId.ApplicationRoot,
-        UiLayerId.ApplicationOverlay,
-        UiLayerId.SystemOverlay,
-        UiLayerId.Debug
-    )
+    val paintOrder: List<UiLayerId> =
+        listOf(
+            UiLayerId.ApplicationRoot,
+            UiLayerId.ApplicationOverlay,
+            UiLayerId.SystemOverlay,
+            UiLayerId.Debug,
+        )
 
-    val inputPriority: List<UiLayerId> = listOf(
-        UiLayerId.Debug,
-        UiLayerId.SystemOverlay,
-        UiLayerId.ApplicationOverlay,
-        UiLayerId.ApplicationRoot
-    )
+    val inputPriority: List<UiLayerId> =
+        listOf(
+            UiLayerId.Debug,
+            UiLayerId.SystemOverlay,
+            UiLayerId.ApplicationOverlay,
+            UiLayerId.ApplicationRoot,
+        )
 
-    fun resolveTransientLayer(ownerScope: OverlayOwnerScope): UiLayerId {
-        return when (ownerScope) {
+    fun resolveTransientLayer(ownerScope: OverlayOwnerScope): UiLayerId =
+        when (ownerScope) {
             OverlayOwnerScope.Application -> UiLayerId.ApplicationOverlay
             OverlayOwnerScope.System -> UiLayerId.SystemOverlay
         }
-    }
 
-    fun resolveTransientLayer(ownerScope: OverlayOwnerScope, cursorX: Int, cursorY: Int): UiLayerId {
-        return resolveTransientLayer(ownerScope)
-    }
+    fun resolveTransientLayer(ownerScope: OverlayOwnerScope, cursorX: Int, cursorY: Int): UiLayerId =
+        resolveTransientLayer(ownerScope)
 
     fun firstInputConsumer(
         canConsume: (UiLayerId) -> Boolean,
-        isLayerInputEnabled: (UiLayerId) -> Boolean = { true }
+        isLayerInputEnabled: (UiLayerId) -> Boolean = { true },
     ): UiLayerId? {
         inputPriority.forEach { layer ->
             if (!isLayerInputEnabled(layer)) return@forEach
@@ -57,7 +57,7 @@ object OverlayLayerContracts {
         systemOverlay: List<RenderCommand>,
         debug: List<RenderCommand>,
         out: MutableList<RenderCommand>,
-        shouldRenderLayer: (UiLayerId) -> Boolean = { true }
+        shouldRenderLayer: (UiLayerId) -> Boolean = { true },
     ) {
         out.clear()
         paintOrder.forEach { layer ->

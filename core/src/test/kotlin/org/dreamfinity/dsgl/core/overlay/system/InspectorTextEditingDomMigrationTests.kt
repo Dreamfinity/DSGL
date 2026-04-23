@@ -1,11 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -24,13 +18,22 @@ import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class InspectorTextEditingDomMigrationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     private val clipboard = RecordingClipboardAccess()
 
@@ -47,11 +50,12 @@ class InspectorTextEditingDomMigrationTests {
     @Test
     fun `inspector live text editing is dom-first and controller edit session stays inactive`() {
         val fixture = openInspectorAndSelectTarget()
-        val stringInput = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-input-"
-        )
+        val stringInput =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-input-",
+            )
 
         val focused = focusInputByClick(fixture.host, stringInput)
         val nearEndX = (stringInput.bounds.x + stringInput.bounds.width - 3).coerceAtLeast(stringInput.bounds.x + 1)
@@ -68,11 +72,12 @@ class InspectorTextEditingDomMigrationTests {
         ClipboardBridge.install(clipboard)
 
         val fixture = openInspectorAndSelectTarget()
-        val input = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-input-"
-        )
+        val input =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-input-",
+            )
 
         val focused = focusInputByClick(fixture.host, input)
         val y = focused.second
@@ -108,11 +113,12 @@ class InspectorTextEditingDomMigrationTests {
         ClipboardBridge.install(clipboard)
 
         val fixture = openInspectorAndSelectTarget()
-        val numericInput = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
-        )
+        val numericInput =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-numeric-input-width",
+            )
 
         focusInputByClick(fixture.host, numericInput)
         assertEquals(numericInput.key, FocusManager.focusedNode()?.key)
@@ -142,11 +148,12 @@ class InspectorTextEditingDomMigrationTests {
         val fixture = openInspectorAndSelectTarget()
         var revision = fixture.nextRevision
 
-        val firstInput = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
-        )
+        val firstInput =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-numeric-input-width",
+            )
         val inputKey = firstInput.key ?: error("expected keyed inspector input")
         val focused = focusInputByClick(fixture.host, firstInput)
         val focusX = focused.first
@@ -163,11 +170,12 @@ class InspectorTextEditingDomMigrationTests {
             assertEquals(inputKey, FocusManager.focusedNode()?.key)
         }
 
-        val refreshed = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
-        )
+        val refreshed =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-numeric-input-width",
+            )
         assertEquals(inputKey, refreshed.key)
         assertEquals("42", refreshed.text)
 
@@ -178,11 +186,12 @@ class InspectorTextEditingDomMigrationTests {
         assertTrue(fixture.host.handleKeyDown(0, '7'))
 
         renderInspectorFrame(fixture, revision++, focusX, focusY)
-        val refreshedAgain = findVisibleInputNode(
-            host = fixture.host,
-            inspector = fixture.inspector,
-            keyPrefix = "dsgl-system-inspector-editor-numeric-input-width"
-        )
+        val refreshedAgain =
+            findVisibleInputNode(
+                host = fixture.host,
+                inspector = fixture.inspector,
+                keyPrefix = "dsgl-system-inspector-editor-numeric-input-width",
+            )
         assertEquals("37", refreshedAgain.text)
         assertNull(fixture.inspector.debugActiveEditBuffer())
     }
@@ -208,25 +217,42 @@ class InspectorTextEditingDomMigrationTests {
 
         inspector.toggle()
         host.onInputFrame(1280, 720)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false,
+        )
         host.render(ctx, 1280, 720)
         host.handleMouseDown(984, 144, MouseButton.LEFT)
         host.handleMouseUp(984, 144, MouseButton.LEFT)
         inspector.setPickMode(false)
 
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 984, cursorY = 144, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = 984,
+            cursorY = 144,
+            inspectorPointerCaptured = false,
+        )
         host.render(ctx, 1280, 720)
 
         return Fixture(inspector, host, root, target, nextRevision = 3L)
     }
 
-    private fun renderInspectorFrame(fixture: Fixture, revision: Long, cursorX: Int, cursorY: Int) {
+    private fun renderInspectorFrame(
+        fixture: Fixture,
+        revision: Long,
+        cursorX: Int,
+        cursorY: Int,
+    ) {
         fixture.host.syncFrame(
             inspectedRoot = fixture.root,
             inspectedLayoutRevision = revision,
             cursorX = cursorX,
             cursorY = cursorY,
-            inspectorPointerCaptured = fixture.inspector.isPointerCaptured
+            inspectorPointerCaptured = fixture.inspector.isPointerCaptured,
         )
         fixture.host.render(ctx, 1280, 720)
     }
@@ -234,15 +260,17 @@ class InspectorTextEditingDomMigrationTests {
     private fun findVisibleInputNode(host: SystemOverlayHost, inspector: InspectorController, keyPrefix: String): TextInputNode {
         val inspectorNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("inspector entry missing")
         val contentRect = inspector.overlayContentRect()
-        val candidates = collectNodes(inspectorNode)
-            .filterIsInstance<TextInputNode>()
-            .filter { (it.key?.toString() ?: "").startsWith(keyPrefix) }
+        val candidates =
+            collectNodes(inspectorNode)
+                .filterIsInstance<TextInputNode>()
+                .filter { (it.key?.toString() ?: "").startsWith(keyPrefix) }
 
-        val visible = candidates.firstOrNull { node ->
-            val probeX = node.bounds.x + 2
-            val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
-            contentRect.contains(probeX, probeY)
-        }
+        val visible =
+            candidates.firstOrNull { node ->
+                val probeX = node.bounds.x + 2
+                val probeY = node.bounds.y + (node.bounds.height / 2).coerceAtLeast(1)
+                contentRect.contains(probeX, probeY)
+            }
         return visible ?: candidates.firstOrNull() ?: error("expected inspector input for prefix '$keyPrefix'")
     }
 
@@ -266,9 +294,10 @@ class InspectorTextEditingDomMigrationTests {
     private fun inspectedRoot(): Pair<ContainerNode, ContainerNode> {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1280, 720)
-        val target = ContainerNode(key = "target").apply {
-            bounds = Rect(980, 140, 120, 30)
-        }
+        val target =
+            ContainerNode(key = "target").apply {
+                bounds = Rect(980, 140, 120, 30)
+            }
         target.applyParent(root)
         StyleEngine.setInspectorOverrideLiteral(target, StyleProperty.BACKGROUND_COLOR, "#FF112233").getOrThrow()
         return root to target
@@ -276,6 +305,7 @@ class InspectorTextEditingDomMigrationTests {
 
     private fun collectNodes(root: DOMNode): List<DOMNode> {
         val out = ArrayList<DOMNode>()
+
         fun walk(node: DOMNode) {
             out += node
             node.children.forEach(::walk)
@@ -289,7 +319,7 @@ class InspectorTextEditingDomMigrationTests {
         val host: SystemOverlayHost,
         val root: ContainerNode,
         val target: ContainerNode,
-        val nextRevision: Long
+        val nextRevision: Long,
     )
 
     private class RecordingClipboardAccess : ClipboardAccess {
@@ -302,5 +332,3 @@ class InspectorTextEditingDomMigrationTests {
         }
     }
 }
-
-

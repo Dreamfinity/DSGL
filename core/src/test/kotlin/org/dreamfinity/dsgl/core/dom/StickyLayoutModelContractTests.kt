@@ -13,12 +13,16 @@ class StickyLayoutModelContractTests {
     @Test
     fun `sticky scroll-container rule chooses nearest horizontal scroll-container ancestor`() {
         val root = ContainerNode(key = "sticky-root-x")
-        val farScroll = ContainerNode(key = "sticky-scroll-far-x").apply {
-            overflowX = Overflow.Auto
-        }.applyParent(root)
-        val nearScroll = ContainerNode(key = "sticky-scroll-near-x").apply {
-            overflowX = Overflow.Hidden
-        }.applyParent(farScroll)
+        val farScroll =
+            ContainerNode(key = "sticky-scroll-far-x")
+                .apply {
+                    overflowX = Overflow.Auto
+                }.applyParent(root)
+        val nearScroll =
+            ContainerNode(key = "sticky-scroll-near-x")
+                .apply {
+                    overflowX = Overflow.Hidden
+                }.applyParent(farScroll)
         val parent = ContainerNode(key = "sticky-parent-x").applyParent(nearScroll)
         val node = ContainerNode(key = "sticky-node-x").applyParent(parent)
 
@@ -38,12 +42,16 @@ class StickyLayoutModelContractTests {
     @Test
     fun `sticky scroll-container rule chooses nearest vertical scroll-container ancestor`() {
         val root = ContainerNode(key = "sticky-root")
-        val farScroll = ContainerNode(key = "sticky-scroll-far").apply {
-            overflowY = Overflow.Auto
-        }.applyParent(root)
-        val nearScroll = ContainerNode(key = "sticky-scroll-near").apply {
-            overflowY = Overflow.Hidden
-        }.applyParent(farScroll)
+        val farScroll =
+            ContainerNode(key = "sticky-scroll-far")
+                .apply {
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
+        val nearScroll =
+            ContainerNode(key = "sticky-scroll-near")
+                .apply {
+                    overflowY = Overflow.Hidden
+                }.applyParent(farScroll)
         val parent = ContainerNode(key = "sticky-parent").applyParent(nearScroll)
         val node = ContainerNode(key = "sticky-node").applyParent(parent)
 
@@ -63,9 +71,11 @@ class StickyLayoutModelContractTests {
     @Test
     fun `sticky containing-block rule is parent slot owner and is independent from sticky scroll-container rule`() {
         val root = ContainerNode(key = "sticky-container-root")
-        val scrollAncestor = ContainerNode(key = "sticky-scroll-ancestor").apply {
-            overflowY = Overflow.Scroll
-        }.applyParent(root)
+        val scrollAncestor =
+            ContainerNode(key = "sticky-scroll-ancestor")
+                .apply {
+                    overflowY = Overflow.Scroll
+                }.applyParent(root)
         val flowParent = ContainerNode(key = "sticky-flow-parent").applyParent(scrollAncestor)
         val node = ContainerNode(key = "sticky-child").applyParent(flowParent)
 
@@ -140,7 +150,7 @@ class StickyLayoutModelContractTests {
 
         assertEquals(
             StickyLayoutModel.PositionedGeometryIntegrationPoint.SharedUsedGeometryTransform,
-            node.stickyPositionedGeometryIntegrationPoint()
+            node.stickyPositionedGeometryIntegrationPoint(),
         )
     }
 }

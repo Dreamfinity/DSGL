@@ -8,7 +8,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class SystemOverlayRawRenderCommandNode(
     renderCommand: RenderCommand,
-    key: Any?
+    key: Any?,
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-raw-render-command"
     private var renderCommand: RenderCommand = renderCommand
@@ -24,7 +24,13 @@ internal class SystemOverlayRawRenderCommandNode(
 
     override fun measure(ctx: UiMeasureContext): Size = Size(0, 0)
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
     }
 
@@ -32,7 +38,5 @@ internal class SystemOverlayRawRenderCommandNode(
         out += renderCommand
     }
 
-    override fun volatileRenderCommandsSignature(nowMs: Long): Long {
-        return signature
-    }
+    override fun volatileRenderCommandsSignature(nowMs: Long): Long = signature
 }

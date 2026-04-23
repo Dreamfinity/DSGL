@@ -14,17 +14,14 @@ class ItemStackNode(
     var size: Int = 18,
     var rotYDeg: Double = 160.0,
     var rotXDeg: Double = -11.0,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "itemstack"
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val contentLimit = resolvedContentLimit(availableOuterWidth)
@@ -58,8 +55,8 @@ class ItemStackNode(
                 contentWidth(),
                 size,
                 rotYDeg,
-                rotXDeg
-            )
+                rotXDeg,
+            ),
         )
     }
 }

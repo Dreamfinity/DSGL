@@ -63,9 +63,10 @@ class UseRefHookRuntimeTests {
         renderWithHookSession(window)
 
         window.useBetaBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            renderWithHookSession(window)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                renderWithHookSession(window)
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("inputRef") == true)
@@ -94,9 +95,10 @@ class UseRefHookRuntimeTests {
 
         window.beginRenderBuild()
         window.render()
-        val error = assertFailsWith<HookUsageException> {
-            window.endRenderBuild()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.endRenderBuild()
+            }
 
         assertEquals(error.message?.contains("Storage-backed hook 'useRef'"), true)
         assertEquals(error.message?.contains("delegated property syntax"), true)
@@ -106,17 +108,15 @@ class UseRefHookRuntimeTests {
     fun `useRef outside active render fails loudly`() {
         val window = RefProbeWindow()
 
-        val error = assertFailsWith<HookUsageException> {
-            window.useRef<String>()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.useRef<String>()
+            }
 
         assertEquals(error.message?.contains("outside active component render"), true)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal): DomTree {
         window.beginRenderBuild(mode)
         return try {
             window.render()
@@ -185,7 +185,11 @@ class UseRefHookRuntimeTests {
         }
     }
 
-    private data class Alpha(val value: String)
+    private data class Alpha(
+        val value: String,
+    )
 
-    private data class Beta(val value: String)
+    private data class Beta(
+        val value: String,
+    )
 }

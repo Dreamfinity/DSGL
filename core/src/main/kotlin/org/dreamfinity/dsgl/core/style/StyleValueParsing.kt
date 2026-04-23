@@ -17,32 +17,33 @@ fun parseExpression(rawValue: String): StyleExpression {
     }
 }
 
-fun parseSpacingShorthand(raw: String): Insets {
-    return parseSpacingLengthShorthand(
+fun parseSpacingShorthand(raw: String): Insets =
+    parseSpacingLengthShorthand(
         raw = raw,
-        allowNegative = true
+        allowNegative = true,
     ).resolveToInsets(LengthResolveContext())
-}
 
 fun parseSpacingLengthShorthand(
     raw: String,
     allowNegative: Boolean,
     allowUnitlessZero: Boolean = true,
     warningReporter: StyleWarningReporter? = null,
-    warningKey: String = "deprecated.unitless-length"
+    warningKey: String = "deprecated.unitless-length",
 ): LengthInsets {
     val parts = splitLengthTokens(raw)
     require(parts.isNotEmpty()) { "Spacing value cannot be empty." }
-    val values = parts.map {
-        val length = parseCssLength(
-            raw = it,
-            allowUnitlessZero = allowUnitlessZero
-        )
-        if (!allowNegative && length.value < 0f) {
-            error("Negative length is not allowed: '$it'.")
+    val values =
+        parts.map {
+            val length =
+                parseCssLength(
+                    raw = it,
+                    allowUnitlessZero = allowUnitlessZero,
+                )
+            if (!allowNegative && length.value < 0f) {
+                error("Negative length is not allowed: '$it'.")
+            }
+            length
         }
-        length
-    }
     return when (values.size) {
         1 -> LengthInsets.all(values[0])
         2 -> LengthInsets(values[0], values[1], values[0], values[1])
@@ -57,16 +58,15 @@ fun parseSpacingShorthand(
     allowNegative: Boolean,
     allowUnitlessPx: Boolean = true,
     warningReporter: StyleWarningReporter? = null,
-    warningKey: String = "deprecated.unitless-length"
-): Insets {
-    return parseSpacingLengthShorthand(
+    warningKey: String = "deprecated.unitless-length",
+): Insets =
+    parseSpacingLengthShorthand(
         raw = raw,
         allowNegative = allowNegative,
         allowUnitlessZero = allowUnitlessPx,
         warningReporter = warningReporter,
-        warningKey = warningKey
+        warningKey = warningKey,
     ).resolveToInsets(LengthResolveContext())
-}
 
 fun parseColor(raw: String): Int {
     val value = raw.trim()
@@ -90,17 +90,16 @@ fun parseColor(raw: String): Int {
     }
 }
 
-fun parseAlign(raw: String): StyleAlign {
-    return when (raw.trim().lowercase()) {
+fun parseAlign(raw: String): StyleAlign =
+    when (raw.trim().lowercase()) {
         "start", "left", "top" -> StyleAlign.START
         "center", "middle" -> StyleAlign.CENTER
         "end", "right", "bottom" -> StyleAlign.END
         else -> error("Unsupported align value '$raw'.")
     }
-}
 
-fun parseDisplay(raw: String): Display {
-    return when (raw.trim().lowercase()) {
+fun parseDisplay(raw: String): Display =
+    when (raw.trim().lowercase()) {
         "block" -> Display.Block
         "inline" -> Display.Inline
         "none" -> Display.None
@@ -108,10 +107,9 @@ fun parseDisplay(raw: String): Display {
         "grid" -> Display.Grid
         else -> error("Unsupported display value '$raw'.")
     }
-}
 
-fun parsePosition(raw: String): PositionMode {
-    return when (raw.trim().lowercase()) {
+fun parsePosition(raw: String): PositionMode =
+    when (raw.trim().lowercase()) {
         "static" -> PositionMode.Static
         "relative" -> PositionMode.Relative
         "absolute" -> PositionMode.Absolute
@@ -119,7 +117,6 @@ fun parsePosition(raw: String): PositionMode {
         "sticky" -> PositionMode.Sticky
         else -> error("Unsupported position value '$raw'.")
     }
-}
 
 fun parseLineHeightValue(raw: String): LineHeightValue {
     val normalized = raw.trim().lowercase()
@@ -133,41 +130,43 @@ fun parseLineHeightValue(raw: String): LineHeightValue {
 
 data class OverflowAxes(
     val overflowX: Overflow,
-    val overflowY: Overflow
+    val overflowY: Overflow,
 )
 
-fun parseOverflow(raw: String): Overflow {
-    return when (raw.trim().lowercase()) {
+fun parseOverflow(raw: String): Overflow =
+    when (raw.trim().lowercase()) {
         "visible" -> Overflow.Visible
         "hidden" -> Overflow.Hidden
         "scroll" -> Overflow.Scroll
         "auto" -> Overflow.Auto
         else -> error("Unsupported overflow value '$raw'.")
     }
-}
 
 fun parseOverflowShorthand(raw: String): OverflowAxes {
-    val parts = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    val parts =
+        raw
+            .trim()
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
     require(parts.isNotEmpty()) { "overflow value cannot be empty." }
     require(parts.size <= 2) { "overflow supports one or two values." }
     val overflowX = parseOverflow(parts[0])
     val overflowY = if (parts.size == 2) parseOverflow(parts[1]) else overflowX
     return OverflowAxes(
         overflowX = overflowX,
-        overflowY = overflowY
+        overflowY = overflowY,
     )
 }
 
-fun parseFlexDirection(raw: String): FlexDirection {
-    return when (raw.trim().lowercase()) {
+fun parseFlexDirection(raw: String): FlexDirection =
+    when (raw.trim().lowercase()) {
         "row" -> FlexDirection.Row
         "column" -> FlexDirection.Column
         else -> error("Unsupported flex-direction value '$raw'.")
     }
-}
 
-fun parseJustifyContent(raw: String): JustifyContent {
-    return when (raw.trim().lowercase()) {
+fun parseJustifyContent(raw: String): JustifyContent =
+    when (raw.trim().lowercase()) {
         "start", "flex-start", "left", "top" -> JustifyContent.Start
         "center" -> JustifyContent.Center
         "end", "flex-end", "right", "bottom" -> JustifyContent.End
@@ -176,70 +175,62 @@ fun parseJustifyContent(raw: String): JustifyContent {
         "space-evenly" -> JustifyContent.SpaceEvenly
         else -> error("Unsupported justify-content value '$raw'.")
     }
-}
 
-fun parseAlignItems(raw: String): AlignItems {
-    return when (raw.trim().lowercase()) {
+fun parseAlignItems(raw: String): AlignItems =
+    when (raw.trim().lowercase()) {
         "start", "flex-start", "top", "left" -> AlignItems.Start
         "center" -> AlignItems.Center
         "end", "flex-end", "bottom", "right" -> AlignItems.End
         "stretch" -> AlignItems.Stretch
         else -> error("Unsupported align-items value '$raw'.")
     }
-}
 
-fun parseJustifyItems(raw: String): JustifyItems {
-    return when (raw.trim().lowercase()) {
+fun parseJustifyItems(raw: String): JustifyItems =
+    when (raw.trim().lowercase()) {
         "start", "left", "top" -> JustifyItems.Start
         "center" -> JustifyItems.Center
         "end", "right", "bottom" -> JustifyItems.End
         "stretch" -> JustifyItems.Stretch
         else -> error("Unsupported justify-items value '$raw'.")
     }
-}
 
-fun parseGridAutoFlow(raw: String): GridAutoFlow {
-    return when (raw.trim().lowercase()) {
+fun parseGridAutoFlow(raw: String): GridAutoFlow =
+    when (raw.trim().lowercase()) {
         "row" -> GridAutoFlow.Row
         "column" -> GridAutoFlow.Column
         else -> error("Unsupported grid-auto-flow value '$raw'.")
     }
-}
 
-fun parseTextWrap(raw: String): TextWrap {
-    return when (raw.trim().lowercase()) {
+fun parseTextWrap(raw: String): TextWrap =
+    when (raw.trim().lowercase()) {
         "wrap" -> TextWrap.Wrap
         "nowrap" -> TextWrap.NoWrap
         else -> error("Unsupported text-wrap value '$raw'.")
     }
-}
 
-fun parseTextFormatting(raw: String): TextFormatting {
-    return when (raw.trim().lowercase()) {
+fun parseTextFormatting(raw: String): TextFormatting =
+    when (raw.trim().lowercase()) {
         "none" -> TextFormatting.None
         "minecraft" -> TextFormatting.Minecraft
         else -> error("Unsupported text-formatting value '$raw'.")
     }
-}
 
-fun parseFontWeight(raw: String): FontWeight {
-    return when (raw.trim().lowercase()) {
+fun parseFontWeight(raw: String): FontWeight =
+    when (raw.trim().lowercase()) {
         "normal" -> FontWeight.Normal
         "bold" -> FontWeight.Bold
         else -> error("Unsupported font-weight value '$raw'.")
     }
-}
 
-fun parseFontStyle(raw: String): FontStyle {
-    return when (raw.trim().lowercase()) {
+fun parseFontStyle(raw: String): FontStyle =
+    when (raw.trim().lowercase()) {
         "normal" -> FontStyle.Normal
         "italic" -> FontStyle.Italic
         else -> error("Unsupported font-style value '$raw'.")
     }
-}
 
-fun parseTextDecoration(raw: String): TextDecoration {
-    return when (raw.trim().lowercase()) {
+fun parseTextDecoration(raw: String): TextDecoration =
+    when (raw.trim().lowercase()) {
         "none" -> TextDecoration.None
         "underline" -> TextDecoration.Underline
         "strikethrough", "line-through" -> TextDecoration.Strikethrough
@@ -249,15 +240,13 @@ fun parseTextDecoration(raw: String): TextDecoration {
 
         else -> error("Unsupported text-decoration value '$raw'.")
     }
-}
 
-fun parseBooleanLike(raw: String): Boolean {
-    return when (raw.trim().lowercase()) {
+fun parseBooleanLike(raw: String): Boolean =
+    when (raw.trim().lowercase()) {
         "true", "1", "yes", "on" -> true
         "false", "0", "no", "off" -> false
         else -> error("Expected boolean but got '$raw'.")
     }
-}
 
 fun parseTransform(raw: String): UiTransform {
     val input = raw.trim()
@@ -270,40 +259,49 @@ fun parseTransform(raw: String): UiTransform {
     require(matches.isNotEmpty()) { "Expected transform functions, got '$raw'." }
 
     matches.forEach { match ->
-        val fn = match.groupValues[1].trim().lowercase()
-        val args = match.groupValues[2]
-            .split(Regex("[,\\s]+"))
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-        transform = when (fn) {
-            "translate" -> {
-                require(args.size in 1..2) { "translate expects 1 or 2 arguments." }
-                val tx = parseFloatLike(args[0])
-                val ty = if (args.size >= 2) parseFloatLike(args[1]) else 0f
-                transform.translated(tx, ty)
-            }
+        val fn =
+            match.groupValues[1]
+                .trim()
+                .lowercase()
+        val args =
+            match.groupValues[2]
+                .split(Regex("[,\\s]+"))
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+        transform =
+            when (fn) {
+                "translate" -> {
+                    require(args.size in 1..2) { "translate expects 1 or 2 arguments." }
+                    val tx = parseFloatLike(args[0])
+                    val ty = if (args.size >= 2) parseFloatLike(args[1]) else 0f
+                    transform.translated(tx, ty)
+                }
 
-            "scale" -> {
-                require(args.size in 1..2) { "scale expects 1 or 2 arguments." }
-                val sx = parseFloatLike(args[0])
-                val sy = if (args.size >= 2) parseFloatLike(args[1]) else sx
-                transform.scaled(sx, sy)
-            }
+                "scale" -> {
+                    require(args.size in 1..2) { "scale expects 1 or 2 arguments." }
+                    val sx = parseFloatLike(args[0])
+                    val sy = if (args.size >= 2) parseFloatLike(args[1]) else sx
+                    transform.scaled(sx, sy)
+                }
 
-            "rotate" -> {
-                require(args.size == 1) { "rotate expects 1 argument." }
-                val normalized = args[0].removeSuffix("deg").trim()
-                transform.rotated(parseFloatLike(normalized))
-            }
+                "rotate" -> {
+                    require(args.size == 1) { "rotate expects 1 argument." }
+                    val normalized = args[0].removeSuffix("deg").trim()
+                    transform.rotated(parseFloatLike(normalized))
+                }
 
-            else -> error("Unsupported transform function '$fn'.")
-        }
+                else -> error("Unsupported transform function '$fn'.")
+            }
     }
     return transform
 }
 
 fun parseTransformOrigin(raw: String): TransformOrigin {
-    val parts = raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    val parts =
+        raw
+            .trim()
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
     require(parts.size == 2) { "transform-origin expects exactly two values." }
     val ox = parseOriginComponent(parts[0])
     val oy = parseOriginComponent(parts[1])
@@ -320,9 +318,7 @@ private fun parseOriginComponent(raw: String): Float {
     }
 }
 
-fun parseOpacity(raw: String): Float {
-    return parseFloatLike(raw).coerceIn(0f, 1f)
-}
+fun parseOpacity(raw: String): Float = parseFloatLike(raw).coerceIn(0f, 1f)
 
 fun parseIntLike(raw: String): Int {
     val trimmed = raw.trim()
@@ -341,9 +337,11 @@ fun parseOptionalInt(raw: String): Int? {
     return if (normalized == "auto") null else parseIntLike(raw)
 }
 
-private fun splitLengthTokens(raw: String): List<String> {
-    return raw.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-}
+private fun splitLengthTokens(raw: String): List<String> =
+    raw
+        .trim()
+        .split(Regex("\\s+"))
+        .filter { it.isNotBlank() }
 
 fun parseStringLiteral(raw: String): String {
     val trimmed = raw.trim()
@@ -360,44 +358,50 @@ fun validateLiteralForProperty(
     property: StyleProperty,
     literal: String,
     warningReporter: StyleWarningReporter? = null,
-    deprecatedLengthWarningKey: String = "deprecated.unitless-length"
+    deprecatedLengthWarningKey: String = "deprecated.unitless-length",
 ) {
     when (property) {
-        StyleProperty.MARGIN -> parseSpacingLengthShorthand(
-            raw = literal,
-            allowNegative = true,
-            allowUnitlessZero = true,
-            warningReporter = warningReporter,
-            warningKey = deprecatedLengthWarningKey
-        )
-        StyleProperty.PADDING -> parseSpacingLengthShorthand(
-            raw = literal,
-            allowNegative = false,
-            allowUnitlessZero = true,
-            warningReporter = warningReporter,
-            warningKey = deprecatedLengthWarningKey
-        )
+        StyleProperty.MARGIN ->
+            parseSpacingLengthShorthand(
+                raw = literal,
+                allowNegative = true,
+                allowUnitlessZero = true,
+                warningReporter = warningReporter,
+                warningKey = deprecatedLengthWarningKey,
+            )
+        StyleProperty.PADDING ->
+            parseSpacingLengthShorthand(
+                raw = literal,
+                allowNegative = false,
+                allowUnitlessZero = true,
+                warningReporter = warningReporter,
+                warningKey = deprecatedLengthWarningKey,
+            )
 
         StyleProperty.BACKGROUND_COLOR,
         StyleProperty.BORDER_COLOR,
-        StyleProperty.FOREGROUND_COLOR -> parseColor(literal)
+        StyleProperty.FOREGROUND_COLOR,
+        -> parseColor(literal)
 
         StyleProperty.BACKGROUND_IMAGE -> parseStringLiteral(literal)
         StyleProperty.FONT_ID -> parseStringLiteral(literal)
 
-        StyleProperty.BORDER_WIDTH -> validateLengthLiteral(
-            literal = literal,
-            allowNegative = false
-        )
-        StyleProperty.BORDER_RADIUS -> validateLengthLiteral(
-            literal = literal,
-            allowNegative = false
-        )
-        StyleProperty.FONT_SIZE -> {
-            val parsed = parseCssLength(
-                raw = literal,
-                allowUnitlessZero = true
+        StyleProperty.BORDER_WIDTH ->
+            validateLengthLiteral(
+                literal = literal,
+                allowNegative = false,
             )
+        StyleProperty.BORDER_RADIUS ->
+            validateLengthLiteral(
+                literal = literal,
+                allowNegative = false,
+            )
+        StyleProperty.FONT_SIZE -> {
+            val parsed =
+                parseCssLength(
+                    raw = literal,
+                    allowUnitlessZero = true,
+                )
             require(parsed.value >= 0f) { "font-size must be non-negative." }
         }
         StyleProperty.LINE_HEIGHT -> StylePropertyRegistry.parseLineHeightLiteral(property, literal)
@@ -406,7 +410,8 @@ fun validateLiteralForProperty(
         StyleProperty.MIN_WIDTH,
         StyleProperty.MIN_HEIGHT,
         StyleProperty.MAX_WIDTH,
-        StyleProperty.MAX_HEIGHT -> {
+        StyleProperty.MAX_HEIGHT,
+        -> {
             val parsed = parseOptionalCssLength(literal)
             if (parsed != null && parsed.value < 0f) {
                 error("Negative length is not allowed: '$literal'.")
@@ -419,11 +424,13 @@ fun validateLiteralForProperty(
         StyleProperty.LEFT,
         StyleProperty.TOP,
         StyleProperty.RIGHT,
-        StyleProperty.BOTTOM -> parseOptionalCssLength(literal)
+        StyleProperty.BOTTOM,
+        -> parseOptionalCssLength(literal)
         StyleProperty.Z_INDEX -> StylePropertyRegistry.parseUnitlessIntLiteral(property, literal)
         StyleProperty.OVERFLOW -> parseOverflowShorthand(literal)
         StyleProperty.OVERFLOW_X,
-        StyleProperty.OVERFLOW_Y -> parseOverflow(literal)
+        StyleProperty.OVERFLOW_Y,
+        -> parseOverflow(literal)
         StyleProperty.FLEX_DIRECTION -> parseFlexDirection(literal)
         StyleProperty.JUSTIFY_CONTENT -> parseJustifyContent(literal)
         StyleProperty.ALIGN_ITEMS -> parseAlignItems(literal)
@@ -454,10 +461,7 @@ fun validateLiteralForProperty(
     }
 }
 
-private fun validateLengthLiteral(
-    literal: String,
-    allowNegative: Boolean
-) {
+private fun validateLengthLiteral(literal: String, allowNegative: Boolean) {
     val parsed = parseCssLength(literal)
     if (!allowNegative && parsed.value < 0f) {
         error("Negative length is not allowed: '$literal'.")
@@ -467,9 +471,9 @@ private fun validateLengthLiteral(
 fun resolveExpressionToLiteral(
     expression: StyleExpression,
     variables: Map<String, String>,
-    resolving: MutableSet<String> = linkedSetOf()
-): String {
-    return when (expression) {
+    resolving: MutableSet<String> = linkedSetOf(),
+): String =
+    when (expression) {
         is StyleExpression.Literal -> expression.value
         is StyleExpression.VariableRef -> {
             val varName = expression.name
@@ -483,4 +487,3 @@ fun resolveExpressionToLiteral(
             resolved
         }
     }
-}

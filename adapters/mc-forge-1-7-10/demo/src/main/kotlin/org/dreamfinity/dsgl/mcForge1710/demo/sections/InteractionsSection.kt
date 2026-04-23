@@ -1,20 +1,17 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.hooks.ref.useRef
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_SURFACE_ALT
 
-fun UiScope.interactionsSection(
-    onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
-) {
+fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit) {
     var mouseEnterCount by useState(0)
     var mouseLeaveCount by useState(0)
     var mouseOverCount by useState(0)
@@ -127,13 +124,16 @@ fun UiScope.interactionsSection(
                 height = 52.px
                 padding = 4.px
                 backgroundColor = DEMO_SURFACE_ALT
-                border { width = 1.px; color = 0xFF6E7A89.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6E7A89.toInt()
+                }
             }
         }) {
             text("Move, click, drag and wheel here")
             text(
                 "E$mouseEnterCount L$mouseLeaveCount O$mouseOverCount M$mouseMoveCount D$mouseDownCount/$mouseUpCount C$mouseClickCount G$mouseDragCount W$mouseWheelCount",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
 
@@ -145,7 +145,8 @@ fun UiScope.interactionsSection(
             }
         }) {
             input(
-                InputType.Text(placeholder = "onKeyDown/onKeyUp"), {
+                InputType.Text(placeholder = "onKeyDown/onKeyUp"),
+                {
                     key = "interactions.key.downUp"
                     style = { width = 100.percent }
                     onKeyDown = { event ->
@@ -161,10 +162,11 @@ fun UiScope.interactionsSection(
                         keyUpCount += 1
                         onLogHook("onKeyUp", event, null)
                     }
-                }
+                },
             )
             input(
-                InputType.Text(placeholder = "onKeyPressed/onKeyReleased"), {
+                InputType.Text(placeholder = "onKeyPressed/onKeyReleased"),
+                {
                     key = "interactions.key.aliases"
                     style = { width = 100.percent }
                     onKeyPressed = { event ->
@@ -175,13 +177,13 @@ fun UiScope.interactionsSection(
                         keyReleasedCount += 1
                         onLogHook("onKeyReleased", event, null)
                     }
-                }
+                },
             )
         }
 
         text(
             "Key counters: down=$keyDownCount up=$keyUpCount pressed=$keyPressedCount released=$keyReleasedCount enter=$enterActionCount",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -198,11 +200,11 @@ fun UiScope.interactionsSection(
                         cancellationEnabled = !cancellationEnabled
                         onInfo("Interactions: cancellation=$cancellationEnabled")
                     }
-                }
+                },
             )
             text(
                 "Parent=$cancellationParentHits Child=$cancellationChildHits",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
 
@@ -216,7 +218,10 @@ fun UiScope.interactionsSection(
                 width = 100.percent
                 padding = 3.px
                 backgroundColor = 0xFF353D46.toInt()
-                border { width = 1.px; color = 0xFF708090.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF708090.toInt()
+                }
             }
         }) {
             text("Parent click area")
@@ -230,13 +235,16 @@ fun UiScope.interactionsSection(
                     onLogHook(
                         "child.onMouseClick",
                         event,
-                        if (cancellationEnabled) "cancelled=true" else "cancelled=false"
+                        if (cancellationEnabled) "cancelled=true" else "cancelled=false",
                     )
                 }
                 style = {
                     padding = 3.px
                     backgroundColor = 0xFF4D5560.toInt()
-                    border { width = 1.px; color = 0xFF9AA5B1.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9AA5B1.toInt()
+                    }
                 }
             }) {
                 text("Child area")
@@ -244,4 +252,3 @@ fun UiScope.interactionsSection(
         }
     }
 }
-

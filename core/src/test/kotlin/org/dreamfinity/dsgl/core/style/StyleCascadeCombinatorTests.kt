@@ -25,7 +25,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .panel .item { color: #00AA00; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -48,7 +48,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .panel > .item { color: #3355AA; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -72,7 +72,7 @@ class StyleCascadeCombinatorTests {
             text { color: #111111; }
             .btn { color: #222222; }
             #target { color: #333333; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -90,7 +90,7 @@ class StyleCascadeCombinatorTests {
             """
             .btn { color: #111111; }
             .btn { color: #222222; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -107,7 +107,7 @@ class StyleCascadeCombinatorTests {
             """
             .btn { color: #111111 !important; }
             .btn { color: #222222; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -123,7 +123,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .parent { color: #ABCDEF; font-size: 14px; padding: 7px; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -142,7 +142,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .panel:hover .item { color: #00AAFF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -163,7 +163,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .a + .b { color: #FF22AA; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -189,7 +189,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             .a ~ .b { color: #22AAFF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -215,7 +215,7 @@ class StyleCascadeCombinatorTests {
             """
             .a + .b .c { color: #5566FF; }
             .a ~ .b > .c { font-size: 14px; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -238,7 +238,7 @@ class StyleCascadeCombinatorTests {
             """
             .a ~ .b { color: #2255AA; }
             .b { color: #992222 !important; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -257,7 +257,7 @@ class StyleCascadeCombinatorTests {
             """
             .alias { foreground-color: #113355; }
             .canonical { color: #113355; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -276,7 +276,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             * { align: end; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -294,7 +294,7 @@ class StyleCascadeCombinatorTests {
         installStylesheet(
             """
             :root { align: end; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")

@@ -54,7 +54,13 @@ class ColorTextCodecTests {
     fun `rgb hsl and hsb formatting includes mode-specific prefixes`() {
         val source = RgbaColor(0.1f, 0.5f, 0.9f, 0.7f)
         val rgb = ColorTextCodec.format(source, ColorFormatMode.RGB, includeAlpha = true)
-        val argb = ColorTextCodec.format(source, ColorFormatMode.RGB, includeAlpha = true, rgbOrder = RgbChannelOrder.ARGB)
+        val argb =
+            ColorTextCodec.format(
+                source,
+                ColorFormatMode.RGB,
+                includeAlpha = true,
+                rgbOrder = RgbChannelOrder.ARGB,
+            )
         val hsl = ColorTextCodec.format(source, ColorFormatMode.HSL, includeAlpha = true)
         val hsb = ColorTextCodec.format(source, ColorFormatMode.HSB, includeAlpha = true)
 
@@ -73,7 +79,5 @@ class ColorTextCodecTests {
         assertEquals(234f, hsl.hueDeg)
     }
 
-    private fun closeEnough(a: Float, b: Float): Boolean {
-        return abs(a - b) <= 0.01f
-    }
+    private fun closeEnough(a: Float, b: Float): Boolean = abs(a - b) <= 0.01f
 }

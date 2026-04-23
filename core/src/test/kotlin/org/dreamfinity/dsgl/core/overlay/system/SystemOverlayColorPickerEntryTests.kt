@@ -1,19 +1,12 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertSame
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
-import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbChannelOrder
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -22,16 +15,27 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class SystemOverlayColorPickerEntryTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
+
     @Test
     fun `system picker popup lifecycle is entry owned and stable`() {
         val host = SystemOverlayHost(InspectorController())
@@ -87,14 +91,20 @@ class SystemOverlayColorPickerEntryTests {
                     ownerScope = OverlayOwnerScope.Application,
                     anchorRect = Rect(240, 210, 20, 18),
                     title = "App Popup",
-                    state = popupState()
-                )
+                    state = popupState(),
+                ),
             )
             assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
 
             pickerHost.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
             host.onInputFrame(960, 720)
-            host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 44, cursorY = 48, inspectorPointerCaptured = false)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 1L,
+                cursorX = 44,
+                cursorY = 48,
+                inspectorPointerCaptured = false,
+            )
 
             val node = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
             val styleTypes = collectStyleTypes(node)
@@ -106,7 +116,13 @@ class SystemOverlayColorPickerEntryTests {
             assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
 
             pickerHost.close()
-            host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 44, cursorY = 48, inspectorPointerCaptured = false)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 2L,
+                cursorX = 44,
+                cursorY = 48,
+                inspectorPointerCaptured = false,
+            )
             assertFalse(host.isSystemColorPickerOpen())
             assertTrue(ColorPickerRuntime.engine.isOpenFor(appOwner))
         } finally {
@@ -135,13 +151,25 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(stateBefore.dragSession.active)
 
         host.handleMouseMove(startX + 50, startY + 30)
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = startX + 50, cursorY = startY + 30, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = startX + 50,
+            cursorY = startY + 30,
+            inspectorPointerCaptured = false,
+        )
         val midState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
         val panelMid = midState.panelState.currentRectOrNull() ?: error("panel missing")
         assertNotEquals(panelBefore.x, panelMid.x)
 
         host.handleMouseMove(startX + 90, startY + 60)
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = startX + 90, cursorY = startY + 60, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = startX + 90,
+            cursorY = startY + 60,
+            inspectorPointerCaptured = false,
+        )
         val movingNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
         val movingState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
         val panelAfter = movingState.panelState.currentRectOrNull() ?: error("panel missing")
@@ -151,7 +179,13 @@ class SystemOverlayColorPickerEntryTests {
         assertNotEquals(panelMid.x, panelAfter.x)
 
         assertTrue(host.handleMouseUp(startX + 90, startY + 60, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 4L, cursorX = startX + 90, cursorY = startY + 60, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 4L,
+            cursorX = startX + 90,
+            cursorY = startY + 60,
+            inspectorPointerCaptured = false,
+        )
         val finalState = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
         val panelFinal = finalState.panelState.currentRectOrNull() ?: error("panel missing")
         assertFalse(finalState.dragSession.active)
@@ -167,7 +201,13 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = Rect(120, 100, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 126, cursorY = 108, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 126,
+            cursorY = 108,
+            inspectorPointerCaptured = false,
+        )
 
         val initialNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
         val header = host.debugSystemColorPickerHeaderRect() ?: error("header missing")
@@ -184,7 +224,7 @@ class SystemOverlayColorPickerEntryTests {
                 inspectedLayoutRevision = 2L + step,
                 cursorX = mx,
                 cursorY = my,
-                inspectorPointerCaptured = false
+                inspectorPointerCaptured = false,
             )
             val node = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
             val state = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
@@ -204,7 +244,13 @@ class SystemOverlayColorPickerEntryTests {
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 84, cursorY = 92, inspectorPointerCaptured = false)
         val closeRect = host.debugSystemColorPickerCloseRect() ?: error("close rect missing")
         assertTrue(host.handleMouseDown(closeRect.x + 1, closeRect.y + 1, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = closeRect.x + 1, cursorY = closeRect.y + 1, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = closeRect.x + 1,
+            cursorY = closeRect.y + 1,
+            inspectorPointerCaptured = false,
+        )
         assertFalse(host.isSystemColorPickerOpen())
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
     }
@@ -218,7 +264,13 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = anchor, title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 364, cursorY = 226, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 364,
+            cursorY = 226,
+            inspectorPointerCaptured = false,
+        )
         val state = host.debugEntryState(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry state missing")
         val panel = state.panelState.currentRectOrNull() ?: error("panel missing")
 
@@ -227,7 +279,6 @@ class SystemOverlayColorPickerEntryTests {
         assertTrue(panel.x >= 8)
         assertTrue(panel.y >= 8)
     }
-
 
     @Test
     fun `system picker entry mounts native body subtree without command bridge`() {
@@ -258,7 +309,7 @@ class SystemOverlayColorPickerEntryTests {
             anchorRect = Rect(80, 90, 20, 18),
             title = "Popup",
             state = popupState(),
-            onPreview = { previews += it }
+            onPreview = { previews += it },
         )
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
@@ -274,9 +325,21 @@ class SystemOverlayColorPickerEntryTests {
 
         assertTrue(host.handleMouseDown(startX, startY, MouseButton.LEFT))
         host.handleMouseMove(midX, midY)
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = midX, cursorY = midY, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = midX,
+            cursorY = midY,
+            inspectorPointerCaptured = false,
+        )
         host.handleMouseMove(endX, endY)
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = endX, cursorY = endY, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = endX,
+            cursorY = endY,
+            inspectorPointerCaptured = false,
+        )
         assertTrue(host.handleMouseUp(endX, endY, MouseButton.LEFT))
 
         val state = host.debugSystemColorPickerState() ?: error("state missing")
@@ -290,10 +353,11 @@ class SystemOverlayColorPickerEntryTests {
         val pickerHost = host.systemInspectorColorPickerPopupHost()
         val root = inspectedRoot()
         val initial = popupState()
-        val updated = initial.copy(
-            color = RgbaColor(0.92f, 0.16f, 0.24f, 1f),
-            previous = initial.color
-        )
+        val updated =
+            initial.copy(
+                color = RgbaColor(0.92f, 0.16f, 0.24f, 1f),
+                previous = initial.color,
+            )
 
         pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
         host.onInputFrame(1200, 800)
@@ -367,7 +431,13 @@ class SystemOverlayColorPickerEntryTests {
         val hueY = hue.y + hue.height / 2
         assertTrue(host.handleMouseDown(hueStartX, hueY, MouseButton.LEFT))
         host.handleMouseMove(hueEndX, hueY)
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = hueEndX, cursorY = hueY, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = hueEndX,
+            cursorY = hueY,
+            inspectorPointerCaptured = false,
+        )
         assertTrue(host.handleMouseUp(hueEndX, hueY, MouseButton.LEFT))
 
         val alphaStartX = alpha.x + alpha.width / 2
@@ -375,7 +445,13 @@ class SystemOverlayColorPickerEntryTests {
         val alphaY = alpha.y + alpha.height / 2
         assertTrue(host.handleMouseDown(alphaStartX, alphaY, MouseButton.LEFT))
         host.handleMouseMove(alphaEndX, alphaY)
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = alphaEndX, cursorY = alphaY, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = alphaEndX,
+            cursorY = alphaY,
+            inspectorPointerCaptured = false,
+        )
         assertTrue(host.handleMouseUp(alphaEndX, alphaY, MouseButton.LEFT))
 
         val changed = host.debugSystemColorPickerState() ?: error("state missing")
@@ -391,23 +467,45 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
 
         val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val modeSelect = initialLayout.modeSelectRect
         assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = modeSelect.x + 2, cursorY = modeSelect.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = modeSelect.x + 2,
+            cursorY = modeSelect.y + 2,
+            inspectorPointerCaptured = false,
+        )
         val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
-        val hslOption = expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        val hslOption =
+            expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
         assertTrue(host.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = hslOption.rect.x + 2, cursorY = hslOption.rect.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = hslOption.rect.x + 2,
+            cursorY =
+                hslOption.rect.y + 2,
+            inspectorPointerCaptured = false,
+        )
 
         val modeChanged = host.debugSystemColorPickerState() ?: error("state missing")
         assertEquals(ColorFormatMode.HSL, modeChanged.mode)
 
         val hslLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val saturationInput = hslLayout.inputSlots.firstOrNull { it.key == "s" } ?: error("s input missing")
-        assertTrue(host.handleMouseDown(saturationInput.inputRect.x + 2, saturationInput.inputRect.y + 2, MouseButton.LEFT))
+        assertTrue(
+            host.handleMouseDown(saturationInput.inputRect.x + 2, saturationInput.inputRect.y + 2, MouseButton.LEFT),
+        )
         assertTrue(host.handleKeyDown(KeyCodes.HOME, 0.toChar()))
         repeat(4) {
             assertTrue(host.handleKeyDown(KeyCodes.DELETE, 0.toChar()))
@@ -429,7 +527,13 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
 
         val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val redInput = initialLayout.inputSlots.firstOrNull { it.key == "r" } ?: error("r input missing")
@@ -437,7 +541,13 @@ class SystemOverlayColorPickerEntryTests {
 
         val argbButton = initialLayout.argbOrderRect ?: error("argb button missing")
         assertTrue(host.handleMouseDown(argbButton.x + 2, argbButton.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = argbButton.x + 2, cursorY = argbButton.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = argbButton.x + 2,
+            cursorY = argbButton.y + 2,
+            inspectorPointerCaptured = false,
+        )
         assertEquals("dsgl-system-color-picker-input-value-1", FocusManager.focusedNode()?.key)
 
         assertTrue(host.handleKeyDown(KeyCodes.HOME, 0.toChar()))
@@ -453,7 +563,6 @@ class SystemOverlayColorPickerEntryTests {
         assertEquals("dsgl-system-color-picker-input-value-1", FocusManager.focusedNode()?.key)
     }
 
-
     @Test
     fun `system picker mode dropdown is mounted in transient lane and stays interactive`() {
         val host = SystemOverlayHost(InspectorController())
@@ -462,24 +571,45 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 128, cursorY = 128, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
 
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
 
         val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val modeSelect = initialLayout.modeSelectRect
         assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = modeSelect.x + 2, cursorY = modeSelect.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = modeSelect.x + 2,
+            cursorY = modeSelect.y + 2,
+            inspectorPointerCaptured = false,
+        )
 
         assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
-        val transientNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerTransient) ?: error("transient node missing")
+        val transientNode =
+            host.debugEntryNode(SystemOverlayEntryId.ColorPickerTransient) ?: error("transient node missing")
         val transientStyleTypes = collectStyleTypes(transientNode)
         assertTrue(transientStyleTypes.contains("dsgl-system-color-picker-native-mode-dropdown-overlay"))
 
         val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("expanded layout missing")
-        val hslOption = expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        val hslOption =
+            expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
         assertTrue(host.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = hslOption.rect.x + 2, cursorY = hslOption.rect.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = hslOption.rect.x + 2,
+            cursorY =
+                hslOption.rect.y + 2,
+            inspectorPointerCaptured = false,
+        )
 
         assertEquals(ColorFormatMode.HSL, host.debugSystemColorPickerState()?.mode)
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
@@ -493,12 +623,24 @@ class SystemOverlayColorPickerEntryTests {
 
         pickerHost.open(anchorRect = Rect(140, 140, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 146, cursorY = 146, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 146,
+            cursorY = 146,
+            inspectorPointerCaptured = false,
+        )
 
         val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val pipette = layout.pipetteRect
         assertTrue(host.handleMouseDown(pipette.x + 2, pipette.y + 2, MouseButton.LEFT))
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = pipette.x + 2, cursorY = pipette.y + 2, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = pipette.x + 2,
+            cursorY = pipette.y + 2,
+            inspectorPointerCaptured = false,
+        )
 
         val mounted = host.debugMountedEntryIds()
         assertTrue(mounted.contains(SystemOverlayEntryId.ColorPickerPopup))
@@ -509,11 +651,16 @@ class SystemOverlayColorPickerEntryTests {
 
         val moveConsumed = host.handleMouseMove(pipette.x + 40, pipette.y + 40)
         assertTrue(moveConsumed)
-        host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = pipette.x + 40, cursorY = pipette.y + 40, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = pipette.x + 40,
+            cursorY = pipette.y + 40,
+            inspectorPointerCaptured = false,
+        )
 
         assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
     }
-
 
     @Test
     fun `system picker pipette transient entry emits visible tooltip commands`() {
@@ -528,50 +675,73 @@ class SystemOverlayColorPickerEntryTests {
             anchorRect = Rect(140, 140, 20, 18),
             title = "Popup",
             state = popupState(),
-            style = ColorPickerStyle(
-                eyedropperGridSize = 5,
-                eyedropperCellSize = 3,
-                eyedropperGridOverlayEnabled = true,
-                eyedropperGridOverlayColor = gridColor,
-                checkerLightColor = checkerLight,
-                checkerDarkColor = checkerDark
-            )
+            style =
+                ColorPickerStyle(
+                    eyedropperGridSize = 5,
+                    eyedropperCellSize = 3,
+                    eyedropperGridOverlayEnabled = true,
+                    eyedropperGridOverlayColor = gridColor,
+                    checkerLightColor = checkerLight,
+                    checkerDarkColor = checkerDark,
+                ),
         )
         host.onInputFrame(1200, 800)
-        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 146, cursorY = 146, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 146,
+            cursorY = 146,
+            inspectorPointerCaptured = false,
+        )
 
         val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
         val pipette = layout.pipetteRect
         assertTrue(host.handleMouseDown(pipette.x + 2, pipette.y + 2, MouseButton.LEFT))
         host.handleMouseMove(pipette.x + 32, pipette.y + 28)
-        host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = pipette.x + 32, cursorY = pipette.y + 28, inspectorPointerCaptured = false)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = pipette.x + 32,
+            cursorY = pipette.y + 28,
+            inspectorPointerCaptured = false,
+        )
 
         host.render(ctx, 1200, 800)
         val commands = host.paint(ctx)
         assertTrue(commands.any { it is RenderCommand.CaptureScreenRegion })
         assertTrue(commands.any { it is RenderCommand.DrawCapturedScreenRegion })
-        assertTrue(commands.none { command ->
-            command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
-        })
+        assertTrue(
+            commands.none { command ->
+                command is RenderCommand.DrawRect && command.width == 3 && command.height == 3
+            },
+        )
         assertTrue(commands.any { it is RenderCommand.DrawCheckerboard })
-        assertTrue(commands.none { command ->
-            command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
-        })
+        assertTrue(
+            commands.none { command ->
+                command is RenderCommand.DrawRect && (command.color == checkerLight || command.color == checkerDark)
+            },
+        )
         val capturedRegion = commands.filterIsInstance<RenderCommand.DrawCapturedScreenRegion>().single()
         val gridOverlay = capturedRegion.gridOverlay ?: error("grid overlay missing")
         assertEquals(5, gridOverlay.columns)
         assertEquals(5, gridOverlay.rows)
         assertEquals(3, gridOverlay.magnification)
         assertEquals(gridColor, gridOverlay.color)
-        assertTrue(commands.none { command ->
-            command is RenderCommand.DrawRect && command.color == gridColor
-        })
-        assertTrue(commands.any { command ->
-            command is RenderCommand.DrawText && command.text.startsWith("Mode:")
-        })
+        assertTrue(
+            commands.none { command ->
+                command is RenderCommand.DrawRect && command.color == gridColor
+            },
+        )
+        assertTrue(
+            commands.any { command ->
+                command is RenderCommand.DrawText && command.text.startsWith("Mode:")
+            },
+        )
     }
+
     private fun collectStyleTypes(root: DOMNode): Set<String> {
         val out = LinkedHashSet<String>()
+
         fun walk(node: DOMNode) {
             out += node.styleType
             node.children.forEach(::walk)
@@ -579,35 +749,35 @@ class SystemOverlayColorPickerEntryTests {
         walk(root)
         return out
     }
-    private fun popupState(): ColorPickerState {
-        return ColorPickerState(
+
+    private fun popupState(): ColorPickerState =
+        ColorPickerState(
             color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             previous = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
             mode = ColorFormatMode.RGB,
             alphaEnabled = true,
-            closeOnSelect = false
+            closeOnSelect = false,
         )
-    }
 
     private fun inspectedRoot(): ContainerNode {
         val root = ContainerNode(key = "root")
         root.bounds = Rect(0, 0, 1200, 800)
-        ContainerNode(key = "child").apply {
-            bounds = Rect(16, 18, 120, 30)
-        }.applyParent(root)
+        ContainerNode(key = "child")
+            .apply {
+                bounds = Rect(16, 18, 120, 30)
+            }.applyParent(root)
         return root
     }
 
-    private fun resolveRectFillColor(commands: List<RenderCommand>, rect: Rect): Int? {
-        return commands.asReversed().asSequence()
+    private fun resolveRectFillColor(commands: List<RenderCommand>, rect: Rect): Int? =
+        commands
+            .asReversed()
+            .asSequence()
             .filterIsInstance<RenderCommand.DrawRect>()
             .firstOrNull { command ->
                 command.x == rect.x &&
-                        command.y == rect.y &&
-                        command.width == rect.width &&
-                        command.height == rect.height
-            }
-            ?.color
-    }
+                    command.y == rect.y &&
+                    command.width == rect.width &&
+                    command.height == rect.height
+            }?.color
 }
-

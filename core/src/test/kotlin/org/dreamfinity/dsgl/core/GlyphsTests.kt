@@ -3,10 +3,8 @@ package org.dreamfinity.dsgl.core
 import sun.font.StandardGlyphVector
 import java.awt.Font
 import java.awt.font.FontRenderContext
-import java.awt.font.TextLayout
 import java.io.File
 import kotlin.test.Test
-
 
 class GlyphsTests {
     @Test

@@ -1,24 +1,29 @@
 package org.dreamfinity.dsgl.core.event
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.*
+import java.util.Collections
+import java.util.EnumMap
+import java.util.IdentityHashMap
+import java.util.WeakHashMap
 
 typealias EventCallback = (Event) -> Unit
 
 object EventBus {
     private val listeners: MutableMap<Events, MutableMap<DOMNode, ArrayList<EventCallback>>> =
         EnumMap(Events::class.java)
-    private val nonBubblingEvents: Set<Events> = setOf(
-        Events.MOUSEENTER,
-        Events.MOUSELEAVE,
-        Events.MOUSEOVER,
-        Events.FOCUS,
-        Events.BLUR
-    )
+    private val nonBubblingEvents: Set<Events> =
+        setOf(
+            Events.MOUSEENTER,
+            Events.MOUSELEAVE,
+            Events.MOUSEOVER,
+            Events.FOCUS,
+            Events.BLUR,
+        )
 
-    private fun getEventMap(eventType: Events): MutableMap<DOMNode, ArrayList<EventCallback>> {
-        return listeners.getOrPut(eventType) { WeakHashMap() }
-    }
+    private fun getEventMap(eventType: Events): MutableMap<DOMNode, ArrayList<EventCallback>> =
+        listeners.getOrPut(eventType) {
+            WeakHashMap()
+        }
 
     fun <E : Event> DOMNode.addEventListener(eventType: Events, callback: (E) -> Unit) {
         getEventMap(eventType).getOrPut(this) { arrayListOf() }.add(callback as EventCallback)
@@ -60,7 +65,7 @@ object EventBus {
 
     data class DebugListenerSnapshot(
         val registeredNodes: Int,
-        val registeredCallbacks: Int
+        val registeredCallbacks: Int,
     )
 
     fun debugListenerSnapshot(): DebugListenerSnapshot {
@@ -74,12 +79,12 @@ object EventBus {
         }
         return DebugListenerSnapshot(
             registeredNodes = nodes.size,
-            registeredCallbacks = callbacks
+            registeredCallbacks = callbacks,
         )
     }
 
-    internal fun hasInputListeners(node: DOMNode): Boolean {
-        return listOf(
+    internal fun hasInputListeners(node: DOMNode): Boolean =
+        listOf(
             Events.MOUSEDOWN,
             Events.MOUSEUP,
             Events.CLICK,
@@ -87,12 +92,11 @@ object EventBus {
             Events.WHEEL,
             Events.MOUSEMOVE,
             Events.KEYDOWN,
-            Events.KEYUP
+            Events.KEYUP,
         ).any { eventType ->
             val callbacks = listeners[eventType]?.get(node)
             callbacks != null && callbacks.isNotEmpty()
         }
-    }
 
     fun post(event: Event) {
         val allListeners = listeners[event.type] ?: return
@@ -129,27 +133,29 @@ object EventBus {
             return
         }
 
-        val validListeners = when (event.type) {
-            Events.KEYUP, Events.KEYDOWN -> allListeners
-            Events.MOUSEDOWN, Events.CLICK, Events.MOUSEUP, Events.WHEEL, Events.MOUSEOVER ->
-                allListeners.filter { it.key.hovered(event as MouseEvent) }
+        val validListeners =
+            when (event.type) {
+                Events.KEYUP, Events.KEYDOWN -> allListeners
+                Events.MOUSEDOWN, Events.CLICK, Events.MOUSEUP, Events.WHEEL, Events.MOUSEOVER ->
+                    allListeners.filter { it.key.hovered(event as MouseEvent) }
 
-            Events.MOUSEOUT, Events.MOUSELEAVE ->
-                allListeners.filter { !it.key.hovered(event as MouseEvent) }
+                Events.MOUSEOUT, Events.MOUSELEAVE ->
+                    allListeners.filter { !it.key.hovered(event as MouseEvent) }
 
-            Events.MOUSEMOVE -> allListeners
-            Events.DRAG -> allListeners
-            Events.MOUSEENTER -> allListeners
-            Events.DRAGSTART,
-            Events.DRAGGING,
-            Events.DRAGEND,
-            Events.DRAGENTER,
-            Events.DRAGOVER,
-            Events.DRAGLEAVE,
-            Events.DROP -> allListeners
+                Events.MOUSEMOVE -> allListeners
+                Events.DRAG -> allListeners
+                Events.MOUSEENTER -> allListeners
+                Events.DRAGSTART,
+                Events.DRAGGING,
+                Events.DRAGEND,
+                Events.DRAGENTER,
+                Events.DRAGOVER,
+                Events.DRAGLEAVE,
+                Events.DROP,
+                -> allListeners
 
-            Events.FOCUS, Events.BLUR, Events.INPUT, Events.CHANGE -> allListeners
-        }
+                Events.FOCUS, Events.BLUR, Events.INPUT, Events.CHANGE -> allListeners
+            }
 
         validListeners.forEach { (_, callbacks) ->
             callbacks.forEach { callback ->

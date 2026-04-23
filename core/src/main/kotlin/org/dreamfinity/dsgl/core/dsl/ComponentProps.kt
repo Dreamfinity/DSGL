@@ -70,7 +70,7 @@ open class ComponentProps(
     var onDragEnter: ((DragEnterEvent) -> Unit)? = null,
     var onDragOver: ((DragOverEvent) -> Unit)? = null,
     var onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
-    var onDrop: ((DropEvent) -> Unit)? = null
+    var onDrop: ((DropEvent) -> Unit)? = null,
 ) {
     fun style(block: StyleScope.() -> Unit) {
         style = block

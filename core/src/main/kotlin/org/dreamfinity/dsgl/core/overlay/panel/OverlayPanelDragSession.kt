@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.overlay.panel
 enum class OverlayPanelDragType {
     PanelMove,
     PanelResize,
-    Transient
+    Transient,
 }
 
 enum class OverlayPanelResizeHandle {
@@ -14,7 +14,7 @@ enum class OverlayPanelResizeHandle {
     TopLeft,
     TopRight,
     BottomLeft,
-    BottomRight
+    BottomRight,
 }
 
 class OverlayPanelDragSession {
@@ -49,7 +49,7 @@ class OverlayPanelDragSession {
         pointerX: Int,
         pointerY: Int,
         panelState: OverlayPanelState,
-        resizeHandle: OverlayPanelResizeHandle? = null
+        resizeHandle: OverlayPanelResizeHandle? = null,
     ) {
         active = true
         this.ownerId = ownerId

@@ -1,15 +1,15 @@
 package org.dreamfinity.dsgl.mcForge1710
 
-import kotlin.math.ceil
-import kotlin.math.floor
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.math.ceil
+import kotlin.math.floor
 
 internal data class GuiClipRect(
     val x: Int,
     val y: Int,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
 internal class RenderCommandTransformStack {
@@ -32,11 +32,14 @@ internal class RenderCommandTransformStack {
 
     fun currentTransform(): AffineTransform2D = current
 
-    fun transformPoint(x: Float, y: Float): Pair<Float, Float> {
-        return current.transform(x, y)
-    }
+    fun transformPoint(x: Float, y: Float): Pair<Float, Float> = current.transform(x, y)
 
-    fun resolveClipRect(x: Int, y: Int, width: Int, height: Int): GuiClipRect {
+    fun resolveClipRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ): GuiClipRect {
         val safeWidth = width.coerceAtLeast(0)
         val safeHeight = height.coerceAtLeast(0)
         if (safeWidth == 0 || safeHeight == 0) {
@@ -76,4 +79,3 @@ internal class RenderCommandTransformStack {
             .times(fromOrigin)
     }
 }
-

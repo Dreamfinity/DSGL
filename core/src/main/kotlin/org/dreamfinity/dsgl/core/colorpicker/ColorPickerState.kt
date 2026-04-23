@@ -6,21 +6,21 @@ data class ColorPickerState(
     val mode: ColorFormatMode = ColorFormatMode.HEX,
     val rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA,
     val alphaEnabled: Boolean = true,
-    val closeOnSelect: Boolean = true
+    val closeOnSelect: Boolean = true,
 ) {
     constructor(
         color: RgbaColor,
         previous: RgbaColor = color,
         mode: ColorFormatMode = ColorFormatMode.HEX,
         alphaEnabled: Boolean = true,
-        closeOnSelect: Boolean = true
+        closeOnSelect: Boolean = true,
     ) : this(
         color = color,
         previous = previous,
         mode = mode,
         rgbOrder = RgbChannelOrder.RGBA,
         alphaEnabled = alphaEnabled,
-        closeOnSelect = closeOnSelect
+        closeOnSelect = closeOnSelect,
     )
 
     fun withColor(next: RgbaColor): ColorPickerState {
@@ -29,11 +29,7 @@ data class ColorPickerState(
         return copy(color = merged)
     }
 
-    fun withCommittedCurrent(): ColorPickerState {
-        return copy(previous = color)
-    }
+    fun withCommittedCurrent(): ColorPickerState = copy(previous = color)
 
-    fun withRestoredPrevious(): ColorPickerState {
-        return copy(color = previous)
-    }
+    fun withRestoredPrevious(): ColorPickerState = copy(color = previous)
 }

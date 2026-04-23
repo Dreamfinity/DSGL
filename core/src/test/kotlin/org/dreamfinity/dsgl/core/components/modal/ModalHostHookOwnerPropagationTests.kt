@@ -23,10 +23,7 @@ class ModalHostHookOwnerPropagationTests {
         assertEquals(6, window.lastSeenCount)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal): DomTree {
         window.beginRenderBuild(mode)
         return try {
             window.render()
@@ -40,11 +37,11 @@ class ModalHostHookOwnerPropagationTests {
         var pendingMutation: Int? = null
         var lastSeenCount: Int = -1
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 modalHost(
                     modals = emptyList(),
-                    modalKey = "test.modal.host"
+                    modalKey = "test.modal.host",
                 ) {
                     var count by useState(0)
                     pendingMutation?.let { mutation ->
@@ -54,6 +51,5 @@ class ModalHostHookOwnerPropagationTests {
                     lastSeenCount = count
                 }
             }
-        }
     }
 }

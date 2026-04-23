@@ -12,7 +12,7 @@ import org.dreamfinity.dsgl.core.style.Display
 internal class SystemColorPickerOverlayNode(
     private val popupEngine: ColorPickerPopupEngine,
     private val overlayPanel: OverlayPanel,
-    key: Any? = "dsgl-system-color-picker"
+    key: Any? = "dsgl-system-color-picker",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker"
 
@@ -28,19 +28,22 @@ internal class SystemColorPickerOverlayNode(
         cursorY = mouseY
     }
 
-    fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
-        return bodyNode.focusInputSlot(index, mouseX, mouseY)
-    }
+    fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean = bodyNode.focusInputSlot(index, mouseX, mouseY)
 
     fun syncInputFocusForDomEditing() {
         bodyNode.syncFocusedInputForModeOrOrderChange()
     }
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
         popupEngine.onFrame(width, height)
         popupEngine.onCursorPosition(cursorX, cursorY)
@@ -50,4 +53,3 @@ internal class SystemColorPickerOverlayNode(
         panelNode.render(ctx, x, y, width, height)
     }
 }
-

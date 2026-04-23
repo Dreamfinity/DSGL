@@ -4,7 +4,7 @@ import kotlin.math.roundToInt
 
 enum class DecorationType {
     Underline,
-    Strikethrough
+    Strikethrough,
 }
 
 data class TextVisualLine(
@@ -13,7 +13,7 @@ data class TextVisualLine(
     val baselineY: Float,
     val lineHeightPx: Float,
     val glyphStartIndex: Int,
-    val glyphEndIndexExclusive: Int
+    val glyphEndIndexExclusive: Int,
 )
 
 data class GlyphDecorationSample(
@@ -23,7 +23,7 @@ data class GlyphDecorationSample(
     val xEnd: Float,
     val color: Int,
     val underline: Boolean,
-    val strikethrough: Boolean
+    val strikethrough: Boolean,
 )
 
 data class DecorationFontMetrics(
@@ -32,14 +32,14 @@ data class DecorationFontMetrics(
     val ascenderEm: Float,
     val descenderEm: Float,
     val underlineYEm: Float?,
-    val underlineThicknessEm: Float?
+    val underlineThicknessEm: Float?,
 )
 
 data class ResolvedLineDecorationMetrics(
     val underlineY: Float,
     val underlineThickness: Float,
     val strikethroughY: Float,
-    val strikethroughThickness: Float
+    val strikethroughThickness: Float,
 )
 
 data class DecorationQuad(
@@ -49,7 +49,7 @@ data class DecorationQuad(
     val xEnd: Float,
     val y: Float,
     val thickness: Float,
-    val color: Int
+    val color: Int,
 )
 
 object TextDecorationLayout {
@@ -58,38 +58,38 @@ object TextDecorationLayout {
         return fontPx.coerceAtLeast(1) / safeEm
     }
 
-    fun baselineY(lineTopY: Float, ascenderEm: Float, scalePx: Float): Float {
-        return lineTopY + ascenderEm * scalePx
-    }
+    fun baselineY(lineTopY: Float, ascenderEm: Float, scalePx: Float): Float = lineTopY + ascenderEm * scalePx
 
-    fun screenYFromYUpMetric(baselineY: Float, metricYUpEm: Float, scalePx: Float): Float {
-        return baselineY - metricYUpEm * scalePx
-    }
+    fun screenYFromYUpMetric(baselineY: Float, metricYUpEm: Float, scalePx: Float): Float =
+        baselineY - metricYUpEm * scalePx
 
     fun resolveLineMetrics(
         line: TextVisualLine,
         fontMetrics: DecorationFontMetrics,
-        fontPx: Int
+        fontPx: Int,
     ): ResolvedLineDecorationMetrics {
         val lineHeight = line.lineHeightPx.coerceAtLeast(1f)
         val scale = scalePx(fontPx, fontMetrics.emSize)
 
         val rawUnderlineThickness = (fontMetrics.underlineThicknessEm ?: 0f) * scale
         val fallbackThickness = maxOf(1f, (0.06f * lineHeight).roundToInt().toFloat())
-        val underlineThickness = when {
-            rawUnderlineThickness < 0.5f -> fallbackThickness
-            else -> maxOf(1f, rawUnderlineThickness.roundToInt().toFloat())
-        }
+        val underlineThickness =
+            when {
+                rawUnderlineThickness < 0.5f -> fallbackThickness
+                else -> maxOf(1f, rawUnderlineThickness.roundToInt().toFloat())
+            }
 
         val fallbackUnderlineY = line.baselineY + 0.08f * lineHeight
-        val metaUnderlineY = fontMetrics.underlineYEm?.let { metricY ->
-            screenYFromYUpMetric(line.baselineY, metricY, scale)
-        }
-        val underlineY = when {
-            metaUnderlineY == null -> fallbackUnderlineY
-            metaUnderlineY <= line.baselineY + 0.5f -> fallbackUnderlineY
-            else -> metaUnderlineY
-        }.roundToInt().toFloat()
+        val metaUnderlineY =
+            fontMetrics.underlineYEm?.let { metricY ->
+                screenYFromYUpMetric(line.baselineY, metricY, scale)
+            }
+        val underlineY =
+            when {
+                metaUnderlineY == null -> fallbackUnderlineY
+                metaUnderlineY <= line.baselineY + 0.5f -> fallbackUnderlineY
+                else -> metaUnderlineY
+            }.roundToInt().toFloat()
 
         val strikeY = (line.baselineY - 0.30f * lineHeight).roundToInt().toFloat()
         val strikeThickness = maxOf(1f, (0.06f * lineHeight).roundToInt().toFloat())
@@ -102,7 +102,7 @@ object TextDecorationLayout {
             underlineY = underlineY.coerceIn(line.lineTopY, underlineMaxY),
             underlineThickness = underlineThickness,
             strikethroughY = strikeY.coerceIn(line.lineTopY, strikeMaxY),
-            strikethroughThickness = strikeThickness
+            strikethroughThickness = strikeThickness,
         )
     }
 
@@ -110,17 +110,19 @@ object TextDecorationLayout {
         lines: List<TextVisualLine>,
         glyphs: List<GlyphDecorationSample>,
         fontMetrics: DecorationFontMetrics,
-        fontPx: Int
+        fontPx: Int,
     ): List<DecorationQuad> {
         if (lines.isEmpty() || glyphs.isEmpty()) return emptyList()
         val lineByIndex = lines.associateBy { it.lineIndex }
-        val lineMetricsByIndex = lines.associate { line ->
-            line.lineIndex to resolveLineMetrics(
-                line = line,
-                fontMetrics = fontMetrics,
-                fontPx = fontPx
-            )
-        }
+        val lineMetricsByIndex =
+            lines.associate { line ->
+                line.lineIndex to
+                    resolveLineMetrics(
+                        line = line,
+                        fontMetrics = fontMetrics,
+                        fontPx = fontPx,
+                    )
+            }
         val out = ArrayList<DecorationQuad>(glyphs.size)
         glyphs.sortedWith(compareBy<GlyphDecorationSample> { it.lineIndex }.thenBy { it.glyphIndex }).forEach { glyph ->
             if (glyph.xEnd <= glyph.xStart) return@forEach
@@ -132,29 +134,31 @@ object TextDecorationLayout {
             if (glyph.underline) {
                 appendMerged(
                     out = out,
-                    quad = DecorationQuad(
-                        type = DecorationType.Underline,
-                        lineIndex = glyph.lineIndex,
-                        xStart = glyph.xStart,
-                        xEnd = glyph.xEnd,
-                        y = metrics.underlineY,
-                        thickness = metrics.underlineThickness,
-                        color = glyph.color
-                    )
+                    quad =
+                        DecorationQuad(
+                            type = DecorationType.Underline,
+                            lineIndex = glyph.lineIndex,
+                            xStart = glyph.xStart,
+                            xEnd = glyph.xEnd,
+                            y = metrics.underlineY,
+                            thickness = metrics.underlineThickness,
+                            color = glyph.color,
+                        ),
                 )
             }
             if (glyph.strikethrough) {
                 appendMerged(
                     out = out,
-                    quad = DecorationQuad(
-                        type = DecorationType.Strikethrough,
-                        lineIndex = glyph.lineIndex,
-                        xStart = glyph.xStart,
-                        xEnd = glyph.xEnd,
-                        y = metrics.strikethroughY,
-                        thickness = metrics.strikethroughThickness,
-                        color = glyph.color
-                    )
+                    quad =
+                        DecorationQuad(
+                            type = DecorationType.Strikethrough,
+                            lineIndex = glyph.lineIndex,
+                            xStart = glyph.xStart,
+                            xEnd = glyph.xEnd,
+                            y = metrics.strikethroughY,
+                            thickness = metrics.strikethroughThickness,
+                            color = glyph.color,
+                        ),
                 )
             }
         }
@@ -177,4 +181,3 @@ object TextDecorationLayout {
         out += quad
     }
 }
-

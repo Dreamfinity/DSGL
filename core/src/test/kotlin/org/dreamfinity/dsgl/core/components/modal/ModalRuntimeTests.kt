@@ -90,7 +90,9 @@ class ModalRuntimeTests {
         error("Missing node key=$key")
     }
 
-    private class FocusableNode(key: Any) : DOMNode(key) {
+    private class FocusableNode(
+        key: Any,
+    ) : DOMNode(key) {
         override val focusable: Boolean = true
     }
 }

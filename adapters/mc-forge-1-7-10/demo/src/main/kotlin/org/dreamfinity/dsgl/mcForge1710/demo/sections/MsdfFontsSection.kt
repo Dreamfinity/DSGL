@@ -1,8 +1,9 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.FontStyle
@@ -10,16 +11,16 @@ import org.dreamfinity.dsgl.core.style.FontWeight
 import org.dreamfinity.dsgl.core.style.TextDecoration
 import org.dreamfinity.dsgl.core.style.TextFormatting
 import org.dreamfinity.dsgl.core.style.TextWrap
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.text.MsdfRuntimeDebugSettings
 
-private val COLOR_PRESETS = listOf(
-    0xFFFFFFFF.toInt(),
-    0xFFFFC857.toInt(),
-    0xFF8EE3F5.toInt(),
-    0xFFFF7E67.toInt()
-)
+private val COLOR_PRESETS =
+    listOf(
+        0xFFFFFFFF.toInt(),
+        0xFFFFC857.toInt(),
+        0xFF8EE3F5.toInt(),
+        0xFFFF7E67.toInt(),
+    )
 
 private const val SAMPLE_PARAGRAPH =
     "MSDF/MTSDF text rendering demo in DSGL. This paragraph should wrap cleanly in a fixed-width panel and respect font switches, opacity, and size."
@@ -66,7 +67,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
         text("MSDF Fonts")
         text(
             "All DSGL DrawText commands go through MSDF/MTSDF rendering. Switch font/size/color/opacity and verify wrapping.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
         text("DREAMFINITY", { style = { fontId = "telegrafico" } })
 
@@ -104,7 +105,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                         msdfParseMinecraftFormatting = !msdfParseMinecraftFormatting
                         onInfo("MSDF formatting=$msdfParseMinecraftFormatting")
                     }
-                }
+                },
             )
             button(
                 if (msdfShowBaselineGuides) {
@@ -118,11 +119,11 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                         MsdfRuntimeDebugSettings.decorationGuidesEnabled = msdfShowBaselineGuides
                         System.setProperty(
                             "dsgl.msdf.debug.decorations",
-                            msdfShowBaselineGuides.toString()
+                            msdfShowBaselineGuides.toString(),
                         )
                         onInfo("MSDF guides=$msdfShowBaselineGuides")
                     }
-                }
+                },
             )
         }
 
@@ -131,7 +132,7 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                 value = msdfOpacityPercent,
                 min = 0,
                 max = 100,
-                step = 1
+                step = 1,
             ),
             {
                 key = "msdf.opacity"
@@ -140,14 +141,14 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: msdfOpacityPercent
                     msdfOpacityPercent = next.coerceIn(0, 100)
                 }
-            }
+            },
         )
         input(
             InputType.Range(
                 value = msdfFontSizePx,
                 min = 6,
                 max = 48,
-                step = 1
+                step = 1,
             ),
             {
                 key = "msdf.fontSize"
@@ -156,14 +157,14 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: msdfFontSizePx
                     msdfFontSizePx = next.coerceIn(6, 48)
                 }
-            }
+            },
         )
         input(
             InputType.Range(
                 value = panelWidthPercent,
                 min = 0L,
                 max = 100L,
-                step = 2
+                step = 2,
             ),
             {
                 key = "msdf.wrapWidth"
@@ -172,12 +173,12 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidthPercent
                     msdfWrapWidthPercent = next.coerceIn(0L, 100L)
                 }
-            }
+            },
         )
 
         text(
             "fontId=${selectedFont.fontId} source=${selectedFont.source.name.lowercase()} fontSize=$fontSize opacity=$textOpacity panelWidth=$panelWidthPercent% formatting=${formattingMode.name.lowercase()} guides=$msdfShowBaselineGuides",
-            { style = { this.color = DEMO_MUTED } }
+            { style = { this.color = DEMO_MUTED } },
         )
         text(
             "Drop external font packages into <gameDir>/dsgl/fonts/<subdir>/<name>.ttf + -meta.json + -mtsdf.png and restart.",
@@ -186,17 +187,19 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                     color = DEMO_MUTED
                     textWrap = TextWrap.Wrap
                 }
-            }
+            },
         )
         text({
-            val preview = selectableFonts
-                .take(8)
-                .joinToString(", ") { "${it.fontId}[${it.source.name.lowercase()}]" }
-            value = if (selectableFonts.size > 8) {
-                "Registered fonts (${selectableFonts.size}): $preview ..."
-            } else {
-                "Registered fonts (${selectableFonts.size}): $preview"
-            }
+            val preview =
+                selectableFonts
+                    .take(8)
+                    .joinToString(", ") { "${it.fontId}[${it.source.name.lowercase()}]" }
+            value =
+                if (selectableFonts.size > 8) {
+                    "Registered fonts (${selectableFonts.size}): $preview ..."
+                } else {
+                    "Registered fonts (${selectableFonts.size}): $preview"
+                }
 
             style = {
                 color = DEMO_MUTED
@@ -213,7 +216,10 @@ fun UiScope.msdfFontsSection(onInfo: (String) -> Unit) {
                 backgroundColor = 0xFF233040.toInt()
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
-                border { width = 1.px; color = 0xFF5F7288.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF5F7288.toInt()
+                }
             }
         }) {
             text("Header text", {

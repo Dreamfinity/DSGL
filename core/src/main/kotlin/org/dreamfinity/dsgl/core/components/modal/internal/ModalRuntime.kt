@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal object ModalRuntime {
     private data class ModalMeta(
-        val restoreFocus: Boolean
+        val restoreFocus: Boolean,
     )
 
     private class HostState {
@@ -56,9 +56,10 @@ internal object ModalRuntime {
         }
 
         state.previousKeys = currentKeys
-        state.previousMetaByKey = modals.associate { spec ->
-            spec.key to ModalMeta(restoreFocus = spec.restoreFocus)
-        }
+        state.previousMetaByKey =
+            modals.associate { spec ->
+                spec.key to ModalMeta(restoreFocus = spec.restoreFocus)
+            }
     }
 
     fun onCommit(hostKey: String, modals: List<ModalSpec>) {

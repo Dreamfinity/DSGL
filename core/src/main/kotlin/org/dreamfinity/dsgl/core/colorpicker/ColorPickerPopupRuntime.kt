@@ -9,9 +9,13 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 
 interface ColorPickerPopupHost {
     fun open(request: ColorPickerPopupRequest)
+
     fun close(owner: Any)
+
     fun closeAll()
+
     fun isOpenFor(owner: Any): Boolean
+
     fun isOpen(): Boolean
 }
 
@@ -28,7 +32,7 @@ data class ColorPickerPopupRequest(
     val onPreview: ((RgbaColor) -> Unit)? = null,
     val onChange: ((RgbaColor) -> Unit)? = null,
     val onCommit: ((RgbaColor) -> Unit)? = null,
-    val onClose: (() -> Unit)? = null
+    val onClose: (() -> Unit)? = null,
 )
 
 class ColorPickerPopupEngine : ColorPickerPopupHost {
@@ -42,7 +46,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         var closeRect: Rect,
         var layout: ColorPickerLayout,
         val dragModel: FloatingPaneDragModel = FloatingPaneDragModel(),
-        var consumedEyedropperPress: Boolean = false
+        var consumedEyedropperPress: Boolean = false,
     )
 
     private var popup: PopupState? = null
@@ -60,29 +64,32 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         }
         current?.let {
             positionStore.remember(it.owner, it.panelRect)
-            it.request.onClose?.invoke()
+            it.request.onClose
+                ?.invoke()
         }
 
-        val controller = ColorPickerController(
-            initial = request.state,
-            style = request.style
-        )
+        val controller =
+            ColorPickerController(
+                initial = request.state,
+                style = request.style,
+            )
         val rememberedPanel = positionStore.remembered(request.owner)
         val initialX = rememberedPanel?.x ?: request.anchorRect.x
         val initialY = rememberedPanel?.y ?: request.anchorRect.y
         val initialRect = Rect(initialX, initialY, request.width.coerceAtLeast(220), 1)
         val initialBody = Rect(initialRect.x + panelPadding, initialRect.y + headerHeight + panelPadding, 1, 1)
         val initialLayout = controller.buildLayout(initialBody)
-        val state = PopupState(
-            owner = request.owner,
-            request = request,
-            controller = controller,
-            panelRect = initialRect,
-            headerRect = Rect(initialRect.x, initialRect.y, initialRect.width, headerHeight),
-            bodyRect = initialBody,
-            closeRect = Rect(initialRect.x + initialRect.width - 20, initialRect.y + 3, 16, 18),
-            layout = initialLayout
-        )
+        val state =
+            PopupState(
+                owner = request.owner,
+                request = request,
+                controller = controller,
+                panelRect = initialRect,
+                headerRect = Rect(initialRect.x, initialRect.y, initialRect.width, headerHeight),
+                bodyRect = initialBody,
+                closeRect = Rect(initialRect.x + initialRect.width - 20, initialRect.y + 3, 16, 18),
+                layout = initialLayout,
+            )
         popup = state
         bindController(state)
         relayout(state, keepPosition = rememberedPanel != null)
@@ -123,7 +130,8 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         if (current.owner != owner) return
         positionStore.remember(current.owner, current.panelRect)
         current.dragModel.end()
-        current.request.onClose?.invoke()
+        current.request.onClose
+            ?.invoke()
         popup = null
     }
 
@@ -131,7 +139,8 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         val current = popup ?: return
         positionStore.remember(current.owner, current.panelRect)
         current.dragModel.end()
-        current.request.onClose?.invoke()
+        current.request.onClose
+            ?.invoke()
         popup = null
     }
 
@@ -190,38 +199,27 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         return current.controller
     }
 
-    internal fun debugActiveController(): ColorPickerController? {
-        return popup?.controller
-    }
+    internal fun debugActiveController(): ColorPickerController? = popup?.controller
 
-    internal fun debugActiveLayout(): ColorPickerLayout? {
-        return popup?.layout
-    }
+    internal fun debugActiveLayout(): ColorPickerLayout? = popup?.layout
 
-    internal fun debugActiveStyle(): ColorPickerStyle? {
-        return popup?.request?.style
-    }
+    internal fun debugActiveStyle(): ColorPickerStyle? = popup?.request?.style
 
-    internal fun debugActivePanelRect(): Rect? {
-        return popup?.panelRect
-    }
+    internal fun debugActivePanelRect(): Rect? = popup?.panelRect
 
-    internal fun debugActiveOwnerScope(): OverlayOwnerScope? {
-        return popup?.request?.ownerScope
-    }
+    internal fun debugActiveOwnerScope(): OverlayOwnerScope? = popup?.request?.ownerScope
 
-    internal fun debugIsDraggingPopup(): Boolean {
-        return popup?.dragModel?.dragging == true
-    }
+    internal fun debugIsDraggingPopup(): Boolean = popup?.dragModel?.dragging == true
 
     internal fun forcePanelRect(owner: Any, panelRect: Rect) {
         val current = popup ?: return
         if (current.owner != owner) return
-        val clamped = ColorPickerPopupGeometry.clampPanel(
-            rect = panelRect,
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight
-        )
+        val clamped =
+            ColorPickerPopupGeometry.clampPanel(
+                rect = panelRect,
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+            )
         if (clamped == current.panelRect) return
         current.panelRect = clamped
         rebuildRects(current)
@@ -238,13 +236,14 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     fun onCursorPosition(mouseX: Int, mouseY: Int) {
         val current = popup ?: return
         if (current.dragModel.dragging) {
-            val clamped = current.dragModel.update(
-                mouseX = mouseX,
-                mouseY = mouseY,
-                viewportWidth = viewportWidth,
-                viewportHeight = viewportHeight,
-                clamp = ColorPickerPopupGeometry::clampPanel
-            )
+            val clamped =
+                current.dragModel.update(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    viewportWidth = viewportWidth,
+                    viewportHeight = viewportHeight,
+                    clamp = ColorPickerPopupGeometry::clampPanel,
+                )
             if (clamped != current.panelRect) {
                 current.panelRect = clamped
                 rebuildRects(current)
@@ -259,57 +258,79 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         popup?.controller?.sampleEyedropperAtHover()
     }
 
-    fun hasActiveEyedropper(): Boolean {
-        return popup?.controller?.isEyedropperActive() == true
-    }
+    fun hasActiveEyedropper(): Boolean = popup?.controller?.isEyedropperActive() == true
 
     fun appendOverlayCommands(out: MutableList<RenderCommand>) {
         val current = popup ?: return
         refreshLayout(current)
         val panel = current.panelRect
         out += RenderCommand.PushClip(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1))
-        out += RenderCommand.DrawRect(panel.x + 2, panel.y + 2, panel.width, panel.height, current.request.style.panelShadowColor)
-        out += RenderCommand.DrawRect(panel.x, panel.y, panel.width, panel.height, current.request.style.panelBackgroundColor)
+        out +=
+            RenderCommand.DrawRect(
+                panel.x + 2,
+                panel.y + 2,
+                panel.width,
+                panel.height,
+                current.request.style.panelShadowColor,
+            )
+        out +=
+            RenderCommand.DrawRect(
+                panel.x,
+                panel.y,
+                panel.width,
+                panel.height,
+                current.request.style.panelBackgroundColor,
+            )
         drawBorder(out, panel, current.request.style.panelBorderColor)
 
-        out += RenderCommand.DrawRect(
-            current.headerRect.x,
-            current.headerRect.y,
-            current.headerRect.width,
-            current.headerRect.height,
-            current.request.style.buttonBackgroundColor
-        )
+        out +=
+            RenderCommand.DrawRect(
+                current.headerRect.x,
+                current.headerRect.y,
+                current.headerRect.width,
+                current.headerRect.height,
+                current.request.style.buttonBackgroundColor,
+            )
         drawBorder(out, current.headerRect, current.request.style.inputBorderColor)
-        out += RenderCommand.DrawText(
-            text = current.request.title,
-            x = current.headerRect.x + 6,
-            y = current.headerRect.y + 3,
-            color = current.request.style.textColor,
-            fontSize = current.request.style.fontSize
-        )
-        out += RenderCommand.DrawRect(
-            current.closeRect.x,
-            current.closeRect.y,
-            current.closeRect.width,
-            current.closeRect.height,
-            current.request.style.buttonBackgroundColor
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = current.request.title,
+                x = current.headerRect.x + 6,
+                y = current.headerRect.y + 3,
+                color = current.request.style.textColor,
+                fontSize = current.request.style.fontSize,
+            )
+        out +=
+            RenderCommand.DrawRect(
+                current.closeRect.x,
+                current.closeRect.y,
+                current.closeRect.width,
+                current.closeRect.height,
+                current.request.style.buttonBackgroundColor,
+            )
         drawBorder(out, current.closeRect, current.request.style.inputBorderColor)
-        out += RenderCommand.DrawText(
-            text = "x",
-            x = current.closeRect.x + 5,
-            y = current.closeRect.y + 2,
-            color = current.request.style.textColor,
-            fontSize = current.request.style.fontSize
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = "x",
+                x = current.closeRect.x + 5,
+                y = current.closeRect.y + 2,
+                color = current.request.style.textColor,
+                fontSize = current.request.style.fontSize,
+            )
 
-        out += RenderCommand.PushClip(current.bodyRect.x, current.bodyRect.y, current.bodyRect.width, current.bodyRect.height)
+        out +=
+            RenderCommand.PushClip(
+                current.bodyRect.x,
+                current.bodyRect.y,
+                current.bodyRect.width,
+                current.bodyRect.height,
+            )
         appendOverlayBodyCommands(out)
         out += RenderCommand.PopClip
         appendEyedropperOverlayCommands(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
-            out = out
+            out = out,
         )
         out += RenderCommand.PopClip
     }
@@ -322,13 +343,13 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     internal fun appendEyedropperOverlayCommands(
         viewportWidth: Int = this.viewportWidth.coerceAtLeast(1),
         viewportHeight: Int = this.viewportHeight.coerceAtLeast(1),
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
         val current = popup ?: return
         current.controller.appendEyedropperOverlay(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
-            out = out
+            out = out,
         )
     }
 
@@ -376,17 +397,16 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         if (current.request.ownerScope != OverlayOwnerScope.System) return false
         if (button != MouseButton.LEFT) return false
         if (current.controller.isEyedropperActive()) return false
-        return current.layout.inputSlots.any { slot -> slot.inputRect.contains(mouseX, mouseY) }
+        return current.layout.inputSlots
+            .any { slot -> slot.inputRect.contains(mouseX, mouseY) }
     }
 
-    fun focusSystemInputSlotForDomEditing(
-        mouseX: Int,
-        mouseY: Int,
-        focusInputByIndex: (Int) -> Boolean
-    ): Boolean {
+    fun focusSystemInputSlotForDomEditing(mouseX: Int, mouseY: Int, focusInputByIndex: (Int) -> Boolean): Boolean {
         val current = popup ?: return false
         if (current.request.ownerScope != OverlayOwnerScope.System) return false
-        val slotIndex = current.layout.inputSlots.indexOfFirst { slot -> slot.inputRect.contains(mouseX, mouseY) }
+        val slotIndex =
+            current.layout.inputSlots
+                .indexOfFirst { slot -> slot.inputRect.contains(mouseX, mouseY) }
         if (slotIndex < 0) return false
         val slot = current.layout.inputSlots[slotIndex]
         current.controller.handleDomInputFocused(slot.key)
@@ -428,7 +448,8 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         state.controller.onPreview = state.request.onPreview
         state.controller.onChange = state.request.onChange
         state.controller.onCommit = { color ->
-            state.request.onCommit?.invoke(color)
+            state.request.onCommit
+                ?.invoke(color)
             if (state.request.state.closeOnSelect) {
                 close(state.owner)
             }
@@ -440,29 +461,33 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     }
 
     private fun relayout(state: PopupState, keepPosition: Boolean) {
-        val width = state.request.width.coerceAtLeast(state.request.style.minWidth)
+        val width =
+            state.request.width
+                .coerceAtLeast(state.request.style.minWidth)
         val bodyHeight = state.controller.preferredHeight(state.request.state.alphaEnabled)
         val height = headerHeight + panelPadding + bodyHeight + panelPadding
-        state.panelRect = ColorPickerPopupGeometry.resolvePanelRect(
-            owner = state.owner,
-            anchorRect = state.request.anchorRect,
-            width = width,
-            height = height,
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight,
-            keepPosition = keepPosition,
-            currentRect = state.panelRect,
-            store = positionStore
-        )
+        state.panelRect =
+            ColorPickerPopupGeometry.resolvePanelRect(
+                owner = state.owner,
+                anchorRect = state.request.anchorRect,
+                width = width,
+                height = height,
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+                keepPosition = keepPosition,
+                currentRect = state.panelRect,
+                store = positionStore,
+            )
         rebuildRects(state)
     }
 
     private fun rebuildRects(state: PopupState) {
-        val frame = ColorPickerPopupGeometry.buildFrame(
-            panelRect = state.panelRect,
-            headerHeight = headerHeight,
-            panelPadding = panelPadding
-        )
+        val frame =
+            ColorPickerPopupGeometry.buildFrame(
+                panelRect = state.panelRect,
+                headerHeight = headerHeight,
+                panelPadding = panelPadding,
+            )
         state.panelRect = frame.panelRect
         state.headerRect = frame.headerRect
         state.bodyRect = frame.bodyRect
@@ -482,19 +507,18 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 
-    private fun sameStateContract(a: ColorPickerState, b: ColorPickerState): Boolean {
-        return a.color.toArgbInt() == b.color.toArgbInt() &&
-                a.previous.toArgbInt() == b.previous.toArgbInt() &&
-                a.mode == b.mode &&
-                a.rgbOrder == b.rgbOrder &&
-                a.alphaEnabled == b.alphaEnabled &&
-                a.closeOnSelect == b.closeOnSelect
-    }
+    private fun sameStateContract(a: ColorPickerState, b: ColorPickerState): Boolean =
+        a.color.toArgbInt() == b.color.toArgbInt() &&
+            a.previous.toArgbInt() == b.previous.toArgbInt() &&
+            a.mode == b.mode &&
+            a.rgbOrder == b.rgbOrder &&
+            a.alphaEnabled == b.alphaEnabled &&
+            a.closeOnSelect == b.closeOnSelect
 }
 
 class ColorPickerPopupManager(
     private val host: ColorPickerPopupHost = ColorPickerRuntime.host,
-    private val ownerToken: Any = Any()
+    private val ownerToken: Any = Any(),
 ) {
     fun open(
         ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
@@ -508,7 +532,7 @@ class ColorPickerPopupManager(
         onPreview: ((RgbaColor) -> Unit)? = null,
         onChange: ((RgbaColor) -> Unit)? = null,
         onCommit: ((RgbaColor) -> Unit)? = null,
-        onClose: (() -> Unit)? = null
+        onClose: (() -> Unit)? = null,
     ) {
         host.open(
             ColorPickerPopupRequest(
@@ -524,8 +548,8 @@ class ColorPickerPopupManager(
                 onPreview = onPreview,
                 onChange = onChange,
                 onCommit = onCommit,
-                onClose = onClose
-            )
+                onClose = onClose,
+            ),
         )
     }
 
@@ -540,4 +564,3 @@ object ColorPickerRuntime {
     val engine: ColorPickerPopupEngine = ColorPickerPopupEngine()
     val host: ColorPickerPopupHost = engine
 }
-

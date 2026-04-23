@@ -6,26 +6,21 @@ import kotlin.math.roundToInt
 data class ParsedColorText(
     val color: RgbaColor,
     val detectedMode: ColorFormatMode,
-    val detectedRgbOrder: RgbChannelOrder? = null
+    val detectedRgbOrder: RgbChannelOrder? = null,
 ) {
     constructor(
         color: RgbaColor,
-        detectedMode: ColorFormatMode
+        detectedMode: ColorFormatMode,
     ) : this(
         color = color,
         detectedMode = detectedMode,
-        detectedRgbOrder = null
+        detectedRgbOrder = null,
     )
 }
 
 object ColorTextCodec {
-    fun format(
-        color: RgbaColor,
-        mode: ColorFormatMode,
-        includeAlpha: Boolean
-    ): String {
-        return format(color, mode, includeAlpha, RgbChannelOrder.RGBA)
-    }
+    fun format(color: RgbaColor, mode: ColorFormatMode, includeAlpha: Boolean): String =
+        format(color, mode, includeAlpha, RgbChannelOrder.RGBA)
 
     fun parse(raw: String): ParsedColorText? {
         val text = raw.trim()
@@ -41,7 +36,7 @@ object ColorTextCodec {
         color: RgbaColor,
         mode: ColorFormatMode,
         includeAlpha: Boolean,
-        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA
+        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA,
     ): String {
         val normalized = color.normalized()
         return when (mode) {
@@ -65,11 +60,7 @@ object ColorTextCodec {
         }
     }
 
-    fun formatRgb(
-        color: RgbaColor,
-        includeAlpha: Boolean,
-        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA
-    ): String {
+    fun formatRgb(color: RgbaColor, includeAlpha: Boolean, rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA): String {
         val c = color.normalized()
         val a = formatFraction(c.a)
         val r = (c.r * 255f + 0.5f).toInt().coerceIn(0, 255)
@@ -85,54 +76,52 @@ object ColorTextCodec {
         }
     }
 
-    fun formatRgb(color: RgbaColor, includeAlpha: Boolean): String {
-        return formatRgb(color, includeAlpha, RgbChannelOrder.RGBA)
-    }
+    fun formatRgb(color: RgbaColor, includeAlpha: Boolean): String =
+        formatRgb(color, includeAlpha, RgbChannelOrder.RGBA)
 
-    fun formatHsl(
-        color: RgbaColor,
-        includeAlpha: Boolean,
-        fallbackHueDeg: Float = 0f
-    ): String {
+    fun formatHsl(color: RgbaColor, includeAlpha: Boolean, fallbackHueDeg: Float = 0f): String {
         val c = color.normalized()
         val hsl = ColorConversions.rgbToHsl(c, fallbackHueDeg)
-        val h = hsl.hueDeg.roundToInt().coerceIn(0, 360)
+        val h =
+            hsl.hueDeg
+                .roundToInt()
+                .coerceIn(0, 360)
         val s = (hsl.saturation * 100f).roundToInt().coerceIn(0, 100)
         val l = (hsl.lightness * 100f).roundToInt().coerceIn(0, 100)
         return if (includeAlpha) {
-            "hsla($h, ${s}%, ${l}%, ${formatFraction(c.a)})"
+            "hsla($h, $s%, $l%, ${formatFraction(c.a)})"
         } else {
-            "hsl($h, ${s}%, ${l}%)"
+            "hsl($h, $s%, $l%)"
         }
     }
 
-    fun formatHsb(
-        color: RgbaColor,
-        includeAlpha: Boolean,
-        fallbackHueDeg: Float = 0f
-    ): String {
+    fun formatHsb(color: RgbaColor, includeAlpha: Boolean, fallbackHueDeg: Float = 0f): String {
         val c = color.normalized()
         val hsb = ColorConversions.rgbToHsv(c, fallbackHueDeg)
-        val h = hsb.hueDeg.roundToInt().coerceIn(0, 360)
+        val h =
+            hsb.hueDeg
+                .roundToInt()
+                .coerceIn(0, 360)
         val s = (hsb.saturation * 100f).roundToInt().coerceIn(0, 100)
         val b = (hsb.brightness * 100f).roundToInt().coerceIn(0, 100)
         return if (includeAlpha) {
-            "hsba($h, ${s}%, ${b}%, ${formatFraction(c.a)})"
+            "hsba($h, $s%, $b%, ${formatFraction(c.a)})"
         } else {
-            "hsb($h, ${s}%, ${b}%)"
+            "hsb($h, $s%, $b%)"
         }
     }
 
     private fun parseHex(raw: String): RgbaColor? {
         if (!raw.startsWith("#")) return null
         val hex = raw.substring(1)
-        val expanded = when (hex.length) {
-            3 -> "${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}FF"
-            4 -> "${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}"
-            6 -> "${hex}FF"
-            8 -> hex
-            else -> return null
-        }
+        val expanded =
+            when (hex.length) {
+                3 -> "${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}FF"
+                4 -> "${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}"
+                6 -> "${hex}FF"
+                8 -> hex
+                else -> return null
+            }
         val value = expanded.toLongOrNull(16) ?: return null
         val r = ((value ushr 24) and 0xFF).toInt() / 255f
         val g = ((value ushr 16) and 0xFF).toInt() / 255f
@@ -142,42 +131,45 @@ object ColorTextCodec {
     }
 
     private fun parseRgbLike(raw: String): ParsedColorText? {
-        val prefix = when {
-            raw.startsWith("rgba(", ignoreCase = true) -> "rgba"
-            raw.startsWith("argb(", ignoreCase = true) -> "argb"
-            raw.startsWith("rgb(", ignoreCase = true) -> "rgb"
-            else -> return null
-        }
+        val prefix =
+            when {
+                raw.startsWith("rgba(", ignoreCase = true) -> "rgba"
+                raw.startsWith("argb(", ignoreCase = true) -> "argb"
+                raw.startsWith("rgb(", ignoreCase = true) -> "rgb"
+                else -> return null
+            }
         val values = parseFunctionArgs(raw, prefix) ?: return null
         if (prefix == "rgb" && values.size != 3) return null
         if ((prefix == "rgba" || prefix == "argb") && values.size != 4) return null
         if (values.size !in 3..4) return null
-        val (r, g, b, a, order) = if (prefix == "argb") {
-            val a = parseAlphaComponent(values[0]) ?: return null
-            val r = parseRgbComponent(values[1]) ?: return null
-            val g = parseRgbComponent(values[2]) ?: return null
-            val b = parseRgbComponent(values[3]) ?: return null
-            RgbParseResult(r, g, b, a, RgbChannelOrder.ARGB)
-        } else {
-            val r = parseRgbComponent(values[0]) ?: return null
-            val g = parseRgbComponent(values[1]) ?: return null
-            val b = parseRgbComponent(values[2]) ?: return null
-            val a = if (values.size >= 4) parseAlphaComponent(values[3]) ?: return null else 1f
-            RgbParseResult(r, g, b, a, if (values.size == 4) RgbChannelOrder.RGBA else null)
-        }
+        val (r, g, b, a, order) =
+            if (prefix == "argb") {
+                val a = parseAlphaComponent(values[0]) ?: return null
+                val r = parseRgbComponent(values[1]) ?: return null
+                val g = parseRgbComponent(values[2]) ?: return null
+                val b = parseRgbComponent(values[3]) ?: return null
+                RgbParseResult(r, g, b, a, RgbChannelOrder.ARGB)
+            } else {
+                val r = parseRgbComponent(values[0]) ?: return null
+                val g = parseRgbComponent(values[1]) ?: return null
+                val b = parseRgbComponent(values[2]) ?: return null
+                val a = if (values.size >= 4) parseAlphaComponent(values[3]) ?: return null else 1f
+                RgbParseResult(r, g, b, a, if (values.size == 4) RgbChannelOrder.RGBA else null)
+            }
         return ParsedColorText(
             color = RgbaColor(r, g, b, a).normalized(),
             detectedMode = ColorFormatMode.RGB,
-            detectedRgbOrder = order
+            detectedRgbOrder = order,
         )
     }
 
     private fun parseHslLike(raw: String): RgbaColor? {
-        val prefix = when {
-            raw.startsWith("hsla(", ignoreCase = true) -> "hsla"
-            raw.startsWith("hsl(", ignoreCase = true) -> "hsl"
-            else -> return null
-        }
+        val prefix =
+            when {
+                raw.startsWith("hsla(", ignoreCase = true) -> "hsla"
+                raw.startsWith("hsl(", ignoreCase = true) -> "hsl"
+                else -> return null
+            }
         val values = parseFunctionArgs(raw, prefix) ?: return null
         if (prefix == "hsl" && values.size != 3) return null
         if (prefix == "hsla" && values.size != 4) return null
@@ -187,17 +179,18 @@ object ColorTextCodec {
         val a = if (values.size >= 4) parseAlphaComponent(values[3]) ?: return null else 1f
         return ColorConversions.hslToRgb(
             hsl = HslColor(h, s, l),
-            alpha = a
+            alpha = a,
         )
     }
 
     private fun parseHsbLike(raw: String): RgbaColor? {
-        val prefix = when {
-            raw.startsWith("hsba(", ignoreCase = true) -> "hsba"
-            raw.startsWith("hsv(", ignoreCase = true) -> "hsv"
-            raw.startsWith("hsb(", ignoreCase = true) -> "hsb"
-            else -> return null
-        }
+        val prefix =
+            when {
+                raw.startsWith("hsba(", ignoreCase = true) -> "hsba"
+                raw.startsWith("hsv(", ignoreCase = true) -> "hsv"
+                raw.startsWith("hsb(", ignoreCase = true) -> "hsb"
+                else -> return null
+            }
         val values = parseFunctionArgs(raw, prefix) ?: return null
         if ((prefix == "hsb" || prefix == "hsv") && values.size != 3) return null
         if (prefix == "hsba" && values.size != 4) return null
@@ -207,7 +200,7 @@ object ColorTextCodec {
         val a = if (values.size >= 4) parseAlphaComponent(values[3]) ?: return null else 1f
         return ColorConversions.hsvToRgb(
             hsv = HsvColor(h, s, b),
-            alpha = a
+            alpha = a,
         )
     }
 
@@ -215,7 +208,11 @@ object ColorTextCodec {
         if (!raw.endsWith(")")) return null
         val head = raw.indexOf('(')
         if (head < 0) return null
-        val name = raw.substring(0, head).trim().lowercase()
+        val name =
+            raw
+                .substring(0, head)
+                .trim()
+                .lowercase()
         if (name != prefix) return null
         val body = raw.substring(head + 1, raw.length - 1)
         if (body.isBlank()) return emptyList()
@@ -254,7 +251,11 @@ object ColorTextCodec {
     }
 
     private fun parseHue(raw: String): Float? {
-        val normalized = raw.trim().removeSuffix("deg").trim()
+        val normalized =
+            raw
+                .trim()
+                .removeSuffix("deg")
+                .trim()
         val value = normalized.toFloatOrNull() ?: return null
         var hue = value % 360f
         if (hue < 0f) hue += 360f
@@ -294,6 +295,6 @@ object ColorTextCodec {
         val g: Float,
         val b: Float,
         val a: Float,
-        val order: RgbChannelOrder?
+        val order: RgbChannelOrder?,
     )
 }

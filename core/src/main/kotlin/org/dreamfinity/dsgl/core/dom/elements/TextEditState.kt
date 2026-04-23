@@ -7,7 +7,7 @@ data class TextEditState(
     var caretIndex: Int = 0,
     var selectionAnchor: Int? = null,
     var scrollY: Int = 0,
-    var lastInteractionAtMs: Long = System.currentTimeMillis()
+    var lastInteractionAtMs: Long = System.currentTimeMillis(),
 ) {
     fun clampToLength(length: Int) {
         caretIndex = caretIndex.coerceIn(0, length)

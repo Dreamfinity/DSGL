@@ -36,16 +36,18 @@ class PositionedLayoutModelTests {
         val staticChild = ContainerNode(key = "static")
         staticChild.applyParent(root)
 
-        val positionedLow = ContainerNode(key = "positioned-low").apply {
-            position = PositionMode.Relative
-            zIndex = -1
-        }
+        val positionedLow =
+            ContainerNode(key = "positioned-low").apply {
+                position = PositionMode.Relative
+                zIndex = -1
+            }
         positionedLow.applyParent(root)
 
-        val positionedHigh = ContainerNode(key = "positioned-high").apply {
-            position = PositionMode.Relative
-            zIndex = 5
-        }
+        val positionedHigh =
+            ContainerNode(key = "positioned-high").apply {
+                position = PositionMode.Relative
+                zIndex = 5
+            }
         positionedHigh.applyParent(root)
 
         val paintOrder = root.orderedChildrenForPaintTraversal()
@@ -58,15 +60,18 @@ class PositionedLayoutModelTests {
     @Test
     fun `equal ordering priority uses dom order tie-breaker`() {
         val root = ContainerNode(key = "tie-root")
-        val first = ContainerNode(key = "first").apply {
-            position = PositionMode.Relative
-        }
-        val second = ContainerNode(key = "second").apply {
-            position = PositionMode.Relative
-        }
-        val third = ContainerNode(key = "third").apply {
-            position = PositionMode.Relative
-        }
+        val first =
+            ContainerNode(key = "first").apply {
+                position = PositionMode.Relative
+            }
+        val second =
+            ContainerNode(key = "second").apply {
+                position = PositionMode.Relative
+            }
+        val third =
+            ContainerNode(key = "third").apply {
+                position = PositionMode.Relative
+            }
 
         first.applyParent(root)
         second.applyParent(root)
@@ -80,9 +85,11 @@ class PositionedLayoutModelTests {
     fun `absolute containing block primitive resolves nearest positioned ancestor or root`() {
         val root = ContainerNode(key = "cb-root")
         val staticAncestor = ContainerNode(key = "cb-static-ancestor").applyParent(root)
-        val positionedAncestor = ContainerNode(key = "cb-positioned-ancestor").apply {
-            position = PositionMode.Relative
-        }.applyParent(staticAncestor)
+        val positionedAncestor =
+            ContainerNode(key = "cb-positioned-ancestor")
+                .apply {
+                    position = PositionMode.Relative
+                }.applyParent(staticAncestor)
         val nestedStatic = ContainerNode(key = "cb-nested-static").applyParent(positionedAncestor)
         val leaf = ContainerNode(key = "cb-leaf").applyParent(nestedStatic)
 
@@ -96,13 +103,17 @@ class PositionedLayoutModelTests {
     @Test
     fun `sticky participates in ordering but not absolute containing-block semantics`() {
         val root = ContainerNode(key = "sticky-root")
-        val stickyAncestor = ContainerNode(key = "sticky-ancestor").apply {
-            position = PositionMode.Sticky
-            zIndex = 99
-        }.applyParent(root)
-        val absoluteLeaf = ContainerNode(key = "sticky-absolute-leaf").apply {
-            position = PositionMode.Absolute
-        }.applyParent(stickyAncestor)
+        val stickyAncestor =
+            ContainerNode(key = "sticky-ancestor")
+                .apply {
+                    position = PositionMode.Sticky
+                    zIndex = 99
+                }.applyParent(root)
+        val absoluteLeaf =
+            ContainerNode(key = "sticky-absolute-leaf")
+                .apply {
+                    position = PositionMode.Absolute
+                }.applyParent(stickyAncestor)
 
         assertTrue(stickyAncestor.participatesInPositionedOrderingModel())
         assertTrue(PositionedLayoutModel.matchesChildContextTrigger(stickyAncestor))
@@ -127,25 +138,30 @@ class PositionedLayoutModelTests {
         val rootA = ContainerNode(key = "z-root-a")
         val rootB = ContainerNode(key = "z-root-b")
 
-        val aLow = ContainerNode(key = "a-low").apply {
-            position = PositionMode.Relative
-            zIndex = -10
-        }.applyParent(rootA)
-        val aHigh = ContainerNode(key = "a-high").apply {
-            position = PositionMode.Relative
-            zIndex = 10
-        }.applyParent(rootA)
+        val aLow =
+            ContainerNode(key = "a-low")
+                .apply {
+                    position = PositionMode.Relative
+                    zIndex = -10
+                }.applyParent(rootA)
+        val aHigh =
+            ContainerNode(key = "a-high")
+                .apply {
+                    position = PositionMode.Relative
+                    zIndex = 10
+                }.applyParent(rootA)
 
-        val bOnly = ContainerNode(key = "b-only").apply {
-            position = PositionMode.Relative
-            zIndex = 999
-        }.applyParent(rootB)
+        val bOnly =
+            ContainerNode(key = "b-only")
+                .apply {
+                    position = PositionMode.Relative
+                    zIndex = 999
+                }.applyParent(rootB)
 
         assertEquals(listOf(aLow, aHigh), rootA.orderedChildrenForPaintTraversal())
         assertEquals(listOf(bOnly), rootB.orderedChildrenForPaintTraversal())
         assertFalse(aHigh.sharesRootStackingScopeForPositioning(bOnly))
     }
-
 
     @Test
     fun `offset precedence contract prefers left over right and top over bottom`() {
@@ -170,26 +186,30 @@ class PositionedLayoutModelTests {
         assertEquals(StyleProperty.BOTTOM, verticalFallback.sourceProperty)
         assertEquals(bottom, verticalFallback.value)
     }
+
     @Test
     fun `dispatch click follows reverse paint order`() {
-        val root = ContainerNode(key = "click-root").apply {
-            bounds = Rect(0, 0, 120, 80)
-        }
+        val root =
+            ContainerNode(key = "click-root").apply {
+                bounds = Rect(0, 0, 120, 80)
+            }
         var underClicks = 0
         var overClicks = 0
 
-        val under = ButtonNode("under", key = "under").apply {
-            bounds = Rect(10, 10, 80, 24)
-            onClick { underClicks += 1 }
-        }
+        val under =
+            ButtonNode("under", key = "under").apply {
+                bounds = Rect(10, 10, 80, 24)
+                onClick { underClicks += 1 }
+            }
         under.applyParent(root)
 
-        val over = ButtonNode("over", key = "over").apply {
-            bounds = Rect(10, 10, 80, 24)
-            position = PositionMode.Relative
-            zIndex = 2
-            onClick { overClicks += 1 }
-        }
+        val over =
+            ButtonNode("over", key = "over").apply {
+                bounds = Rect(10, 10, 80, 24)
+                position = PositionMode.Relative
+                zIndex = 2
+                onClick { overClicks += 1 }
+            }
         over.applyParent(root)
 
         val paintOrder = root.orderedChildrenForPaintTraversal()
@@ -201,4 +221,3 @@ class PositionedLayoutModelTests {
         assertEquals(0, underClicks)
     }
 }
-

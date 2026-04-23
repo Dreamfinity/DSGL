@@ -24,12 +24,13 @@ class ViewportMappingTests {
     fun `DSGL clip rect converts to GL scissor using viewport height and origin`() {
         val viewport = Viewport(width = 800, height = 600, scale = 1f, x = 40, y = 30)
 
-        val scissor = viewport.dsglRectToGlScissor(
-            dsglX = 100,
-            dsglY = 120,
-            dsglWidth = 240,
-            dsglHeight = 80
-        )
+        val scissor =
+            viewport.dsglRectToGlScissor(
+                dsglX = 100,
+                dsglY = 120,
+                dsglWidth = 240,
+                dsglHeight = 80,
+            )
 
         assertEquals(140, scissor.x)
         assertEquals(430, scissor.y)
@@ -41,12 +42,13 @@ class ViewportMappingTests {
     fun `scissor conversion clamps negative width and height to zero`() {
         val viewport = Viewport(width = 640, height = 360, scale = 1f, x = 0, y = 0)
 
-        val scissor = viewport.dsglRectToGlScissor(
-            dsglX = 10,
-            dsglY = 20,
-            dsglWidth = -2,
-            dsglHeight = -3
-        )
+        val scissor =
+            viewport.dsglRectToGlScissor(
+                dsglX = 10,
+                dsglY = 20,
+                dsglWidth = -2,
+                dsglHeight = -3,
+            )
 
         assertEquals(10, scissor.x)
         assertEquals(340, scissor.y)

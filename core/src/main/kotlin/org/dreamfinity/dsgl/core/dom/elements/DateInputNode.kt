@@ -14,7 +14,7 @@ class DateInputNode(
     value: Instant,
     zoneId: ZoneId,
     placeholder: String = "dd.MM.yyyy HH:mm",
-    key: Any? = null
+    key: Any? = null,
 ) : SingleLineInputNode("", placeholder, key) {
     private val initialValue: Instant = value
     private val initialZoneId: ZoneId = zoneId
@@ -63,25 +63,25 @@ class DateInputNode(
         return formatter.format(dateTime)
     }
 
-    private fun parseInstant(text: String): Instant? {
-        return try {
+    private fun parseInstant(text: String): Instant? =
+        try {
             val dateTime = LocalDateTime.parse(text, formatter)
             dateTime.atZone(this.zoneId).toInstant()
         } catch (ex: Exception) {
             null
         }
-    }
 
     private fun isValidPrefix(text: String): Boolean {
         if (text.isEmpty()) return true
         for (i in text.indices) {
             val ch = text[i]
-            val expected = when (i) {
-                2, 5 -> '.'
-                10 -> ' '
-                13 -> ':'
-                else -> null
-            }
+            val expected =
+                when (i) {
+                    2, 5 -> '.'
+                    10 -> ' '
+                    13 -> ':'
+                    else -> null
+                }
             if (expected != null) {
                 if (ch != expected) return false
             } else if (!ch.isDigit()) {

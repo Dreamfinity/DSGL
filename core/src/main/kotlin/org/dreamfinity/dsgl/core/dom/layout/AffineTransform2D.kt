@@ -14,25 +14,23 @@ data class AffineTransform2D(
     val c: Float,
     val d: Float,
     val tx: Float,
-    val ty: Float
+    val ty: Float,
 ) {
-    fun transform(x: Float, y: Float): Pair<Float, Float> {
-        return Pair(
+    fun transform(x: Float, y: Float): Pair<Float, Float> =
+        Pair(
             a * x + c * y + tx,
-            b * x + d * y + ty
+            b * x + d * y + ty,
         )
-    }
 
-    fun times(other: AffineTransform2D): AffineTransform2D {
-        return AffineTransform2D(
+    fun times(other: AffineTransform2D): AffineTransform2D =
+        AffineTransform2D(
             a = a * other.a + c * other.b,
             b = b * other.a + d * other.b,
             c = a * other.c + c * other.d,
             d = b * other.c + d * other.d,
             tx = a * other.tx + c * other.ty + tx,
-            ty = b * other.tx + d * other.ty + ty
+            ty = b * other.tx + d * other.ty + ty,
         )
-    }
 
     fun inverseOrNull(): AffineTransform2D? {
         val det = a * d - b * c
@@ -48,22 +46,19 @@ data class AffineTransform2D(
     }
 
     companion object {
-        val IDENTITY: AffineTransform2D = AffineTransform2D(
-            a = 1f,
-            b = 0f,
-            c = 0f,
-            d = 1f,
-            tx = 0f,
-            ty = 0f
-        )
+        val IDENTITY: AffineTransform2D =
+            AffineTransform2D(
+                a = 1f,
+                b = 0f,
+                c = 0f,
+                d = 1f,
+                tx = 0f,
+                ty = 0f,
+            )
 
-        fun translation(x: Float, y: Float): AffineTransform2D {
-            return AffineTransform2D(1f, 0f, 0f, 1f, x, y)
-        }
+        fun translation(x: Float, y: Float): AffineTransform2D = AffineTransform2D(1f, 0f, 0f, 1f, x, y)
 
-        fun scale(x: Float, y: Float): AffineTransform2D {
-            return AffineTransform2D(x, 0f, 0f, y, 0f, 0f)
-        }
+        fun scale(x: Float, y: Float): AffineTransform2D = AffineTransform2D(x, 0f, 0f, y, 0f, 0f)
 
         fun rotation(deg: Float): AffineTransform2D {
             val rad = Math.toRadians(deg.toDouble())
@@ -73,4 +68,3 @@ data class AffineTransform2D(
         }
     }
 }
-
