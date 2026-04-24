@@ -2,6 +2,7 @@ plugins {
     id("dsgl-mc-adapter.conventions")
     id("dsgl-mc-forge-1-7-10.conventions")
     id("dsgl-linter.conventions")
+    id("dsgl-static-analysis.conventions")
 }
 
 val modId: String by project

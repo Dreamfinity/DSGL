@@ -1,6 +1,7 @@
 plugins {
     id("dsgl-core.conventions")
     id("dsgl-linter.conventions")
+    id("dsgl-static-analysis.conventions")
     id("dsgl-releaseable-module.conventions")
     id("org.jetbrains.kotlin.plugin.serialization")
     jacoco

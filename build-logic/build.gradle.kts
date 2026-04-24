@@ -18,6 +18,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     implementation("org.jetbrains.dokka:org.jetbrains.dokka.gradle.plugin:2.1.0")
     implementation(libs.plugins.ktlint.toDep())
+    implementation(libs.plugins.detekt.toDep())
 }
 
 fun Provider<PluginDependency>.toDep() =
