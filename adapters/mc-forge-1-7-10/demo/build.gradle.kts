@@ -95,7 +95,7 @@ val generateModMetadata by tasks.registering {
                 const val MOD_CREDITS: String = "${tokens["modCredits"]}"
                 const val MOD_ICON: String = "${tokens["modIcon"]}"
             }
-            """.trimIndent(),
+            """.trimIndent() + System.lineSeparator(),
         )
     }
 }
@@ -156,6 +156,10 @@ tasks.named("dokkaGeneratePublicationHtml") {
     dependsOn(generateModMetadata)
 }
 
+tasks.matching { it.name.startsWith("runKtlintCheckOver") || it.name.startsWith("runKtlintFormatOver") }.configureEach {
+    dependsOn(generateModMetadata)
+}
+
 tasks.named<ProcessResources>("processResources") {
     inputs.properties(baseModMetadataTokens)
     inputs.property("modVersion", providers.provider { currentModVersion() })
@@ -186,6 +190,10 @@ listOf(
     tasks.named(taskName) {
         mustRunAfter(":adapters:mc-forge-1-7-10:reobf")
     }
+}
+
+tasks.named<Test>("test") {
+    mustRunAfter(":adapters:mc-forge-1-7-10:reobf")
 }
 
 tasks.withType<PublishToMavenLocal>().configureEach {

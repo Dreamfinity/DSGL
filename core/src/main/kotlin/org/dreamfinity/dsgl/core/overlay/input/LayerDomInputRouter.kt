@@ -282,7 +282,7 @@ class LayerDomInputRouter(
         val hovered = hoverTarget
         if (hovered != null) return hovered
         val focused = FocusManager.focusedNode()
-        return if (focused is TextAreaNode) focused else null
+        return focused as? TextAreaNode
     }
 
     private fun bubbleGenericWheel(

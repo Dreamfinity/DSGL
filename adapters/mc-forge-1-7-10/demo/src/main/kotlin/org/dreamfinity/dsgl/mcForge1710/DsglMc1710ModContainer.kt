@@ -17,7 +17,7 @@ import net.minecraft.client.Minecraft
 )
 class DsglMc1710ModContainer {
     @Mod.EventHandler
-    fun onInit(event: FMLInitializationEvent) {
+    fun onInit(_event: FMLInitializationEvent) {
         if (FMLCommonHandler
                 .instance()
                 .side.isClient

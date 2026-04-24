@@ -640,12 +640,9 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 gap = 3.px
             }
         }) {
-            button(
-                if (positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second",
-                {
-                    onMouseClick = { positionedDemoTieSwap = !positionedDemoTieSwap }
-                },
-            )
+            button(if (positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second", {
+                onMouseClick = { positionedDemoTieSwap = !positionedDemoTieSwap }
+            })
             text(
                 "same z, later DOM child should win overlap hit",
                 { style = { color = DEMO_MUTED } },
@@ -775,15 +772,12 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 text("positioned z=-100")
             }
         }
-        text(
-            "mixed clicks static=$positionedDemoMixedStaticClicks, positioned=$positionedDemoMixedPositionedClicks",
-            {
-                style = {
-                    color = DEMO_MUTED
-                    minHeight = 1.em
-                }
-            },
-        )
+        text("mixed clicks static=$positionedDemoMixedStaticClicks, positioned=$positionedDemoMixedPositionedClicks", {
+            style = {
+                color = DEMO_MUTED
+                minHeight = 1.em
+            }
+        })
         repeat(40) {
             div({
                 style = {
@@ -1313,18 +1307,12 @@ private fun UiScope.controls(props: ControlsProps) {
             button("mode=${props.demoMode.name.lowercase()}", {
                 onMouseClick = { props.onModeCycle() }
             })
-            button(
-                if (props.useLeft) "h: left first" else "h: right fallback",
-                {
-                    onMouseClick = { props.onToggleUseLeft() }
-                },
-            )
-            button(
-                if (props.useTop) "v: top first" else "v: bottom fallback",
-                {
-                    onMouseClick = { props.onToggleUseTop() }
-                },
-            )
+            button(if (props.useLeft) "h: left first" else "h: right fallback", {
+                onMouseClick = { props.onToggleUseLeft() }
+            })
+            button(if (props.useTop) "v: top first" else "v: bottom fallback", {
+                onMouseClick = { props.onToggleUseTop() }
+            })
             button("Reset", {
                 onMouseClick = { props.onReset() }
             })

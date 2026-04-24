@@ -1,11 +1,5 @@
-import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.api.tasks.SourceSetContainer
-import org.gradle.api.tasks.bundling.Jar
-import org.gradle.api.GradleException
-import org.gradle.kotlin.dsl.the
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.dreamfinity.buildlogic.toKotlinPackageSegmentFromProjectName
-import java.io.File
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import java.util.Properties
 
 plugins {
@@ -30,13 +24,13 @@ fun readRequiredModuleVersion(file: File): String {
     val publishEnabled = properties.getProperty("publishEnabled")?.trim()?.let { raw ->
         raw.toBooleanStrictOrNull()
             ?: throw GradleException(
-                "Property 'publishEnabled' in ${file.path} must be true or false."
+                "Property 'publishEnabled' in ${file.path} must be true or false.",
             )
     } ?: true
     if (!publishEnabled) {
         logger.lifecycle(
             "Skipping DsglAdapterMetadata generation for ${project.path}: " +
-                "publishEnabled=false and moduleVersion is not set."
+                "publishEnabled=false and moduleVersion is not set.",
         )
         return ""
     }
@@ -62,7 +56,7 @@ val generateDsglAdapterMetadata = tasks.register("generateDsglAdapterMetadata") 
         }
         val outputRoot = metadataGeneratedSourcesDir.get().asFile
         val outputFile = outputRoot.resolve(
-            packageName.replace('.', '/') + "/DsglAdapterMetadata.kt"
+            packageName.replace('.', '/') + "/DsglAdapterMetadata.kt",
         )
         outputFile.parentFile.mkdirs()
         outputFile.writeText(
@@ -72,7 +66,7 @@ val generateDsglAdapterMetadata = tasks.register("generateDsglAdapterMetadata") 
             object DsglAdapterMetadata {
                 const val VERSION: String = "$moduleVersion"
             }
-            """.trimIndent() + System.lineSeparator()
+            """.trimIndent() + System.lineSeparator(),
         )
     }
 }
@@ -95,12 +89,18 @@ tasks.named("dokkaGeneratePublicationHtml") {
     dependsOn(generateDsglAdapterMetadata)
 }
 
+tasks.matching { it.name.startsWith("runKtlintCheckOver") || it.name.startsWith("runKtlintFormatOver") }.configureEach {
+    dependsOn(generateDsglAdapterMetadata)
+}
+
 val devJar = tasks.register<Jar>("devJar") {
+    description = "Compiled JAR with deobfuscated names"
     from(sourceSets["main"].output)
     archiveClassifier.set("dev")
 }
 
 val devSourcesJar = tasks.register<Jar>("devSourcesJar") {
+    description = "Source code JAR with deobfuscated names"
     dependsOn(generateDsglAdapterMetadata)
     from(sourceSets["main"].allSource)
     archiveClassifier.set("dev-sources")

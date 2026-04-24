@@ -80,6 +80,7 @@ class SystemOverlayTransientOwnershipRegistry {
             SystemOverlayTransientSession(ownerToken = ownerToken)
         }
 
+    @Suppress("UnusedParameter")
     fun resolve(ownerToken: Any, cursorX: Int, cursorY: Int): SystemOverlayTransientSession = resolve(ownerToken)
 
     fun release(ownerToken: Any): Boolean = sessions.remove(ownerToken) != null

@@ -25,79 +25,51 @@ internal class SystemColorPickerPopupBodyNode(
     private var focusedSemanticInputKey: String? = null
 
     private val modeSelectButton: ButtonNode =
-        scope.button(
-            "",
-            {
-                this.key = "dsgl-system-color-picker-mode-select"
-            },
-        )
+        scope.button("", {
+            this.key = "dsgl-system-color-picker-mode-select"
+        })
     private val rgbaOrderButton: ButtonNode =
-        scope.button(
-            "RGBA",
-            {
-                this.key = "dsgl-system-color-picker-order-rgba"
-            },
-        )
+        scope.button("RGBA", {
+            this.key = "dsgl-system-color-picker-order-rgba"
+        })
     private val argbOrderButton: ButtonNode =
-        scope.button(
-            "ARGB",
-            {
-                this.key = "dsgl-system-color-picker-order-argb"
-            },
-        )
+        scope.button("ARGB", {
+            this.key = "dsgl-system-color-picker-order-argb"
+        })
     private val colorFieldNode: ColorFieldSurfaceNode =
-        scope.colorField(
-            {
-                this.key = "dsgl-system-color-picker-surface-field"
-            },
-        )
+        scope.colorField({
+            this.key = "dsgl-system-color-picker-surface-field"
+        })
     private val hueSliderNode: HueSurfaceNode =
-        scope.hueSlider(
-            {
-                this.key = "dsgl-system-color-picker-surface-hue"
-            },
-        )
+        scope.hueSlider({
+            this.key = "dsgl-system-color-picker-surface-hue"
+        })
     private val alphaSliderNode: AlphaSurfaceNode =
-        scope.alphaSlider(
-            {
-                this.key = "dsgl-system-color-picker-surface-alpha"
-            },
-        )
+        scope.alphaSlider({
+            this.key = "dsgl-system-color-picker-surface-alpha"
+        })
 
     private val previousSwatchNode: ColorSwatchSurfaceNode =
-        scope.colorSwatch(
-            {
-                this.key = "dsgl-system-color-picker-swatch-previous"
-            },
-        )
+        scope.colorSwatch({
+            this.key = "dsgl-system-color-picker-swatch-previous"
+        })
     private val currentSwatchNode: ColorSwatchSurfaceNode =
-        scope.colorSwatch(
-            {
-                this.key = "dsgl-system-color-picker-swatch-current"
-            },
-        )
+        scope.colorSwatch({
+            this.key = "dsgl-system-color-picker-swatch-current"
+        })
 
     private val copyButton: ButtonNode =
-        scope.button(
-            "Copy",
-            {
-                this.key = "dsgl-system-color-picker-button-copy"
-            },
-        )
+        scope.button("Copy", {
+            this.key = "dsgl-system-color-picker-button-copy"
+        })
     private val pasteButton: ButtonNode =
-        scope.button(
-            "Paste",
-            {
-                this.key = "dsgl-system-color-picker-button-paste"
-            },
-        )
+        scope.button("Paste", {
+            this.key = "dsgl-system-color-picker-button-paste"
+        })
     private val pipetteButton: ButtonNode =
-        scope.button(
-            "Pipette",
-            {
-                this.key = "dsgl-system-color-picker-button-pipette"
-            },
-        )
+        scope.button("Pipette", {
+            this.key = "dsgl-system-color-picker-button-pipette"
+        })
 
     private val inputLabelNodes: List<TextNode> =
         (0 until MAX_INPUT_SLOTS).map { index ->
@@ -120,12 +92,10 @@ internal class SystemColorPickerPopupBodyNode(
 
     private val recentSwatchNodes: List<ColorSwatchSurfaceNode> =
         (0 until RECENT_SWATCH_COUNT).map { index ->
-            scope.colorSwatch(
-                {
-                    allowEmpty = true
-                    this.key = "dsgl-system-color-picker-recent-$index"
-                },
-            )
+            scope.colorSwatch({
+                allowEmpty = true
+                this.key = "dsgl-system-color-picker-recent-$index"
+            })
         }
 
     private var appliedStyle: ColorPickerStyle? = null
@@ -969,36 +939,26 @@ internal class SystemColorPickerEyedropperOverlayNode(
             key = "dsgl-system-color-picker-eyedropper-capture",
         ).applyParent(this)
     private val shadowNode: ContainerNode =
-        scope.div(
-            {
-                this.key = "dsgl-system-color-picker-eyedropper-shadow"
-            },
-        )
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-shadow"
+        })
     private val panelNode: ContainerNode =
-        scope.div(
-            {
-                this.key = "dsgl-system-color-picker-eyedropper-panel"
-            },
-        )
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-panel"
+        })
     private val magnifierDrawNode: EyedropperMagnifierDrawNode =
-        scope.eyedropperMagnifier(
-            {
-                this.key = "dsgl-system-color-picker-eyedropper-magnifier"
-            },
-        )
+        scope.eyedropperMagnifier({
+            this.key = "dsgl-system-color-picker-eyedropper-magnifier"
+        })
     private val centerNode: ContainerNode =
-        scope.div(
-            {
-                this.key = "dsgl-system-color-picker-eyedropper-center"
-            },
-        )
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-center"
+        })
     private val swatchNode: ColorSwatchSurfaceNode =
-        scope.colorSwatch(
-            {
-                allowEmpty = false
-                this.key = "dsgl-system-color-picker-eyedropper-swatch"
-            },
-        )
+        scope.colorSwatch({
+            allowEmpty = false
+            this.key = "dsgl-system-color-picker-eyedropper-swatch"
+        })
     private val modeTextNode: TextNode =
         createOverlayTextNode(
             key = "dsgl-system-color-picker-eyedropper-mode",

@@ -7,7 +7,8 @@ class DssParseException(
     val line: Int,
     val column: Int,
     message: String,
-) : RuntimeException("$path:$line:$column $message")
+    cause: Throwable? = null,
+) : RuntimeException("$path:$line:$column $message", cause)
 
 object DssParser {
     private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
@@ -19,6 +20,7 @@ object DssParser {
         return parse(text, file.path)
     }
 
+    @Suppress("ThrowsCount")
     fun parse(sourceText: String, sourceName: String = "<memory>"): StylesheetData {
         val text = stripBlockComments(sourceText)
         var index = 0
@@ -70,7 +72,7 @@ object DssParser {
                         try {
                             StyleSelector.parse(selectorText)
                         } catch (ex: IllegalArgumentException) {
-                            throw parseError(sourceName, text, selectorStart, ex.message ?: "Invalid selector.")
+                            throw parseError(sourceName, text, selectorStart, ex.message ?: "Invalid selector.", ex)
                         }
                 }
             if (selector != null) {
@@ -92,6 +94,7 @@ object DssParser {
         )
     }
 
+    @Suppress("ThrowsCount")
     private fun parseDeclarations(
         sourceName: String,
         text: String,
@@ -175,8 +178,10 @@ object DssParser {
                             literal = expression.value,
                             warningReporter = warnings,
                         )
-                    } catch (ex: Exception) {
-                        throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.")
+                    } catch (
+                        @Suppress("TooGenericExceptionCaught") ex: RuntimeException,
+                    ) {
+                        throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.", ex)
                     }
                 }
                 declarations.set(property, expression, important = important)
@@ -204,6 +209,7 @@ object DssParser {
         source: String,
         index: Int,
         message: String,
+        cause: Throwable? = null,
     ): DssParseException {
         val safeIndex = index.coerceIn(0, source.length)
         var line = 1
@@ -216,7 +222,7 @@ object DssParser {
                 col++
             }
         }
-        return DssParseException(path, line, col, message)
+        return DssParseException(path, line, col, message, cause)
     }
 
     private fun stripBlockComments(source: String): String {

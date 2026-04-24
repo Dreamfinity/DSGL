@@ -211,7 +211,8 @@ class TextLineSpaceReservationBaselineTests {
         )
         assertTrue(
             withWorkaround.bounds.height >= ordinaryRow.bounds.height,
-            "Workaround may still increase explicit minimums, but ordinary line-box reservation no longer depends on it.",
+            "Workaround may still increase explicit minimums, but ordinary line-box reservation " +
+                "no longer depends on it.",
         )
     }
 

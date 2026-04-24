@@ -32,16 +32,14 @@ fun UiScope.focusRebuildSection(
         onManualInvalidate(reason)
     }
 
-    div(
-        {
-            key = "section.focusRebuild"
-            style = {
-                gap = 4.px
-                display = Display.Flex
-                flexDirection = FlexDirection.Column
-            }
-        },
-    ) {
+    div({
+        key = "section.focusRebuild"
+        style = {
+            gap = 4.px
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+        }
+    }) {
         text("Stable key focus test: focus first field, press Enter to rebuild, keep typing.")
         text("Unstable key field changes key version and demonstrates focus/key instability.", {
             style = { color = DEMO_MUTED }

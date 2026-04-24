@@ -263,8 +263,13 @@ class DomTree(
             paintBuffer.clear()
             paintBuffer.addAll(stagingPaintBuffer)
             commandsDirty = false
-            changed
-        } catch (error: Throwable) {
+            true
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
+            // Paint rebuild is a defensive boundary: any element can throw during chunk building.
+            // Swallow and keep the previous frame's commands to avoid tearing down the UI.
+            // TODO(Veritaris): Add some error display
             val now = System.currentTimeMillis()
             if (now - lastPaintBuildErrorMs >= 2_000L) {
                 lastPaintBuildErrorMs = now

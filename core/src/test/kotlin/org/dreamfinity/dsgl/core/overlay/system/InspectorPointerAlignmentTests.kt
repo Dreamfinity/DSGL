@@ -265,27 +265,6 @@ class InspectorPointerAlignmentTests {
         }
     }
 
-    private fun findVisibleSelectRowWithoutScrolling(fixture: Fixture): InspectorStyleEditorRowSnapshot {
-        val rows =
-            fixture.inspector.overlayStyleEditorRows().filter { row ->
-                row.editorKind == InspectorEditorKind.EnumSelect || row.editorKind == InspectorEditorKind.FontSelect
-            }
-        val contentRect = fixture.inspector.overlayContentRect()
-        val bodyScrollY = fixture.inspector.panelScrollOffsetY
-        return rows.firstOrNull { row ->
-            val rect =
-                Rect(
-                    row.controlRect.x,
-                    row.controlRect.y - bodyScrollY,
-                    row.controlRect.width,
-                    row.controlRect.height,
-                )
-            val centerX = rect.x + (rect.width / 2).coerceAtLeast(1)
-            val centerY = rect.y + (rect.height / 2).coerceAtLeast(1)
-            contentRect.contains(centerX, centerY)
-        } ?: error("expected visible inspector select row without scrolling")
-    }
-
     private fun findOrScrollToVisibleSelectRow(fixture: Fixture): InspectorStyleEditorRowSnapshot {
         repeat(120) {
             val rows =

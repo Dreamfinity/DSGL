@@ -35,7 +35,7 @@ object DsglClientHotkeys {
     }
 
     @SubscribeEvent
-    fun onKeyInput(event: InputEvent.KeyInputEvent) {
+    fun onKeyInput(_event: InputEvent.KeyInputEvent) {
         when {
             openShowcaseKey.isPressed ->
                 Minecraft

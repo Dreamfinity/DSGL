@@ -251,7 +251,6 @@ object StyleEngine {
         val parentComputed = node.parent?.appliedComputedStyleSnapshot()
         val winners =
             resolveCascadeWinners(
-                node = node,
                 candidates = candidates,
                 inline = node.inlineStyleDeclarations,
                 inspector = inspector,
@@ -635,7 +634,6 @@ object StyleEngine {
         val candidates = matchingCandidates(node, snapshot.index)
         val winners =
             resolveCascadeWinners(
-                node = node,
                 candidates = candidates,
                 inline = node.inlineStyleDeclarations,
                 inspector = if (allowInspectorOverrides) inspectorOverrides[inspectorOverrideTarget(node)] else null,
@@ -668,7 +666,6 @@ object StyleEngine {
     }
 
     private fun resolveCascadeWinners(
-        node: DOMNode,
         candidates: List<StyleRule>,
         inline: StyleDeclarations,
         inspector: StyleDeclarations?,

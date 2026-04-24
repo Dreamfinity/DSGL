@@ -39,7 +39,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `generic scrollbar rendering emits track and thumb when present`() {
-        val (_, viewport, _, _) =
+        val viewport =
             createFixture(
                 overflowX = Overflow.Visible,
                 overflowY = Overflow.Scroll,
@@ -47,7 +47,7 @@ class ScrollbarRenderingInteractionTests {
                 viewportHeight = 70,
                 contentWidth = 90,
                 contentHeight = 40,
-            )
+            ).viewport
         val commands = selfCommands(viewport)
 
         val vertical = viewport.debugScrollbarVisualState().vertical
@@ -76,7 +76,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `thumb geometry stays synchronized with scroll offsets`() {
-        val (_, viewport, _, _) =
+        val viewport =
             createFixture(
                 overflowX = Overflow.Visible,
                 overflowY = Overflow.Auto,
@@ -84,7 +84,7 @@ class ScrollbarRenderingInteractionTests {
                 viewportHeight = 70,
                 contentWidth = 90,
                 contentHeight = 260,
-            )
+            ).viewport
 
         val initialState = viewport.scrollContainerState()
         val initialThumb =
@@ -120,7 +120,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `wheel scrolling updates generic container scroll state`() {
-        val (root, viewport, wheelTarget, router) =
+        val fixture =
             createFixture(
                 overflowX = Overflow.Visible,
                 overflowY = Overflow.Auto,
@@ -129,6 +129,10 @@ class ScrollbarRenderingInteractionTests {
                 contentWidth = 90,
                 contentHeight = 260,
             )
+        val root = fixture.root
+        val viewport = fixture.viewport
+        val wheelTarget = fixture.wheelTarget
+        val router = fixture.router
 
         val wheelX = wheelTarget.bounds.x + 2
         val wheelY = wheelTarget.bounds.y + 2
@@ -144,7 +148,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `thumb drag updates scroll offset through generic pointer capture`() {
-        val (_, viewport, _, router) =
+        val fixture =
             createFixture(
                 overflowX = Overflow.Visible,
                 overflowY = Overflow.Auto,
@@ -153,6 +157,8 @@ class ScrollbarRenderingInteractionTests {
                 contentWidth = 90,
                 contentHeight = 320,
             )
+        val viewport = fixture.viewport
+        val router = fixture.router
 
         val visual =
             viewport.debugScrollbarVisualState().vertical
@@ -180,7 +186,7 @@ class ScrollbarRenderingInteractionTests {
                 Overflow.Auto to true,
             )
         modes.forEach { (mode, expectedVisible) ->
-            val (_, viewport, _, _) =
+            val viewport =
                 createFixture(
                     overflowX = Overflow.Visible,
                     overflowY = mode,
@@ -188,7 +194,7 @@ class ScrollbarRenderingInteractionTests {
                     viewportHeight = 70,
                     contentWidth = 90,
                     contentHeight = 240,
-                )
+                ).viewport
             val commands = selfCommands(viewport)
 
             val vertical = viewport.debugScrollbarVisualState().vertical
@@ -203,7 +209,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `horizontal auto scrollbar appears when content width exceeds viewport`() {
-        val (_, viewport, _, _) =
+        val viewport =
             createFixture(
                 overflowX = Overflow.Auto,
                 overflowY = Overflow.Hidden,
@@ -211,7 +217,7 @@ class ScrollbarRenderingInteractionTests {
                 viewportHeight = 634,
                 contentWidth = 826,
                 contentHeight = 620,
-            )
+            ).viewport
         val commands = selfCommands(viewport)
 
         val horizontal = viewport.debugScrollbarVisualState().horizontal
@@ -230,7 +236,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `normal wheel scrolls only vertical axis`() {
-        val (_, viewport, wheelTarget, router) =
+        val fixture =
             createFixture(
                 overflowX = Overflow.Auto,
                 overflowY = Overflow.Auto,
@@ -239,6 +245,9 @@ class ScrollbarRenderingInteractionTests {
                 contentWidth = 280,
                 contentHeight = 260,
             )
+        val viewport = fixture.viewport
+        val wheelTarget = fixture.wheelTarget
+        val router = fixture.router
 
         KeyModifiers.sync(shift = false, control = false, meta = false)
         val wheelX = wheelTarget.bounds.x + 2
@@ -253,7 +262,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `shift plus wheel scrolls only horizontal axis`() {
-        val (_, viewport, wheelTarget, router) =
+        val fixture =
             createFixture(
                 overflowX = Overflow.Auto,
                 overflowY = Overflow.Auto,
@@ -262,6 +271,9 @@ class ScrollbarRenderingInteractionTests {
                 contentWidth = 280,
                 contentHeight = 260,
             )
+        val viewport = fixture.viewport
+        val wheelTarget = fixture.wheelTarget
+        val router = fixture.router
 
         KeyModifiers.sync(shift = true, control = false, meta = false)
         val wheelX = wheelTarget.bounds.x + 2
@@ -329,7 +341,7 @@ class ScrollbarRenderingInteractionTests {
 
     @Test
     fun `wheel scroll keeps thumb position synchronized`() {
-        val (_, viewport, wheelTarget, router) =
+        val fixture =
             createFixture(
                 overflowX = Overflow.Visible,
                 overflowY = Overflow.Auto,
@@ -338,6 +350,9 @@ class ScrollbarRenderingInteractionTests {
                 contentWidth = 90,
                 contentHeight = 320,
             )
+        val viewport = fixture.viewport
+        val wheelTarget = fixture.wheelTarget
+        val router = fixture.router
         KeyModifiers.sync(shift = false, control = false, meta = false)
 
         val beforeVisual =

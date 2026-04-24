@@ -421,7 +421,8 @@ class InlineLayoutTests {
             }
         assertTrue(
             maxOuterWidth <= contentWidth,
-            "Inline child outer width should fit content width: maxOuterWidth=$maxOuterWidth, contentWidth=$contentWidth",
+            "Inline child outer width should fit content width: " +
+                "maxOuterWidth=$maxOuterWidth, contentWidth=$contentWidth",
         )
     }
 

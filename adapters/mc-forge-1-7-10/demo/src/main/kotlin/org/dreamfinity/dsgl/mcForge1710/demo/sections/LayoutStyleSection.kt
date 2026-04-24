@@ -70,15 +70,12 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
                         }
                     },
                 )
-                button(
-                    if (styleFixedSize) "Size: Fixed" else "Size: Auto",
-                    {
-                        onMouseClick = {
-                            styleFixedSize = !styleFixedSize
-                            onInfo("Layout: fixedSize=$styleFixedSize")
-                        }
-                    },
-                )
+                button(if (styleFixedSize) "Size: Fixed" else "Size: Auto", {
+                    onMouseClick = {
+                        styleFixedSize = !styleFixedSize
+                        onInfo("Layout: fixedSize=$styleFixedSize")
+                    }
+                })
             }
 
             div({
@@ -147,24 +144,15 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
                     flexDirection = FlexDirection.Row
                 }
             }) {
-                button(
-                    if (styleUseMargin) "Margin ON" else "Margin OFF",
-                    {
-                        onMouseClick = { styleUseMargin = !styleUseMargin }
-                    },
-                )
-                button(
-                    if (styleUsePadding) "Padding ON" else "Padding OFF",
-                    {
-                        onMouseClick = { styleUsePadding = !styleUsePadding }
-                    },
-                )
-                button(
-                    if (styleUseBorder) "Border ON" else "Border OFF",
-                    {
-                        onMouseClick = { styleUseBorder = !styleUseBorder }
-                    },
-                )
+                button(if (styleUseMargin) "Margin ON" else "Margin OFF", {
+                    onMouseClick = { styleUseMargin = !styleUseMargin }
+                })
+                button(if (styleUsePadding) "Padding ON" else "Padding OFF", {
+                    onMouseClick = { styleUsePadding = !styleUsePadding }
+                })
+                button(if (styleUseBorder) "Border ON" else "Border OFF", {
+                    onMouseClick = { styleUseBorder = !styleUseBorder }
+                })
             }
 
             div({
@@ -206,15 +194,12 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
                     flexDirection = FlexDirection.Row
                 }
             }) {
-                button(
-                    if (stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF",
-                    {
-                        onMouseClick = {
-                            stackOverlayEnabled = !stackOverlayEnabled
-                            onInfo("Layout: stackOverlay=$stackOverlayEnabled")
-                        }
-                    },
-                )
+                button(if (stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF", {
+                    onMouseClick = {
+                        stackOverlayEnabled = !stackOverlayEnabled
+                        onInfo("Layout: stackOverlay=$stackOverlayEnabled")
+                    }
+                })
                 button("Reset Overlay", {
                     onMouseClick = {
                         layoutOverlayX = 8

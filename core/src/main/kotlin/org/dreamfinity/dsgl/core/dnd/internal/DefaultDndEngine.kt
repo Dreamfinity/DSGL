@@ -430,6 +430,10 @@ object DefaultDndEngine : DndEngine {
         notifyDragOver(active)
     }
 
+    // Single pass that both collects drop candidates and records whether the drag source
+    // appeared in the hover chain; folding this into a filter+any pair would walk the chain
+    // twice and split closely coupled state across two expressions.
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun resolveDropTarget(
         root: DOMNode,
         active: ActiveSession,

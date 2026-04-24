@@ -59,9 +59,7 @@ object MsdfFontMetaParser {
                 )
 
             val previous = glyphsByIndex.putIfAbsent(resolvedGlyphIndex, runtimeGlyph)
-            if (previous != null) {
-                throw IllegalArgumentException("Duplicate glyph index $resolvedGlyphIndex in metadata")
-            }
+            require(previous == null) { "Duplicate glyph index $resolvedGlyphIndex in metadata" }
 
             val codepoint = runtimeGlyph.codepoint
             if (codepoint != null && !glyphsByCodepoint.containsKey(codepoint)) {
@@ -109,15 +107,9 @@ object MsdfFontMetaParser {
     }
 
     private fun validate(meta: MsdfMetaJson) {
-        if (meta.atlas.width <= 0 || meta.atlas.height <= 0) {
-            throw IllegalArgumentException("atlas.width and atlas.height must be > 0")
-        }
-        if (meta.metrics.lineHeight <= 0f) {
-            throw IllegalArgumentException("metrics.lineHeight must be > 0")
-        }
-        if (meta.glyphs.isEmpty()) {
-            throw IllegalArgumentException("glyphs list must not be empty")
-        }
+        require(meta.atlas.width > 0 && meta.atlas.height > 0) { "atlas.width and atlas.height must be > 0" }
+        require(meta.metrics.lineHeight > 0f) { "metrics.lineHeight must be > 0" }
+        require(meta.glyphs.isNotEmpty()) { "glyphs list must not be empty" }
     }
 
     private fun MsdfPlaneBoundsJson.toRuntime(): MsdfPlaneBounds =

@@ -337,7 +337,7 @@ naming:
     excludeClassPattern: '$^'
   FunctionParameterNaming:
     active: true
-    parameterPattern: '[a-z][A-Za-z0-9]*'
+    parameterPattern: '_?[a-z][A-Za-z0-9]*'
     excludeClassPattern: '$^'
   InvalidPackageDeclaration:
     active: true
@@ -741,7 +741,7 @@ style:
     active: false
   UnusedParameter:
     active: true
-    allowedNames: 'ignored|expected'
+    allowedNames: 'ignored|expected|_.*'
   UnusedPrivateClass:
     active: true
   UnusedPrivateMember:

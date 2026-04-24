@@ -203,6 +203,7 @@ object MinecraftFormattingParser {
         return out
     }
 
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun parseMinecraft(text: String): ParsedText {
         val plain = StringBuilder(text.length)
         val spans = ArrayList<ParsedTextSpan>(8)

@@ -219,7 +219,7 @@ class UseEffectHookRuntimeTests {
                 events += "run"
                 onDispose { events += "cleanup" }
             }
-            throw IllegalStateException("forced render failure")
+            error("forced render failure")
         }
     }
 }

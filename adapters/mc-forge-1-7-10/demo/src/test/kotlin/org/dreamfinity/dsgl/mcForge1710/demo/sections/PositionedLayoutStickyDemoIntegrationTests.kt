@@ -274,19 +274,6 @@ class PositionedLayoutStickyDemoIntegrationTests {
         error("Field '$fieldName' not found on ${clazz.name}")
     }
 
-    private fun findMethod(clazz: Class<*>, methodName: String, parameterTypes: Array<Class<*>>): Method {
-        var current: Class<*>? = clazz
-        while (current != null) {
-            val method =
-                current.declaredMethods.firstOrNull {
-                    it.name == methodName && it.parameterTypes.contentEquals(parameterTypes)
-                }
-            if (method != null) return method
-            current = current.superclass
-        }
-        error("Method '$methodName' not found on ${clazz.name}")
-    }
-
     private fun findMethodByNameAndArity(clazz: Class<*>, methodName: String, arity: Int): Method {
         var current: Class<*>? = clazz
         while (current != null) {

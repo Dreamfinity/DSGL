@@ -467,6 +467,10 @@ class ContextMenuEngine(
         return false
     }
 
+    // Per-level layout pass mutates each level's measurement, panelRect, and scrollOffset in
+    // place; the two early-out `break`s (missing parent, missing anchor rect) trim the level
+    // stack before exiting, which a filter/map chain cannot express.
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun ensureLayout() {
         val ctx = lastMeasureContext ?: return
         if (!isOpen()) return

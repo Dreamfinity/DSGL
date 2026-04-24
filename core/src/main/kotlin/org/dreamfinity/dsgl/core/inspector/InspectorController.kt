@@ -9,7 +9,6 @@ import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelMana
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
-import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyInput
@@ -2270,8 +2269,13 @@ class InspectorController(
             StyleProperty.OPACITY -> formatFloatLiteral(style.opacity)
         }
 
-    private fun spacingLiteral(value: LengthInsets): String =
-        "${value.top.toCssLiteral()} ${value.right.toCssLiteral()} ${value.bottom.toCssLiteral()} ${value.left.toCssLiteral()}"
+    private fun spacingLiteral(value: LengthInsets): String {
+        val top = value.top.toCssLiteral()
+        val right = value.right.toCssLiteral()
+        val bottom = value.bottom.toCssLiteral()
+        val left = value.left.toCssLiteral()
+        return "$top $right $bottom $left"
+    }
 
     private fun pxLiteral(value: Int): String = "${value}px"
 
@@ -2600,14 +2604,7 @@ class InspectorController(
         return "${node.styleType}[$key]"
     }
 
-    private fun pathToken(node: DOMNode): String {
-        val key = node.key?.toString() ?: "?"
-        return "${node.styleType}:$key"
-    }
-
     private fun rectLabel(rect: Rect): String = "${rect.x},${rect.y},${rect.width}x${rect.height}"
-
-    private fun spacingLabel(value: Insets): String = "${value.top}/${value.right}/${value.bottom}/${value.left}"
 
     private fun colorLabel(color: Int): String {
         val hex =

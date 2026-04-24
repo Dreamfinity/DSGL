@@ -42,9 +42,7 @@ class UiScope internal constructor(
 ) {
     @PublishedApi
     internal fun requireHookOwnerWindow(): DsglWindow =
-        ownerWindow ?: throw IllegalStateException(
-            "Hook APIs require a UiScope owned by a DsglWindow render session.",
-        )
+        ownerWindow ?: error("Hook APIs require a UiScope owned by a DsglWindow render session.")
 
     internal fun childScope(childParent: DOMNode): UiScope =
         UiScope(

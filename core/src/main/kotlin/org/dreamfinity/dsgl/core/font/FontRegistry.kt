@@ -70,7 +70,7 @@ class AtlasPayload internal constructor(
         decodedBitmap?.let { return it }
         synchronized(this) {
             decodedBitmap?.let { return it }
-            val bytes = encodedPngBytes ?: throw IllegalStateException("Missing atlas payload bytes")
+            val bytes = encodedPngBytes ?: error("Missing atlas payload bytes")
             val decoded = decodeAtlasBitmap(bytes)
             decodedBitmap = decoded
             encodedPngBytes = null
@@ -112,7 +112,7 @@ class AtlasPayload internal constructor(
         val image =
             ByteArrayInputStream(bytes).use { input ->
                 ImageIO.read(input)
-            } ?: throw IllegalStateException("Atlas payload is neither deflated rgba nor PNG")
+            } ?: error("Atlas payload is neither deflated rgba nor PNG")
 
         val width = image.width.coerceAtLeast(1)
         val height = image.height.coerceAtLeast(1)
@@ -337,7 +337,8 @@ object FontRegistry {
         val durationMs = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(0L)
         println(
             "[DSGL-MSDF] preload summary: jar=$jarDiscovered external=$externalDiscovered " +
-                "override=$externalOverrodeJar invalidExternal=$invalidExternalPackages loaded=$loadedFonts/$totalFonts in ${durationMs}ms",
+                "override=$externalOverrodeJar invalidExternal=$invalidExternalPackages " +
+                "loaded=$loadedFonts/$totalFonts in ${durationMs}ms",
         )
 
         return FontPreloadSummary(
@@ -732,9 +733,10 @@ object FontRegistry {
         val meta =
             runCatching { MsdfFontMetaParser.parse(metaRaw) }
                 .onFailure { error ->
+                    val reason = error.message ?: error.javaClass.simpleName
                     failFontLoad(
                         descriptor,
-                        "Failed to parse metadata '${descriptor.metaPath}': ${error.message ?: error.javaClass.simpleName}",
+                        "Failed to parse metadata '${descriptor.metaPath}': $reason",
                     )
                 }.getOrNull() ?: return null
 

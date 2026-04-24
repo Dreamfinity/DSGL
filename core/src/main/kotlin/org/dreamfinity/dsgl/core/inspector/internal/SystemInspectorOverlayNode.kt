@@ -801,7 +801,7 @@ internal class SystemInspectorOverlayNode(
                 }
 
                 InspectorEditorKind.StringInput -> {
-                    renderStyleEditorStringInput(scope, parentNode, ctx, bodyScrollY, row)
+                    renderStyleEditorStringInput(parentNode, ctx, bodyScrollY, row)
                     renderStyleEditorColorPreview(scope, ctx, bodyScrollY, row, index)
                 }
 
@@ -903,7 +903,6 @@ internal class SystemInspectorOverlayNode(
     }
 
     private fun renderStyleEditorStringInput(
-        scope: UiScope,
         parentNode: DOMNode,
         ctx: UiMeasureContext,
         bodyScrollY: Int,

@@ -65,16 +65,13 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (cascadeParentDark) "Parent class: dark" else "Parent class: light",
-                {
-                    key = "section.cssCascade.toggleParentClass"
-                    onMouseClick = { event ->
-                        cascadeParentDark = !cascadeParentDark
-                        onLogHook("css.cascade.toggle.parentClass", event, "dark=$cascadeParentDark")
-                    }
-                },
-            )
+            button(if (cascadeParentDark) "Parent class: dark" else "Parent class: light", {
+                key = "section.cssCascade.toggleParentClass"
+                onMouseClick = { event ->
+                    cascadeParentDark = !cascadeParentDark
+                    onLogHook("css.cascade.toggle.parentClass", event, "dark=$cascadeParentDark")
+                }
+            })
             button(if (cascadeRuleAEnabled) "Rule block: A" else "Rule block: B", {
                 key = "section.cssCascade.toggleRuleBlock"
                 onMouseClick = { event ->
@@ -175,20 +172,17 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
                     flexDirection = FlexDirection.Column
                 }
             }) {
-                button(
-                    if (cascadeAdjacentSourceEnabled) "Source class: ON" else "Source class: OFF",
-                    {
-                        key = "section.cssCascade.adj.toggleSource"
-                        onMouseClick = { event ->
-                            cascadeAdjacentSourceEnabled = !cascadeAdjacentSourceEnabled
-                            onLogHook(
-                                "css.cascade.adj.toggleSource",
-                                event,
-                                "enabled=$cascadeAdjacentSourceEnabled",
-                            )
-                        }
-                    },
-                )
+                button(if (cascadeAdjacentSourceEnabled) "Source class: ON" else "Source class: OFF", {
+                    key = "section.cssCascade.adj.toggleSource"
+                    onMouseClick = { event ->
+                        cascadeAdjacentSourceEnabled = !cascadeAdjacentSourceEnabled
+                        onLogHook(
+                            "css.cascade.adj.toggleSource",
+                            event,
+                            "enabled=$cascadeAdjacentSourceEnabled",
+                        )
+                    }
+                })
                 button(if (cascadeAdjacentSwapOrder) "Order: swapped" else "Order: default", {
                     key = "section.cssCascade.adj.swap"
                     onMouseClick = { event ->

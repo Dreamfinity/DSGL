@@ -37,6 +37,7 @@ object OverlayLayerContracts {
             OverlayOwnerScope.System -> UiLayerId.SystemOverlay
         }
 
+    @Suppress("UnusedParameter")
     fun resolveTransientLayer(ownerScope: OverlayOwnerScope, cursorX: Int, cursorY: Int): UiLayerId =
         resolveTransientLayer(ownerScope)
 

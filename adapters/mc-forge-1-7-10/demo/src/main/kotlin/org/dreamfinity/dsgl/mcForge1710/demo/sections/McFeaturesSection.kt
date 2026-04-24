@@ -1,19 +1,16 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dsl.*
-import org.dreamfinity.dsgl.core.event.Event
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.style.AlignItems
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.style.JustifyContent
+import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.mcForge1710.McItemStackRef
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import kotlin.math.roundToLong
 
-data class McFeaturesShellProps(
+data class McFeaturesSection(
     val viewportWidthPx: Int,
     val viewportHeightPx: Int,
     val mediaReady: Boolean,
@@ -31,7 +28,7 @@ data class McFeaturesShellProps(
     val onLogHook: (String, Event, String?) -> Unit,
 )
 
-fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
+fun UiScope.mcFeaturesSection(props: McFeaturesSection) {
     var itemRotY by useState(160.0)
     var itemRotX by useState(-11.0)
 
@@ -57,9 +54,11 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
         }
     }) {
         text(
-            "DSGL viewport=${props.viewportWidthPx}x${props.viewportHeightPx}px, guiScale=${props.guiScaleLabel(
-                guiScaleValue,
-            )}",
+            "DSGL viewport=${props.viewportWidthPx}x${props.viewportHeightPx}px, guiScale=${
+                props.guiScaleLabel(
+                    guiScaleValue,
+                )
+            }",
             { style = { color = DsglColors.WHITE } },
         )
         text(
@@ -147,7 +146,8 @@ fun UiScope.mcFeaturesSection(props: McFeaturesShellProps) {
                                     width = 1.px
                                     color = 0xFF3F4B56.toInt()
                                 }
-                                backgroundColor = if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt()
+                                backgroundColor =
+                                    if ((row + col) % 2 == 0) 0xFF1F2D38.toInt() else 0xFF243544.toInt()
                             }
                         }) {}
                     }

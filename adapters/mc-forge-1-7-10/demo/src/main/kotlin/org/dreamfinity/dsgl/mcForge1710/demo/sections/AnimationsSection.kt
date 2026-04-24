@@ -94,15 +94,12 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (animationsToggle) "Retarget: ON" else "Retarget: OFF",
-                {
-                    onMouseClick = {
-                        animationsToggle = !animationsToggle
-                        onInfo("Animation retarget toggle=$animationsToggle")
-                    }
-                },
-            )
+            button(if (animationsToggle) "Retarget: ON" else "Retarget: OFF", {
+                onMouseClick = {
+                    animationsToggle = !animationsToggle
+                    onInfo("Animation retarget toggle=$animationsToggle")
+                }
+            })
             button(if (animationsPaused) "Play" else "Pause", {
                 onMouseClick = {
                     animationsPaused = !animationsPaused

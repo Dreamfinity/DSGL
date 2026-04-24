@@ -74,16 +74,13 @@ fun UiScope.inspectorSection(onInfo: (String) -> Unit) {
                         onInfo("Inspector sample: behind counter=$inspectorBehindClickCounter")
                     }
                 })
-                input(
-                    InputType.Text(inspectorInputValue, "Focusable input"),
-                    {
-                        style = { flexGrow = 1f }
-                        key = "inspector.sample.input"
-                        onInput = { event ->
-                            inspectorInputValue = event.value
-                        }
-                    },
-                )
+                input(InputType.Text(inspectorInputValue, "Focusable input"), {
+                    style = { flexGrow = 1f }
+                    key = "inspector.sample.input"
+                    onInput = { event ->
+                        inspectorInputValue = event.value
+                    }
+                })
             }
             div({
                 key = "inspector.sample.grid"

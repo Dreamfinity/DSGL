@@ -30,8 +30,9 @@ internal class NodeElementHandle(
         FocusManager.requestFocus(focusable)
     }
 
+    @Suppress("ForbiddenComment")
     override fun scrollIntoView() {
-        // TODO: add scroll container integration when generic scrolling API is available.
+        // TODO(Veritaris): add scroll container integration when generic scrolling API is available.
     }
 
     fun detach() {

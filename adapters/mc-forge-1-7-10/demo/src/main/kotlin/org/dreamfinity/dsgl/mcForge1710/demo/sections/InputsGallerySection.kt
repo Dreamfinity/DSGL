@@ -377,14 +377,11 @@ fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrol
                     option("alt", "Alternative")
                 }
 
-                button(
-                    if (selectDynamicAlt) "Use option set A" else "Use option set B",
-                    {
-                        onMouseClick = {
-                            selectDynamicAlt = !selectDynamicAlt
-                        }
-                    },
-                )
+                button(if (selectDynamicAlt) "Use option set A" else "Use option set B", {
+                    onMouseClick = {
+                        selectDynamicAlt = !selectDynamicAlt
+                    }
+                })
                 text("Dynamic options")
                 select({
                     key = "input.select.dynamic"

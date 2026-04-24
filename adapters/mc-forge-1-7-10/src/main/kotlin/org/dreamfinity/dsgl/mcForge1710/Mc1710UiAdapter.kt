@@ -7,9 +7,9 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
-import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.dom.layout.*
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.host.dsglRectToGlScissor
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -390,7 +390,9 @@ class Mc1710UiAdapter(
             GL11.glVertex2f(-1f, 1f)
             GL11.glEnd()
             renderingSucceeded = true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
                     key = "magnifier:capture:error",
@@ -717,7 +719,7 @@ class Mc1710UiAdapter(
                 )
             if (linkStatus == GL11.GL_FALSE) {
                 val info = ARBShaderObjects.glGetInfoLogARB(program, 4096)
-                throw IllegalStateException("Magnifier shader link failed: $info")
+                error("Magnifier shader link failed: $info")
             }
             val shader =
                 MagnifierCaptureShader(
@@ -731,7 +733,9 @@ class Mc1710UiAdapter(
                 )
             magnifierCaptureShader = shader
             shader
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             magnifierCaptureShaderInitFailed = true
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
@@ -756,7 +760,7 @@ class Mc1710UiAdapter(
             )
         if (compileStatus == GL11.GL_FALSE) {
             val info = ARBShaderObjects.glGetInfoLogARB(shader, 4096)
-            throw IllegalStateException("Magnifier shader compile failed: $info")
+            error("Magnifier shader compile failed: $info")
         }
         return shader
     }
@@ -862,6 +866,7 @@ class Mc1710UiAdapter(
             ReadbackApi.OpenGl30 ->
                 GL30.glCheckFramebufferStatus(GL30.GL_DRAW_FRAMEBUFFER) ==
                     GL30.GL_FRAMEBUFFER_COMPLETE
+
             ReadbackApi.ArbFramebufferObject ->
                 ARBFramebufferObject.glCheckFramebufferStatus(
                     ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
@@ -960,6 +965,7 @@ class Mc1710UiAdapter(
     }
 
     /** Executes DSGL render commands using Minecraft rendering APIs. */
+    @Suppress("LoopWithTooManyJumpStatements")
     override fun paint(commands: List<RenderCommand>) {
         paintsCount++
         opacityStack.clear()
@@ -1039,7 +1045,9 @@ class Mc1710UiAdapter(
                                         "[DSGL] Skipping DrawText due linkage error in text renderer: " +
                                             "${error.message}",
                                 )
-                            } catch (error: Throwable) {
+                            } catch (
+                                @Suppress("TooGenericExceptionCaught") error: Throwable,
+                            ) {
                                 logRateLimited(
                                     key = "drawText:runtime",
                                     message = "[DSGL] Skipping DrawText due renderer error: ${error.message}",
@@ -1242,27 +1250,6 @@ class Mc1710UiAdapter(
         GL11.glColor4f(1f, 1f, 1f, 1f)
     }
 
-    private fun drawVerticalGradientRect(
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        topColor: Int,
-        bottomColor: Int,
-    ) {
-        if (width <= 0 || height <= 0) return
-        GL11.glDisable(GL11.GL_TEXTURE_2D)
-        GL11.glDisable(GL11.GL_ALPHA)
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-        GL11.glShadeModel(GL11.GL_SMOOTH)
-        drawVerticalGradientRectRaw(x, y, width, height, topColor, bottomColor)
-        GL11.glEnable(GL11.GL_ALPHA)
-        GL11.glShadeModel(GL11.GL_FLAT)
-        GL11.glEnable(GL11.GL_TEXTURE_2D)
-        GL11.glColor4f(1f, 1f, 1f, 1f)
-    }
-
     private inline fun drawGradientBlock(block: () -> Unit) {
         GL11.glDisable(GL11.GL_TEXTURE_2D)
         GL11.glDisable(GL11.GL_DEPTH_TEST)
@@ -1319,42 +1306,9 @@ class Mc1710UiAdapter(
         GL11.glEnd()
     }
 
-    private fun drawBilinearGradientRect(
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        topLeftColor: Int,
-        topRightColor: Int,
-        bottomRightColor: Int,
-        bottomLeftColor: Int,
-    ) {
-        if (width <= 0 || height <= 0) return
-        GL11.glDisable(GL11.GL_TEXTURE_2D)
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-        GL11.glShadeModel(GL11.GL_SMOOTH)
-        GL11.glBegin(GL11.GL_QUADS)
-        glColor(topLeftColor)
-        GL11.glVertex2f(x.toFloat(), y.toFloat())
-        glColor(bottomLeftColor)
-        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
-        glColor(bottomRightColor)
-        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
-        glColor(topRightColor)
-        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
-        GL11.glEnd()
-        GL11.glShadeModel(GL11.GL_FLAT)
-        GL11.glEnable(GL11.GL_TEXTURE_2D)
-        GL11.glColor4f(1f, 1f, 1f, 1f)
-    }
-
     private fun glColor(argb: Int) {
-        val a = ((argb ushr 24) and 0xFF) / 255f
-        val r = ((argb ushr 16) and 0xFF) / 255f
-        val g = ((argb ushr 8) and 0xFF) / 255f
-        val b = (argb and 0xFF) / 255f
-        GL11.glColor4f(r, g, b, a)
+        val color = RgbaColor.fromArgbInt(argb)
+        GL11.glColor4f(color.r, color.g, color.b, color.a)
     }
 
     private fun hsvToArgbInt(hueDeg: Float, saturation: Float, value: Float): Int {
@@ -1533,9 +1487,11 @@ class Mc1710UiAdapter(
             ReadbackApi.ArbFramebufferObject ->
                 readBuffer in
                     ARBFramebufferObject.GL_COLOR_ATTACHMENT0..(ARBFramebufferObject.GL_COLOR_ATTACHMENT0 + 15)
+
             ReadbackApi.ExtFramebufferObject ->
                 readBuffer in
                     EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT..(EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT + 15)
+
             ReadbackApi.Legacy -> false
         }
 
@@ -1554,6 +1510,7 @@ class Mc1710UiAdapter(
             ARBFramebufferObject.GL_COLOR_ATTACHMENT0,
             EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
             -> "GL_COLOR_ATTACHMENT0"
+
             else -> {
                 val hex = Integer.toHexString(value).uppercase()
                 "0x$hex"
@@ -1705,7 +1662,7 @@ class Mc1710UiAdapter(
                 }
             }
             true
-        } catch (ex: Exception) {
+        } catch (_: java.io.IOException) {
             false
         }
 
@@ -1721,7 +1678,9 @@ class Mc1710UiAdapter(
             val location = mc.textureManager.getDynamicTextureLocation(name, texture)
             imageCache[cacheKey] = location
             location
-        } catch (ex: Exception) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught", "SwallowedException") _: Exception,
+        ) {
             null
         }
     }

@@ -329,6 +329,7 @@ internal class ComponentHookContext(
 
     fun entryCount(): Int = entriesByPath.size
 
+    @Suppress("ThrowsCount")
     private fun resolvePath(
         path: HookPath,
         kind: HookEntryKind,
@@ -469,7 +470,7 @@ internal class ComponentHookRuntime {
     private val pendingStorageHookBindings: MutableList<StorageHookBindingToken> = arrayListOf()
     private val renderEffectRegistrations: MutableMap<EffectRegistrationKey, EffectRenderRegistration> = linkedMapOf()
 
-    @Suppress("ktlint:standard:max-line-length", "ktlint:standard:property-wrapping")
+    @Suppress("ktlint:standard:max-line-length", "ktlint:standard:property-wrapping", "MaxLineLength")
     private val committedEffectsByComponent: MutableMap<ComponentInstanceId, MutableMap<HookPath, CommittedEffectState>> =
         linkedMapOf()
     private var pendingEffectCommitBatch: PendingEffectCommitBatch? = null
@@ -615,6 +616,7 @@ internal class ComponentHookRuntime {
         )
     }
 
+    @Suppress("ThrowsCount")
     fun leaveComponentInstance() {
         ensureActiveRender()
         if (componentStack.size <= 1) {
@@ -1046,7 +1048,9 @@ internal class ComponentHookRuntime {
     ) {
         try {
             cleanup()
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             println(
                 "[DSGL][Hooks] Effect cleanup failed at path '$path' in component '${componentId.debugPath()}' " +
                     "during $reason: ${error.message}",
@@ -1151,6 +1155,7 @@ internal class ComponentHookRuntime {
         throw HookUsageException("Hook runtime internal error: no non-inferred frame in component stack.")
     }
 
+    @Suppress("ThrowsCount")
     private fun popInferredFrameForTransition() {
         val frame =
             componentStack.lastOrNull()
@@ -1176,7 +1181,8 @@ internal class ComponentHookRuntime {
                 ComponentFrameOrigin.Inferred -> popInferredFrameForTransition()
                 ComponentFrameOrigin.Explicit -> {
                     throw HookUsageException(
-                        "Invalid nested component scope behavior: render ended with unbalanced explicit component scopes.",
+                        "Invalid nested component scope behavior: " +
+                            "render ended with unbalanced explicit component scopes.",
                     )
                 }
 
@@ -1229,11 +1235,15 @@ internal class ComponentHookRuntime {
         return childFrame
     }
 
+    // Stack-frame walker mutates three independent pieces of state (innerToOuter list,
+    // leafCallSite, foundRenderBoundary flag) while classifying each frame; skip-frame and
+    // stop-at-boundary are distinct control flows that don't collapse into a filter chain.
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun inferComponentSnapshotFromCallContext(): InferenceSnapshot {
         val innerToOuter: MutableList<InferredComponentDescriptor> = arrayListOf()
         var leafCallSite: HookCallSite? = null
         var foundRenderBoundary = false
-        val trace = Throwable().stackTrace
+        val trace = Throwable("hook-call-context-inference").stackTrace
         for (frame in trace) {
             if (isInferenceFrameworkFrame(frame)) {
                 continue
@@ -1327,6 +1337,7 @@ internal class ComponentHookRuntime {
         )
     }
 
+    @Suppress("ThrowsCount")
     private fun maybeAdvanceInferredSiblingFrame(frame: ComponentFrame): ComponentFrame {
         if (frame.origin != ComponentFrameOrigin.Inferred) {
             return frame

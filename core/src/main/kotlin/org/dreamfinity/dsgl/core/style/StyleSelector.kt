@@ -108,6 +108,7 @@ data class StyleSelector(
         private val classRegex = Regex("^[a-zA-Z0-9_-]+$")
         private val idRegex = Regex("^[a-zA-Z0-9_-]+$")
 
+        @Suppress("LoopWithTooManyJumpStatements")
         fun parse(rawSelector: String): StyleSelector {
             val trimmed = rawSelector.trim()
             require(trimmed.isNotEmpty()) { "Selector cannot be empty." }

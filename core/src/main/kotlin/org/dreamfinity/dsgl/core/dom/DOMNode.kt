@@ -1,25 +1,19 @@
 package org.dreamfinity.dsgl.core.dom
 
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.animation.AnimationSpec
-import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
-import org.dreamfinity.dsgl.core.animation.TransitionSpec
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
 import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
-import org.dreamfinity.dsgl.core.dsl.ComponentProps
-import org.dreamfinity.dsgl.core.dsl.StyleScope
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.*
-import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
-import org.dreamfinity.dsgl.core.text.ParsedText
-import org.dreamfinity.dsgl.core.text.TextStyleFlags
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
+import org.dreamfinity.dsgl.core.text.*
 import kotlin.math.roundToInt
 
 data class NodeStyleApplyResult(
@@ -553,11 +547,12 @@ abstract class DOMNode(
         }
 
     /** Measures the node's desired size. */
+    @Suppress("UnusedParameter")
     internal fun resolveLayoutStyleValues(ctx: UiMeasureContext, parentContentWidth: Int?, parentContentHeight: Int?) {
         if (appliedComputedStyle == null) {
             return
         }
-        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
+        val context = lengthResolveContext(parentContentWidth, parentContentHeight)
         margin = marginStyleValue.resolveToInsets(context)
         padding = paddingStyleValue.resolveToInsets(context)
         val borderWidthPx =
@@ -812,13 +807,14 @@ abstract class DOMNode(
         return deltaX to deltaY
     }
 
+    @Suppress("UnusedParameter")
     internal fun resolveFlexBasisForAxis(
         ctx: UiMeasureContext,
         parentContentWidth: Int?,
         parentContentHeight: Int?,
         axis: FlexDirection,
     ): Int? {
-        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
+        val context = lengthResolveContext(parentContentWidth, parentContentHeight)
         val percentBase =
             if (axis == FlexDirection.Row) {
                 LengthPercentBase.ContainerWidth
@@ -831,11 +827,7 @@ abstract class DOMNode(
             ?.coerceAtLeast(0)
     }
 
-    private fun lengthResolveContext(
-        ctx: UiMeasureContext,
-        parentContentWidth: Int?,
-        parentContentHeight: Int?,
-    ): LengthResolveContext {
+    private fun lengthResolveContext(parentContentWidth: Int?, parentContentHeight: Int?): LengthResolveContext {
         val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
         val inheritedFontSizePx =
             (

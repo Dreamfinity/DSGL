@@ -67,7 +67,7 @@ class DateInputNode(
         try {
             val dateTime = LocalDateTime.parse(text, formatter)
             dateTime.atZone(this.zoneId).toInstant()
-        } catch (ex: Exception) {
+        } catch (_: java.time.format.DateTimeParseException) {
             null
         }
 

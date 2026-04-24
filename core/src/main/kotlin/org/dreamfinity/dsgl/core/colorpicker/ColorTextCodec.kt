@@ -141,8 +141,7 @@ object ColorTextCodec {
         val values = parseFunctionArgs(raw, prefix) ?: return null
         if (prefix == "rgb" && values.size != 3) return null
         if ((prefix == "rgba" || prefix == "argb") && values.size != 4) return null
-        if (values.size !in 3..4) return null
-        val (r, g, b, a, order) =
+        val parsed =
             if (prefix == "argb") {
                 val a = parseAlphaComponent(values[0]) ?: return null
                 val r = parseRgbComponent(values[1]) ?: return null
@@ -157,9 +156,9 @@ object ColorTextCodec {
                 RgbParseResult(r, g, b, a, if (values.size == 4) RgbChannelOrder.RGBA else null)
             }
         return ParsedColorText(
-            color = RgbaColor(r, g, b, a).normalized(),
+            color = RgbaColor(parsed.r, parsed.g, parsed.b, parsed.a).normalized(),
             detectedMode = ColorFormatMode.RGB,
-            detectedRgbOrder = order,
+            detectedRgbOrder = parsed.order,
         )
     }
 
@@ -223,11 +222,11 @@ object ColorTextCodec {
         val value = raw.trim()
         return if (value.endsWith("%")) {
             val p = value.dropLast(1).toFloatOrNull() ?: return null
-            if (p < 0f || p > 100f) return null
+            if (p !in 0f..100f) return null
             p / 100f
         } else {
             val number = value.toFloatOrNull() ?: return null
-            if (number < 0f || number > 255f) return null
+            if (number !in 0f..255f) return null
             number / 255f
         }
     }
@@ -236,7 +235,7 @@ object ColorTextCodec {
         val value = raw.trim()
         return if (value.endsWith("%")) {
             val p = value.dropLast(1).toFloatOrNull() ?: return null
-            if (p < 0f || p > 100f) return null
+            if (p !in 0f..100f) return null
             p / 100f
         } else {
             val f = value.toFloatOrNull() ?: return null
@@ -266,7 +265,7 @@ object ColorTextCodec {
         val value = raw.trim()
         return if (value.endsWith("%")) {
             val p = value.dropLast(1).toFloatOrNull() ?: return null
-            if (p < 0f || p > 100f) return null
+            if (p !in 0f..100f) return null
             p / 100f
         } else {
             val f = value.toFloatOrNull() ?: return null

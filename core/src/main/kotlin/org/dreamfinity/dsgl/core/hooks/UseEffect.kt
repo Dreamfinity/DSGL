@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package org.dreamfinity.dsgl.core.hooks
 
 import org.dreamfinity.dsgl.core.DsglWindow

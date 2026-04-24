@@ -326,16 +326,13 @@ fun promptModal(
             modalTitle(title)
         }
         modalBody {
-            input(
-                InputType.Text(value = value, placeholder = "Enter value"),
-                {
-                    this.key = "modal.prompt.input.$key"
-                    style = { width = 150.px }
-                    onInput = { event ->
-                        onValueInput(event.value)
-                    }
-                },
-            )
+            input(InputType.Text(value = value, placeholder = "Enter value"), {
+                this.key = "modal.prompt.input.$key"
+                style = { width = 150.px }
+                onInput = { event ->
+                    onValueInput(event.value)
+                }
+            })
         }
         modalFooter {
             button(cancelText, {

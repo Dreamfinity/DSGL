@@ -246,7 +246,13 @@ class StickyControlClipAlignmentTests {
                 is RenderCommand.PopTransform -> transform.pop()
                 is RenderCommand.PushClip -> {
                     val transformed = transform.resolveClipRect(command.x, command.y, command.width, command.height)
-                    val raw = GuiClipRect(command.x, command.y, command.width.coerceAtLeast(0), command.height.coerceAtLeast(0))
+                    val raw =
+                        GuiClipRect(
+                            command.x,
+                            command.y,
+                            command.width.coerceAtLeast(0),
+                            command.height.coerceAtLeast(0),
+                        )
                     pushClips += ObservedClipPush(raw = raw, transformed = transformed)
                     clipStack.addLast(transformed)
                 }
@@ -286,7 +292,8 @@ class StickyControlClipAlignmentTests {
         assertNotNull(observed.activeClip, "Expected active clip while drawing '$text'")
         assertTrue(
             contains(observed.activeClip, observed.x, observed.y),
-            "Expected transformed clip to contain transformed text point for '$text': point=(${observed.x},${observed.y}) clip=${observed.activeClip}",
+            "Expected transformed clip to contain transformed text point for '$text': " +
+                "point=(${observed.x},${observed.y}) clip=${observed.activeClip}",
         )
     }
 
@@ -303,7 +310,8 @@ class StickyControlClipAlignmentTests {
         assertNotNull(caret.activeClip)
         assertTrue(
             containsRect(caret.activeClip, caret.transformed),
-            "Expected caret rect to be clipped by transformed active clip: caret=${caret.transformed} clip=${caret.activeClip}",
+            "Expected caret rect to be clipped by transformed active clip: " +
+                "caret=${caret.transformed} clip=${caret.activeClip}",
         )
     }
 

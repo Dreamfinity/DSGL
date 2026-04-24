@@ -176,6 +176,7 @@ object TextLayoutEngine {
         substringSliceCalls.set(0L)
     }
 
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun buildLines(
         text: String,
         maxWidth: Int?,

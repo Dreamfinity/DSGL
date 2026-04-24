@@ -127,13 +127,7 @@ object DomReconciler {
         if (templateKey != null) {
             val identity = ChildIdentity(templateKey, template.javaClass)
             val queue = keyed[identity] ?: return null
-            while (queue.isNotEmpty()) {
-                val candidate = queue.removeFirst()
-                if (!consumed[candidate]) {
-                    return candidate
-                }
-            }
-            return null
+            return generateSequence { queue.removeFirstOrNull() }.firstOrNull { !consumed[it] }
         }
 
         if (index < oldChildren.size) {
@@ -143,15 +137,11 @@ object DomReconciler {
             }
         }
 
-        for (candidateIndex in oldChildren.indices) {
-            if (consumed[candidateIndex]) continue
-            val candidate = oldChildren[candidateIndex]
-            if (candidate.key != null) continue
-            if (canReuse(candidate, template)) {
-                return candidateIndex
-            }
+        return oldChildren.indices.firstOrNull { candidateIndex ->
+            !consumed[candidateIndex] &&
+                oldChildren[candidateIndex].key == null &&
+                canReuse(oldChildren[candidateIndex], template)
         }
-        return null
     }
 
     private fun canReuse(current: DOMNode, template: DOMNode): Boolean {

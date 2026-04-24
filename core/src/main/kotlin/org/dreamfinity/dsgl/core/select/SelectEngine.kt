@@ -411,7 +411,7 @@ class SelectEngine(
         return true
     }
 
-    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+    fun handleMouseUp(_mouseX: Int, _mouseY: Int, button: MouseButton): Boolean {
         val current = popup ?: return false
         if (visibilityState == VisibilityState.Hidden) return false
         if (button == MouseButton.LEFT && current.scrollbarDragging) {

@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package org.dreamfinity.dsgl.core.dsl
 
 import org.dreamfinity.dsgl.core.dom.elements.TextNode

@@ -121,14 +121,6 @@ internal class MsdfTextRenderer {
         var textureUploadBytes: Long = 0L,
     )
 
-    private data class DecorationSegment(
-        var startX: Float,
-        var endX: Float,
-        val y: Float,
-        val thickness: Float,
-        val color: Int,
-    )
-
     private data class ObfuscationBuckets(
         val byAdvanceBucket: Map<Int, List<MsdfGlyph>>,
         val expandedByAdvanceBucket: Map<Int, List<MsdfGlyph>>,
@@ -196,6 +188,7 @@ internal class MsdfTextRenderer {
 
     fun lineHeight(fontId: String?, fontSize: Int?): Int = FontRegistry.lineHeight(fontId, fontSize)
 
+    @Suppress("UnusedParameter")
     fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? {
         val font = FontRegistry.get(fontId) ?: return null
         val metrics = font.meta.metrics
@@ -1019,8 +1012,9 @@ internal class MsdfTextRenderer {
         val width = bitmap.width.coerceAtLeast(1)
         val height = bitmap.height.coerceAtLeast(1)
         if (width > maxTextureSize || height > maxTextureSize) {
-            throw IllegalStateException(
-                "Atlas '${font.descriptor.fontId}' is ${width}x$height, exceeds GL_MAX_TEXTURE_SIZE=$maxTextureSize",
+            error(
+                "Atlas '${font.descriptor.fontId}' is ${width}x$height, " +
+                    "exceeds GL_MAX_TEXTURE_SIZE=$maxTextureSize",
             )
         }
         val buffer = BufferUtils.createByteBuffer(width * height * 4)
@@ -1049,10 +1043,9 @@ internal class MsdfTextRenderer {
             }
         if (glError != GL11.GL_NO_ERROR) {
             GL11.glDeleteTextures(textureId)
-            throw IllegalStateException(
-                "glTexImage2D failed for '${font.descriptor.fontId}' (${width}x$height), glError=0x${
-                    glError.toString(16)
-                }",
+            error(
+                "glTexImage2D failed for '${font.descriptor.fontId}' (${width}x$height), " +
+                    "glError=0x${glError.toString(16)}",
             )
         }
         debugCounters.textureUploads += 1
@@ -1116,7 +1109,7 @@ internal class MsdfTextRenderer {
             )
         if (linkStatus == GL11.GL_FALSE) {
             val info = ARBShaderObjects.glGetInfoLogARB(program, 4096)
-            throw IllegalStateException("Program link failed: $info")
+            error("Program link failed: $info")
         }
         return program
     }
@@ -1132,7 +1125,7 @@ internal class MsdfTextRenderer {
             )
         if (compileStatus == GL11.GL_FALSE) {
             val info = ARBShaderObjects.glGetInfoLogARB(shader, 4096)
-            throw IllegalStateException("Shader compile failed: $info")
+            error("Shader compile failed: $info")
         }
         return shader
     }

@@ -144,41 +144,35 @@ fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Ev
                 flexDirection = FlexDirection.Column
             }
         }) {
-            input(
-                InputType.Text(placeholder = "onKeyDown/onKeyUp"),
-                {
-                    key = "interactions.key.downUp"
-                    style = { width = 100.percent }
-                    onKeyDown = { event ->
-                        keyDownCount += 1
-                        if (event.keyCode == KeyCodes.ENTER) {
-                            enterActionCount += 1
-                            onLogHook("onKeyDown", event, "enterAction")
-                        } else {
-                            onLogHook("onKeyDown", event, null)
-                        }
+            input(InputType.Text(placeholder = "onKeyDown/onKeyUp"), {
+                key = "interactions.key.downUp"
+                style = { width = 100.percent }
+                onKeyDown = { event ->
+                    keyDownCount += 1
+                    if (event.keyCode == KeyCodes.ENTER) {
+                        enterActionCount += 1
+                        onLogHook("onKeyDown", event, "enterAction")
+                    } else {
+                        onLogHook("onKeyDown", event, null)
                     }
-                    onKeyUp = { event ->
-                        keyUpCount += 1
-                        onLogHook("onKeyUp", event, null)
-                    }
-                },
-            )
-            input(
-                InputType.Text(placeholder = "onKeyPressed/onKeyReleased"),
-                {
-                    key = "interactions.key.aliases"
-                    style = { width = 100.percent }
-                    onKeyPressed = { event ->
-                        keyPressedCount += 1
-                        onLogHook("onKeyPressed", event, null)
-                    }
-                    onKeyReleased = { event ->
-                        keyReleasedCount += 1
-                        onLogHook("onKeyReleased", event, null)
-                    }
-                },
-            )
+                }
+                onKeyUp = { event ->
+                    keyUpCount += 1
+                    onLogHook("onKeyUp", event, null)
+                }
+            })
+            input(InputType.Text(placeholder = "onKeyPressed/onKeyReleased"), {
+                key = "interactions.key.aliases"
+                style = { width = 100.percent }
+                onKeyPressed = { event ->
+                    keyPressedCount += 1
+                    onLogHook("onKeyPressed", event, null)
+                }
+                onKeyReleased = { event ->
+                    keyReleasedCount += 1
+                    onLogHook("onKeyReleased", event, null)
+                }
+            })
         }
 
         text(
@@ -193,15 +187,12 @@ fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Ev
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF",
-                {
-                    onMouseClick = {
-                        cancellationEnabled = !cancellationEnabled
-                        onInfo("Interactions: cancellation=$cancellationEnabled")
-                    }
-                },
-            )
+            button(if (cancellationEnabled) "Cancel child click: ON" else "Cancel child click: OFF", {
+                onMouseClick = {
+                    cancellationEnabled = !cancellationEnabled
+                    onInfo("Interactions: cancellation=$cancellationEnabled")
+                }
+            })
             text(
                 "Parent=$cancellationParentHits Child=$cancellationChildHits",
                 { style = { color = DEMO_MUTED } },

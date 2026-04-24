@@ -136,6 +136,7 @@ class OverlayDebugControlHost(
         return currentLayout.panelRect.contains(mouseX, mouseY)
     }
 
+    @Suppress("FunctionOnlyReturningConstant", "UnusedParameter")
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
 
     fun clearRefs() {

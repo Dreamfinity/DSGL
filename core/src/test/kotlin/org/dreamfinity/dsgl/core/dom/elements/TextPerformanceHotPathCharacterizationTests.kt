@@ -165,19 +165,19 @@ class TextPerformanceHotPathCharacterizationTests {
                 width = 180
                 height = 120
             }
-        val node =
-            TextNode(
-                textSource =
-                    TextSource.Static(
-                        "Wrapped text baseline path should repeatedly measure many ranges while fitting lines for wrapping.",
-                    ),
-                key = "text.hotpath.wrap",
-            ).apply {
-                width = 120
-                fontId = FontRegistry.FONT_MINECRAFT
-                fontSize = 16
-                textWrap = TextWrap.Wrap
-            }.applyParent(root)
+        TextNode(
+            textSource =
+                TextSource.Static(
+                    "Wrapped text baseline path should repeatedly measure many ranges " +
+                        "while fitting lines for wrapping.",
+                ),
+            key = "text.hotpath.wrap",
+        ).apply {
+            width = 120
+            fontId = FontRegistry.FONT_MINECRAFT
+            fontSize = 16
+            textWrap = TextWrap.Wrap
+        }.applyParent(root)
 
         val tree = DomTree(root)
         tree.render(ctx, 180, 120)
@@ -465,7 +465,8 @@ class TextPerformanceHotPathCharacterizationTests {
             TextNode(
                 textSource =
                     TextSource.Static(
-                        "Row $index wraps repeatedly to characterize current range-based text measurement under scroll-heavy updates.",
+                        "Row $index wraps repeatedly to characterize current range-based text " +
+                            "measurement under scroll-heavy updates.",
                     ),
                 key = "scroll-hot-text-$index",
             ).apply {
@@ -734,13 +735,11 @@ class TextPerformanceHotPathCharacterizationTests {
                 Character.isValidCodePoint(cp) && !primary.canDisplay(cp) && fallback.canDisplay(cp)
             }?.let { return it }
 
-        for (cp in 0x20..0x2FFF) {
-            if (!Character.isValidCodePoint(cp)) continue
-            if (cp in 0xD800..0xDFFF) continue
-            if (!primary.canDisplay(cp) && fallback.canDisplay(cp)) {
-                return cp
-            }
-        }
-        error("Could not find deterministic fallback-only codepoint for characterization test")
+        return (0x20..0x2FFF).firstOrNull { cp ->
+            Character.isValidCodePoint(cp) &&
+                cp !in 0xD800..0xDFFF &&
+                !primary.canDisplay(cp) &&
+                fallback.canDisplay(cp)
+        } ?: error("Could not find deterministic fallback-only codepoint for characterization test")
     }
 }

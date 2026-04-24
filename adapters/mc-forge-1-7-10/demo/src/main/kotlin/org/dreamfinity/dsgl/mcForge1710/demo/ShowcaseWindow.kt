@@ -18,7 +18,7 @@ import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.mcForge1710.McItemStackRef
-import org.dreamfinity.dsgl.mcForge1710.demo.sections.McFeaturesShellProps
+import org.dreamfinity.dsgl.mcForge1710.demo.sections.McFeaturesSection
 import org.dreamfinity.dsgl.mcForge1710.demo.sections.animationsSection
 import org.dreamfinity.dsgl.mcForge1710.demo.sections.colorPickerSection
 import org.dreamfinity.dsgl.mcForge1710.demo.sections.contextMenuSection
@@ -328,7 +328,7 @@ class ShowcaseWindow : DsglWindow() {
                                 DemoSection.MC_FEATURES ->
                                     mcFeaturesSection(
                                         props =
-                                            McFeaturesShellProps(
+                                            McFeaturesSection(
                                                 viewportWidthPx = viewportWidthPx,
                                                 viewportHeightPx = viewportHeightPx,
                                                 mediaReady = mediaReady,
@@ -409,7 +409,7 @@ class ShowcaseWindow : DsglWindow() {
         checklistPage = (checklistPage + delta).coerceIn(0, pageCount - 1)
     }
 
-    internal fun requestManualInvalidate(reason: String) {
+    internal fun requestManualInvalidate(_reason: String) {
         invalidate()
     }
 
@@ -473,7 +473,7 @@ class ShowcaseWindow : DsglWindow() {
             val content = file.readText()
             appendInfo("Stylesheet loaded by $source")
             return content
-        } catch (ex: Exception) {
+        } catch (ex: java.io.IOException) {
             appendLog("Stylesheet load failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
             throw ex
         }
@@ -485,7 +485,7 @@ class ShowcaseWindow : DsglWindow() {
             file.parentFile?.mkdirs()
             file.writeText(content)
             appendInfo("Stylesheet saved by $source")
-        } catch (ex: Exception) {
+        } catch (ex: java.io.IOException) {
             appendLog("Stylesheet save failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
             throw ex
         }
@@ -520,7 +520,7 @@ class ShowcaseWindow : DsglWindow() {
             writeDemoDocumentIcon(File(dataDir, "dsgl/demo/document.png"))
             mediaReady = true
             appendInfo("Prepared local file:// and cached http image assets")
-        } catch (ex: Exception) {
+        } catch (ex: java.io.IOException) {
             mediaReady = false
             appendLog("Media prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
         }
@@ -540,7 +540,7 @@ class ShowcaseWindow : DsglWindow() {
                       --danger: #A34343;
                       --fg: #E9F1FF;
                     }
-                    
+
                     button {
                       border-width: 1px;
                       border-color: #000000;
@@ -573,7 +573,7 @@ class ShowcaseWindow : DsglWindow() {
                       border-color: #555555;
                       color: #8E8E8E;
                     }
-                    
+
                     .style-card {
                       margin: 2px 0px 0px 0px;
                       background-color: #2A3440;
@@ -581,39 +581,39 @@ class ShowcaseWindow : DsglWindow() {
                       border-width: 1px;
                       padding: 4px;
                     }
-                    
+
                     .accent {
                       background-color: #3F5A70;
                     }
-                    
+
                     button.primary {
                       background-color: var(--primary);
                       color: var(--fg);
                     }
-                    
+
                     #dangerAction {
                       background-color: var(--danger);
                       color: #FFFFFFFF;
                     }
-                    
+
                     #hoverActiveTarget:hover {
                       background-color: #365F7D;
                     }
-                    
+
                     #hoverActiveTarget:active {
                       background-color: #274356;
                     }
-                    
+
                     #focusInput:focus {
                       border-color: var(--accent);
                       border-width: 2px;
                     }
-                    
+
                     #disabledTarget:disabled {
                       background-color: #444444;
                       color: #999999;
                     }
-                    
+
                     .vars-demo {
                       background-color: #213348;
                       border-color: var(--accent);
@@ -769,7 +769,7 @@ class ShowcaseWindow : DsglWindow() {
             if (created) {
                 StyleEngine.forceReloadStylesheets()
             }
-        } catch (ex: Exception) {
+        } catch (ex: java.io.IOException) {
             appendLog("Stylesheet prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
         }
     }
@@ -809,61 +809,61 @@ class ShowcaseWindow : DsglWindow() {
                   border-width: 1px;
                   padding: 4px;
                 }
-                
+
                 .cascade-demo-root.dark {
                   color: #FFE4C7;
                 }
-                
+
                 .cascade-demo-root.light {
                   color: #D7E8FF;
                 }
-                
+
                 .cascade-demo-root .panel {
                   background-color: #1E2935;
                   border-width: 1px;
                   border-color: #516071;
                   padding: 3px;
                 }
-                
+
                 .cascade-demo-root .panel .item {
                   color: #7EC8FF;
                 }
-                
+
                 .cascade-demo-root .panel > .item {
                   color: #9BE66F;
                 }
-                
+
                 .cascade-demo-root .btn {
                   background-color: #4A5568;
                   color: #FFFFFFFF;
                   border-color: #1F2937;
                   border-width: 1px;
                 }
-                
+
                 .cascade-demo-root #primary.btn {
                   background-color: #2B6CB0;
                 }
-                
+
                 .cascade-demo-root .order-target {
                   color: #F56565;
                 }
-                
+
                 .cascade-demo-root .order-target {
                   color: #48BB78;
                 }
-                
+
                 .cascade-demo-root .important-target {
                   color: #DD6B20 !important;
                 }
-                
+
                 .cascade-demo-root .important-target {
                   color: #3182CE;
                 }
-                
+
                 .cascade-demo-root.rule-a .toggle-target {
                   color: #D69E2E;
                 }
-                
+
                 .cascade-demo-root.rule-b .toggle-target {
                   color: #63B3ED;
                 }
@@ -923,7 +923,7 @@ class ShowcaseWindow : DsglWindow() {
                 """.trimIndent(),
             )
             StyleEngine.forceReloadStylesheets()
-        } catch (ex: Exception) {
+        } catch (ex: java.io.IOException) {
             appendLog("Cascade stylesheet prep failed: ${ex.javaClass.simpleName}", 0xFFFF9A66.toInt())
         }
     }

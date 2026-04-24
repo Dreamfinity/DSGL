@@ -487,7 +487,8 @@ class PositionedLayoutStickyBehaviorTests {
         assertTrue(overlapDrawIndex >= 0, "Expected overlap draw command")
         assertTrue(
             stickyDrawIndex > overlapDrawIndex,
-            "Expected sticky draw after overlap draw, but stickyDrawIndex=$stickyDrawIndex overlapDrawIndex=$overlapDrawIndex",
+            "Expected sticky draw after overlap draw, but " +
+                "stickyDrawIndex=$stickyDrawIndex overlapDrawIndex=$overlapDrawIndex",
         )
     }
 
@@ -883,12 +884,11 @@ class PositionedLayoutStickyBehaviorTests {
                     height = 180
                     overflowY = Overflow.Auto
                 }.applyParent(root)
-        val outerSpacer =
-            ContainerNode(key = "sticky-nested-outer-spacer")
-                .apply {
-                    width = 200
-                    height = 48
-                }.applyParent(outer)
+        ContainerNode(key = "sticky-nested-outer-spacer")
+            .apply {
+                width = 200
+                height = 48
+            }.applyParent(outer)
         val inner =
             ContainerNode(key = "sticky-nested-inner")
                 .apply {
@@ -913,18 +913,16 @@ class PositionedLayoutStickyBehaviorTests {
                             StyleProperty.TOP to "0px",
                         )
                 }.applyParent(inner)
-        val innerFiller =
-            ContainerNode(key = "sticky-nested-inner-filler")
-                .apply {
-                    width = 200
-                    height = 260
-                }.applyParent(inner)
-        val outerFiller =
-            ContainerNode(key = "sticky-nested-outer-filler")
-                .apply {
-                    width = 200
-                    height = 220
-                }.applyParent(outer)
+        ContainerNode(key = "sticky-nested-inner-filler")
+            .apply {
+                width = 200
+                height = 260
+            }.applyParent(inner)
+        ContainerNode(key = "sticky-nested-outer-filler")
+            .apply {
+                width = 200
+                height = 220
+            }.applyParent(outer)
 
         val tree = DomTree(root)
         tree.render(ctx, 320, 260)

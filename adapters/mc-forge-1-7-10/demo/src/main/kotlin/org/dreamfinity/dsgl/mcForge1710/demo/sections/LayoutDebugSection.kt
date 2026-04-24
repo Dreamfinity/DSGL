@@ -43,26 +43,20 @@ fun UiScope.layoutDebugSection(onClearLogs: () -> Unit, onInfo: (String) -> Unit
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (layoutDebugStrict) "strict: on" else "strict: off",
-                {
-                    onMouseClick = {
-                        layoutDebugStrict = !layoutDebugStrict
-                        LayoutDebug.strictBounds = layoutDebugStrict
-                        onInfo("LayoutDebug.strict=$layoutDebugStrict")
-                    }
-                },
-            )
-            button(
-                if (layoutDebugDraw) "draw bounds: on" else "draw bounds: off",
-                {
-                    onMouseClick = {
-                        layoutDebugDraw = !layoutDebugDraw
-                        LayoutDebug.drawBounds = layoutDebugDraw
-                        onInfo("LayoutDebug.drawBounds=$layoutDebugDraw")
-                    }
-                },
-            )
+            button(if (layoutDebugStrict) "strict: on" else "strict: off", {
+                onMouseClick = {
+                    layoutDebugStrict = !layoutDebugStrict
+                    LayoutDebug.strictBounds = layoutDebugStrict
+                    onInfo("LayoutDebug.strict=$layoutDebugStrict")
+                }
+            })
+            button(if (layoutDebugDraw) "draw bounds: on" else "draw bounds: off", {
+                onMouseClick = {
+                    layoutDebugDraw = !layoutDebugDraw
+                    LayoutDebug.drawBounds = layoutDebugDraw
+                    onInfo("LayoutDebug.drawBounds=$layoutDebugDraw")
+                }
+            })
             button("clear logs", {
                 onMouseClick = { onClearLogs() }
             })

@@ -31,6 +31,7 @@ class LayerDomInputRouterTests {
 
             override fun measureText(text: String): Int = text.length * 6
 
+            @Suppress("EmptyFunctionBlock")
             override fun paint(commands: List<RenderCommand>) {}
         }
 

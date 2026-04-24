@@ -368,7 +368,9 @@ abstract class DsglScreenHost(
         val commands =
             try {
                 tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
-            } catch (error: Throwable) {
+            } catch (
+                @Suppress("TooGenericExceptionCaught") error: Throwable,
+            ) {
                 logPipelineError(
                     key = "draw.paint",
                     message = "[DSGL] Paint pipeline failed; rendering previous committed frame: ${error.message}",
@@ -401,7 +403,9 @@ abstract class DsglScreenHost(
         return try {
             applicationOverlayHost.render(adapter, lastWidth, lastHeight)
             applicationOverlayHost.paint(adapter)
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             logPipelineError(
                 key = "draw.applicationOverlay",
                 message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}",
@@ -429,7 +433,9 @@ abstract class DsglScreenHost(
         return try {
             systemOverlayHost.render(adapter, lastWidth, lastHeight)
             systemOverlayHost.paint(adapter)
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             logPipelineError(
                 key = "draw.systemOverlay",
                 message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}",
@@ -632,6 +638,7 @@ abstract class DsglScreenHost(
         needsRender = true
     }
 
+    @Suppress("EmptyFunctionBlock")
     override fun requestRedraw() {
     }
 
@@ -690,7 +697,9 @@ abstract class DsglScreenHost(
             window.commitRenderBuild()
             tracePhase("rebuild.end")
             true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             window.discardRenderBuild()
             logPipelineError(
                 key = "rebuild",
@@ -727,7 +736,7 @@ abstract class DsglScreenHost(
             }
         }
 
-        throw IllegalStateException(
+        error(
             "Hot-reload hook remount recovery exceeded $maxAttempts attempts: ${lastRemountRequest?.message}",
         )
     }
@@ -1624,7 +1633,9 @@ abstract class DsglScreenHost(
             layoutRevision++
             inspector.onLayoutCommitted(tree.root, layoutRevision)
             true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             logPipelineError(
                 key = "layout.$phase",
                 message = "[DSGL] Layout commit failed in $phase; keeping previous frame: ${error.message}",

@@ -7,11 +7,7 @@ import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.hooks.useReducer
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 
 class UseReducerHookRuntimeTests {
     @Test
@@ -230,6 +226,7 @@ class UseReducerHookRuntimeTests {
             rebuildRequests += 1
         }
 
+        @Suppress("EmptyFunctionBlock")
         override fun requestRedraw() {
         }
 

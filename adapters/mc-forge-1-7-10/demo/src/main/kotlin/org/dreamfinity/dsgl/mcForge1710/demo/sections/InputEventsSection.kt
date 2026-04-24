@@ -106,27 +106,24 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                 }
             }) {
                 text("Text input")
-                input(
-                    InputType.Text(value = inputEventTextValue, placeholder = "Type then blur"),
-                    {
-                        key = "inputEvents.text"
-                        style = { width = 100.percent }
-                        onFocusGain = { event: FocusGainEvent ->
-                            appendInputEvent("text", "focus", inputEventTextValue, event)
-                        }
-                        onFocusLose = { event: FocusLoseEvent ->
-                            appendInputEvent("text", "blur", inputEventTextValue, event)
-                        }
-                        onInput = { event: InputEvent ->
-                            inputEventTextValue = event.value
-                            appendInputEvent("text", "input", event.value, event)
-                        }
-                        onValueChange = { event: ValueChangedEvent ->
-                            inputEventTextValue = event.value
-                            appendInputEvent("text", "change", event.value, event)
-                        }
-                    },
-                )
+                input(InputType.Text(value = inputEventTextValue, placeholder = "Type then blur"), {
+                    key = "inputEvents.text"
+                    style = { width = 100.percent }
+                    onFocusGain = { event: FocusGainEvent ->
+                        appendInputEvent("text", "focus", inputEventTextValue, event)
+                    }
+                    onFocusLose = { event: FocusLoseEvent ->
+                        appendInputEvent("text", "blur", inputEventTextValue, event)
+                    }
+                    onInput = { event: InputEvent ->
+                        inputEventTextValue = event.value
+                        appendInputEvent("text", "input", event.value, event)
+                    }
+                    onValueChange = { event: ValueChangedEvent ->
+                        inputEventTextValue = event.value
+                        appendInputEvent("text", "change", event.value, event)
+                    }
+                })
 
                 text("Textarea")
                 textarea({

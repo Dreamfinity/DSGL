@@ -102,7 +102,8 @@ class ScrollReactiveSmoothTests {
             val expectedButtonY = state.viewportRect.y - state.scrollY + fixture.button.margin.top
             assertTrue(
                 kotlin.math.abs(expectedButtonY - fixture.button.bounds.y) <= 1,
-                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} scrollY=${state.scrollY} viewportY=${state.viewportRect.y}",
+                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} " +
+                    "scrollY=${state.scrollY} viewportY=${state.viewportRect.y}",
             )
             previousScroll = state.scrollY
             previousThumb = thumbY
@@ -211,7 +212,8 @@ class ScrollReactiveSmoothTests {
             val expectedButtonY = state.viewportRect.y - state.scrollY + fixture.button.margin.top
             assertTrue(
                 kotlin.math.abs(expectedButtonY - fixture.button.bounds.y) <= 1,
-                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} scrollY=${state.scrollY} viewportY=${state.viewportRect.y}",
+                "expectedButtonY=$expectedButtonY actualButtonY=${fixture.button.bounds.y} " +
+                    "scrollY=${state.scrollY} viewportY=${state.viewportRect.y}",
             )
             assertEquals(state.scrollY, debug.resolvedY)
             assertTrue(kotlin.math.abs(debug.displayedY - debug.resolvedY.toDouble()) <= 1.0)
@@ -345,7 +347,8 @@ class ScrollReactiveSmoothTests {
         val debug = fixture.viewport.debugScrollAnimationState()
         assertTrue(
             kotlin.math.abs(expectedScroll - state.scrollY) <= 1,
-            "expectedScroll=$expectedScroll actualScroll=${state.scrollY} moveY=$moveY baseline=$baseline stateMax=${state.maxScrollY}",
+            "expectedScroll=$expectedScroll actualScroll=${state.scrollY} " +
+                "moveY=$moveY baseline=$baseline stateMax=${state.maxScrollY}",
         )
         assertEquals(state.scrollY, debug.resolvedY)
         assertEquals(debug.displayedY, debug.resolvedY.toDouble())

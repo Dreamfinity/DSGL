@@ -8,11 +8,7 @@ import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 
 class UseStateHookRuntimeTests {
     @Test
@@ -310,6 +306,7 @@ class UseStateHookRuntimeTests {
             rebuildRequests += 1
         }
 
+        @Suppress("EmptyFunctionBlock")
         override fun requestRedraw() {
         }
 

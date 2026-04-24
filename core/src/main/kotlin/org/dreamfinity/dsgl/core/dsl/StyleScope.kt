@@ -773,6 +773,7 @@ class StyleScope internal constructor(
         setExpression(StyleProperty.ALIGN, variable)
     }
 
+    @Suppress("FunctionNaming")
     fun `var`(name: String): StyleExpression.VariableRef {
         val normalized = if (name.startsWith("--")) name else "--$name"
         return StyleExpression.VariableRef(normalized)

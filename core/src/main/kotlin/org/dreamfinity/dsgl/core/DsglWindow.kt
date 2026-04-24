@@ -1,8 +1,7 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dsl.UiScope
-import org.dreamfinity.dsgl.core.dsl.ui
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
@@ -29,6 +28,7 @@ abstract class DsglWindow {
     }
 
     /** Records the open time for date/time controls. */
+    @Suppress("UnusedParameter", "EmptyFunctionBlock")
     fun markOpened(instant: Instant, zoneId: ZoneId) {
     }
 

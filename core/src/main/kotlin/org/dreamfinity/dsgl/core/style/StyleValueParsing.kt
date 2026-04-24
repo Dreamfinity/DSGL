@@ -23,6 +23,7 @@ fun parseSpacingShorthand(raw: String): Insets =
         allowNegative = true,
     ).resolveToInsets(LengthResolveContext())
 
+@Suppress("UnusedParameter")
 fun parseSpacingLengthShorthand(
     raw: String,
     allowNegative: Boolean,

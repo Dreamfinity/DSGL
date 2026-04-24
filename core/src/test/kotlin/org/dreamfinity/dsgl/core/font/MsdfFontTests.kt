@@ -426,16 +426,13 @@ class MsdfFontTests {
         assertTrue(decoded.rgbaBytes.contentEquals(expected))
     }
 
-    private fun findFallbackOnlyCodepoint(primary: Font, fallback: Font): Int? {
-        for (cp in 0x20..0x10FFFF) {
-            if (!Character.isValidCodePoint(cp)) continue
-            if (cp in 0xD800..0xDFFF) continue
-            if (!primary.canDisplay(cp) && fallback.canDisplay(cp)) {
-                return cp
-            }
+    private fun findFallbackOnlyCodepoint(primary: Font, fallback: Font): Int? =
+        (0x20..0x10FFFF).firstOrNull { cp ->
+            Character.isValidCodePoint(cp) &&
+                cp !in 0xD800..0xDFFF &&
+                !primary.canDisplay(cp) &&
+                fallback.canDisplay(cp)
         }
-        return null
-    }
 
     private fun loadResource(path: String): String {
         val stream = javaClass.classLoader.getResourceAsStream(path)

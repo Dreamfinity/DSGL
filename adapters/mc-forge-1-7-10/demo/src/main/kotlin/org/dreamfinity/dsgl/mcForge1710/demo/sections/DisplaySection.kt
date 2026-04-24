@@ -245,15 +245,12 @@ fun UiScope.displaySection(onInfo: (String) -> Unit, onLogHook: (String, Event, 
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (displayShowHidden) "Target visible" else "Target hidden",
-                {
-                    onMouseClick = {
-                        displayShowHidden = !displayShowHidden
-                        onInfo("Display.none visible=$displayShowHidden")
-                    }
-                },
-            )
+            button(if (displayShowHidden) "Target visible" else "Target hidden", {
+                onMouseClick = {
+                    displayShowHidden = !displayShowHidden
+                    onInfo("Display.none visible=$displayShowHidden")
+                }
+            })
             text(
                 "targetClicks=$displayNoneClicks (should not change while hidden)",
                 { style = { color = DEMO_MUTED } },
@@ -313,12 +310,9 @@ fun UiScope.displaySection(onInfo: (String) -> Unit, onLogHook: (String, Event, 
                     displayFlexAlignIndex = (alignIndex + 1) % ALIGN_OPTIONS.size
                 }
             })
-            button(
-                if (displayGridLargeGap) "gap: large" else "gap: compact",
-                {
-                    onMouseClick = { displayGridLargeGap = !displayGridLargeGap }
-                },
-            )
+            button(if (displayGridLargeGap) "gap: large" else "gap: compact", {
+                onMouseClick = { displayGridLargeGap = !displayGridLargeGap }
+            })
         }
         text("Row uses fixed-size items so justify spacing is easier to compare.", {
             style = { color = DEMO_MUTED }
@@ -489,8 +483,8 @@ private fun UiScope.dot(
 private fun UiScope.flexRowCell(
     keyPart: String,
     label: String,
-    widthPx: Int,
-    paddingPx: Int,
+    @Suppress("UnusedParameter") widthPx: Int,
+    @Suppress("UnusedParameter") paddingPx: Int,
     color: Int,
 ) {
     div({

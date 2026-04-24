@@ -19,6 +19,5 @@ class GlyphsTests {
             val glyph = gv.getGlyphCode(i)
             usedGlyphs.add(glyph)
         }
-        val x = 1
     }
 }

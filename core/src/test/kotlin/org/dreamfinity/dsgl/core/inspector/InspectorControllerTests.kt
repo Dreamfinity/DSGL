@@ -9,7 +9,6 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
@@ -564,16 +563,6 @@ class InspectorControllerTests {
         ContainerNode(key = key).apply {
             bounds = Rect(x, y, width, height)
         }
-
-    private class RecordingClipboardAccess : ClipboardAccess {
-        var contents: String = ""
-
-        override fun readText(): String = contents
-
-        override fun writeText(value: String) {
-            contents = value
-        }
-    }
 
     private class RecordingInspectorColorPickerHost : InspectorColorPickerHost {
         var lastOpen: OpenCall? = null
