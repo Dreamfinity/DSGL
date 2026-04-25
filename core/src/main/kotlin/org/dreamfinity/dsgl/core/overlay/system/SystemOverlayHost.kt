@@ -76,7 +76,7 @@ class SystemOverlayHost(
 
     fun isOverlayPanelDemoOpen(): Boolean = overlayPanelDemoEntry.isOpen()
 
-    fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
+    override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         knownViewportWidth = viewportWidth.coerceAtLeast(1)
         knownViewportHeight = viewportHeight.coerceAtLeast(1)
         rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)

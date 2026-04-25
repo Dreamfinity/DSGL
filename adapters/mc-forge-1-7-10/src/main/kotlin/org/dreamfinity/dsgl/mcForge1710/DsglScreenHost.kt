@@ -31,6 +31,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorMode
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
+import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
@@ -748,7 +749,7 @@ abstract class DsglScreenHost(
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
             meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA),
         )
-        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        runOverlayInputFrame(systemOverlayHost)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
@@ -920,7 +921,7 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f,
         )
-        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        runOverlayInputFrame(systemOverlayHost)
         inspectorPointerCaptured = inspector.isPointerCaptured
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
@@ -931,6 +932,10 @@ abstract class DsglScreenHost(
         )
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         refreshActiveColorSamplerOwner(tree.root)
+    }
+
+    private fun runOverlayInputFrame(host: OverlayLayerHost) {
+        host.onInputFrame(lastWidth, lastHeight)
     }
 
     private fun consumeOverlayPointerPhase(inputEvent: MouseInputEvent): Boolean {

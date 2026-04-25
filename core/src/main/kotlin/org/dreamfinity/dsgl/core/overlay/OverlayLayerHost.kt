@@ -7,6 +7,8 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 interface OverlayLayerHost {
     val layerId: UiLayerId
 
+    fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {}
+
     fun render(ctx: UiMeasureContext, width: Int, height: Int)
 
     fun paint(ctx: UiMeasureContext): List<RenderCommand>
