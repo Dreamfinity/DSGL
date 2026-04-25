@@ -462,7 +462,7 @@ abstract class DsglScreenHost(
 
     private fun collectDebugOverlayCommands(): List<RenderCommand> =
         runCatching {
-            debugOverlayHost.render(lastWidth, lastHeight)
+            debugOverlayHost.render(adapter, lastWidth, lastHeight)
             debugOverlayHost.paint(adapter)
         }.getOrElse {
             emptyList()

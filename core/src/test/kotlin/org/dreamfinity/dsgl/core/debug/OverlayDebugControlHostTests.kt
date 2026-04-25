@@ -37,7 +37,7 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.systemOverlayInputEnabled = false
         val host = OverlayDebugControlHost()
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         val layout = host.debugLayout()
         val commands = host.paint(ctx)
 
@@ -56,7 +56,7 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.systemOverlayInputEnabled = false
         val host = OverlayDebugControlHost()
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
         assertTrue(host.handleMouseDown(layout.resetRect.x + 2, layout.resetRect.y + 2, MouseButton.LEFT))
 
@@ -72,7 +72,7 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.resetAll()
         val host = OverlayDebugControlHost()
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
 
         assertTrue(
@@ -104,7 +104,7 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.updateFrameTiming(0.025)
         val host = OverlayDebugControlHost()
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         host.paint(ctx)
         val commands = host.paint(ctx)
         val drawTexts =
@@ -135,7 +135,7 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.resetAll()
         val host = OverlayDebugControlHost()
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
         val initialText =
             host
@@ -153,7 +153,7 @@ class OverlayDebugControlHostTests {
             ),
         )
 
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         val updatedText =
             host
                 .paint(ctx)
@@ -179,11 +179,11 @@ class OverlayDebugControlHostTests {
     fun `controls visibility obeys debug-only toggle`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(false)
         val host = OverlayDebugControlHost()
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isEmpty())
 
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        host.render(960, 540)
+        host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isNotEmpty())
     }
 

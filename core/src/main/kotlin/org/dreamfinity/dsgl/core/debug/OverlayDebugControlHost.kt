@@ -15,6 +15,8 @@ import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
+import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -32,17 +34,19 @@ internal data class OverlayDebugControlLayout(
     val resetRect: Rect,
 )
 
+private data class OverlayDebugToggleSnapshot(
+    val applicationOverlayRenderEnabled: Boolean,
+    val applicationOverlayTintEnabled: Boolean,
+    val applicationOverlayInputEnabled: Boolean,
+    val systemOverlayRenderEnabled: Boolean,
+    val systemOverlayTintEnabled: Boolean,
+    val systemOverlayInputEnabled: Boolean,
+)
+
 class OverlayDebugControlHost(
     private val state: OverlayLayerDebugState = OverlayLayerDebugState,
-) {
-    private data class ToggleSnapshot(
-        val applicationOverlayRenderEnabled: Boolean,
-        val applicationOverlayTintEnabled: Boolean,
-        val applicationOverlayInputEnabled: Boolean,
-        val systemOverlayRenderEnabled: Boolean,
-        val systemOverlayTintEnabled: Boolean,
-        val systemOverlayInputEnabled: Boolean,
-    )
+) : OverlayLayerHost {
+    override val layerId: UiLayerId = UiLayerId.Debug
 
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1
@@ -53,23 +57,24 @@ class OverlayDebugControlHost(
             root = rootNode,
             styleScope = StyleApplicationScope.SystemOverlay,
         )
-    private var lastToggleSnapshot: ToggleSnapshot? = null
+    private var lastToggleSnapshot: OverlayDebugToggleSnapshot? = null
 
-    fun render(viewportWidth: Int, viewportHeight: Int) {
-        this.viewportWidth = viewportWidth.coerceAtLeast(1)
-        this.viewportHeight = viewportHeight.coerceAtLeast(1)
+    @Suppress("UnusedParameter")
+    override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
+        viewportWidth = width.coerceAtLeast(1)
+        viewportHeight = height.coerceAtLeast(1)
         if (!state.controlsEnabled) {
             layout = null
             lastToggleSnapshot = null
             return
         }
-        layout = buildLayout(this.viewportWidth, this.viewportHeight)
+        layout = buildLayout(viewportWidth, viewportHeight)
     }
 
-    fun paint(ctx: UiMeasureContext): List<RenderCommand> {
+    override fun paint(ctx: UiMeasureContext): List<RenderCommand> {
         val currentLayout = layout ?: return emptyList()
         val snapshot = state.snapshot()
-        val toggleSnapshot = snapshot.toggleSnapshot()
+        val toggleSnapshot = snapshot.toDebugToggleSnapshot()
         if (lastToggleSnapshot != toggleSnapshot) {
             tree.invalidateRenderCommandChunks()
             lastToggleSnapshot = toggleSnapshot
@@ -79,12 +84,12 @@ class OverlayDebugControlHost(
         return tree.paint(ctx, applyStyles = true)
     }
 
-    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
         val currentLayout = layout ?: return false
         return currentLayout.panelRect.contains(mouseX, mouseY)
     }
 
-    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val currentLayout = layout ?: return false
         if (!currentLayout.panelRect.contains(mouseX, mouseY)) {
             return false
@@ -124,22 +129,22 @@ class OverlayDebugControlHost(
         return true
     }
 
-    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val currentLayout = layout ?: return false
         if (button != MouseButton.LEFT) return false
         return currentLayout.panelRect.contains(mouseX, mouseY)
     }
 
-    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
         val currentLayout = layout ?: return false
         if (delta == 0) return false
         return currentLayout.panelRect.contains(mouseX, mouseY)
     }
 
     @Suppress("FunctionOnlyReturningConstant", "UnusedParameter")
-    fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
+    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
 
-    fun clearRefs() {
+    override fun clearRefs() {
         layout = null
         lastToggleSnapshot = null
         tree.clearRefs()
@@ -182,17 +187,17 @@ class OverlayDebugControlHost(
                 ),
         )
     }
-
-    private fun OverlayLayerDebugSnapshot.toggleSnapshot(): ToggleSnapshot =
-        ToggleSnapshot(
-            applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
-            applicationOverlayTintEnabled = applicationOverlayTintEnabled,
-            applicationOverlayInputEnabled = applicationOverlayInputEnabled,
-            systemOverlayRenderEnabled = systemOverlayRenderEnabled,
-            systemOverlayTintEnabled = systemOverlayTintEnabled,
-            systemOverlayInputEnabled = systemOverlayInputEnabled,
-        )
 }
+
+private fun OverlayLayerDebugSnapshot.toDebugToggleSnapshot(): OverlayDebugToggleSnapshot =
+    OverlayDebugToggleSnapshot(
+        applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
+        applicationOverlayTintEnabled = applicationOverlayTintEnabled,
+        applicationOverlayInputEnabled = applicationOverlayInputEnabled,
+        systemOverlayRenderEnabled = systemOverlayRenderEnabled,
+        systemOverlayTintEnabled = systemOverlayTintEnabled,
+        systemOverlayInputEnabled = systemOverlayInputEnabled,
+    )
 
 private class OverlayDebugControlRootNode(
     key: Any? = "dsgl-overlay-debug-root",
