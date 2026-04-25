@@ -26,21 +26,27 @@ fun formatEventLine(hookName: String, event: Event, note: String? = null): Strin
             is FocusLoseEvent -> "next=${event.nextTargetKey ?: "none"}"
             is InputEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
             is ValueChangedEvent -> "value=${event.value} parsed=${event.parsedValue ?: "null"}"
-            is DragStartEvent -> "source=${event.sourceKey ?: "none"} types=${event.dataTransfer.types.joinToString(
-                ",",
-            )}"
+            is DragStartEvent ->
+                "source=${event.sourceKey ?: "none"} types=${
+                    event.dataTransfer.types.joinToString(
+                        ",",
+                    )
+                }"
+
             is DragEvent -> {
                 val effect =
                     event.dataTransfer.dropEffect.name
                         .lowercase()
                 "source=${event.sourceKey ?: "none"} effect=$effect"
             }
+
             is DragEndEvent -> {
                 val effect =
                     event.finalDropEffect.name
                         .lowercase()
                 "drop=${event.didDrop} effect=$effect target=${event.dropTargetKey ?: "none"}"
             }
+
             is DragEnterEvent -> "source=${event.sourceKey ?: "none"}"
             is DragOverEvent -> {
                 val effect =
@@ -49,13 +55,19 @@ fun formatEventLine(hookName: String, event: Event, note: String? = null): Strin
                 val accepted = event.dropAccepted || event.cancelled
                 "source=${event.sourceKey ?: "none"} effect=$effect accepted=$accepted"
             }
+
             is DragLeaveEvent -> "source=${event.sourceKey ?: "none"}"
             is DropEvent -> "source=${event.sourceKey ?: "none"} types=${event.dataTransfer.types.joinToString(",")}"
             else -> ""
         }
     val notePart = if (note.isNullOrBlank()) "" else " note=$note"
     val raw =
-        "$hookName ${event.type.name} target=$targetKey $coords $payload shift=${KeyModifiers.shiftDown} ctrl=${KeyModifiers.controlDown} meta=${KeyModifiers.metaDown} shortcut=${KeyModifiers.shortcutDown}$notePart"
+        "$hookName ${event.type.name} " +
+            "target=$targetKey $coords $payload " +
+            "shift=${KeyModifiers.shiftDown} " +
+            "ctrl=${KeyModifiers.controlDown} " +
+            "meta=${KeyModifiers.metaDown} " +
+            "shortcut=${KeyModifiers.shortcutDown}$notePart"
     return truncateForPanel(raw, 118)
 }
 

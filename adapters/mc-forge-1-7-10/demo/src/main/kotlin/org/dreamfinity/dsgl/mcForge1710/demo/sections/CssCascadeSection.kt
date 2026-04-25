@@ -50,7 +50,8 @@ fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> 
         }
     }) {
         text(
-            "CSS-like cascade demo: descendant/child/sibling selectors, specificity, source order, !important, inheritance.",
+            "CSS-like cascade demo: descendant/child/sibling selectors, specificity, " +
+                "source order, !important, inheritance.",
         )
         text(
             "Use the controls to toggle classes, swap siblings, and insert/remove items.",

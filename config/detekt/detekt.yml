@@ -641,6 +641,8 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 120
+    excludes:
+      - "**/test/**"
     excludePackageStatements: true
     excludeImportStatements: true
     excludeCommentStatements: true

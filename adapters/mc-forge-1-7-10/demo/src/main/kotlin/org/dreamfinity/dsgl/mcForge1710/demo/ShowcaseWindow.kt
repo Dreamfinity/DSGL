@@ -124,7 +124,9 @@ class ShowcaseWindow : DsglWindow() {
                 }) {
                     text("DSGL Showcase Window", { style = { color = DsglColors.WHITE } })
                     text(
-                        "renderPasses=$renderPasses section=${selectedSection.title} viewport=${viewportWidth}x$viewportHeight",
+                        "renderPasses=$renderPasses " +
+                            "section=${selectedSection.title} " +
+                            "viewport=${viewportWidth}x$viewportHeight",
                         {
                             style = {
                                 color = DEMO_MUTED

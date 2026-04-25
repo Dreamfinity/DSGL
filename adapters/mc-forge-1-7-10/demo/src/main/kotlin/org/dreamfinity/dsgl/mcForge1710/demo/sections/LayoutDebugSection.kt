@@ -62,7 +62,8 @@ fun UiScope.layoutDebugSection(onClearLogs: () -> Unit, onInfo: (String) -> Unit
             })
         }
         text(
-            "validatorViolations=${LayoutDebug.lastViolationCount} strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}",
+            "validatorViolations=${LayoutDebug.lastViolationCount} " +
+                "strict=${LayoutDebug.strictBounds} draw=${LayoutDebug.drawBounds}",
             { style = { color = DEMO_MUTED } },
         )
 

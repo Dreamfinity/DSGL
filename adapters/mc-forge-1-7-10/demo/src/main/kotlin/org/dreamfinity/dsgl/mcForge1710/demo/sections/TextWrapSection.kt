@@ -1,18 +1,17 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.style.TextWrap
+import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 private const val WRAP_SAMPLE_TEXT =
     "This sentence demonstrates style.textWrap on text and button labels inside a fixed-width panel."
 private const val WRAP_SAMPLE_WORD = "long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 private const val WRAP_TEXTAREA_SAMPLE =
-    "Textarea sample: long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ\nSecond line with spaces for normal wrapping."
+    "Textarea sample: long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ\n" +
+        "Second line with spaces for normal wrapping."
 
 fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
     val minWidth = 96

@@ -1,12 +1,9 @@
 package org.dreamfinity.dsgl.core.contextmenu
 
-import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.dom.layout.Size
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.dom.layout.*
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.*
 
 class ContextMenuEngine(
     private val clock: ContextMenuClock = SystemContextMenuClock,
@@ -220,30 +217,32 @@ class ContextMenuEngine(
                     )
                 val isHovered = index == level.hoveredIndex
                 val isSelected = index == level.selectedIndex
-                if (isHovered) {
-                    out +=
-                        RenderCommand.DrawRect(
-                            itemRect.x,
-                            itemRect.y,
-                            itemRect.width,
-                            itemRect.height,
-                            style.itemHoverBackgroundColor,
-                        )
-                } else if (isSelected) {
-                    out +=
-                        RenderCommand.DrawRect(
-                            itemRect.x,
-                            itemRect.y,
-                            itemRect.width,
-                            itemRect.height,
-                            style.itemSelectedBackgroundColor,
-                        )
-                }
+                val nextCommand =
+                    when {
+                        isHovered ->
+                            RenderCommand.DrawRect(
+                                itemRect.x,
+                                itemRect.y,
+                                itemRect.width,
+                                itemRect.height,
+                                style.itemHoverBackgroundColor,
+                            )
 
+                        isSelected ->
+                            RenderCommand.DrawRect(
+                                itemRect.x,
+                                itemRect.y,
+                                itemRect.width,
+                                itemRect.height,
+                                style.itemSelectedBackgroundColor,
+                            )
+
+                        else -> null
+                    }
+                nextCommand?.let { out += it }
                 val textY = itemRect.y + ((itemRect.height - fontHeight).coerceAtLeast(0) / 2)
                 val baseX = itemRect.x + style.rowPaddingX
-                val indicatorX = baseX
-                val labelX = indicatorX + measurement.indicatorWidth + style.contentSpacing
+                val labelX = baseX + measurement.indicatorWidth + style.contentSpacing
                 val textColor = if (snapshot.enabled) style.itemTextColor else style.disabledTextColor
 
                 val indicatorText =
@@ -257,7 +256,7 @@ class ContextMenuEngine(
                     out +=
                         RenderCommand.DrawText(
                             text = indicatorText,
-                            x = indicatorX,
+                            x = baseX,
                             y = textY,
                             color = indicatorColor,
                             fontId = fontId,
@@ -279,6 +278,7 @@ class ContextMenuEngine(
                     when {
                         snapshot.kind == ContextMenuMeasurementCache.KIND_SUBMENU &&
                             snapshot.hint.isNullOrEmpty() -> ContextMenuGlyphs.SUBMENU_ARROW
+
                         else -> snapshot.hint
                     }
                 if (!hintText.isNullOrEmpty()) {

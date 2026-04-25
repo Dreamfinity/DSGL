@@ -531,18 +531,21 @@ fun UiScope.dragNDropSection(
     }) {
         text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
         text(
-            "active=${state.activeItem} mode=${monitor.mode?.name ?: "none"} effect=${state.dropEffect} hover=${state.hoverZone}",
+            "active=${state.activeItem} mode=${monitor.mode?.name ?: "none"} " +
+                "effect=${state.dropEffect} hover=${state.hoverZone}",
             { style = { color = DEMO_MUTED } },
         )
         text("types=${state.transferTypes} dragTicks=${state.dragTickCount} action=${state.lastAction}", {
             style = { color = DEMO_MUTED }
         })
         text(
-            "debug active=${monitor.sourceKey ?: "none"} over=${state.debugOverId} container=${state.debugOverContainerId}",
+            "debug active=${monitor.sourceKey ?: "none"} over=${state.debugOverId} " +
+                "container=${state.debugOverContainerId}",
             { style = { color = DEMO_MUTED } },
         )
         text(
-            "candidates=${state.debugCandidatesCount} insert=${state.debugInsertPosition} excludeActive=${state.debugExcludesActiveCard}",
+            "candidates=${state.debugCandidatesCount} insert=${state.debugInsertPosition} " +
+                "excludeActive=${state.debugExcludesActiveCard}",
             { style = { color = DEMO_MUTED } },
         )
         div({

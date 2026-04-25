@@ -132,7 +132,9 @@ fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Ev
         }) {
             text("Move, click, drag and wheel here")
             text(
-                "E$mouseEnterCount L$mouseLeaveCount O$mouseOverCount M$mouseMoveCount D$mouseDownCount/$mouseUpCount C$mouseClickCount G$mouseDragCount W$mouseWheelCount",
+                "E$mouseEnterCount L$mouseLeaveCount O$mouseOverCount M$mouseMoveCount " +
+                    "D$mouseDownCount/$mouseUpCount C$mouseClickCount G$mouseDragCount " +
+                    "W$mouseWheelCount",
                 { style = { color = DEMO_MUTED } },
             )
         }
@@ -176,7 +178,8 @@ fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Ev
         }
 
         text(
-            "Key counters: down=$keyDownCount up=$keyUpCount pressed=$keyPressedCount released=$keyReleasedCount enter=$enterActionCount",
+            "Key counters: down=$keyDownCount up=$keyUpCount pressed=$keyPressedCount " +
+                "released=$keyReleasedCount enter=$enterActionCount",
             { style = { color = DEMO_MUTED } },
         )
 

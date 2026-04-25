@@ -262,7 +262,10 @@ private fun UiScope.overflowDemoCard(
         text(title)
         text(note, { style = { color = DEMO_MUTED } })
         text(
-            "viewport=${viewportWidth}x$viewportHeight content=${contentWidth}x$contentHeight overflow-x=${overflowX.label()} overflow-y=${overflowY.label()}",
+            "viewport=${viewportWidth}x$viewportHeight " +
+                "content=${contentWidth}x$contentHeight " +
+                "overflow-x=${overflowX.label()} " +
+                "overflow-y=${overflowY.label()}",
             { style = { color = DEMO_MUTED } },
         )
 

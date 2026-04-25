@@ -552,7 +552,8 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
             }
         }) {
             text(
-                "H. Sticky: in-flow slot + visual stick with per-axis nearest scroll container and direct-parent clamp.",
+                "H. Sticky: in-flow slot + visual stick with per-axis nearest scroll " +
+                    "container and direct-parent clamp.",
             )
             text(
                 "Inspector target key: positioned.sticky.xy.target",

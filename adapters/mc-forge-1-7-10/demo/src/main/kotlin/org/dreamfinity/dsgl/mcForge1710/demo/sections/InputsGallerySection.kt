@@ -405,7 +405,8 @@ fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrol
             }
         }
         text(
-            "Select state: basic=${selectBasicValue ?: "-"} many=${selectManyValue ?: "-"} dynamic=${selectDynamicValue ?: "-"}",
+            "Select state: basic=${selectBasicValue ?: "-"} many=${selectManyValue ?: "-"} " +
+                "dynamic=${selectDynamicValue ?: "-"}",
             { style = { color = DEMO_MUTED } },
         )
 
