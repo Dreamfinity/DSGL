@@ -1,0 +1,207 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AnimationsSection.kt$fun UiScope.animationsSection(onInfo: (String) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:CapabilityChecklistCatalog.kt$CapabilityChecklistCatalog$fun capabilitiesForSection(section: DemoSection): Set&lt;CapabilityId></ID>
+    <ID>CyclomaticComplexMethod:ContextMenuSection.kt$fun UiScope.contextMenuSection(onInfo: (String) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:CssCascadeSection.kt$fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:DragDropSection.kt$fun UiScope.dragNDropSection( onInfo: (String) -> Unit, onClearLogs: () -> Unit, onLogHook: (String, Event, String?) -> Unit, )</ID>
+    <ID>CyclomaticComplexMethod:EventFormatting.kt$fun formatEventLine(hookName: String, event: Event, note: String? = null): String</ID>
+    <ID>CyclomaticComplexMethod:InputsGallerySection.kt$fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrollDemoTextChange: (String) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:InteractionsSection.kt$fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:LayoutStyleSection.kt$fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:McFeaturesSection.kt$fun UiScope.mcFeaturesSection(props: McFeaturesSection)</ID>
+    <ID>CyclomaticComplexMethod:ShowcaseWindow.kt$ShowcaseWindow$override fun render(): DomTree</ID>
+    <ID>LargeClass:ShowcaseWindow.kt$ShowcaseWindow : DsglWindow</ID>
+    <ID>LongMethod:AnimationsSection.kt$fun UiScope.animationsSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:CapabilityChecklistCatalog.kt$CapabilityChecklistCatalog$fun capabilitiesForSection(section: DemoSection): Set&lt;CapabilityId></ID>
+    <ID>LongMethod:ColorPickerSection.kt$fun UiScope.colorPickerSection()</ID>
+    <ID>LongMethod:ContextMenuSection.kt$fun UiScope.contextMenuEntryTile(file: ContextMenuDemoFile)</ID>
+    <ID>LongMethod:ContextMenuSection.kt$fun UiScope.contextMenuSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:CssCascadeSection.kt$fun UiScope.cssCascadeCombinatorsSection(onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:DisplaySection.kt$fun UiScope.displaySection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:DragDropSection.kt$fun UiScope.dragNDropSection( onInfo: (String) -> Unit, onClearLogs: () -> Unit, onLogHook: (String, Event, String?) -> Unit, )</ID>
+    <ID>LongMethod:DragDropSection.kt$private fun UiScope.originalModeReorder( state: DndSectionState, sourceKey: Any?, onStart: (DndDemoItem, DragStartEvent) -> Unit, onDrag: (DragEvent) -> Unit, onEnd: (DragEndEvent) -> Unit, onLaneOver: (DragOverEvent) -> Unit, onLaneLeave: () -> Unit, onLaneDrop: (DropEvent) -> Unit, onCardOver: (String, Boolean, DragOverEvent) -> Unit, onCardDrop: (String, Boolean, DropEvent) -> Unit, laneIndicatorForCard: (String, Any?) -> DndLaneIndicator, shouldShowLaneAppendGap: (Any?) -> Boolean, )</ID>
+    <ID>LongMethod:FocusRebuildSection.kt$fun UiScope.focusRebuildSection( renderPasses: Int, onManualInvalidate: (String) -> Unit, onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit, )</ID>
+    <ID>LongMethod:HooksSection.kt$private fun UiScope.overviewUseRef(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:InputEventsSection.kt$fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:InputsGallerySection.kt$fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrollDemoTextChange: (String) -> Unit)</ID>
+    <ID>LongMethod:InspectorSection.kt$fun UiScope.inspectorSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:InteractionsSection.kt$fun UiScope.interactionsSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:LayoutDebugSection.kt$fun UiScope.layoutDebugSection(onClearLogs: () -> Unit, onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:LayoutStyleSection.kt$fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:McFeaturesSection.kt$fun UiScope.mcFeaturesSection(props: McFeaturesSection)</ID>
+    <ID>LongMethod:MsdfFontsSection.kt$fun UiScope.msdfFontsSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:OverflowScrollSection.kt$fun UiScope.overflowScrollSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongMethod:OverflowScrollSection.kt$private fun UiScope.overflowDemoCard( title: String, note: String, viewportWidth: Int, viewportHeight: Int, contentWidth: Int, contentHeight: Int, overflowX: Overflow, overflowY: Overflow, keyPrefix: String, onVisibleClick: () -> Unit, onEdgeClick: () -> Unit, )</ID>
+    <ID>LongMethod:PositionedLayoutSection.kt$fun UiScope.positionedLayoutSection(viewportWidthPx: Int)</ID>
+    <ID>LongMethod:PositionedLayoutSection.kt$private fun UiScope.controls(props: ControlsProps)</ID>
+    <ID>LongMethod:PositionedLayoutSection.kt$private fun UiScope.stickyHorizontalGroup()</ID>
+    <ID>LongMethod:PositionedLayoutSection.kt$private fun UiScope.stickyVerticalGroup( onSetLastHover: (String) -> Unit, onSetLastClick: (String) -> Unit, stickyTopClicks: Int, onStickyTopClick: () -> Unit, )</ID>
+    <ID>LongMethod:ShowcaseWindow.kt$ShowcaseWindow$override fun render(): DomTree</ID>
+    <ID>LongMethod:ShowcaseWindow.kt$ShowcaseWindow$private fun prepareCascadeStylesheet()</ID>
+    <ID>LongMethod:ShowcaseWindow.kt$ShowcaseWindow$private fun prepareDemoStylesheet()</ID>
+    <ID>LongMethod:StylesheetsSection.kt$fun UiScope.stylesheetsSection( onLogHook: (String, Event, String?) -> Unit, onInfo: (String) -> Unit, loadStylesheetText: () -> String, saveStylesheetText: (String) -> Unit, onReloadStylesheets: () -> Unit, )</ID>
+    <ID>LongMethod:TextEditingSection.kt$fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit)</ID>
+    <ID>LongMethod:TextWrapSection.kt$fun UiScope.textWrapSection(onInfo: (String) -> Unit)</ID>
+    <ID>LongParameterList:DragDropSection.kt$( state: DndSectionState, boxKey: Any, title: String, boxId: String, color: Int, cards: List&lt;DndDemoItem>, onStart: (DndDemoItem, DragStartEvent) -> Unit, onDrag: (DragEvent) -> Unit, onEnd: (DragEndEvent) -> Unit, onBoxOver: (String, DragOverEvent) -> Unit, onBoxDrop: (String, DropEvent) -> Unit, onHoverZone: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit, )</ID>
+    <ID>LongParameterList:DragDropSection.kt$( state: DndSectionState, sourceKey: Any?, onStart: (DndDemoItem, DragStartEvent) -> Unit, onDrag: (DragEvent) -> Unit, onEnd: (DragEndEvent) -> Unit, onLaneOver: (DragOverEvent) -> Unit, onLaneLeave: () -> Unit, onLaneDrop: (DropEvent) -> Unit, onCardOver: (String, Boolean, DragOverEvent) -> Unit, onCardDrop: (String, Boolean, DropEvent) -> Unit, laneIndicatorForCard: (String, Any?) -> DndLaneIndicator, shouldShowLaneAppendGap: (Any?) -> Boolean, )</ID>
+    <ID>LongParameterList:OverflowScrollSection.kt$( title: String, note: String, viewportWidth: Int, viewportHeight: Int, contentWidth: Int, contentHeight: Int, overflowX: Overflow, overflowY: Overflow, keyPrefix: String, onVisibleClick: () -> Unit, onEdgeClick: () -> Unit, )</ID>
+    <ID>MagicNumber:AnimationsSection.kt$0.5f</ID>
+    <ID>MagicNumber:AnimationsSection.kt$0.65f</ID>
+    <ID>MagicNumber:AnimationsSection.kt$1.08f</ID>
+    <ID>MagicNumber:AnimationsSection.kt$12f</ID>
+    <ID>MagicNumber:AnimationsSection.kt$1400L</ID>
+    <ID>MagicNumber:AnimationsSection.kt$17L</ID>
+    <ID>MagicNumber:AnimationsSection.kt$200</ID>
+    <ID>MagicNumber:AnimationsSection.kt$20f</ID>
+    <ID>MagicNumber:AnimationsSection.kt$220</ID>
+    <ID>MagicNumber:AnimationsSection.kt$260</ID>
+    <ID>MagicNumber:AnimationsSection.kt$6000</ID>
+    <ID>MagicNumber:AnimationsSection.kt$67L</ID>
+    <ID>MagicNumber:AnimationsSection.kt$83L</ID>
+    <ID>MagicNumber:AnimationsSection.kt$8f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.19f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.28f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.29f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.31f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.41f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.45f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.46f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.52f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.73f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.82f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.88f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.8f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.91f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.96f</ID>
+    <ID>MagicNumber:ColorPickerSection.kt$0.9f</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$0x66000000</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$11L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$12L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$13L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$14L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$15L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$17L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$18</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$18L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$19</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$24</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$5</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$5L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$6</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$6L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$7</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$7L</ID>
+    <ID>MagicNumber:ContextMenuSection.kt$9L</ID>
+    <ID>MagicNumber:DisplaySection.kt$0x00040401</ID>
+    <ID>MagicNumber:DisplaySection.kt$0x000A0A00</ID>
+    <ID>MagicNumber:DisplaySection.kt$0xFF3A4B60</ID>
+    <ID>MagicNumber:DisplaySection.kt$0xFF3D5873</ID>
+    <ID>MagicNumber:DisplaySection.kt$132L</ID>
+    <ID>MagicNumber:DisplaySection.kt$14</ID>
+    <ID>MagicNumber:DisplaySection.kt$20</ID>
+    <ID>MagicNumber:DisplaySection.kt$26</ID>
+    <ID>MagicNumber:DisplaySection.kt$320</ID>
+    <ID>MagicNumber:DisplaySection.kt$6</ID>
+    <ID>MagicNumber:DisplaySection.kt$96</ID>
+    <ID>MagicNumber:DragDropSection.kt$0x2219222B</ID>
+    <ID>MagicNumber:DragDropSection.kt$0x2A9EC4E3</ID>
+    <ID>MagicNumber:DragDropSection.kt$0x44333F4D</ID>
+    <ID>MagicNumber:DragDropSection.kt$0x44405058</ID>
+    <ID>MagicNumber:DragDropSection.kt$0x553A4452</ID>
+    <ID>MagicNumber:DragDropSection.kt$0xFF</ID>
+    <ID>MagicNumber:DragDropSection.kt$12</ID>
+    <ID>MagicNumber:DragDropSection.kt$24</ID>
+    <ID>MagicNumber:DragDropSection.kt$4.0</ID>
+    <ID>MagicNumber:DragDropSection.kt$5</ID>
+    <ID>MagicNumber:DragDropSection.kt$96.0</ID>
+    <ID>MagicNumber:DragNDropWindow.kt$32</ID>
+    <ID>MagicNumber:EventFormatting.kt$118</ID>
+    <ID>MagicNumber:EventFormatting.kt$32</ID>
+    <ID>MagicNumber:FocusRebuildSection.kt$127</ID>
+    <ID>MagicNumber:HooksSection.kt$10007</ID>
+    <ID>MagicNumber:HooksSection.kt$5</ID>
+    <ID>MagicNumber:HooksSection.kt$5000</ID>
+    <ID>MagicNumber:InputEventsSection.kt$35L</ID>
+    <ID>MagicNumber:InputsGallerySection.kt$35L</ID>
+    <ID>MagicNumber:InputsGallerySection.kt$9</ID>
+    <ID>MagicNumber:InspectorSection.kt$0x22496699</ID>
+    <ID>MagicNumber:InspectorSection.kt$0x3338424F</ID>
+    <ID>MagicNumber:InspectorSection.kt$0x665A9CE0</ID>
+    <ID>MagicNumber:InspectorSection.kt$6</ID>
+    <ID>MagicNumber:InteractionsSection.kt$6</ID>
+    <ID>MagicNumber:LayoutDebugSection.kt$148L</ID>
+    <ID>MagicNumber:LayoutDebugSection.kt$320</ID>
+    <ID>MagicNumber:LayoutDebugSection.kt$96</ID>
+    <ID>MagicNumber:LayoutStyleSection.kt$148</ID>
+    <ID>MagicNumber:LayoutStyleSection.kt$24</ID>
+    <ID>MagicNumber:LayoutStyleSection.kt$26</ID>
+    <ID>MagicNumber:LayoutStyleSection.kt$92</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$11.0</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$160.0</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$18</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$20</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$360.0</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$360L</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$5f</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$89.0</ID>
+    <ID>MagicNumber:McFeaturesSection.kt$89L</ID>
+    <ID>MagicNumber:MsdfFontsSection.kt$15L</ID>
+    <ID>MagicNumber:MsdfFontsSection.kt$48</ID>
+    <ID>MagicNumber:MsdfFontsSection.kt$6</ID>
+    <ID>MagicNumber:MsdfFontsSection.kt$9L</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$118L</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$126L</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$132L</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$180</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$260</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$420</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$48</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$56</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$60</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$76L</ID>
+    <ID>MagicNumber:OverflowScrollSection.kt$88</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$100</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$104</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$112</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$12</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$14</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$14L</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$18</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$18L</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$236</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$24</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$24L</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$26L</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$28</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$40</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$5</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$58</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$6</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$7</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$72</ID>
+    <ID>MagicNumber:PositionedLayoutSection.kt$999</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$0.35f</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$1.08f</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$12</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$13</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$14</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$15</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$17</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$18</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$180f</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$360f</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$40</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$5</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$50f</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$7</ID>
+    <ID>MagicNumber:ShowcaseWindow.kt$ShowcaseWindow$9</ID>
+    <ID>MagicNumber:TextWrapSection.kt$176L</ID>
+    <ID>MagicNumber:TextWrapSection.kt$320</ID>
+    <ID>MagicNumber:TextWrapSection.kt$96</ID>
+    <ID>ReturnCount:ContextMenuSection.kt$fun contextMenuCanDropIntoDirectory(entryId: String, destinationDirectoryId: String): Boolean</ID>
+    <ID>TooManyFunctions:ShowcaseWindow.kt$ShowcaseWindow : DsglWindow</ID>
+  </CurrentIssues>
+</SmellBaseline>

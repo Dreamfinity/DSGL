@@ -1,7 +1,7 @@
 #!/bin/sh
-# Runs ktlintFormat on staged Kotlin files before commit.
-# Auto-correctable violations are fixed and re-staged automatically.
-# Non-auto-correctable violations abort the commit.
+# Runs ktlintFormat and detektAll on staged Kotlin files before commit.
+# ktlint auto-correctable violations are fixed and re-staged automatically.
+# Non-auto-correctable ktlint violations or detekt violations abort the commit.
 
 exec 1>&2
 
@@ -29,4 +29,18 @@ if [ $STATUS -ne 0 ]; then
 fi
 
 echo "[pre-commit] ktlintFormat passed."
+
+echo "[pre-commit] Running detektAll..."
+
+./gradlew detektAll
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo ""
+    echo "[pre-commit] detektAll found violations."
+    echo "[pre-commit] Fix them manually or update the baseline, then re-run git commit."
+    exit 1
+fi
+
+echo "[pre-commit] detektAll passed."
 exit 0
