@@ -2,8 +2,8 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerPopupMount
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerPopupOverlayNode
-import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerTransientOverlayNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
@@ -364,21 +364,13 @@ class SystemOverlayHost(
                 order = 200,
                 lane = SystemOverlayLane.PanelContent,
             )
-        private val ownerToken: Any = Any()
-        private val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-        private val overlayPanel: OverlayPanel =
-            OverlayPanel(
+        private val popupMount: ColorPickerPopupMount =
+            ColorPickerPopupMount(
                 ownerId = state.id,
                 panelState = state.panelState,
                 dragSession = state.dragSession,
             )
-        override val node: ColorPickerPopupOverlayNode =
-            ColorPickerPopupOverlayNode(
-                popupEngine = popupEngine,
-                overlayPanel = overlayPanel,
-            )
-        private val transientNode: ColorPickerTransientOverlayNode =
-            ColorPickerTransientOverlayNode(popupEngine = popupEngine)
+        override val node: ColorPickerPopupOverlayNode = popupMount.node
         private var draggable: Boolean = true
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
@@ -387,39 +379,39 @@ class SystemOverlayHost(
 
         override fun sync(frame: SystemOverlayFrameContext) {
             node.updateCursor(frame.cursorX, frame.cursorY)
-            state.active = popupEngine.isOpenFor(ownerToken)
+            state.active = popupMount.popupEngine.isOpenFor(popupMount.ownerToken)
             if (!state.active) {
                 state.panelState.hide()
                 state.dragSession.end()
                 return
             }
-            overlayPanel.configure(
-                title = popupEngine.debugTitle(ownerToken) ?: "Color Picker",
+            popupMount.overlayPanel.configure(
+                title = popupMount.popupEngine.debugTitle(popupMount.ownerToken) ?: "Color Picker",
                 draggable = draggable,
                 style =
-                    popupEngine
-                        .debugStyle(ownerToken)
+                    popupMount.popupEngine
+                        .debugStyle(popupMount.ownerToken)
                         ?.let { toOverlayPanelStyle(it) }
                         ?: OverlayPanelStyle(),
                 onClose = ::close,
             )
-            val panelRect = popupEngine.debugPanelRect(ownerToken)
+            val panelRect = popupMount.popupEngine.debugPanelRect(popupMount.ownerToken)
             if (panelRect != null) {
-                overlayPanel.syncPanelRect(panelRect)
+                popupMount.overlayPanel.syncPanelRect(panelRect)
             } else {
                 state.panelState.show()
-                overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
+                popupMount.overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
             }
-            if (overlayPanel.handleMouseMove(
+            if (popupMount.overlayPanel.handleMouseMove(
                     mouseX = frame.cursorX,
                     mouseY = frame.cursorY,
                     viewportWidth = viewportWidth,
                     viewportHeight = viewportHeight,
                 ) { rect ->
-                    popupEngine.forcePanelRect(ownerToken, rect)
+                    popupMount.popupEngine.forcePanelRect(popupMount.ownerToken, rect)
                 }
             ) {
-                popupEngine.onCursorPosition(frame.cursorX, frame.cursorY)
+                popupMount.popupEngine.onCursorPosition(frame.cursorX, frame.cursorY)
             }
             node.syncInputFocusForDomEditing()
         }
@@ -427,60 +419,60 @@ class SystemOverlayHost(
         override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
             this.viewportWidth = viewportWidth
             this.viewportHeight = viewportHeight
-            popupEngine.onFrame(viewportWidth, viewportHeight)
+            popupMount.popupEngine.onFrame(viewportWidth, viewportHeight)
         }
 
         override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
             if (!state.active) return false
-            popupEngine.onCursorPosition(mouseX, mouseY)
-            if (overlayPanel.handleMouseMove(
+            popupMount.popupEngine.onCursorPosition(mouseX, mouseY)
+            if (popupMount.overlayPanel.handleMouseMove(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     viewportWidth = viewportWidth,
                     viewportHeight = viewportHeight,
                 ) { rect ->
-                    popupEngine.forcePanelRect(ownerToken, rect)
+                    popupMount.popupEngine.forcePanelRect(popupMount.ownerToken, rect)
                 }
             ) {
-                popupEngine.onCursorPosition(mouseX, mouseY)
+                popupMount.popupEngine.onCursorPosition(mouseX, mouseY)
                 return true
             }
-            return popupEngine.handleMouseMove(mouseX, mouseY)
+            return popupMount.popupEngine.handleMouseMove(mouseX, mouseY)
         }
 
         override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
+            if (popupMount.overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
                 return true
             }
-            if (popupEngine.shouldRouteSystemInputSlotMouseDownToDom(mouseX, mouseY, button)) {
-                return popupEngine.focusSystemInputSlotForDomEditing(mouseX, mouseY) { index ->
+            if (popupMount.popupEngine.shouldRouteSystemInputSlotMouseDownToDom(mouseX, mouseY, button)) {
+                return popupMount.popupEngine.focusSystemInputSlotForDomEditing(mouseX, mouseY) { index ->
                     node.focusInputSlot(index, mouseX, mouseY)
                 }
             }
-            return popupEngine.handleMouseDown(mouseX, mouseY, button)
+            return popupMount.popupEngine.handleMouseDown(mouseX, mouseY, button)
         }
 
         override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
-            if (overlayPanel.handleMouseUp(
+            if (popupMount.overlayPanel.handleMouseUp(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     button = button,
                     viewportWidth = viewportWidth,
                     viewportHeight = viewportHeight,
                 ) { rect ->
-                    popupEngine.forcePanelRect(ownerToken, rect)
+                    popupMount.popupEngine.forcePanelRect(popupMount.ownerToken, rect)
                 }
             ) {
                 return true
             }
-            return popupEngine.handleMouseUp(mouseX, mouseY, button)
+            return popupMount.popupEngine.handleMouseUp(mouseX, mouseY, button)
         }
 
         override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
             if (!state.active) return false
-            return popupEngine.handleMouseWheel(mouseX, mouseY, delta)
+            return popupMount.popupEngine.handleMouseWheel(mouseX, mouseY, delta)
         }
 
         override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
@@ -488,11 +480,11 @@ class SystemOverlayHost(
             if (shouldRouteSystemTextInputKeyDownToDom()) {
                 return false
             }
-            return popupEngine.handleKeyDown(keyCode, keyChar)
+            return popupMount.popupEngine.handleKeyDown(keyCode, keyChar)
         }
 
         private fun shouldRouteSystemTextInputKeyDownToDom(): Boolean {
-            if (popupEngine.debugOwnerScope(ownerToken) != OverlayOwnerScope.System) return false
+            if (popupMount.popupEngine.debugOwnerScope(popupMount.ownerToken) != OverlayOwnerScope.System) return false
             val focused = FocusManager.focusedNode() ?: return false
             if (focused !is SingleLineInputNode) return false
             val key = focused.key as? String ?: return false
@@ -513,9 +505,9 @@ class SystemOverlayHost(
             onClose: (() -> Unit)?,
         ) {
             this.draggable = draggable
-            popupEngine.open(
+            popupMount.popupEngine.open(
                 ColorPickerPopupRequest(
-                    owner = ownerToken,
+                    owner = popupMount.ownerToken,
                     ownerScope = OverlayOwnerScope.System,
                     anchorRect = anchorRect,
                     title = title,
@@ -533,34 +525,37 @@ class SystemOverlayHost(
         }
 
         override fun close() {
-            popupEngine.close(ownerToken)
+            popupMount.popupEngine.close(popupMount.ownerToken)
             state.dragSession.end()
             state.panelState.hide()
             state.active = false
         }
 
-        override fun isOpen(): Boolean = popupEngine.isOpenFor(ownerToken)
+        override fun isOpen(): Boolean = popupMount.popupEngine.isOpenFor(popupMount.ownerToken)
 
-        fun transientOverlayNode(): DOMNode = transientNode
+        fun transientOverlayNode(): DOMNode = popupMount.transientNode
 
         fun isTransientActive(): Boolean {
-            val controller = popupEngine.debugController(ownerToken) ?: return false
+            val controller = popupMount.popupEngine.debugController(popupMount.ownerToken) ?: return false
             return controller.viewModeDropdownOpen() || controller.isEyedropperActive()
         }
 
-        fun debugHeaderRect(): Rect? = overlayPanel.headerRect()
+        fun debugHeaderRect(): Rect? = popupMount.overlayPanel.headerRect()
 
-        fun debugCloseRect(): Rect? = overlayPanel.closeRect()
+        fun debugCloseRect(): Rect? = popupMount.overlayPanel.closeRect()
 
-        fun debugBodyLayout(): ColorPickerLayout? = popupEngine.debugBodyLayout(ownerToken)
+        fun debugBodyLayout(): ColorPickerLayout? = popupMount.popupEngine.debugBodyLayout(popupMount.ownerToken)
 
-        fun debugState(): ColorPickerState? = popupEngine.debugController(ownerToken)?.snapshot()
+        fun debugState(): ColorPickerState? =
+            popupMount.popupEngine
+                .debugController(popupMount.ownerToken)
+                ?.snapshot()
 
         fun captureEyedropperSample() {
-            popupEngine.captureEyedropperSample()
+            popupMount.popupEngine.captureEyedropperSample()
         }
 
-        fun debugOwnerScope(): OverlayOwnerScope? = popupEngine.debugOwnerScope(ownerToken)
+        fun debugOwnerScope(): OverlayOwnerScope? = popupMount.popupEngine.debugOwnerScope(popupMount.ownerToken)
     }
 
     private class ColorPickerTransientOverlayEntry(
