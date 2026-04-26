@@ -90,14 +90,6 @@ internal class SystemColorPickerPopupBodyNode(
                 .also { node -> configureInputValueNode(index, node) }
         }
 
-    private val recentSwatchNodes: List<ColorSwatchSurfaceNode> =
-        (0 until RECENT_SWATCH_COUNT).map { index ->
-            scope.colorSwatch({
-                allowEmpty = true
-                this.key = "dsgl-system-color-picker-recent-$index"
-            })
-        }
-
     private var appliedStyle: ColorPickerStyle? = null
 
     fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
@@ -195,13 +187,6 @@ internal class SystemColorPickerPopupBodyNode(
         val hoverX: Int,
         val hoverY: Int,
         val modeDropdownOpen: Boolean,
-    )
-
-    private data class RecentSwatchRenderState(
-        val layout: ColorPickerLayout,
-        val style: ColorPickerStyle,
-        val recentColors: List<RgbaColor>,
-        val hoveredRecent: Int,
     )
 
     private data class InputRowsRenderState(
@@ -460,32 +445,64 @@ internal class SystemColorPickerPopupBodyNode(
         hoverY: Int,
         recentColors: List<RgbaColor>,
     ) {
-        val renderState =
-            RecentSwatchRenderState(
-                layout = layout,
+        val hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) }
+        val recentSwatchNodes =
+            composeRecentSwatchNodes(
                 style = style,
                 recentColors = recentColors,
-                hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) },
+                hoveredRecent = hoveredRecent,
             )
         for (index in 0 until RECENT_SWATCH_COUNT) {
-            renderRecentSwatch(ctx, renderState, index)
+            renderRecentSwatch(ctx, layout, recentSwatchNodes, index)
         }
     }
 
-    private fun renderRecentSwatch(ctx: UiMeasureContext, state: RecentSwatchRenderState, index: Int) {
+    private fun composeRecentSwatchNodes(
+        style: ColorPickerStyle,
+        recentColors: List<RgbaColor>,
+        hoveredRecent: Int,
+    ): List<ColorSwatchSurfaceNode> {
+        removeRecentSwatchSectionNodes()
+        return buildList(RECENT_SWATCH_COUNT) {
+            for (index in 0 until RECENT_SWATCH_COUNT) {
+                val node =
+                    scope.colorSwatch({
+                        allowEmpty = true
+                        key = recentSwatchNodeKey(index)
+                        palette = style
+                        color = recentColors.getOrNull(index)
+                        highlighted = index == hoveredRecent
+                    })
+                add(node)
+            }
+        }
+    }
+
+    private fun removeRecentSwatchSectionNodes() {
+        val iterator = children.iterator()
+        while (iterator.hasNext()) {
+            val child = iterator.next()
+            val key = child.key as? String
+            val isRecentSwatchNode = key?.startsWith(RECENT_SWATCH_KEY_PREFIX) == true
+            if (isRecentSwatchNode) {
+                child.parent = null
+                iterator.remove()
+            }
+        }
+    }
+
+    private fun renderRecentSwatch(
+        ctx: UiMeasureContext,
+        layout: ColorPickerLayout,
+        recentSwatchNodes: List<ColorSwatchSurfaceNode>,
+        index: Int,
+    ) {
         val swatchNode = recentSwatchNodes[index]
-        val swatchRect =
-            state.layout.recentRects
-                .getOrNull(index)
+        val swatchRect = layout.recentRects.getOrNull(index)
         if (swatchRect == null) {
             renderNode(ctx, swatchNode, null)
             return
         }
-        swatchNode.bind(
-            style = state.style,
-            color = state.recentColors.getOrNull(index),
-            highlighted = index == state.hoveredRecent,
-        )
         renderNode(ctx, swatchNode, swatchRect)
     }
 
@@ -703,8 +720,11 @@ internal class SystemColorPickerPopupBodyNode(
     }
 
     private companion object {
-        const val MAX_INPUT_SLOTS: Int = 4
-        const val RECENT_SWATCH_COUNT: Int = 64
+        private const val MAX_INPUT_SLOTS: Int = 4
+        private const val RECENT_SWATCH_COUNT: Int = 64
+        private const val RECENT_SWATCH_KEY_PREFIX: String = "dsgl-system-color-picker-recent-"
+
+        private fun recentSwatchNodeKey(index: Int): String = "$RECENT_SWATCH_KEY_PREFIX$index"
     }
 }
 
