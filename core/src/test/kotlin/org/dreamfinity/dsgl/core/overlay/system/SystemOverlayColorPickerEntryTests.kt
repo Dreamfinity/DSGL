@@ -377,6 +377,71 @@ class SystemOverlayColorPickerEntryTests {
     }
 
     @Test
+    fun `system picker recent swatch click previews once without double apply`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        val initial = popupState()
+        val previews = ArrayList<RgbaColor>()
+
+        pickerHost.open(
+            anchorRect = Rect(80, 90, 20, 18),
+            title = "Popup",
+            state = initial,
+            onPreview = { previews += it },
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val field = layout.colorFieldRect
+        val startX = field.x + 2
+        val startY = field.y + 2
+        val endX = field.x + field.width - 2
+        val endY = field.y + field.height - 2
+
+        assertTrue(host.handleMouseDown(startX, startY, MouseButton.LEFT))
+        host.handleMouseMove(endX, endY)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = endX,
+            cursorY = endY,
+            inspectorPointerCaptured = false,
+        )
+        assertTrue(host.handleMouseUp(endX, endY, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = endX,
+            cursorY = endY,
+            inspectorPointerCaptured = false,
+        )
+
+        val stateAfterDrag = host.debugSystemColorPickerState() ?: error("state missing")
+        assertNotEquals(initial.color.toArgbInt(), stateAfterDrag.color.toArgbInt())
+        val previewCountBeforeRecentClick = previews.size
+
+        host.render(ctx, 1200, 800)
+        val recentRect =
+            host
+                .debugSystemColorPickerBodyLayout()
+                ?.recentRects
+                ?.getOrNull(1)
+                ?: error("recent swatch rect missing")
+        assertTrue(host.handleMouseDown(recentRect.x + 1, recentRect.y + 1, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(recentRect.x + 1, recentRect.y + 1, MouseButton.LEFT))
+        assertEquals(previewCountBeforeRecentClick + 1, previews.size)
+        assertEquals(
+            initial.color.toArgbInt(),
+            host
+                .debugSystemColorPickerState()
+                ?.color
+                ?.toArgbInt(),
+        )
+    }
+
+    @Test
     fun `system picker sync state updates current swatch without drag nudge`() {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()

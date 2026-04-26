@@ -476,6 +476,14 @@ internal class SystemColorPickerPopupBodyNode(
                         palette = style
                         color = recentColors.getOrNull(index)
                         highlighted = index == hoveredRecent
+                        onMouseDown = { event ->
+                            if (event.mouseButton == MouseButton.LEFT) {
+                                val controller = popupEngine.debugActiveController()
+                                controller?.semanticCancelInputEdit()
+                                controller?.semanticPreviewRecentSwatch(index)
+                                event.cancelled = true
+                            }
+                        }
                     })
                 add(node)
             }

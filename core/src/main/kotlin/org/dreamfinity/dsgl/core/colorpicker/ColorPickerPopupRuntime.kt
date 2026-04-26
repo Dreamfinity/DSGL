@@ -416,7 +416,9 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             current.layout.pasteRect
                 .contains(mouseX, mouseY) ||
             current.layout.pipetteRect
-                .contains(mouseX, mouseY)
+                .contains(mouseX, mouseY) ||
+            current.layout.recentRects
+                .any { rect -> rect.contains(mouseX, mouseY) }
     }
 
     fun focusSystemInputSlotForDomEditing(mouseX: Int, mouseY: Int, focusInputByIndex: (Int) -> Boolean): Boolean {
