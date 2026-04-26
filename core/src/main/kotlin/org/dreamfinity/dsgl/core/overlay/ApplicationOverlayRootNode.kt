@@ -31,6 +31,7 @@ class ApplicationOverlayRootNode(
     internal fun setViewportBounds(width: Int, height: Int) {
         viewportWidth = width.coerceAtLeast(0)
         viewportHeight = height.coerceAtLeast(0)
+        bounds = Rect(0, 0, viewportWidth, viewportHeight)
     }
 
     override fun measure(ctx: UiMeasureContext): Size {

@@ -766,6 +766,7 @@ abstract class DsglScreenHost(
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
             meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA),
         )
+        runOverlayInputFrame(applicationOverlayHost)
         runOverlayInputFrame(systemOverlayHost)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         val keyCode = Keyboard.getEventKey()
@@ -938,6 +939,7 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f,
         )
+        runOverlayInputFrame(applicationOverlayHost)
         runOverlayInputFrame(systemOverlayHost)
         inspectorPointerCaptured = inspector.isPointerCaptured
         systemOverlayHost.syncFrame(

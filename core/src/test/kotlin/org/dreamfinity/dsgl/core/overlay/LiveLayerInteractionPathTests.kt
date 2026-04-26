@@ -1,6 +1,8 @@
 package org.dreamfinity.dsgl.core.overlay
 
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -178,6 +180,40 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
+    fun `application overlay host dom bridge consumes mounted node and blocks app-root fallthrough`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(1280, 720)
+        var clicks = 0
+        ButtonNode("Overlay", key = "app-overlay-button")
+            .apply {
+                bounds = Rect(40, 44, 120, 24)
+                onClick { clicks += 1 }
+            }.applyParent(applicationOverlayRoot(applicationOverlayHost))
+
+        assertTrue(applicationOverlayHost.handleMouseDown(50, 50, MouseButton.LEFT))
+        assertTrue(applicationOverlayHost.handleMouseUp(50, 50, MouseButton.LEFT))
+        assertEquals(1, clicks)
+
+        val harness =
+            LiveLayerInputHarness(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button ->
+                    applicationOverlayHost.handleMouseDown(x, y, button)
+                },
+            )
+        var appRootReceived = false
+        val consumedBy =
+            harness.dispatchMouseDown(50, 50, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertFalse(appRootReceived)
+    }
+
+    @Test
     fun `rendered system overlay content is reachable through same live interaction path`() {
         val systemHost = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
@@ -245,5 +281,11 @@ class LiveLayerInteractionPathTests {
                     }
                 },
             )
+    }
+
+    private fun applicationOverlayRoot(host: ApplicationOverlayHost): DOMNode {
+        val field = ApplicationOverlayHost::class.java.getDeclaredField("rootNode")
+        field.isAccessible = true
+        return field.get(host) as DOMNode
     }
 }

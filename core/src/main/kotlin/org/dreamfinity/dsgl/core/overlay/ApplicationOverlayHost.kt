@@ -5,6 +5,7 @@ import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -18,6 +19,17 @@ class ApplicationOverlayHost : OverlayLayerHost {
             root = rootNode,
             styleScope = StyleApplicationScope.Application,
         )
+    private val domInputRouter: LayerDomInputRouter =
+        LayerDomInputRouter(
+            rootProvider = { rootNode },
+        )
+
+    override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
+        rootNode.setViewportBounds(
+            width = viewportWidth.coerceAtLeast(1),
+            height = viewportHeight.coerceAtLeast(1),
+        )
+    }
 
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         rootNode.setViewportBounds(width, height)
@@ -26,18 +38,22 @@ class ApplicationOverlayHost : OverlayLayerHost {
 
     override fun paint(ctx: UiMeasureContext): List<RenderCommand> = tree.paint(ctx, applyStyles = true)
 
-    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = false
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = domInputRouter.handleMouseMove(mouseX, mouseY)
 
-    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        domInputRouter.handleMouseDown(mouseX, mouseY, button)
 
-    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        domInputRouter.handleMouseUp(mouseX, mouseY, button)
 
-    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean = false
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
 
-    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
+    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = domInputRouter.handleKeyDown(keyCode, keyChar)
 
     override fun clearRefs() {
         tree.clearRefs()
+        domInputRouter.clear()
     }
 
     internal fun debugRootBounds(): Rect = rootNode.bounds
