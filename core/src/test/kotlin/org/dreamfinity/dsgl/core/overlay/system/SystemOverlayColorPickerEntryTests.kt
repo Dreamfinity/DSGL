@@ -348,6 +348,35 @@ class SystemOverlayColorPickerEntryTests {
     }
 
     @Test
+    fun `system picker current swatch click commits once without double apply`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        var commits = 0
+
+        pickerHost.open(
+            anchorRect = Rect(80, 90, 20, 18),
+            title = "Popup",
+            state =
+                ColorPickerState(
+                    color = RgbaColor(0.3f, 0.5f, 0.7f, 1f),
+                    previous = RgbaColor(0.1f, 0.2f, 0.3f, 1f),
+                    mode = ColorFormatMode.RGB,
+                    alphaEnabled = true,
+                    closeOnSelect = false,
+                ),
+            onCommit = { commits += 1 },
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
+
+        val currentSwatch = host.debugSystemColorPickerBodyLayout()?.currentSwatchRect ?: error("swatch rect missing")
+        assertTrue(host.handleMouseDown(currentSwatch.x + 2, currentSwatch.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(currentSwatch.x + 2, currentSwatch.y + 2, MouseButton.LEFT))
+        assertEquals(1, commits)
+    }
+
+    @Test
     fun `system picker sync state updates current swatch without drag nudge`() {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()

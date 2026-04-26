@@ -92,6 +92,10 @@ internal class SystemColorPickerPopupBodyNode(
 
     private var appliedStyle: ColorPickerStyle? = null
 
+    init {
+        bindSemanticBodyClickHandlers()
+    }
+
     fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
         val inputNode = inputValueNodes.getOrNull(index) ?: return false
         if (inputNode.display == Display.None) return false
@@ -545,6 +549,40 @@ internal class SystemColorPickerPopupBodyNode(
                         event.cancelled = true
                     }
                 }
+            }
+        }
+    }
+
+    private fun bindSemanticBodyClickHandlers() {
+        val left = MouseButton.LEFT
+        previousSwatchNode.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticPreviewPreviousSwatch()
+                event.cancelled = true
+            }
+        }
+        currentSwatchNode.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticCommitCurrentColor()
+                event.cancelled = true
+            }
+        }
+        copyButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticCopyCurrentColor()
+                event.cancelled = true
+            }
+        }
+        pasteButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticPasteFromClipboard()
+                event.cancelled = true
+            }
+        }
+        pipetteButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticBeginEyedropper()
+                event.cancelled = true
             }
         }
     }

@@ -374,6 +374,7 @@ class SystemOverlayHost(
         private var draggable: Boolean = true
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
+        private var domDelegatedBodyPressActive: Boolean = false
 
         override fun enablesDomInputFallbackRouting(): Boolean = true
 
@@ -383,6 +384,8 @@ class SystemOverlayHost(
             if (!state.active) {
                 state.panelState.hide()
                 state.dragSession.end()
+                node.resetDomInputRoutingReadiness()
+                domDelegatedBodyPressActive = false
                 return
             }
             popupMount.overlayPanel.configure(
@@ -424,6 +427,7 @@ class SystemOverlayHost(
 
         override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
             if (!state.active) return false
+            if (domDelegatedBodyPressActive) return false
             popupMount.popupEngine.onCursorPosition(mouseX, mouseY)
             if (popupMount.overlayPanel.handleMouseMove(
                     mouseX = mouseX,
@@ -442,6 +446,9 @@ class SystemOverlayHost(
 
         override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
+            if (button != MouseButton.LEFT) {
+                domDelegatedBodyPressActive = false
+            }
             if (popupMount.overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
                 return true
             }
@@ -450,11 +457,22 @@ class SystemOverlayHost(
                     node.focusInputSlot(index, mouseX, mouseY)
                 }
             }
+            if (
+                node.isDomInputRoutingReady() &&
+                popupMount.popupEngine.shouldRouteSystemBodyIntentMouseDownToDom(mouseX, mouseY, button)
+            ) {
+                domDelegatedBodyPressActive = true
+                return false
+            }
             return popupMount.popupEngine.handleMouseDown(mouseX, mouseY, button)
         }
 
         override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
             if (!state.active) return false
+            if (domDelegatedBodyPressActive && button == MouseButton.LEFT) {
+                domDelegatedBodyPressActive = false
+                return false
+            }
             if (popupMount.overlayPanel.handleMouseUp(
                     mouseX = mouseX,
                     mouseY = mouseY,
@@ -529,6 +547,8 @@ class SystemOverlayHost(
             state.dragSession.end()
             state.panelState.hide()
             state.active = false
+            node.resetDomInputRoutingReadiness()
+            domDelegatedBodyPressActive = false
         }
 
         override fun isOpen(): Boolean = popupMount.popupEngine.isOpenFor(popupMount.ownerToken)

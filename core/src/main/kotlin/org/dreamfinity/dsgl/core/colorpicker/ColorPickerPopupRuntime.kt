@@ -401,6 +401,24 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             .any { slot -> slot.inputRect.contains(mouseX, mouseY) }
     }
 
+    fun shouldRouteSystemBodyIntentMouseDownToDom(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val current = popup ?: return false
+        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        if (button != MouseButton.LEFT) return false
+        if (current.controller.isEyedropperActive()) return false
+        refreshLayout(current)
+        return current.layout.previousSwatchRect
+            .contains(mouseX, mouseY) ||
+            current.layout.currentSwatchRect
+                .contains(mouseX, mouseY) ||
+            current.layout.copyRect
+                .contains(mouseX, mouseY) ||
+            current.layout.pasteRect
+                .contains(mouseX, mouseY) ||
+            current.layout.pipetteRect
+                .contains(mouseX, mouseY)
+    }
+
     fun focusSystemInputSlotForDomEditing(mouseX: Int, mouseY: Int, focusInputByIndex: (Int) -> Boolean): Boolean {
         val current = popup ?: return false
         if (current.request.ownerScope != OverlayOwnerScope.System) return false

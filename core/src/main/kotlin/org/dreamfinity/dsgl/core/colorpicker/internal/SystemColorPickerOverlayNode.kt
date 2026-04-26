@@ -18,6 +18,7 @@ internal class ColorPickerPopupOverlayNode(
 
     private var cursorX: Int = 0
     private var cursorY: Int = 0
+    private var domInputRoutingReady: Boolean = false
 
     private val panelNode: DOMNode = overlayPanel.node().applyParent(this)
     private val bodyNode: ColorPickerPopupBodyNode =
@@ -32,6 +33,12 @@ internal class ColorPickerPopupOverlayNode(
 
     fun syncInputFocusForDomEditing() {
         bodyNode.syncFocusedInputForModeOrOrderChange()
+    }
+
+    fun isDomInputRoutingReady(): Boolean = domInputRoutingReady
+
+    fun resetDomInputRoutingReadiness() {
+        domInputRoutingReady = false
     }
 
     override fun measure(ctx: UiMeasureContext): Size =
@@ -50,6 +57,7 @@ internal class ColorPickerPopupOverlayNode(
 
         val panelRect = overlayPanel.panelRect()
         bodyNode.display = if (panelRect == null) Display.None else Display.Block
+        domInputRoutingReady = bodyNode.display == Display.Block
         panelNode.render(ctx, x, y, width, height)
     }
 }
