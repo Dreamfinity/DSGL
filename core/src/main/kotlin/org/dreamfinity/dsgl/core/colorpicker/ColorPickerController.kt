@@ -175,23 +175,20 @@ class ColorPickerController(
     internal fun handleDomInputDraft(key: String, value: String): Boolean {
         domFocusedInputKey = key
         domLastFocusedInputKey = key
-        return applyInputDraftValue(key, value)
+        return semanticApplyInputDraftValue(key, value)
     }
 
     internal fun commitDomInputEdit(key: String, value: String): Boolean {
         domFocusedInputKey = key
         domLastFocusedInputKey = key
-        val applied = applyInputDraftValue(key, value)
-        commitCurrentColor()
-        clearInputEdit()
-        return applied
+        return semanticCommitInputEdit(key, value)
     }
 
     internal fun cancelDomInputEdit(key: String) {
         if (domFocusedInputKey == key) {
             domFocusedInputKey = null
         }
-        clearInputEdit()
+        semanticCancelInputEdit()
     }
 
     internal fun resolveDomInputValue(key: String): String = inputValues()[key].orEmpty()
@@ -202,6 +199,110 @@ class ColorPickerController(
         val key = domPendingFocusResyncKey
         domPendingFocusResyncKey = null
         return key
+    }
+
+    internal fun semanticSetMode(mode: ColorFormatMode) {
+        state = state.copy(mode = mode)
+        modeDropdownOpen = false
+        requestDomInputFocusResync()
+        clearInputEdit()
+    }
+
+    internal fun semanticSetRgbOrder(order: RgbChannelOrder) {
+        state = state.copy(rgbOrder = order)
+        modeDropdownOpen = false
+        requestDomInputFocusResync()
+        clearInputEdit()
+    }
+
+    internal fun semanticToggleModeDropdown() {
+        modeDropdownOpen = !modeDropdownOpen
+        clearInputEdit()
+    }
+
+    internal fun semanticCloseModeDropdown() {
+        modeDropdownOpen = false
+    }
+
+    internal fun semanticUpdateFromField(
+        globalX: Int,
+        globalY: Int,
+        rect: Rect,
+        commit: Boolean,
+    ) {
+        updateFromField(globalX, globalY, rect, commit)
+    }
+
+    internal fun semanticUpdateFromHue(globalX: Int, rect: Rect, commit: Boolean) {
+        updateFromHue(globalX, rect, commit)
+    }
+
+    internal fun semanticUpdateFromAlpha(globalX: Int, rect: Rect, commit: Boolean) {
+        updateFromAlpha(globalX, rect, commit)
+    }
+
+    internal fun semanticPreviewPreviousSwatch() {
+        applyColor(state.previous, notifyPreview = true, commit = false)
+    }
+
+    internal fun semanticCommitCurrentColor() {
+        commitCurrentColor()
+    }
+
+    internal fun semanticCopyCurrentColor() {
+        ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+    }
+
+    internal fun semanticPasteFromClipboard(): Boolean {
+        val parsed = ColorClipboardSupport.paste() ?: return false
+        val next = if (state.alphaEnabled) parsed.color else parsed.color.copy(a = 1f)
+        applyColor(next, notifyPreview = true, commit = false)
+        state =
+            state.copy(
+                mode = parsed.detectedMode,
+                rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder,
+            )
+        return true
+    }
+
+    internal fun semanticBeginEyedropper() {
+        beginEyedropper()
+    }
+
+    internal fun semanticCancelEyedropper() {
+        cancelEyedropper()
+    }
+
+    internal fun semanticAcceptEyedropperSelection() {
+        commitCurrentColor()
+        eyedropperActive = false
+    }
+
+    internal fun semanticBeginInputEdit(key: String) {
+        interaction.textInput.begin(key, inputValues()[key].orEmpty())
+    }
+
+    internal fun semanticPreviewRecentSwatch(index: Int): Boolean {
+        val color = recentHistory.snapshot().getOrNull(index) ?: return false
+        applyColor(color, notifyPreview = true, commit = false)
+        return true
+    }
+
+    internal fun semanticApplyInputDraftValue(key: String, value: String): Boolean = applyInputDraftValue(key, value)
+
+    internal fun semanticCommitInputEdit(key: String, value: String): Boolean {
+        val applied = semanticApplyInputDraftValue(key, value)
+        semanticCommitCurrentColor()
+        semanticCancelInputEdit()
+        return applied
+    }
+
+    internal fun semanticCancelInputEdit() {
+        clearInputEdit()
+    }
+
+    internal fun semanticRequestClose() {
+        onRequestClose?.invoke()
     }
 
     fun beginEyedropper() {
@@ -732,19 +833,19 @@ class ColorPickerController(
         }
         when (dragTarget) {
             ColorPickerDragTarget.Field -> {
-                updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
+                semanticUpdateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
                 return true
             }
 
             ColorPickerDragTarget.Hue -> {
-                updateFromHue(globalX, layout.hueRect, commit = false)
+                semanticUpdateFromHue(globalX, layout.hueRect, commit = false)
                 return true
             }
 
             ColorPickerDragTarget.Alpha -> {
                 val alphaRect = layout.alphaRect
                 if (alphaRect != null) {
-                    updateFromAlpha(globalX, alphaRect, commit = false)
+                    semanticUpdateFromAlpha(globalX, alphaRect, commit = false)
                 }
                 return true
             }
@@ -766,13 +867,12 @@ class ColorPickerController(
         if (eyedropperActive) {
             return when (button) {
                 MouseButton.LEFT -> {
-                    commitCurrentColor()
-                    eyedropperActive = false
+                    semanticAcceptEyedropperSelection()
                     true
                 }
 
                 MouseButton.RIGHT -> {
-                    cancelEyedropper()
+                    semanticCancelEyedropper()
                     true
                 }
 
@@ -795,100 +895,78 @@ class ColorPickerController(
                 null
             }
         if (modeOptionHit != null) {
-            state = state.copy(mode = modeOptionHit.mode)
-            modeDropdownOpen = false
-            requestDomInputFocusResync()
-            clearInputEdit()
+            semanticSetMode(modeOptionHit.mode)
             return true
         }
         if (layout.rgbaOrderRect?.contains(globalX, globalY) == true) {
-            state = state.copy(rgbOrder = RgbChannelOrder.RGBA)
-            modeDropdownOpen = false
-            requestDomInputFocusResync()
-            clearInputEdit()
+            semanticSetRgbOrder(RgbChannelOrder.RGBA)
             return true
         }
         if (layout.argbOrderRect?.contains(globalX, globalY) == true) {
-            state = state.copy(rgbOrder = RgbChannelOrder.ARGB)
-            modeDropdownOpen = false
-            requestDomInputFocusResync()
-            clearInputEdit()
+            semanticSetRgbOrder(RgbChannelOrder.ARGB)
             return true
         }
         if (layout.modeSelectRect.contains(globalX, globalY)) {
-            modeDropdownOpen = !modeDropdownOpen
-            clearInputEdit()
+            semanticToggleModeDropdown()
             return true
         }
         if (!layout.bounds.contains(globalX, globalY)) {
-            modeDropdownOpen = false
-            clearInputEdit()
+            semanticCloseModeDropdown()
+            semanticCancelInputEdit()
             return false
         }
-        modeDropdownOpen = false
+        semanticCloseModeDropdown()
 
         if (layout.colorFieldRect.contains(globalX, globalY)) {
             dragTarget = ColorPickerDragTarget.Field
-            clearInputEdit()
-            updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
             return true
         }
         if (layout.hueRect.contains(globalX, globalY)) {
             dragTarget = ColorPickerDragTarget.Hue
-            clearInputEdit()
-            updateFromHue(globalX, layout.hueRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromHue(globalX, layout.hueRect, commit = false)
             return true
         }
         if (layout.alphaRect?.contains(globalX, globalY) == true) {
             dragTarget = ColorPickerDragTarget.Alpha
-            clearInputEdit()
-            updateFromAlpha(globalX, layout.alphaRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromAlpha(globalX, layout.alphaRect, commit = false)
             return true
         }
 
         if (layout.previousSwatchRect.contains(globalX, globalY)) {
-            applyColor(state.previous, notifyPreview = true, commit = false)
+            semanticPreviewPreviousSwatch()
             return true
         }
         if (layout.currentSwatchRect.contains(globalX, globalY)) {
-            commitCurrentColor()
+            semanticCommitCurrentColor()
             return true
         }
         if (layout.copyRect.contains(globalX, globalY)) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+            semanticCopyCurrentColor()
             return true
         }
         if (layout.pasteRect.contains(globalX, globalY)) {
-            val parsed = ColorClipboardSupport.paste()
-            if (parsed != null) {
-                val next = if (state.alphaEnabled) parsed.color else parsed.color.copy(a = 1f)
-                applyColor(next, notifyPreview = true, commit = false)
-                state =
-                    state.copy(
-                        mode = parsed.detectedMode,
-                        rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder,
-                    )
-            }
+            semanticPasteFromClipboard()
             return true
         }
         if (layout.pipetteRect.contains(globalX, globalY)) {
-            beginEyedropper()
+            semanticBeginEyedropper()
             return true
         }
 
         val inputHit = layout.inputSlots.firstOrNull { it.inputRect.contains(globalX, globalY) }
         if (inputHit != null) {
-            interaction.textInput.begin(inputHit.key, inputValues()[inputHit.key].orEmpty())
+            semanticBeginInputEdit(inputHit.key)
             return true
         }
-        clearInputEdit()
+        semanticCancelInputEdit()
 
         val recentIndex = layout.recentRects.indexOfFirst { it.contains(globalX, globalY) }
         if (recentIndex >= 0) {
-            val color = recentHistory.snapshot().getOrNull(recentIndex)
-            if (color != null) {
-                applyColor(color, notifyPreview = true, commit = false)
-            }
+            semanticPreviewRecentSwatch(recentIndex)
             return true
         }
 
@@ -901,7 +979,7 @@ class ColorPickerController(
         val dragged = interaction.hasActiveDragTarget()
         interaction.clearDragTarget()
         if (dragged) {
-            commitCurrentColor()
+            semanticCommitCurrentColor()
             return true
         }
         return eyedropperActive
@@ -909,28 +987,22 @@ class ColorPickerController(
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
         if (eyedropperActive && keyCode == KeyCodes.ESCAPE) {
-            cancelEyedropper()
+            semanticCancelEyedropper()
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.C) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+            semanticCopyCurrentColor()
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.V) {
-            val parsed = ColorClipboardSupport.paste() ?: return true
-            applyColor(parsed.color, notifyPreview = true, commit = false)
-            state =
-                state.copy(
-                    mode = parsed.detectedMode,
-                    rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder,
-                )
+            semanticPasteFromClipboard()
             return true
         }
         val key =
             activeInputKey ?: run {
                 if (keyCode == KeyCodes.ESCAPE) {
                     if (modeDropdownOpen) {
-                        modeDropdownOpen = false
+                        semanticCloseModeDropdown()
                         return true
                     }
                 }
@@ -938,7 +1010,7 @@ class ColorPickerController(
             }
         when (keyCode) {
             KeyCodes.ESCAPE -> {
-                clearInputEdit()
+                semanticCancelInputEdit()
                 return true
             }
 
