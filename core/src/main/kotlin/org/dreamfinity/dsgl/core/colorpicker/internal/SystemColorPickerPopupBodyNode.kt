@@ -1187,3 +1187,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
         }
     }
 }
+
+internal typealias ColorPickerPopupBodyNode = SystemColorPickerPopupBodyNode
+
+internal typealias ColorPickerTransientOverlayNode = SystemColorPickerTransientOverlayNode

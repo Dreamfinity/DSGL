@@ -9,7 +9,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.style.Display
 
-internal class SystemColorPickerOverlayNode(
+internal class ColorPickerPopupOverlayNode(
     private val popupEngine: ColorPickerPopupEngine,
     private val overlayPanel: OverlayPanel,
     key: Any? = "dsgl-system-color-picker",
@@ -20,8 +20,8 @@ internal class SystemColorPickerOverlayNode(
     private var cursorY: Int = 0
 
     private val panelNode: DOMNode = overlayPanel.node().applyParent(this)
-    private val bodyNode: SystemColorPickerPopupBodyNode =
-        SystemColorPickerPopupBodyNode(popupEngine = popupEngine).also(overlayPanel::setBodyContent)
+    private val bodyNode: ColorPickerPopupBodyNode =
+        ColorPickerPopupBodyNode(popupEngine = popupEngine).also(overlayPanel::setBodyContent)
 
     fun updateCursor(mouseX: Int, mouseY: Int) {
         cursorX = mouseX
@@ -53,3 +53,5 @@ internal class SystemColorPickerOverlayNode(
         panelNode.render(ctx, x, y, width, height)
     }
 }
+
+internal typealias SystemColorPickerOverlayNode = ColorPickerPopupOverlayNode

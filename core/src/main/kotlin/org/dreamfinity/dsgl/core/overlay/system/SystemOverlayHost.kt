@@ -2,9 +2,9 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerPopupOverlayNode
+import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerTransientOverlayNode
 import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
-import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerOverlayNode
-import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerTransientOverlayNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -372,13 +372,13 @@ class SystemOverlayHost(
                 panelState = state.panelState,
                 dragSession = state.dragSession,
             )
-        override val node: SystemColorPickerOverlayNode =
-            SystemColorPickerOverlayNode(
+        override val node: ColorPickerPopupOverlayNode =
+            ColorPickerPopupOverlayNode(
                 popupEngine = popupEngine,
                 overlayPanel = overlayPanel,
             )
-        private val transientNode: SystemColorPickerTransientOverlayNode =
-            SystemColorPickerTransientOverlayNode(popupEngine = popupEngine)
+        private val transientNode: ColorPickerTransientOverlayNode =
+            ColorPickerTransientOverlayNode(popupEngine = popupEngine)
         private var draggable: Boolean = true
         private var viewportWidth: Int = 1
         private var viewportHeight: Int = 1
