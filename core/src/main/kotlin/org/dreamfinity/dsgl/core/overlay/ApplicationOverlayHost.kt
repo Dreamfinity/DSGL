@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
@@ -40,3 +41,52 @@ class ApplicationOverlayHost : OverlayLayerHost {
 
     internal fun debugRootBounds(): Rect = rootNode.bounds
 }
+
+fun ApplicationOverlayHost.contextMenuOnFrame(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    viewportScale: Float,
+) {
+    ContextMenuRuntime.engine.onFrame(
+        measureContext = measureContext,
+        viewportWidth = viewportWidth,
+        viewportHeight = viewportHeight,
+        viewportScale = viewportScale,
+    )
+}
+
+fun ApplicationOverlayHost.appendContextMenuOverlayCommands(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    out: MutableList<RenderCommand>,
+) {
+    ContextMenuRuntime.engine.appendOverlayCommands(
+        measureContext = measureContext,
+        viewportWidth = viewportWidth,
+        viewportHeight = viewportHeight,
+        out = out,
+    )
+}
+
+fun ApplicationOverlayHost.closeContextMenus() {
+    ContextMenuRuntime.engine.closeAll()
+}
+
+fun ApplicationOverlayHost.isContextMenuOpen(): Boolean = ContextMenuRuntime.engine.isOpen()
+
+fun ApplicationOverlayHost.handleContextMenuMouseMove(mouseX: Int, mouseY: Int): Boolean =
+    ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)
+
+fun ApplicationOverlayHost.handleContextMenuMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, button)
+
+fun ApplicationOverlayHost.handleContextMenuMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, button)
+
+fun ApplicationOverlayHost.handleContextMenuMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+    ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, delta)
+
+fun ApplicationOverlayHost.handleContextMenuKeyDown(keyCode: Int): Boolean =
+    ContextMenuRuntime.engine.handleKeyDown(keyCode)
