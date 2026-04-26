@@ -407,7 +407,7 @@ abstract class DsglScreenHost(
     private fun syncFeatureRuntimeFrame(tree: DomTree, dsglMouseX: Int, dsglMouseY: Int) {
         applicationOverlayHost.contextMenuOnFrame(adapter, lastWidth, lastHeight, 1f)
         applicationOverlayHost.applicationSelectOnFrame(adapter, lastWidth, lastHeight, 1f)
-        SelectRuntime.systemEngine.onFrame(adapter, lastWidth, lastHeight, 1f)
+        systemOverlayHost.systemSelectOnFrame(adapter, lastWidth, lastHeight, 1f)
         ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
         refreshActiveColorSamplerOwner(tree.root)
@@ -468,7 +468,7 @@ abstract class DsglScreenHost(
         systemOverlayCommandsBuffer.clear()
         systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
         if (systemOverlayRenderEnabled) {
-            SelectRuntime.systemEngine.appendOverlayCommands(
+            systemOverlayHost.appendSystemSelectOverlayCommands(
                 adapter,
                 lastWidth,
                 lastHeight,
@@ -497,7 +497,7 @@ abstract class DsglScreenHost(
         val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.isContextMenuOpen()
         val selectBlocks =
             appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.isApplicationSelectOpen()
-        val systemSelectBlocks = systemOverlayInputEnabled && SelectRuntime.systemEngine.isOpen()
+        val systemSelectBlocks = systemOverlayInputEnabled && systemOverlayHost.isSystemSelectOpen()
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         val colorPickerBlocks =
             !inspectorBlocks &&
@@ -932,7 +932,7 @@ abstract class DsglScreenHost(
             viewportHeight = lastHeight,
             viewportScale = 1f,
         )
-        SelectRuntime.systemEngine.onFrame(
+        systemOverlayHost.systemSelectOnFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -1105,7 +1105,7 @@ abstract class DsglScreenHost(
         inspectorMouseX: Int,
         inspectorMouseY: Int,
     ): Boolean {
-        if (SelectRuntime.systemEngine.handleKeyDown(keyCode, keyChar)) {
+        if (systemOverlayHost.handleSystemSelectKeyDown(keyCode, keyChar)) {
             return true
         }
         if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
@@ -1222,7 +1222,7 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton?,
         buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && SelectRuntime.systemEngine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && systemOverlayHost.handleSystemSelectMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
@@ -1231,9 +1231,9 @@ abstract class DsglScreenHost(
         if (mouseButton != -1 && mappedButton != null) {
             val consumedBySystemSelect =
                 if (buttonPressed) {
-                    SelectRuntime.systemEngine.handleMouseDown(mouseX, mouseY, mappedButton)
+                    systemOverlayHost.handleSystemSelectMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    SelectRuntime.systemEngine.handleMouseUp(mouseX, mouseY, mappedButton)
+                    systemOverlayHost.handleSystemSelectMouseUp(mouseX, mouseY, mappedButton)
                 }
             if (consumedBySystemSelect) {
                 return true
@@ -1247,7 +1247,7 @@ abstract class DsglScreenHost(
             if (consumedBySystemOverlay) {
                 return true
             }
-        } else if (mouseButton == -1 && SelectRuntime.systemEngine.handleMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && systemOverlayHost.handleSystemSelectMouseMove(mouseX, mouseY)) {
             return true
         } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
             return true

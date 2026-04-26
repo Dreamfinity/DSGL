@@ -22,6 +22,7 @@ import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class SystemOverlayHost(
@@ -75,6 +76,51 @@ class SystemOverlayHost(
     }
 
     fun isOverlayPanelDemoOpen(): Boolean = overlayPanelDemoEntry.isOpen()
+
+    fun systemSelectOnFrame(
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        viewportScale: Float,
+    ) {
+        SelectRuntime.systemEngine.onFrame(
+            measureContext = measureContext,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            viewportScale = viewportScale,
+        )
+    }
+
+    fun appendSystemSelectOverlayCommands(
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        out: MutableList<RenderCommand>,
+    ) {
+        SelectRuntime.systemEngine.appendOverlayCommands(
+            measureContext = measureContext,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            out = out,
+        )
+    }
+
+    fun isSystemSelectOpen(): Boolean = SelectRuntime.systemEngine.isOpen()
+
+    fun handleSystemSelectKeyDown(keyCode: Int, keyChar: Char): Boolean =
+        SelectRuntime.systemEngine.handleKeyDown(keyCode, keyChar)
+
+    fun handleSystemSelectMouseMove(mouseX: Int, mouseY: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseMove(mouseX, mouseY)
+
+    fun handleSystemSelectMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        SelectRuntime.systemEngine.handleMouseDown(mouseX, mouseY, button)
+
+    fun handleSystemSelectMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        SelectRuntime.systemEngine.handleMouseUp(mouseX, mouseY, button)
+
+    fun handleSystemSelectMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        SelectRuntime.systemEngine.handleMouseWheel(mouseX, mouseY, delta)
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         knownViewportWidth = viewportWidth.coerceAtLeast(1)
