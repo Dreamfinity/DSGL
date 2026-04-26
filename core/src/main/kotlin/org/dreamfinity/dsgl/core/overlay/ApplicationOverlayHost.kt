@@ -6,6 +6,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class ApplicationOverlayHost : OverlayLayerHost {
@@ -90,3 +91,48 @@ fun ApplicationOverlayHost.handleContextMenuMouseWheel(mouseX: Int, mouseY: Int,
 
 fun ApplicationOverlayHost.handleContextMenuKeyDown(keyCode: Int): Boolean =
     ContextMenuRuntime.engine.handleKeyDown(keyCode)
+
+fun ApplicationOverlayHost.applicationSelectOnFrame(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    viewportScale: Float,
+) {
+    SelectRuntime.applicationEngine.onFrame(
+        measureContext = measureContext,
+        viewportWidth = viewportWidth,
+        viewportHeight = viewportHeight,
+        viewportScale = viewportScale,
+    )
+}
+
+fun ApplicationOverlayHost.appendApplicationSelectOverlayCommands(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    out: MutableList<RenderCommand>,
+) {
+    SelectRuntime.applicationEngine.appendOverlayCommands(
+        measureContext = measureContext,
+        viewportWidth = viewportWidth,
+        viewportHeight = viewportHeight,
+        out = out,
+    )
+}
+
+fun ApplicationOverlayHost.isApplicationSelectOpen(): Boolean = SelectRuntime.applicationEngine.isOpen()
+
+fun ApplicationOverlayHost.handleApplicationSelectKeyDown(keyCode: Int, keyChar: Char): Boolean =
+    SelectRuntime.applicationEngine.handleKeyDown(keyCode, keyChar)
+
+fun ApplicationOverlayHost.handleApplicationSelectMouseMove(mouseX: Int, mouseY: Int): Boolean =
+    SelectRuntime.applicationEngine.handleMouseMove(mouseX, mouseY)
+
+fun ApplicationOverlayHost.handleApplicationSelectMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    SelectRuntime.applicationEngine.handleMouseDown(mouseX, mouseY, button)
+
+fun ApplicationOverlayHost.handleApplicationSelectMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    SelectRuntime.applicationEngine.handleMouseUp(mouseX, mouseY, button)
+
+fun ApplicationOverlayHost.handleApplicationSelectMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+    SelectRuntime.applicationEngine.handleMouseWheel(mouseX, mouseY, delta)
