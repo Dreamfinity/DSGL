@@ -658,6 +658,156 @@ class SystemOverlayColorPickerEntryTests {
     }
 
     @Test
+    fun `system picker rgb order buttons use dom semantic actions without double apply`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        var previews = 0
+        var commits = 0
+
+        pickerHost.open(
+            anchorRect = Rect(120, 120, 20, 18),
+            title = "Popup",
+            state = popupState().copy(mode = ColorFormatMode.RGB, rgbOrder = RgbChannelOrder.RGBA),
+            onPreview = { previews += 1 },
+            onCommit = { commits += 1 },
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val redInput = initialLayout.inputSlots.firstOrNull { it.key == "r" } ?: error("r input missing")
+        assertTrue(host.handleMouseDown(redInput.inputRect.x + 2, redInput.inputRect.y + 2, MouseButton.LEFT))
+        host.render(ctx, 1200, 800)
+
+        val argbButton = initialLayout.argbOrderRect ?: error("argb button missing")
+        assertTrue(host.handleMouseDown(argbButton.x + 2, argbButton.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(argbButton.x + 2, argbButton.y + 2, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = argbButton.x + 2,
+            cursorY = argbButton.y + 2,
+            inspectorPointerCaptured = false,
+        )
+
+        val updated = host.debugSystemColorPickerState() ?: error("state missing")
+        assertEquals(RgbChannelOrder.ARGB, updated.rgbOrder)
+        assertEquals(ColorFormatMode.RGB, updated.mode)
+        assertEquals(0, previews)
+        assertEquals(0, commits)
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+    }
+
+    @Test
+    fun `system picker mode trigger toggles dropdown through dom path without double apply`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+
+        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        host.onInputFrame(1200, 800)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val modeSelect = initialLayout.modeSelectRect
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+
+        assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = modeSelect.x + 2,
+            cursorY = modeSelect.y + 2,
+            inspectorPointerCaptured = false,
+        )
+
+        assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+        assertNotNull(host.debugSystemColorPickerBodyLayout()?.modeOptionsRect)
+
+        assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = modeSelect.x + 2,
+            cursorY = modeSelect.y + 2,
+            inspectorPointerCaptured = false,
+        )
+
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+        assertTrue(host.debugSystemColorPickerBodyLayout()?.modeOptionsRect == null)
+    }
+
+    @Test
+    fun `system picker mode option click changes mode and closes dropdown via dom path`() {
+        val host = SystemOverlayHost(InspectorController())
+        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val root = inspectedRoot()
+        var previews = 0
+        var commits = 0
+
+        pickerHost.open(
+            anchorRect = Rect(120, 120, 20, 18),
+            title = "Popup",
+            state = popupState(),
+            onPreview = { previews += 1 },
+            onCommit = { commits += 1 },
+        )
+        host.onInputFrame(1200, 800)
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 1L,
+            cursorX = 128,
+            cursorY = 128,
+            inspectorPointerCaptured = false,
+        )
+
+        val initialLayout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+        val modeSelect = initialLayout.modeSelectRect
+        assertTrue(host.handleMouseDown(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(modeSelect.x + 2, modeSelect.y + 2, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 2L,
+            cursorX = modeSelect.x + 2,
+            cursorY = modeSelect.y + 2,
+            inspectorPointerCaptured = false,
+        )
+
+        val expandedLayout = host.debugSystemColorPickerBodyLayout() ?: error("expanded layout missing")
+        val hslOption =
+            expandedLayout.modeOptions.firstOrNull { it.mode == ColorFormatMode.HSL } ?: error("HSL option missing")
+        assertTrue(host.handleMouseDown(hslOption.rect.x + 2, hslOption.rect.y + 2, MouseButton.LEFT))
+        assertTrue(host.handleMouseUp(hslOption.rect.x + 2, hslOption.rect.y + 2, MouseButton.LEFT))
+        host.syncFrame(
+            root,
+            inspectedLayoutRevision = 3L,
+            cursorX = hslOption.rect.x + 2,
+            cursorY = hslOption.rect.y + 2,
+            inspectorPointerCaptured = false,
+        )
+
+        assertEquals(ColorFormatMode.HSL, host.debugSystemColorPickerState()?.mode)
+        assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerTransient))
+        assertEquals(0, previews)
+        assertEquals(0, commits)
+    }
+
+    @Test
     fun `system picker mode dropdown is mounted in transient lane and stays interactive`() {
         val host = SystemOverlayHost(InspectorController())
         val pickerHost = host.systemInspectorColorPickerPopupHost()

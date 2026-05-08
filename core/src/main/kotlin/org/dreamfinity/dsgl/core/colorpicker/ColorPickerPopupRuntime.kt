@@ -455,6 +455,14 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
                     .contains(mouseX, mouseY) ||
                 current.layout.pipetteRect
                     .contains(mouseX, mouseY) ||
+                current.layout.rgbaOrderRect
+                    ?.contains(mouseX, mouseY) == true ||
+                current.layout.argbOrderRect
+                    ?.contains(mouseX, mouseY) == true ||
+                current.layout.modeSelectRect
+                    .contains(mouseX, mouseY) ||
+                current.layout.modeOptionsRect
+                    ?.contains(mouseX, mouseY) == true ||
                 current.layout.recentRects
                     .any { rect -> rect.contains(mouseX, mouseY) }
         ColorPickerDebugCounters.onRouteSystemBodyIntentCheck(hit)

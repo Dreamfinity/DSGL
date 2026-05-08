@@ -591,6 +591,24 @@ internal class SystemColorPickerPopupBodyNode(
                 event.cancelled = true
             }
         }
+        rgbaOrderButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticSetRgbOrder(RgbChannelOrder.RGBA)
+                event.cancelled = true
+            }
+        }
+        argbOrderButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticSetRgbOrder(RgbChannelOrder.ARGB)
+                event.cancelled = true
+            }
+        }
+        modeSelectButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticToggleModeDropdown()
+                event.cancelled = true
+            }
+        }
     }
 
     private fun resyncFocusedInputForModeOrOrderChange(controller: ColorPickerController, layout: ColorPickerLayout) {
@@ -816,6 +834,12 @@ internal class SystemColorPickerModeDropdownOverlayNode(
                 mode.name,
                 {
                     this.key = "dsgl-system-color-picker-mode-option-${mode.name.lowercase()}"
+                    onMouseDown = { event ->
+                        if (event.mouseButton == MouseButton.LEFT) {
+                            popupEngine.debugActiveController()?.semanticSetMode(mode)
+                            event.cancelled = true
+                        }
+                    }
                 },
             )
         }
