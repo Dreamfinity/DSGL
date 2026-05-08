@@ -1,5 +1,6 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
+import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerDebugCounters
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
@@ -55,6 +56,12 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     private val headerHeight: Int = 26
     private val panelPadding: Int = 6
     private val positionStore: ColorPickerPopupPositionStore = ColorPickerPopupPositionStore()
+    private val debugCountersEnabled: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.colorPicker.debugCounters")
+    private val debugReportIntervalMs: Long = 4000L
+    private val nanosPerMillisecond: Double = 1_000_000.0
+    private var debugNextReportAtMs: Long = 0L
 
     override fun open(request: ColorPickerPopupRequest) {
         val current = popup
@@ -78,6 +85,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         val initialY = rememberedPanel?.y ?: request.anchorRect.y
         val initialRect = Rect(initialX, initialY, request.width.coerceAtLeast(220), 1)
         val initialBody = Rect(initialRect.x + panelPadding, initialRect.y + headerHeight + panelPadding, 1, 1)
+        ColorPickerDebugCounters.onBuildLayoutCall(request.ownerScope == OverlayOwnerScope.System)
         val initialLayout = controller.buildLayout(initialBody)
         val state =
             PopupState(
@@ -93,6 +101,10 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         popup = state
         bindController(state)
         relayout(state, keepPosition = rememberedPanel != null)
+        if (debugCountersEnabled) {
+            ColorPickerDebugCounters.reset()
+            debugNextReportAtMs = System.currentTimeMillis() + debugReportIntervalMs
+        }
     }
 
     fun sync(request: ColorPickerPopupRequest) {
@@ -133,6 +145,9 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         current.request.onClose
             ?.invoke()
         popup = null
+        if (debugCountersEnabled) {
+            debugNextReportAtMs = 0L
+        }
     }
 
     override fun closeAll() {
@@ -142,6 +157,9 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         current.request.onClose
             ?.invoke()
         popup = null
+        if (debugCountersEnabled) {
+            debugNextReportAtMs = 0L
+        }
     }
 
     override fun isOpenFor(owner: Any): Boolean {
@@ -211,6 +229,12 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
 
     internal fun debugIsDraggingPopup(): Boolean = popup?.dragModel?.dragging == true
 
+    internal fun debugResetCounters() {
+        ColorPickerDebugCounters.reset()
+    }
+
+    internal fun debugCountersSnapshot(): ColorPickerDebugCounters.Snapshot = ColorPickerDebugCounters.snapshot()
+
     internal fun forcePanelRect(owner: Any, panelRect: Rect) {
         val current = popup ?: return
         if (current.owner != owner) return
@@ -226,6 +250,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
     }
 
     fun onFrame(viewportWidth: Int, viewportHeight: Int) {
+        reportDebugCountersIfDue()
         if (this.viewportWidth != viewportWidth || this.viewportHeight != viewportHeight) {
             this.viewportWidth = viewportWidth
             this.viewportHeight = viewportHeight
@@ -397,8 +422,11 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         if (current.request.ownerScope != OverlayOwnerScope.System) return false
         if (button != MouseButton.LEFT) return false
         if (current.controller.isEyedropperActive()) return false
-        return current.layout.inputSlots
-            .any { slot -> slot.inputRect.contains(mouseX, mouseY) }
+        val hit =
+            current.layout.inputSlots
+                .any { slot -> slot.inputRect.contains(mouseX, mouseY) }
+        ColorPickerDebugCounters.onRouteSystemInputSlotCheck(hit)
+        return hit
     }
 
     fun shouldRouteSystemBodyIntentMouseDownToDom(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
@@ -407,18 +435,21 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         if (button != MouseButton.LEFT) return false
         if (current.controller.isEyedropperActive()) return false
         refreshLayout(current)
-        return current.layout.previousSwatchRect
-            .contains(mouseX, mouseY) ||
-            current.layout.currentSwatchRect
+        val hit =
+            current.layout.previousSwatchRect
                 .contains(mouseX, mouseY) ||
-            current.layout.copyRect
-                .contains(mouseX, mouseY) ||
-            current.layout.pasteRect
-                .contains(mouseX, mouseY) ||
-            current.layout.pipetteRect
-                .contains(mouseX, mouseY) ||
-            current.layout.recentRects
-                .any { rect -> rect.contains(mouseX, mouseY) }
+                current.layout.currentSwatchRect
+                    .contains(mouseX, mouseY) ||
+                current.layout.copyRect
+                    .contains(mouseX, mouseY) ||
+                current.layout.pasteRect
+                    .contains(mouseX, mouseY) ||
+                current.layout.pipetteRect
+                    .contains(mouseX, mouseY) ||
+                current.layout.recentRects
+                    .any { rect -> rect.contains(mouseX, mouseY) }
+        ColorPickerDebugCounters.onRouteSystemBodyIntentCheck(hit)
+        return hit
     }
 
     fun focusSystemInputSlotForDomEditing(mouseX: Int, mouseY: Int, focusInputByIndex: (Int) -> Boolean): Boolean {
@@ -512,10 +543,13 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         state.headerRect = frame.headerRect
         state.bodyRect = frame.bodyRect
         state.closeRect = frame.closeRect
+        ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
         state.layout = state.controller.buildLayout(frame.bodyRect)
     }
 
     private fun refreshLayout(state: PopupState) {
+        ColorPickerDebugCounters.onRefreshLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
+        ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
         state.layout = state.controller.buildLayout(state.bodyRect)
     }
 
@@ -534,6 +568,41 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
             a.rgbOrder == b.rgbOrder &&
             a.alphaEnabled == b.alphaEnabled &&
             a.closeOnSelect == b.closeOnSelect
+
+    private fun reportDebugCountersIfDue() {
+        if (!debugCountersEnabled) return
+        val current = popup ?: return
+        val now = System.currentTimeMillis()
+        if (debugNextReportAtMs == 0L) {
+            debugNextReportAtMs = now + debugReportIntervalMs
+            return
+        }
+        if (now < debugNextReportAtMs) return
+
+        val snapshot = ColorPickerDebugCounters.snapshot()
+        val composeMs = nanosToMsString(snapshot.recentSwatchComposeNanos)
+        val removeMs = nanosToMsString(snapshot.recentSwatchRemoveNanos)
+        println(
+            "dsgl.colorPicker.debugCounters " +
+                "ownerScope=${current.request.ownerScope} " +
+                "recentComposeCalls=${snapshot.recentSwatchGridComposeCalls} " +
+                "recentCreated=${snapshot.recentSwatchNodesCreated} " +
+                "recentRemoved=${snapshot.recentSwatchNodesRemoved} " +
+                "recentComposeMs=$composeMs " +
+                "recentRemoveMs=$removeMs " +
+                "recentSnapshotReads=${snapshot.recentColorsSnapshotReads} " +
+                "refreshLayoutCalls=${snapshot.refreshLayoutCalls} " +
+                "buildLayoutCalls=${snapshot.buildLayoutCalls} " +
+                "bodyIntentChecks=${snapshot.routeSystemBodyIntentChecks} " +
+                "bodyIntentHits=${snapshot.routeSystemBodyIntentHits} " +
+                "renderInvalidations=${snapshot.renderInvalidationCalls}",
+        )
+        ColorPickerDebugCounters.reset()
+        debugNextReportAtMs = now + debugReportIntervalMs
+    }
+
+    private fun nanosToMsString(nanos: Long): String =
+        String.format(java.util.Locale.ROOT, "%.3f", nanos / nanosPerMillisecond)
 }
 
 class ColorPickerPopupManager(

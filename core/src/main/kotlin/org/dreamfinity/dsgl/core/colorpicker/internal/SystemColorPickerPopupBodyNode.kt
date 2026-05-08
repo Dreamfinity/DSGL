@@ -57,6 +57,21 @@ internal class SystemColorPickerPopupBodyNode(
         scope.colorSwatch({
             this.key = "dsgl-system-color-picker-swatch-current"
         })
+    private val recentSwatchNodes: List<ColorSwatchSurfaceNode> =
+        (0 until RECENT_SWATCH_COUNT).map { index ->
+            scope.colorSwatch({
+                allowEmpty = true
+                this.key = recentSwatchNodeKey(index)
+                onMouseDown = { event ->
+                    if (event.mouseButton == MouseButton.LEFT) {
+                        val controller = popupEngine.debugActiveController()
+                        controller?.semanticCancelInputEdit()
+                        controller?.semanticPreviewRecentSwatch(index)
+                        event.cancelled = true
+                    }
+                }
+            })
+        }
 
     private val copyButton: ButtonNode =
         scope.button("Copy", {
@@ -148,6 +163,7 @@ internal class SystemColorPickerPopupBodyNode(
 
         val modeDropdownOpen = controller.viewModeDropdownOpen()
         val inputValues = controller.viewInputValues()
+        ColorPickerDebugCounters.onRecentColorsSnapshotRead()
         val recentColors = controller.viewRecentColors()
         val definitionsByKey = controller.viewInputDefinitions().associate { it.first to it.second }
 
@@ -466,41 +482,23 @@ internal class SystemColorPickerPopupBodyNode(
         recentColors: List<RgbaColor>,
         hoveredRecent: Int,
     ): List<ColorSwatchSurfaceNode> {
-        removeRecentSwatchSectionNodes()
-        return buildList(RECENT_SWATCH_COUNT) {
-            for (index in 0 until RECENT_SWATCH_COUNT) {
-                val node =
-                    scope.colorSwatch({
-                        allowEmpty = true
-                        key = recentSwatchNodeKey(index)
-                        palette = style
-                        color = recentColors.getOrNull(index)
-                        highlighted = index == hoveredRecent
-                        onMouseDown = { event ->
-                            if (event.mouseButton == MouseButton.LEFT) {
-                                val controller = popupEngine.debugActiveController()
-                                controller?.semanticCancelInputEdit()
-                                controller?.semanticPreviewRecentSwatch(index)
-                                event.cancelled = true
-                            }
-                        }
-                    })
-                add(node)
-            }
+        val composeStartNanos = System.nanoTime()
+        for (index in 0 until RECENT_SWATCH_COUNT) {
+            val node = recentSwatchNodes[index]
+            node.bind(
+                style = style,
+                color = recentColors.getOrNull(index),
+                highlighted = index == hoveredRecent,
+            )
         }
-    }
-
-    private fun removeRecentSwatchSectionNodes() {
-        val iterator = children.iterator()
-        while (iterator.hasNext()) {
-            val child = iterator.next()
-            val key = child.key as? String
-            val isRecentSwatchNode = key?.startsWith(RECENT_SWATCH_KEY_PREFIX) == true
-            if (isRecentSwatchNode) {
-                child.parent = null
-                iterator.remove()
-            }
-        }
+        val composeDurationNanos = System.nanoTime() - composeStartNanos
+        ColorPickerDebugCounters.onRecentSwatchCompose(
+            createdNodes = 0,
+            removedNodes = 0,
+            composeDurationNanos = composeDurationNanos,
+            removeDurationNanos = 0L,
+        )
+        return recentSwatchNodes
     }
 
     private fun renderRecentSwatch(
@@ -552,7 +550,7 @@ internal class SystemColorPickerPopupBodyNode(
                         val restoredValue = controller.resolveDomInputValue(key)
                         if (inputNode.text != restoredValue) {
                             inputNode.text = restoredValue
-                            inputNode.requestRenderCommandsInvalidation()
+                            requestRenderCommandsInvalidationTracked(inputNode)
                         }
                         event.cancelled = true
                     }
@@ -685,7 +683,7 @@ internal class SystemColorPickerPopupBodyNode(
             changed = true
         }
         if (changed) {
-            button.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(button)
         }
     }
 
@@ -700,7 +698,7 @@ internal class SystemColorPickerPopupBodyNode(
             changed = true
         }
         if (changed) {
-            node.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(node)
         }
     }
 
@@ -744,7 +742,7 @@ internal class SystemColorPickerPopupBodyNode(
             changed = true
         }
         if (changed) {
-            node.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(node)
         }
     }
 
@@ -964,7 +962,7 @@ internal class SystemColorPickerModeDropdownOverlayNode(
             changed = true
         }
         if (changed) {
-            button.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(button)
         }
     }
 
@@ -979,7 +977,7 @@ internal class SystemColorPickerModeDropdownOverlayNode(
             changed = true
         }
         if (changed) {
-            node.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(node)
         }
     }
 
@@ -1191,7 +1189,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
             changed = true
         }
         if (changed) {
-            node.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(node)
         }
     }
 
@@ -1206,7 +1204,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
             changed = true
         }
         if (changed) {
-            node.requestRenderCommandsInvalidation()
+            requestRenderCommandsInvalidationTracked(node)
         }
     }
 
@@ -1237,3 +1235,8 @@ internal class SystemColorPickerEyedropperOverlayNode(
 internal typealias ColorPickerPopupBodyNode = SystemColorPickerPopupBodyNode
 
 internal typealias ColorPickerTransientOverlayNode = SystemColorPickerTransientOverlayNode
+
+private fun requestRenderCommandsInvalidationTracked(node: DOMNode) {
+    ColorPickerDebugCounters.onRenderInvalidationCall()
+    node.requestRenderCommandsInvalidation()
+}

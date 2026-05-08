@@ -23,6 +23,7 @@ val rebuildTrace: String by project
 val perfDebug: String by project
 val dsglOverlayDebug: String by project
 val dsglOverlayControls: String by project
+val dsglColorPickerDebugCounters: String by project
 val hotReloadAgentLibraryName: String? by project
 
 val baseModMetadataTokens =
@@ -111,6 +112,7 @@ tasks {
                 "-Ddsgl.perf.debug=$perfDebug",
                 "-Ddsgl.overlay.debug=$dsglOverlayDebug",
                 "-Ddsgl.overlay.controls=$dsglOverlayControls",
+                "-Ddsgl.colorPicker.debugCounters=$dsglColorPickerDebugCounters",
             )
 
         if (hotReload.toBoolean()) {
