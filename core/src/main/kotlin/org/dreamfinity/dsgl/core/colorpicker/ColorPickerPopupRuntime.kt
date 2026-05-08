@@ -37,6 +37,14 @@ data class ColorPickerPopupRequest(
 )
 
 class ColorPickerPopupEngine : ColorPickerPopupHost {
+    private data class LayoutDirtyKey(
+        val bodyRect: Rect,
+        val mode: ColorFormatMode,
+        val rgbOrder: RgbChannelOrder,
+        val alphaEnabled: Boolean,
+        val modeDropdownOpen: Boolean,
+    )
+
     private data class PopupState(
         val owner: Any,
         var request: ColorPickerPopupRequest,
@@ -46,6 +54,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         var bodyRect: Rect,
         var closeRect: Rect,
         var layout: ColorPickerLayout,
+        var layoutDirtyKey: LayoutDirtyKey? = null,
         val dragModel: FloatingPaneDragModel = FloatingPaneDragModel(),
         var consumedEyedropperPress: Boolean = false,
     )
@@ -543,14 +552,37 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
         state.headerRect = frame.headerRect
         state.bodyRect = frame.bodyRect
         state.closeRect = frame.closeRect
-        ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
-        state.layout = state.controller.buildLayout(frame.bodyRect)
+        rebuildLayout(state)
     }
 
     private fun refreshLayout(state: PopupState) {
         ColorPickerDebugCounters.onRefreshLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
+        ensureLayoutUpToDate(state)
+    }
+
+    private fun ensureLayoutUpToDate(state: PopupState) {
+        val nextKey = resolveLayoutDirtyKey(state)
+        if (state.layoutDirtyKey == nextKey) {
+            return
+        }
+        rebuildLayout(state)
+    }
+
+    private fun rebuildLayout(state: PopupState) {
         ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
         state.layout = state.controller.buildLayout(state.bodyRect)
+        state.layoutDirtyKey = resolveLayoutDirtyKey(state)
+    }
+
+    private fun resolveLayoutDirtyKey(state: PopupState): LayoutDirtyKey {
+        val snapshot = state.controller.snapshot()
+        return LayoutDirtyKey(
+            bodyRect = state.bodyRect,
+            mode = snapshot.mode,
+            rgbOrder = snapshot.rgbOrder,
+            alphaEnabled = snapshot.alphaEnabled,
+            modeDropdownOpen = state.controller.viewModeDropdownOpen(),
+        )
     }
 
     private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {
