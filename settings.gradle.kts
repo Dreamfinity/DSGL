@@ -9,10 +9,22 @@ pluginManagement {
         maven(url = "https://maven.minecraftforge.net")
         gradlePluginPortal()
         mavenCentral()
+        maven {
+            // RetroFuturaGradle
+            name = "GTNH Maven"
+            setUrl("https://nexus.gtnewhorizons.com/repository/public/")
+            mavenContent {
+                includeGroupByRegex("com\\.gtnewhorizons\\..+")
+                includeGroup("com.gtnewhorizons")
+            }
+        }
     }
 
     if (isAdapterEnabled("MinecraftForge1710")) {
         includeBuild("adapters/mc-forge-1-7-10/adapter-build-logic")
+    }
+    if (isAdapterEnabled("MinecraftForge1122")) {
+        includeBuild("adapters/mc-forge-1-12-2/adapter-build-logic")
     }
 }
 
