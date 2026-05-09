@@ -1,7 +1,9 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
@@ -23,6 +25,8 @@ class ApplicationOverlayHost : OverlayLayerHost {
         LayerDomInputRouter(
             rootProvider = { rootNode },
         )
+    internal val contextMenuPortal: ContextMenuPortalController =
+        ContextMenuPortalController(ContextMenuRuntime.engine)
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         rootNode.setViewportBounds(
@@ -54,9 +58,158 @@ class ApplicationOverlayHost : OverlayLayerHost {
     override fun clearRefs() {
         tree.clearRefs()
         domInputRouter.clear()
+        contextMenuPortal.close()
     }
 
     internal fun debugRootBounds(): Rect = rootNode.bounds
+}
+
+internal class ContextMenuPortalController(
+    private val engine: ContextMenuEngine,
+) {
+    private val portalHost: PortalHost =
+        PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
+    private val entry: ContextMenuPortalEntry = ContextMenuPortalEntry(engine)
+
+    init {
+        portalHost.register(entry)
+    }
+
+    fun onFrame(
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        viewportScale: Float,
+    ) {
+        entry.onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
+    }
+
+    fun appendCommands(
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        out: MutableList<RenderCommand>,
+    ) {
+        entry.updatePaintContext(measureContext, viewportWidth, viewportHeight)
+        out += portalHost.paint(measureContext)
+    }
+
+    fun close() {
+        entry.close()
+    }
+
+    fun isOpen(): Boolean = engine.isOpen()
+
+    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
+        portalHost.dispatchInput { it.handleMouseMove(mouseX, mouseY) }
+
+    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        portalHost.dispatchInput { it.handleMouseDown(mouseX, mouseY, button) }
+
+    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        portalHost.dispatchInput { it.handleMouseUp(mouseX, mouseY, button) }
+
+    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        portalHost.dispatchInput { it.handleMouseWheel(mouseX, mouseY, delta) }
+
+    fun handleKeyDown(keyCode: Int): Boolean =
+        portalHost.dispatchInput {
+            it.handleKeyDown(keyCode, Char.MIN_VALUE)
+        }
+}
+
+private class ContextMenuPortalEntry(
+    private val engine: ContextMenuEngine,
+) : PortalEntry {
+    override val state: PortalEntryState =
+        PortalEntryState(
+            id = PortalEntryId("application.context-menu"),
+            ownerToken = engine,
+            surface = OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
+            order = PortalEntryOrder(zIndex = 0),
+            dismissPolicy = PortalDismissPolicy.EscapeOrOutsidePointerDown,
+            inputPolicy = PortalInputPolicy.ManualOnly,
+            focusPolicy = PortalFocusPolicy.Preserve,
+        )
+    override val node: DOMNode? = null
+    private var viewportWidth: Int = 1
+    private var viewportHeight: Int = 1
+    private var measureContext: UiMeasureContext? = null
+
+    fun onFrame(
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        viewportScale: Float,
+    ) {
+        updatePaintContext(measureContext, viewportWidth, viewportHeight)
+        engine.onFrame(
+            measureContext = measureContext,
+            viewportWidth = this.viewportWidth,
+            viewportHeight = this.viewportHeight,
+            viewportScale = viewportScale,
+        )
+        syncActivePlacement()
+    }
+
+    fun updatePaintContext(measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int) {
+        this.measureContext = measureContext
+        this.viewportWidth = viewportWidth.coerceAtLeast(1)
+        this.viewportHeight = viewportHeight.coerceAtLeast(1)
+    }
+
+    override fun paint(ctx: UiMeasureContext): List<RenderCommand> {
+        if (!engine.isOpen()) {
+            state.deactivate()
+            return emptyList()
+        }
+        val commands = ArrayList<RenderCommand>()
+        engine.appendOverlayCommands(
+            measureContext = measureContext ?: ctx,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            out = commands,
+        )
+        syncActivePlacement()
+        return commands
+    }
+
+    override fun close() {
+        engine.closeAll()
+        state.deactivate()
+    }
+
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = engine.handleMouseMove(mouseX, mouseY)
+
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        engine.handleMouseDown(mouseX, mouseY, button).also { syncActivePlacement() }
+
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        engine.handleMouseUp(mouseX, mouseY, button).also { syncActivePlacement() }
+
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        engine.handleMouseWheel(mouseX, mouseY, delta).also { syncActivePlacement() }
+
+    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
+        engine.handleKeyDown(keyCode).also { syncActivePlacement() }
+
+    private fun syncActivePlacement() {
+        if (!engine.isOpen()) {
+            state.deactivate()
+            return
+        }
+        val panelRect = engine.debugPanelRect(0) ?: return
+        state.activate(
+            PortalEntryPlacement(
+                anchorBounds = null,
+                bounds =
+                    PortalEntryBounds(
+                        viewportBounds = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
+                        entryBounds = panelRect,
+                    ),
+            ),
+        )
+    }
 }
 
 fun ApplicationOverlayHost.contextMenuOnFrame(
@@ -65,7 +218,7 @@ fun ApplicationOverlayHost.contextMenuOnFrame(
     viewportHeight: Int,
     viewportScale: Float,
 ) {
-    ContextMenuRuntime.engine.onFrame(
+    contextMenuPortal.onFrame(
         measureContext = measureContext,
         viewportWidth = viewportWidth,
         viewportHeight = viewportHeight,
@@ -79,7 +232,7 @@ fun ApplicationOverlayHost.appendContextMenuOverlayCommands(
     viewportHeight: Int,
     out: MutableList<RenderCommand>,
 ) {
-    ContextMenuRuntime.engine.appendOverlayCommands(
+    contextMenuPortal.appendCommands(
         measureContext = measureContext,
         viewportWidth = viewportWidth,
         viewportHeight = viewportHeight,
@@ -88,25 +241,24 @@ fun ApplicationOverlayHost.appendContextMenuOverlayCommands(
 }
 
 fun ApplicationOverlayHost.closeContextMenus() {
-    ContextMenuRuntime.engine.closeAll()
+    contextMenuPortal.close()
 }
 
-fun ApplicationOverlayHost.isContextMenuOpen(): Boolean = ContextMenuRuntime.engine.isOpen()
+fun ApplicationOverlayHost.isContextMenuOpen(): Boolean = contextMenuPortal.isOpen()
 
 fun ApplicationOverlayHost.handleContextMenuMouseMove(mouseX: Int, mouseY: Int): Boolean =
-    ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)
+    contextMenuPortal.handleMouseMove(mouseX, mouseY)
 
 fun ApplicationOverlayHost.handleContextMenuMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, button)
+    contextMenuPortal.handleMouseDown(mouseX, mouseY, button)
 
 fun ApplicationOverlayHost.handleContextMenuMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, button)
+    contextMenuPortal.handleMouseUp(mouseX, mouseY, button)
 
 fun ApplicationOverlayHost.handleContextMenuMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
-    ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, delta)
+    contextMenuPortal.handleMouseWheel(mouseX, mouseY, delta)
 
-fun ApplicationOverlayHost.handleContextMenuKeyDown(keyCode: Int): Boolean =
-    ContextMenuRuntime.engine.handleKeyDown(keyCode)
+fun ApplicationOverlayHost.handleContextMenuKeyDown(keyCode: Int): Boolean = contextMenuPortal.handleKeyDown(keyCode)
 
 fun ApplicationOverlayHost.applicationSelectOnFrame(
     measureContext: UiMeasureContext,

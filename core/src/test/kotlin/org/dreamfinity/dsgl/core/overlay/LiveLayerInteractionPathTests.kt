@@ -1,17 +1,21 @@
 package org.dreamfinity.dsgl.core.overlay
 
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayEntryId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelDemoNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -27,6 +31,11 @@ class LiveLayerInteractionPathTests {
 
             override fun paint(commands: List<RenderCommand>) = Unit
         }
+
+    @AfterTest
+    fun cleanupContextMenuRuntime() {
+        ContextMenuRuntime.engine.closeAll()
+    }
 
     @Test
     fun `runtime layer path resolves in debug system app-overlay app-root order`() {
@@ -211,6 +220,97 @@ class LiveLayerInteractionPathTests {
 
         assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
         assertFalse(appRootReceived)
+    }
+
+    @Test
+    fun `application context menu is rendered and consumed through application portal path`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 180)
+        var actionHits = 0
+        ContextMenuRuntime.host.openAtCursor(
+            contextMenu(id = "portal.context") {
+                item("Run") {
+                    onClick { actionHits += 1 }
+                }
+            },
+            x = 24,
+            y = 24,
+        )
+
+        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
+        val commands = ArrayList<RenderCommand>()
+        applicationOverlayHost.appendContextMenuOverlayCommands(ctx, 320, 180, commands)
+        val firstEntryRect = ContextMenuRuntime.engine.debugEntryRect(levelIndex = 0, entryIndex = 0)
+        assertNotNull(firstEntryRect)
+
+        val consumedByMenu =
+            applicationOverlayHost.handleContextMenuMouseDown(
+                mouseX = firstEntryRect.x + 1,
+                mouseY = firstEntryRect.y + 1,
+                button = MouseButton.LEFT,
+            )
+
+        assertTrue(commands.isNotEmpty())
+        assertTrue(consumedByMenu)
+        assertEquals(1, actionHits)
+        assertFalse(applicationOverlayHost.isContextMenuOpen())
+    }
+
+    @Test
+    fun `application context menu portal blocks app-root fallthrough on outside dismiss`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 180)
+        ContextMenuRuntime.host.openAtCursor(
+            contextMenu(id = "portal.dismiss") {
+                item("Run")
+                item("Build")
+            },
+            x = 24,
+            y = 24,
+        )
+        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
+        val panel = ContextMenuRuntime.engine.debugPanelRect(0)
+        assertNotNull(panel)
+        val outsideX = panel.x + panel.width + 24
+        val outsideY = panel.y + panel.height + 24
+
+        val harness =
+            LiveLayerInputHarness(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button ->
+                    applicationOverlayHost.handleContextMenuMouseDown(x, y, button)
+                },
+            )
+        var appRootReceived = false
+        val consumedBy =
+            harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertFalse(appRootReceived)
+        assertFalse(applicationOverlayHost.isContextMenuOpen())
+    }
+
+    @Test
+    fun `application context menu portal consumes wheel and escape while open`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 180)
+        ContextMenuRuntime.host.openAtCursor(
+            contextMenu(id = "portal.keyboard") {
+                item("Run")
+                item("Build")
+            },
+            x = 24,
+            y = 24,
+        )
+        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
+
+        assertTrue(applicationOverlayHost.handleContextMenuMouseWheel(26, 26, -120))
+        assertTrue(applicationOverlayHost.handleContextMenuKeyDown(KeyCodes.ESCAPE))
+        assertFalse(applicationOverlayHost.isContextMenuOpen())
     }
 
     @Test
