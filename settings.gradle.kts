@@ -36,3 +36,7 @@ if (isAdapterEnabled("MinecraftForge1710")) {
     include(":adapters:mc-forge-1-7-10")
     include(":adapters:mc-forge-1-7-10:demo")
 }
+if (isAdapterEnabled("MinecraftForge1122")) {
+    include(":adapters:mc-forge-1-12-2")
+    include(":adapters:mc-forge-1-12-2:demo")
+}
