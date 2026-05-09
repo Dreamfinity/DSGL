@@ -119,6 +119,7 @@ abstract class DsglScreenHost(
     private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
     private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
     private val debugOverlayHost: OverlayDebugControlHost = OverlayDebugControlHost()
+    private val domainOrchestrator: ScreenDomainSurfaceOrchestrator = ScreenDomainSurfaceOrchestrator()
     private val colorSamplerOwnershipRouter: ActiveColorSamplerOwnershipRouter = ActiveColorSamplerOwnershipRouter()
     private var activeColorSamplerOwner: ActiveColorSamplerOwner = ActiveColorSamplerOwner.None
     private var activeInlineColorSamplerNode: ColorPickerInlineNode? = null
@@ -572,11 +573,11 @@ abstract class DsglScreenHost(
         rebuiltThisFrame: Boolean,
         layoutCommittedThisFrame: Boolean,
     ) {
-        OverlayLayerContracts.composePaintCommands(
+        domainOrchestrator.composePaintCommands(
             applicationRoot = commands,
-            applicationOverlay = applicationOverlayCommandsBuffer,
-            systemOverlay = systemOverlayCommandsBuffer,
-            debug = debugOverlayCommands,
+            applicationPortal = applicationOverlayCommandsBuffer,
+            systemPortal = systemOverlayCommandsBuffer,
+            debugRoot = debugOverlayCommands,
             out = stagingCommandsBuffer,
             shouldRenderLayer = OverlayLayerDebugState::isRenderEnabled,
         )
@@ -1080,7 +1081,7 @@ abstract class DsglScreenHost(
         inspectorMouseY: Int,
     ): Boolean {
         val consumedBy =
-            OverlayLayerContracts.firstInputConsumer(
+            domainOrchestrator.firstInputConsumer(
                 canConsume = { layer ->
                     when (layer) {
                         UiLayerId.Debug -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
@@ -1151,7 +1152,7 @@ abstract class DsglScreenHost(
         val mappedButton = mapButton(mouseButton)
         val buttonPressed = Mouse.getEventButtonState()
         val consumedBy =
-            OverlayLayerContracts.firstInputConsumer(
+            domainOrchestrator.firstInputConsumer(
                 canConsume = { layer ->
                     when (layer) {
                         UiLayerId.Debug ->
@@ -1479,6 +1480,34 @@ abstract class DsglScreenHost(
     }
 
     internal fun debugRebuildIfNeededForTests(): Boolean = rebuildIfNeeded()
+
+    internal fun debugComposeDomainPaintCommandsForTests(
+        applicationRoot: List<RenderCommand>,
+        applicationPortal: List<RenderCommand>,
+        systemPortal: List<RenderCommand>,
+        debugRoot: List<RenderCommand>,
+        shouldRenderLayer: (UiLayerId) -> Boolean = { true },
+    ): List<RenderCommand> {
+        val out = ArrayList<RenderCommand>()
+        domainOrchestrator.composePaintCommands(
+            applicationRoot = applicationRoot,
+            applicationPortal = applicationPortal,
+            systemPortal = systemPortal,
+            debugRoot = debugRoot,
+            out = out,
+            shouldRenderLayer = shouldRenderLayer,
+        )
+        return out
+    }
+
+    internal fun debugFirstDomainInputConsumerForTests(
+        canConsume: (UiLayerId) -> Boolean,
+        isLayerInputEnabled: (UiLayerId) -> Boolean = { true },
+    ): UiLayerId? =
+        domainOrchestrator.firstInputConsumer(
+            canConsume = canConsume,
+            isLayerInputEnabled = isLayerInputEnabled,
+        )
 
     private fun setDragCapture(target: DOMNode) {
         dragCaptureTarget = target
