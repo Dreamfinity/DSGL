@@ -27,6 +27,54 @@ class OverlayLayerContractsTests {
     }
 
     @Test
+    fun `paint surfaces map current layer order to domain surfaces`() {
+        assertEquals(
+            listOf(
+                ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Root),
+                ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Portal),
+                ScreenDomainSurface(ScreenDomainId.System, ScreenDomainSurfaceRole.Portal),
+                ScreenDomainSurface(ScreenDomainId.Debug, ScreenDomainSurfaceRole.Root),
+            ),
+            OverlayLayerContracts.paintSurfaces,
+        )
+    }
+
+    @Test
+    fun `input surfaces map current input priority to domain surfaces`() {
+        assertEquals(
+            listOf(
+                ScreenDomainSurface(ScreenDomainId.Debug, ScreenDomainSurfaceRole.Root),
+                ScreenDomainSurface(ScreenDomainId.System, ScreenDomainSurfaceRole.Portal),
+                ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Portal),
+                ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Root),
+            ),
+            OverlayLayerContracts.inputSurfaces,
+        )
+    }
+
+    @Test
+    fun `owner scope resolves to compatible portal domain surfaces`() {
+        assertEquals(
+            ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Portal),
+            OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
+        )
+        assertEquals(
+            ScreenDomainSurface(ScreenDomainId.System, ScreenDomainSurfaceRole.Portal),
+            OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.System),
+        )
+    }
+
+    @Test
+    fun `debug layer maps to debug domain root without changing layer behavior`() {
+        assertEquals(
+            ScreenDomainSurface(ScreenDomainId.Debug, ScreenDomainSurfaceRole.Root),
+            OverlayLayerContracts.domainSurfaceForLayer(UiLayerId.Debug),
+        )
+        assertEquals(UiLayerId.Debug, OverlayLayerContracts.paintOrder.last())
+        assertEquals(UiLayerId.Debug, OverlayLayerContracts.inputPriority.first())
+    }
+
+    @Test
     fun `firstInputConsumer respects configured input priority`() {
         val consumed =
             OverlayLayerContracts.firstInputConsumer(

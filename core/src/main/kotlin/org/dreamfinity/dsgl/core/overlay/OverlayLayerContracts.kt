@@ -14,6 +14,22 @@ enum class OverlayOwnerScope {
     System,
 }
 
+internal enum class ScreenDomainId {
+    Application,
+    System,
+    Debug,
+}
+
+internal enum class ScreenDomainSurfaceRole {
+    Root,
+    Portal,
+}
+
+internal data class ScreenDomainSurface(
+    val domain: ScreenDomainId,
+    val role: ScreenDomainSurfaceRole,
+)
+
 object OverlayLayerContracts {
     val paintOrder: List<UiLayerId> =
         listOf(
@@ -31,11 +47,45 @@ object OverlayLayerContracts {
             UiLayerId.ApplicationRoot,
         )
 
+    internal val paintSurfaces: List<ScreenDomainSurface> = paintOrder.map(::domainSurfaceForLayer)
+
+    internal val inputSurfaces: List<ScreenDomainSurface> = inputPriority.map(::domainSurfaceForLayer)
+
     fun resolveTransientLayer(ownerScope: OverlayOwnerScope): UiLayerId =
         when (ownerScope) {
             OverlayOwnerScope.Application -> UiLayerId.ApplicationOverlay
             OverlayOwnerScope.System -> UiLayerId.SystemOverlay
         }
+
+    internal fun domainSurfaceForLayer(layer: UiLayerId): ScreenDomainSurface =
+        when (layer) {
+            UiLayerId.ApplicationRoot ->
+                ScreenDomainSurface(
+                    domain = ScreenDomainId.Application,
+                    role = ScreenDomainSurfaceRole.Root,
+                )
+
+            UiLayerId.ApplicationOverlay ->
+                ScreenDomainSurface(
+                    domain = ScreenDomainId.Application,
+                    role = ScreenDomainSurfaceRole.Portal,
+                )
+
+            UiLayerId.SystemOverlay ->
+                ScreenDomainSurface(
+                    domain = ScreenDomainId.System,
+                    role = ScreenDomainSurfaceRole.Portal,
+                )
+
+            UiLayerId.Debug ->
+                ScreenDomainSurface(
+                    domain = ScreenDomainId.Debug,
+                    role = ScreenDomainSurfaceRole.Root,
+                )
+        }
+
+    internal fun portalSurfaceForOwner(ownerScope: OverlayOwnerScope): ScreenDomainSurface =
+        domainSurfaceForLayer(resolveTransientLayer(ownerScope))
 
     @Suppress("UnusedParameter")
     fun resolveTransientLayer(ownerScope: OverlayOwnerScope, cursorX: Int, cursorY: Int): UiLayerId =
