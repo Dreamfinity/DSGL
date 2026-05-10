@@ -1,6 +1,8 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalController
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -34,6 +36,8 @@ class ApplicationOverlayHost : OverlayLayerHost {
             ownerScope = OverlayOwnerScope.Application,
             entryId = "application.select",
         )
+    internal val applicationColorPickerPortal: ColorPickerPortalController =
+        ColorPickerPortalController(ColorPickerRuntime.engine)
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         rootNode.setViewportBounds(
@@ -67,6 +71,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
         domInputRouter.clear()
         contextMenuPortal.close()
         applicationSelectPortal.close()
+        applicationColorPickerPortal.close()
     }
 
     internal fun debugRootBounds(): Rect = rootNode.bounds

@@ -1,5 +1,11 @@
 package org.dreamfinity.dsgl.core.overlay
 
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -23,6 +29,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -39,6 +46,8 @@ class LiveLayerInteractionPathTests {
     @AfterTest
     fun cleanupContextMenuRuntime() {
         ContextMenuRuntime.engine.closeAll()
+        ColorPickerRuntime.engine.closeAll()
+        ScreenColorSamplerBridge.install(null)
         SelectRuntime.host.closeAll()
     }
 
@@ -413,6 +422,125 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
+    fun `application color picker is rendered and consumed through application portal path`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(360, 240)
+        val owner = "application-color-picker-portal"
+        ColorPickerRuntime.host.open(colorPickerRequest(owner, OverlayOwnerScope.Application))
+
+        applicationOverlayHost.applicationColorPickerOnFrame(360, 240, 42, 48)
+        val commands = ArrayList<RenderCommand>()
+        applicationOverlayHost.appendApplicationColorPickerOverlayCommands(ctx, 360, 240, commands)
+        val layout = ColorPickerRuntime.engine.debugBodyLayout(owner)
+        assertNotNull(layout)
+
+        val harness =
+            LiveLayerInputHarness(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button ->
+                    applicationOverlayHost.handleApplicationColorPickerMouseDown(x, y, button)
+                },
+            )
+        var appRootReceived = false
+        val consumedBy =
+            harness.dispatchMouseDown(
+                layout.colorFieldRect.x + 4,
+                layout.colorFieldRect.y + 4,
+                MouseButton.LEFT,
+            ) {
+                appRootReceived = true
+                true
+            }
+
+        assertTrue(commands.isNotEmpty())
+        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertFalse(appRootReceived)
+        assertTrue(applicationOverlayHost.isApplicationColorPickerOpen())
+    }
+
+    @Test
+    fun `application color picker portal preserves drag close and eyedropper capture hooks`() {
+        ScreenColorSamplerBridge.install(ScreenColorSampler { x, y -> (0xFF shl 24) or (x shl 16) or (y shl 8) or 0x44 })
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(480, 320)
+        val owner = "application-color-picker-drag-eyedropper"
+        var committed: RgbaColor? = null
+        ColorPickerRuntime.host.open(
+            colorPickerRequest(owner, OverlayOwnerScope.Application) {
+                committed = it
+            },
+        )
+        applicationOverlayHost.applicationColorPickerOnFrame(480, 320, 120, 80)
+
+        val panelBefore = ColorPickerRuntime.engine.debugPanelRect(owner) ?: error("panel missing")
+        val header = ColorPickerRuntime.engine.debugHeaderRect(owner) ?: error("header missing")
+        val dragStartX = header.x + 6
+        val dragStartY = header.y + 6
+        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseDown(dragStartX, dragStartY, MouseButton.LEFT))
+        assertTrue(
+            applicationOverlayHost.handleApplicationColorPickerMouseMove(
+                dragStartX + 40,
+                dragStartY + 30,
+            ),
+        )
+        assertTrue(
+            applicationOverlayHost.handleApplicationColorPickerMouseUp(
+                dragStartX + 40,
+                dragStartY + 30,
+                MouseButton.LEFT,
+            ),
+        )
+        val panelAfter = ColorPickerRuntime.engine.debugPanelRect(owner) ?: error("panel missing")
+        assertNotEquals(panelBefore.x, panelAfter.x)
+
+        val layout = ColorPickerRuntime.engine.debugBodyLayout(owner) ?: error("layout missing")
+        assertTrue(
+            applicationOverlayHost.handleApplicationColorPickerMouseDown(
+                layout.pipetteRect.x + 2,
+                layout.pipetteRect.y + 2,
+                MouseButton.LEFT,
+            ),
+        )
+        assertTrue(applicationOverlayHost.hasActiveApplicationColorPickerEyedropper())
+        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseMove(25, 52))
+        applicationOverlayHost.captureApplicationColorPickerEyedropperSample()
+        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseDown(25, 52, MouseButton.LEFT))
+        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseUp(25, 52, MouseButton.LEFT))
+        val expected = RgbaColor.fromArgbInt((0xFF shl 24) or (25 shl 16) or (52 shl 8) or 0x44)
+        assertEquals(expected.toArgbInt(), committed?.toArgbInt())
+
+        val closeRect = ColorPickerRuntime.engine.debugCloseRect(owner) ?: error("close missing")
+        assertTrue(
+            applicationOverlayHost.handleApplicationColorPickerMouseDown(
+                closeRect.x + 1,
+                closeRect.y + 1,
+                MouseButton.LEFT,
+            ),
+        )
+        assertFalse(applicationOverlayHost.isApplicationColorPickerOpen())
+    }
+
+    @Test
+    fun `application color picker portal does not consume system owned popup`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(360, 240)
+        val owner = "system-color-picker-owner"
+        ColorPickerRuntime.host.open(colorPickerRequest(owner, OverlayOwnerScope.System))
+
+        applicationOverlayHost.applicationColorPickerOnFrame(360, 240, 42, 48)
+        val commands = ArrayList<RenderCommand>()
+        applicationOverlayHost.appendApplicationColorPickerOverlayCommands(ctx, 360, 240, commands)
+        val panel = ColorPickerRuntime.engine.debugPanelRect(owner)
+        assertNotNull(panel)
+
+        assertTrue(ColorPickerRuntime.engine.isOpenFor(owner))
+        assertFalse(applicationOverlayHost.isApplicationColorPickerOpen())
+        assertFalse(applicationOverlayHost.handleApplicationColorPickerMouseDown(panel.x + 2, panel.y + 2, MouseButton.LEFT))
+        assertTrue(commands.isEmpty())
+    }
+
+    @Test
     fun `system select is rendered and consumed through system portal path`() {
         val systemHost = SystemOverlayHost(InspectorController())
         systemHost.onInputFrame(320, 180)
@@ -544,6 +672,15 @@ class LiveLayerInteractionPathTests {
             ownerScope = ownerScope,
         )
     }
+
+    private fun colorPickerRequest(owner: Any, ownerScope: OverlayOwnerScope, onCommit: ((RgbaColor) -> Unit)? = null): ColorPickerPopupRequest =
+        ColorPickerPopupRequest(
+            owner = owner,
+            ownerScope = ownerScope,
+            anchorRect = Rect(32, 36, 24, 18),
+            state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
+            onCommit = onCommit,
+        )
 
     private class LiveLayerInputHarness(
         private val debugHandler: (Int, Int, MouseButton) -> Boolean,
