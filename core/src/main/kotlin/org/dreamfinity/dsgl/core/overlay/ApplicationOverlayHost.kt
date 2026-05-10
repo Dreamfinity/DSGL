@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectPortalController
 import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
@@ -27,6 +28,12 @@ class ApplicationOverlayHost : OverlayLayerHost {
         )
     internal val contextMenuPortal: ContextMenuPortalController =
         ContextMenuPortalController(ContextMenuRuntime.engine)
+    internal val applicationSelectPortal: SelectPortalController =
+        SelectPortalController(
+            engine = SelectRuntime.applicationEngine,
+            ownerScope = OverlayOwnerScope.Application,
+            entryId = "application.select",
+        )
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         rootNode.setViewportBounds(
@@ -59,6 +66,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
         tree.clearRefs()
         domInputRouter.clear()
         contextMenuPortal.close()
+        applicationSelectPortal.close()
     }
 
     internal fun debugRootBounds(): Rect = rootNode.bounds
@@ -266,7 +274,7 @@ fun ApplicationOverlayHost.applicationSelectOnFrame(
     viewportHeight: Int,
     viewportScale: Float,
 ) {
-    SelectRuntime.applicationEngine.onFrame(
+    applicationSelectPortal.onFrame(
         measureContext = measureContext,
         viewportWidth = viewportWidth,
         viewportHeight = viewportHeight,
@@ -280,7 +288,7 @@ fun ApplicationOverlayHost.appendApplicationSelectOverlayCommands(
     viewportHeight: Int,
     out: MutableList<RenderCommand>,
 ) {
-    SelectRuntime.applicationEngine.appendOverlayCommands(
+    applicationSelectPortal.appendCommands(
         measureContext = measureContext,
         viewportWidth = viewportWidth,
         viewportHeight = viewportHeight,
@@ -288,19 +296,19 @@ fun ApplicationOverlayHost.appendApplicationSelectOverlayCommands(
     )
 }
 
-fun ApplicationOverlayHost.isApplicationSelectOpen(): Boolean = SelectRuntime.applicationEngine.isOpen()
+fun ApplicationOverlayHost.isApplicationSelectOpen(): Boolean = applicationSelectPortal.isOpen()
 
 fun ApplicationOverlayHost.handleApplicationSelectKeyDown(keyCode: Int, keyChar: Char): Boolean =
-    SelectRuntime.applicationEngine.handleKeyDown(keyCode, keyChar)
+    applicationSelectPortal.handleKeyDown(keyCode, keyChar)
 
 fun ApplicationOverlayHost.handleApplicationSelectMouseMove(mouseX: Int, mouseY: Int): Boolean =
-    SelectRuntime.applicationEngine.handleMouseMove(mouseX, mouseY)
+    applicationSelectPortal.handleMouseMove(mouseX, mouseY)
 
 fun ApplicationOverlayHost.handleApplicationSelectMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    SelectRuntime.applicationEngine.handleMouseDown(mouseX, mouseY, button)
+    applicationSelectPortal.handleMouseDown(mouseX, mouseY, button)
 
 fun ApplicationOverlayHost.handleApplicationSelectMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    SelectRuntime.applicationEngine.handleMouseUp(mouseX, mouseY, button)
+    applicationSelectPortal.handleMouseUp(mouseX, mouseY, button)
 
 fun ApplicationOverlayHost.handleApplicationSelectMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
-    SelectRuntime.applicationEngine.handleMouseWheel(mouseX, mouseY, delta)
+    applicationSelectPortal.handleMouseWheel(mouseX, mouseY, delta)

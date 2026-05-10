@@ -15,6 +15,10 @@ import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayEntryId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelDemoNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectEntry
+import org.dreamfinity.dsgl.core.select.SelectOpenRequest
+import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.selectModel
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +39,7 @@ class LiveLayerInteractionPathTests {
     @AfterTest
     fun cleanupContextMenuRuntime() {
         ContextMenuRuntime.engine.closeAll()
+        SelectRuntime.host.closeAll()
     }
 
     @Test
@@ -314,6 +319,154 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
+    fun `application select is rendered and consumed through application portal path`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 180)
+        var selected: String? = null
+        val owner = "application-select-portal"
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application) { selected = it })
+
+        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 180, 1f)
+        val commands = ArrayList<RenderCommand>()
+        applicationOverlayHost.appendApplicationSelectOverlayCommands(ctx, 320, 180, commands)
+        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        assertNotNull(panel)
+
+        val style = SelectRuntime.applicationEngine.currentStyle()
+        val consumed =
+            applicationOverlayHost.handleApplicationSelectMouseDown(
+                mouseX = panel.x + style.panelPaddingX + 1,
+                mouseY = panel.y + style.panelPaddingY + 1,
+                button = MouseButton.LEFT,
+            )
+
+        assertTrue(commands.isNotEmpty())
+        assertTrue(consumed)
+        assertEquals("a", selected)
+    }
+
+    @Test
+    fun `application select portal blocks app-root fallthrough on outside dismiss`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 180)
+        val owner = "application-select-dismiss"
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
+        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 180, 1f)
+        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        assertNotNull(panel)
+        val outsideX = panel.x + panel.width + 24
+        val outsideY = panel.y + panel.height + 24
+        val harness =
+            LiveLayerInputHarness(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button ->
+                    applicationOverlayHost.handleApplicationSelectMouseDown(x, y, button)
+                },
+            )
+
+        var appRootReceived = false
+        val consumedBy =
+            harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertFalse(appRootReceived)
+    }
+
+    @Test
+    fun `application select portal consumes wheel typeahead and escape`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(320, 120)
+        val owner = "application-select-keyboard"
+        var selected: String? = null
+        SelectRuntime.host.open(
+            selectRequest(
+                owner = owner,
+                ownerScope = OverlayOwnerScope.Application,
+                entries =
+                    listOf(
+                        SelectEntry.Option("a", labelProvider = { "Alpha" }),
+                        SelectEntry.Option("b", labelProvider = { "Beta" }),
+                        SelectEntry.Option("c", labelProvider = { "Charlie" }),
+                        SelectEntry.Option("d", labelProvider = { "Delta" }),
+                        SelectEntry.Option("e", labelProvider = { "Echo" }),
+                        SelectEntry.Option("f", labelProvider = { "Foxtrot" }),
+                    ),
+                onSelect = { selected = it },
+            ),
+        )
+        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 120, 1f)
+        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        assertNotNull(panel)
+
+        assertTrue(applicationOverlayHost.handleApplicationSelectMouseWheel(panel.x + 2, panel.y + 2, -120))
+        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(0, 'd'))
+        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(KeyCodes.ENTER, Char.MIN_VALUE))
+        assertEquals("d", selected)
+
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
+        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 120, 1f)
+        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(KeyCodes.ESCAPE, Char.MIN_VALUE))
+    }
+
+    @Test
+    fun `system select is rendered and consumed through system portal path`() {
+        val systemHost = SystemOverlayHost(InspectorController())
+        systemHost.onInputFrame(320, 180)
+        val owner = "system-select-portal"
+        var selected: String? = null
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.System) { selected = it })
+
+        systemHost.systemSelectOnFrame(ctx, 320, 180, 1f)
+        val commands = ArrayList<RenderCommand>()
+        systemHost.appendSystemSelectOverlayCommands(ctx, 320, 180, commands)
+        val panel = SelectRuntime.systemEngine.debugPanelRect(owner)
+        assertNotNull(panel)
+        val style = SelectRuntime.systemEngine.currentStyle()
+
+        val harness =
+            LiveLayerInputHarness(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { x, y, button ->
+                    systemHost.handleSystemSelectMouseDown(x, y, button)
+                },
+                applicationOverlayHandler = { _, _, _ -> false },
+            )
+        var appRootReceived = false
+        val consumedBy =
+            harness.dispatchMouseDown(
+                panel.x + style.panelPaddingX + 1,
+                panel.y + style.panelPaddingY + 1,
+                MouseButton.LEFT,
+            ) {
+                appRootReceived = true
+                true
+            }
+
+        assertTrue(commands.isNotEmpty())
+        assertEquals(UiLayerId.SystemOverlay, consumedBy)
+        assertFalse(appRootReceived)
+        assertEquals("a", selected)
+        assertFalse(SelectRuntime.applicationEngine.isOpenFor(owner))
+    }
+
+    @Test
+    fun `select owner migration preserves application system routing`() {
+        val owner = "select-owner-migration"
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
+        assertTrue(SelectRuntime.applicationEngine.isOpenFor(owner))
+        assertFalse(SelectRuntime.systemEngine.isOpenFor(owner))
+
+        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.System))
+
+        assertFalse(SelectRuntime.applicationEngine.isOpenFor(owner))
+        assertTrue(SelectRuntime.systemEngine.isOpenFor(owner))
+    }
+
+    @Test
     fun `rendered system overlay content is reachable through same live interaction path`() {
         val systemHost = SystemOverlayHost(InspectorController())
         val root = inspectedRoot()
@@ -358,6 +511,38 @@ class LiveLayerInteractionPathTests {
                 bounds = Rect(20, 20, 120, 32)
             }.applyParent(root)
         return root
+    }
+
+    private fun selectRequest(
+        owner: Any,
+        ownerScope: OverlayOwnerScope,
+        entries: List<SelectEntry> =
+            listOf(
+                SelectEntry.Option("a", labelProvider = { "Alpha" }),
+                SelectEntry.Option("b", labelProvider = { "Beta" }),
+            ),
+        onSelect: ((String) -> Unit)? = null,
+    ): SelectOpenRequest {
+        val model =
+            selectModel(id = "live-layer-select") {
+                entries.forEach { entry ->
+                    when (entry) {
+                        is SelectEntry.Option -> option(entry.id, entry.labelProvider)
+                        is SelectEntry.Group -> group(entry.labelProvider, entry.id) {}
+                        is SelectEntry.Separator -> separator(entry.id)
+                    }
+                }
+            }
+        return SelectOpenRequest(
+            owner = owner,
+            modelToken = model.token,
+            entries = entries,
+            selectedId = null,
+            anchorRect = Rect(24, 24, 100, 18),
+            closeOnSelect = true,
+            onSelect = onSelect,
+            ownerScope = ownerScope,
+        )
     }
 
     private class LiveLayerInputHarness(
