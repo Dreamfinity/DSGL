@@ -31,6 +31,15 @@ class SystemOverlayEntryInfrastructureTests {
             ),
             host.debugRegisteredEntryIds(),
         )
+        assertEquals(
+            listOf(
+                "system.Inspector",
+                "system.ColorPickerPopup",
+                "system.ColorPickerTransient",
+                "system.PanelDemo",
+            ),
+            host.debugRegisteredPortalEntryIds(),
+        )
     }
 
     @Test
@@ -48,6 +57,7 @@ class SystemOverlayEntryInfrastructureTests {
         val firstNode = host.debugEntryNode(SystemOverlayEntryId.Inspector) ?: error("node missing")
         assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.Inspector))
         assertTrue(firstState.active)
+        assertEquals(listOf("system.Inspector"), host.debugActivePortalEntryIds())
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 22, cursorY = 20, inspectorPointerCaptured = false)
         val secondState = host.debugEntryState(SystemOverlayEntryId.Inspector) ?: error("state missing")
@@ -58,6 +68,7 @@ class SystemOverlayEntryInfrastructureTests {
         inspector.deactivate()
         host.syncFrame(root, inspectedLayoutRevision = 4L, cursorX = 22, cursorY = 20, inspectorPointerCaptured = false)
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.Inspector))
+        assertFalse(host.debugActivePortalEntryIds().contains("system.Inspector"))
     }
 
     @Test
@@ -96,12 +107,14 @@ class SystemOverlayEntryInfrastructureTests {
             assertEquals(firstRect.x, secondRect.x)
             assertEquals(firstRect.y, secondRect.y)
             assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
+            assertTrue(host.debugActivePortalEntryIds().contains("system.ColorPickerPopup"))
         } finally {
             pickerHost.close()
         }
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 60, cursorY = 65, inspectorPointerCaptured = false)
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
+        assertFalse(host.debugActivePortalEntryIds().contains("system.ColorPickerPopup"))
     }
 
     @Test
@@ -123,6 +136,10 @@ class SystemOverlayEntryInfrastructureTests {
             assertEquals(
                 listOf(SystemOverlayEntryId.Inspector, SystemOverlayEntryId.ColorPickerPopup),
                 host.debugMountedEntryIds(),
+            )
+            assertEquals(
+                listOf("system.Inspector", "system.ColorPickerPopup"),
+                host.debugActivePortalEntryIds(),
             )
         } finally {
             inspector.deactivate()

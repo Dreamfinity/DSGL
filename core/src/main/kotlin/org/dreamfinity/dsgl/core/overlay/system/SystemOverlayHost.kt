@@ -14,8 +14,11 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.overlay.PortalFrameContext
+import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
@@ -40,6 +43,10 @@ class SystemOverlayHost(
         SystemOverlayEntryRegistry(
             listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry),
         )
+    private val portalHost: PortalHost =
+        PortalHost(OverlayLayerContracts.domainSurfaceForLayer(UiLayerId.SystemOverlay))
+    private val portalEntries: List<SystemOverlayPortalEntryAdapter> =
+        entryRegistry.allEntries().map(::SystemOverlayPortalEntryAdapter)
     private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =
         SystemOverlayTransientOwnershipRegistry()
     private val systemSelectPortal: SelectPortalController =
@@ -69,6 +76,10 @@ class SystemOverlayHost(
                 if (activeEntriesTopFirst().any { it.enablesDomInputFallbackRouting() }) rootNode else null
             },
         )
+
+    init {
+        portalEntries.forEach(portalHost::register)
+    }
 
     fun systemInspectorColorPickerPopupHost(): InspectorColorPickerHost = colorPickerEntry
 
@@ -133,6 +144,7 @@ class SystemOverlayHost(
         knownViewportWidth = viewportWidth.coerceAtLeast(1)
         knownViewportHeight = viewportHeight.coerceAtLeast(1)
         rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)
+        portalHost.onInputFrame(PortalFrameContext(Rect(0, 0, knownViewportWidth, knownViewportHeight)))
         entryRegistry.allEntries().forEach { entry ->
             entry.onInputFrame(viewportWidth, viewportHeight)
         }
@@ -156,6 +168,9 @@ class SystemOverlayHost(
         rootNode.setViewportBounds(knownViewportWidth, knownViewportHeight)
         entryRegistry.allEntries().forEach { entry ->
             entry.sync(frameContext)
+        }
+        portalEntries.forEach { entry ->
+            entry.syncPlacement(knownViewportWidth, knownViewportHeight)
         }
         reconcileMountedEntries()
     }
@@ -205,6 +220,7 @@ class SystemOverlayHost(
         colorPickerEntry.close()
         overlayPanelDemoEntry.close()
         systemSelectPortal.close()
+        portalEntries.forEach { it.syncPlacement(knownViewportWidth, knownViewportHeight) }
         domInputRouter.clear()
     }
 
@@ -214,15 +230,22 @@ class SystemOverlayHost(
 
     internal fun debugRegisteredEntryIds(): List<SystemOverlayEntryId> = entryRegistry.allEntries().map { it.state.id }
 
+    internal fun debugRegisteredPortalEntryIds(): List<String> = portalEntries.map { it.state.id.value }
+
+    internal fun debugActivePortalEntryIds(): List<String> = portalHost.entriesInPaintOrder().map { it.state.id.value }
+
     internal fun debugMountedEntryIds(): List<SystemOverlayEntryId> {
-        val entriesByNode = entryRegistry.allEntries().associateBy { it.node }
+        val entriesByNode = portalEntries.associateBy { it.node }
         val mountedNodes =
             buildList {
                 addAll(rootNode.mountedLaneNodes(SystemOverlayLane.PanelContent))
                 addAll(rootNode.mountedLaneNodes(SystemOverlayLane.Transient))
             }
         return mountedNodes.mapNotNull { node ->
-            entriesByNode[node]?.state?.id
+            entriesByNode[node]
+                ?.systemEntry
+                ?.state
+                ?.id
         }
     }
 
@@ -249,7 +272,10 @@ class SystemOverlayHost(
     internal fun debugRootBounds(): Rect = rootNode.bounds
 
     private fun reconcileMountedEntries() {
-        val activeEntries = entryRegistry.allEntries().filter { it.state.active }
+        val activeEntries =
+            portalHost.entriesInPaintOrder().mapNotNull {
+                (it as? SystemOverlayPortalEntryAdapter)?.systemEntry
+            }
         val panelNodes =
             activeEntries
                 .filter { it.state.lane == SystemOverlayLane.PanelContent }
@@ -265,13 +291,9 @@ class SystemOverlayHost(
     }
 
     private fun activeEntriesTopFirst(): List<SystemOverlayEntry> =
-        entryRegistry
-            .allEntries()
-            .filter { it.state.active }
-            .sortedWith(
-                compareBy<SystemOverlayEntry> { it.state.lane.zOrder }
-                    .thenBy { it.state.order },
-            ).asReversed()
+        portalHost
+            .entriesInInputOrder()
+            .mapNotNull { (it as? SystemOverlayPortalEntryAdapter)?.systemEntry }
 
     private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean =
         activeEntriesTopFirst()
