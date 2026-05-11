@@ -7,7 +7,7 @@ import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 
-interface InspectorColorPickerHost {
+interface SystemColorPickerPortalService {
     fun open(
         anchorRect: Rect,
         title: String,
@@ -29,7 +29,7 @@ interface InspectorColorPickerHost {
 
 internal class SystemColorPickerPanelManager(
     private val delegate: ColorPickerPopupManager = ColorPickerPopupManager(),
-) : InspectorColorPickerHost {
+) : SystemColorPickerPortalService {
     override fun open(
         anchorRect: Rect,
         title: String,

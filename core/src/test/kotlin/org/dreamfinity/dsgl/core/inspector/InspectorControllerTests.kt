@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.inspector
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
-import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPortalService
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -362,8 +362,8 @@ class InspectorControllerTests {
 
     @Test
     fun `inspector opens picker for color property and stays interactive after preview commit`() {
-        val pickerHost = RecordingInspectorColorPickerHost()
-        val controller = InspectorController(colorPickerManager = pickerHost)
+        val pickerService = RecordingSystemColorPickerPortalService()
+        val controller = InspectorController(colorPickerManager = pickerService)
         controller.toggle()
 
         val root = container("root", 0, 0, 1200, 800)
@@ -383,9 +383,9 @@ class InspectorControllerTests {
             ),
         )
 
-        val opened = pickerHost.lastOpen
+        val opened = pickerService.lastOpen
         assertNotNull(opened)
-        assertTrue(pickerHost.isOpen())
+        assertTrue(pickerService.isOpen())
 
         opened.onPreview?.invoke(RgbaColor(0.25f, 0.5f, 0.75f, 1f))
         val previewLiteral =
@@ -407,8 +407,8 @@ class InspectorControllerTests {
             )?.value
         assertEquals("#FFFF0000", committedLiteral)
 
-        pickerHost.close()
-        assertFalse(pickerHost.isOpen())
+        pickerService.close()
+        assertFalse(pickerService.isOpen())
         assertTrue(controller.handleMouseDown(38, 30, MouseButton.LEFT))
         assertTrue(controller.isDraggingPanel)
         assertTrue(controller.handleMouseUp(38, 30, MouseButton.LEFT))
@@ -564,7 +564,7 @@ class InspectorControllerTests {
             bounds = Rect(x, y, width, height)
         }
 
-    private class RecordingInspectorColorPickerHost : InspectorColorPickerHost {
+    private class RecordingSystemColorPickerPortalService : SystemColorPickerPortalService {
         var lastOpen: OpenCall? = null
         private var open: Boolean = false
 

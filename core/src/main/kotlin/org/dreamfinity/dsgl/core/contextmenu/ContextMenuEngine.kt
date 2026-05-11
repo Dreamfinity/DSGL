@@ -8,7 +8,7 @@ import org.dreamfinity.dsgl.core.style.*
 class ContextMenuEngine(
     private val clock: ContextMenuClock = SystemContextMenuClock,
     private val measurementCache: ContextMenuMeasurementCache = ContextMenuMeasurementCache(),
-) : ContextMenuHost {
+) : ContextMenuPortalService {
     private data class OpenLevel(
         val token: Long,
         val entries: List<MenuEntry>,

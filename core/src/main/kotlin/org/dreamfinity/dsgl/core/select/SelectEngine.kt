@@ -13,7 +13,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 class SelectEngine(
     private val clock: SelectClock = SystemSelectClock,
     private val measurementCache: SelectMeasurementCache = SelectMeasurementCache(),
-) : SelectHost {
+) {
     private data class PopupState(
         val owner: Any,
         var modelToken: Long,
@@ -76,7 +76,7 @@ class SelectEngine(
 
     fun measurementComputeCount(): Long = measurementCache.computeCount
 
-    override fun open(request: SelectOpenRequest) {
+    fun open(request: SelectOpenRequest) {
         if (request.entries.isEmpty()) {
             close(request.owner)
             return
@@ -126,13 +126,13 @@ class SelectEngine(
         }
     }
 
-    override fun close(owner: Any) {
+    fun close(owner: Any) {
         val current = popup ?: return
         if (current.owner != owner) return
         startVisibilityTransition(0f, style.closeDurationMs)
     }
 
-    override fun closeAll() {
+    fun closeAll() {
         val current = popup ?: return
         val onClose = current.onClose
         popup = null
@@ -144,12 +144,12 @@ class SelectEngine(
         onClose?.invoke()
     }
 
-    override fun isOpenFor(owner: Any): Boolean {
+    fun isOpenFor(owner: Any): Boolean {
         val current = popup ?: return false
         return current.owner == owner && visibilityState != VisibilityState.Hidden
     }
 
-    override fun isOpen(): Boolean = popup != null && visibilityState != VisibilityState.Hidden
+    fun isOpen(): Boolean = popup != null && visibilityState != VisibilityState.Hidden
 
     fun snapshot(): Snapshot {
         val current = popup

@@ -692,8 +692,8 @@ class ColorPickerPopupEngineTests {
 
     @Test
     fun `manager reuses same owner token`() {
-        val fakeHost = FakeColorPickerHost()
-        val manager = ColorPickerPopupManager(host = fakeHost)
+        val fakeService = FakeColorPickerPortalService()
+        val manager = ColorPickerPopupManager(portalService = fakeService)
         manager.open(
             anchorRect = Rect(10, 10, 10, 10),
             title = "A",
@@ -705,19 +705,19 @@ class ColorPickerPopupEngineTests {
             state = ColorPickerState(RgbaColor(0f, 0f, 0f, 1f)),
         )
 
-        assertEquals(2, fakeHost.opened.size)
-        val first = fakeHost.opened[0]
-        val second = fakeHost.opened[1]
+        assertEquals(2, fakeService.opened.size)
+        val first = fakeService.opened[0]
+        val second = fakeService.opened[1]
         assertTrue(first.owner === second.owner)
         manager.close()
-        assertNotNull(fakeHost.lastClosedOwner)
-        assertTrue(fakeHost.lastClosedOwner === first.owner)
+        assertNotNull(fakeService.lastClosedOwner)
+        assertTrue(fakeService.lastClosedOwner === first.owner)
     }
 
     @Test
     fun `manager popup owner scope defaults to application and supports explicit system owner scope`() {
-        val fakeHost = FakeColorPickerHost()
-        val manager = ColorPickerPopupManager(host = fakeHost)
+        val fakeService = FakeColorPickerPortalService()
+        val manager = ColorPickerPopupManager(portalService = fakeService)
         manager.open(
             anchorRect = Rect(10, 10, 10, 10),
             title = "App",
@@ -730,12 +730,12 @@ class ColorPickerPopupEngineTests {
             state = ColorPickerState(RgbaColor.WHITE),
         )
 
-        assertEquals(2, fakeHost.opened.size)
-        assertEquals(OverlayOwnerScope.Application, fakeHost.opened[0].ownerScope)
-        assertEquals(OverlayOwnerScope.System, fakeHost.opened[1].ownerScope)
+        assertEquals(2, fakeService.opened.size)
+        assertEquals(OverlayOwnerScope.Application, fakeService.opened[0].ownerScope)
+        assertEquals(OverlayOwnerScope.System, fakeService.opened[1].ownerScope)
     }
 
-    private class FakeColorPickerHost : ColorPickerPopupHost {
+    private class FakeColorPickerPortalService : ColorPickerPopupPortalService {
         val opened: MutableList<ColorPickerPopupRequest> = ArrayList()
         var lastClosedOwner: Any? = null
 

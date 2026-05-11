@@ -1,6 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -11,8 +10,8 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.AfterTest
@@ -34,8 +33,8 @@ class InspectorPointerAlignmentTests {
     fun cleanup() {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
-        ColorPickerPortalServices.engine.closeAll()
-        SelectPortalServices.closeAll()
+        DomainPortalServices.applicationColorPickerEngine.closeAll()
+        DomainPortalServices.closeAllSelects()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -122,7 +121,7 @@ class InspectorPointerAlignmentTests {
         val ownerKey = "dsgl-system-inspector-editor-select-$rowIndex"
         val property = row.property
         val triggerRect = openDropdownFromVisibleSelectRow(fixture, row)
-        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertTrue(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
 
         fixture.host.handleMouseDown(
             triggerRect.x + 2,
@@ -167,7 +166,7 @@ class InspectorPointerAlignmentTests {
         assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertTrue(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
 
         val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
         val outsideX = (panelRect.x - 12).coerceAtLeast(1)
@@ -183,7 +182,7 @@ class InspectorPointerAlignmentTests {
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot(withManyChildren)
 
         inspector.toggle()
@@ -303,17 +302,17 @@ class InspectorPointerAlignmentTests {
     }
 
     private fun selectPanelRect(ownerKey: String, fixture: Fixture): Rect {
-        SelectPortalServices.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
-        return SelectPortalServices.systemEngine.debugPanelRect(ownerKey)
+        DomainPortalServices.systemSelectEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        return DomainPortalServices.systemSelectEngine.debugPanelRect(ownerKey)
             ?: error("expected system select popup for owner=$ownerKey")
     }
 
     private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean =
-        SelectPortalServices.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+        DomainPortalServices.systemSelectEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
             fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
 
     private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean =
-        SelectPortalServices.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+        DomainPortalServices.systemSelectEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
             fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
 
     private fun dispatchSystemMouseWheel(
@@ -322,7 +321,7 @@ class InspectorPointerAlignmentTests {
         y: Int,
         delta: Int,
     ): Boolean =
-        SelectPortalServices.systemEngine.handleMouseWheel(x, y, delta) ||
+        DomainPortalServices.systemSelectEngine.handleMouseWheel(x, y, delta) ||
             fixture.host.handleMouseWheel(x, y, delta)
 
     private fun waitForSystemSelectClosed(
@@ -332,12 +331,12 @@ class InspectorPointerAlignmentTests {
         cursorY: Int,
     ) {
         repeat(30) {
-            if (!SelectPortalServices.systemEngine.isOpenFor(ownerKey)) return
+            if (!DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey)) return
             Thread.sleep(5)
             syncAndRender(fixture, cursorX, cursorY)
-            SelectPortalServices.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+            DomainPortalServices.systemSelectEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
         }
-        assertFalse(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertFalse(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
     }
 
     private fun findRowByProperty(fixture: Fixture, property: StyleProperty): InspectorStyleEditorRowSnapshot =

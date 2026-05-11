@@ -11,11 +11,11 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.inspector.*
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.TextWrap
@@ -1034,7 +1034,7 @@ internal class SystemInspectorOverlayNode(
         hovered: Boolean,
         onSelected: (String) -> Unit,
     ): DOMNode {
-        val open = SelectPortalServices.isOpenFor(key)
+        val open = DomainPortalServices.isSelectOpenFor(key)
         val selectNode =
             scope.select(
                 props = {

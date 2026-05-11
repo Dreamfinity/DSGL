@@ -4,11 +4,12 @@ import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerDebugCounters
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-interface ColorPickerPopupHost {
+interface ColorPickerPopupPortalService {
     fun open(request: ColorPickerPopupRequest)
 
     fun close(owner: Any)
@@ -36,7 +37,7 @@ data class ColorPickerPopupRequest(
     val onClose: (() -> Unit)? = null,
 )
 
-class ColorPickerPopupEngine : ColorPickerPopupHost {
+class ColorPickerPopupEngine : ColorPickerPopupPortalService {
     private data class LayoutDirtyKey(
         val bodyRect: Rect,
         val mode: ColorFormatMode,
@@ -646,7 +647,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
 }
 
 class ColorPickerPopupManager(
-    private val host: ColorPickerPopupHost = ColorPickerPortalServices.engine,
+    private val portalService: ColorPickerPopupPortalService = DomainPortalServices.applicationColorPickerEngine,
     private val ownerToken: Any = Any(),
 ) {
     fun open(
@@ -663,7 +664,7 @@ class ColorPickerPopupManager(
         onCommit: ((RgbaColor) -> Unit)? = null,
         onClose: (() -> Unit)? = null,
     ) {
-        host.open(
+        portalService.open(
             ColorPickerPopupRequest(
                 owner = ownerToken,
                 ownerScope = ownerScope,
@@ -683,12 +684,8 @@ class ColorPickerPopupManager(
     }
 
     fun close() {
-        host.close(ownerToken)
+        portalService.close(ownerToken)
     }
 
-    fun isOpen(): Boolean = host.isOpenFor(ownerToken)
-}
-
-object ColorPickerPortalServices {
-    val engine: ColorPickerPopupEngine = ColorPickerPopupEngine()
+    fun isOpen(): Boolean = portalService.isOpenFor(ownerToken)
 }

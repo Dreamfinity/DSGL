@@ -1,7 +1,6 @@
 
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuStyle
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dnd.*
@@ -11,6 +10,7 @@ import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
@@ -753,7 +753,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
     }
 
     val entries = contextMenuVisibleFiles()
-    ContextMenuPortalServices.engine.setStyle(
+    DomainPortalServices.applicationContextMenuEngine.setStyle(
         ContextMenuStyle(
             panelPaddingX = 4,
             panelPaddingY = 4,

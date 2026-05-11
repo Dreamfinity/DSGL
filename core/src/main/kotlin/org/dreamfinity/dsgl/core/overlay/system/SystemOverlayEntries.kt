@@ -115,7 +115,7 @@ internal class SystemOverlayEntryRegistry(
     fun entry(id: SystemOverlayEntryId): SystemOverlayEntry? = byId[id]
 }
 
-internal class SystemOverlayPortalEntryAdapter(
+internal class SystemOverlayPortalEntry(
     private val entry: SystemOverlayEntry,
 ) : PortalEntry {
     override val state: PortalEntryState =

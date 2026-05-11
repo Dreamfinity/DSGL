@@ -1325,7 +1325,7 @@ abstract class DsglScreenHost(
         }
 
     init {
-        inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(systemOverlayHost.systemInspectorColorPickerService())
     }
 
     private fun refreshActiveColorSamplerOwner(root: DOMNode?) {

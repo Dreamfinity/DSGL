@@ -6,10 +6,10 @@ import org.dreamfinity.dsgl.core.dom.elements.SelectNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.select.selectModel
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -28,7 +28,7 @@ class SelectNodeOwnerScopeTests {
 
     @AfterTest
     fun cleanup() {
-        SelectPortalServices.closeAll()
+        DomainPortalServices.closeAllSelects()
     }
 
     @Test
@@ -62,7 +62,7 @@ class SelectNodeOwnerScopeTests {
         assertTrue(router.handleMouseDown(clickX, clickY, MouseButton.LEFT))
         assertTrue(router.handleMouseUp(clickX, clickY, MouseButton.LEFT))
 
-        assertFalse(SelectPortalServices.applicationEngine.isOpenFor(ownerKey))
-        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertFalse(DomainPortalServices.applicationSelectEngine.isOpenFor(ownerKey))
+        assertTrue(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
     }
 }

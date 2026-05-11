@@ -2,7 +2,6 @@ package org.dreamfinity.dsgl.core.overlay.system
 
 import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbChannelOrder
@@ -16,6 +15,7 @@ import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
@@ -39,13 +39,13 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker popup lifecycle is entry owned and stable`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
         assertFalse(host.isSystemColorPickerOpen())
-        assertFalse(ColorPickerPortalServices.engine.isOpen())
+        assertFalse(DomainPortalServices.applicationColorPickerEngine.isOpen())
 
-        pickerHost.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(960, 720)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 44, cursorY = 48, inspectorPointerCaptured = false)
         val firstNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
@@ -53,7 +53,7 @@ class SystemOverlayColorPickerEntryTests {
         assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
         assertTrue(firstState.active)
         assertNotNull(firstState.panelState.currentRectOrNull())
-        assertFalse(ColorPickerPortalServices.engine.isOpen())
+        assertFalse(DomainPortalServices.applicationColorPickerEngine.isOpen())
 
         host.onInputFrame(960, 720)
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 50, cursorY = 56, inspectorPointerCaptured = false)
@@ -62,12 +62,12 @@ class SystemOverlayColorPickerEntryTests {
         assertSame(firstNode, secondNode)
         assertSame(firstState, secondState)
 
-        pickerHost.close()
+        pickerService.close()
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 50, cursorY = 56, inspectorPointerCaptured = false)
         assertFalse(host.isSystemColorPickerOpen())
         assertFalse(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
 
-        pickerHost.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(960, 720)
         host.syncFrame(root, inspectedLayoutRevision = 4L, cursorX = 52, cursorY = 58, inspectorPointerCaptured = false)
         val reopenedNode = host.debugEntryNode(SystemOverlayEntryId.ColorPickerPopup) ?: error("entry node missing")
@@ -80,12 +80,12 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker entry path stays independent from application runtime popup path`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val appOwner = Any()
 
         try {
-            ColorPickerPortalServices.engine.open(
+            DomainPortalServices.applicationColorPickerEngine.open(
                 ColorPickerPopupRequest(
                     owner = appOwner,
                     ownerScope = OverlayOwnerScope.Application,
@@ -94,9 +94,9 @@ class SystemOverlayColorPickerEntryTests {
                     state = popupState(),
                 ),
             )
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
 
-            pickerHost.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
+            pickerService.open(anchorRect = Rect(40, 42, 20, 18), title = "Popup", state = popupState())
             host.onInputFrame(960, 720)
             host.syncFrame(
                 root,
@@ -113,9 +113,9 @@ class SystemOverlayColorPickerEntryTests {
             assertFalse(styleTypes.contains("dsgl-system-raw-render-command"))
             assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
             assertTrue(host.isSystemColorPickerOpen())
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
 
-            pickerHost.close()
+            pickerService.close()
             host.syncFrame(
                 root,
                 inspectedLayoutRevision = 2L,
@@ -124,20 +124,20 @@ class SystemOverlayColorPickerEntryTests {
                 inspectorPointerCaptured = false,
             )
             assertFalse(host.isSystemColorPickerOpen())
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
         } finally {
-            pickerHost.close()
-            ColorPickerPortalServices.engine.close(appOwner)
+            pickerService.close()
+            DomainPortalServices.applicationColorPickerEngine.close(appOwner)
         }
     }
 
     @Test
     fun `system picker popup drag uses persistent entry drag session and keeps node stable`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
 
@@ -196,10 +196,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker popup survives routine sync updates without remount during drag`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(120, 100, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(120, 100, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -236,10 +236,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker popup close button closes entry through panel panel`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(80, 86, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(80, 86, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 84, cursorY = 92, inspectorPointerCaptured = false)
         val closeRect = host.debugSystemColorPickerCloseRect() ?: error("close rect missing")
@@ -258,11 +258,11 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker keyboard-open path uses valid viewport after input frame sync`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val anchor = Rect(360, 220, 1, 1)
 
-        pickerHost.open(anchorRect = anchor, title = "Popup", state = popupState())
+        pickerService.open(anchorRect = anchor, title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -283,10 +283,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker entry mounts native body subtree without command bridge`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(60, 70, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(60, 70, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 64, cursorY = 74, inspectorPointerCaptured = false)
 
@@ -301,11 +301,11 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker color field drag updates color continuously`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val previews = ArrayList<RgbaColor>()
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(80, 90, 20, 18),
             title = "Popup",
             state = popupState(),
@@ -350,11 +350,11 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker current swatch click commits once without double apply`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         var commits = 0
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(80, 90, 20, 18),
             title = "Popup",
             state =
@@ -379,12 +379,12 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker recent swatch click previews once without double apply`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val initial = popupState()
         val previews = ArrayList<RgbaColor>()
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(80, 90, 20, 18),
             title = "Popup",
             state = initial,
@@ -444,7 +444,7 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker sync state updates current swatch without drag nudge`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val initial = popupState()
         val updated =
@@ -453,7 +453,7 @@ class SystemOverlayColorPickerEntryTests {
                 previous = initial.color,
             )
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
 
@@ -462,7 +462,7 @@ class SystemOverlayColorPickerEntryTests {
         val beforeColor = resolveRectFillColor(host.paint(ctx), swatchRect) ?: error("before swatch fill missing")
         assertEquals(initial.color.toArgbInt(), beforeColor)
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
 
         host.render(ctx, 1200, 800)
@@ -474,13 +474,13 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker sync state updates rgb order button selected visuals without drag nudge`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val style = ColorPickerStyle()
         val initial = popupState().copy(mode = ColorFormatMode.RGB, rgbOrder = RgbChannelOrder.RGBA)
         val updated = initial.copy(rgbOrder = RgbChannelOrder.ARGB)
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = initial)
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 2, cursorY = 2, inspectorPointerCaptured = false)
 
@@ -493,7 +493,7 @@ class SystemOverlayColorPickerEntryTests {
         assertEquals(style.buttonActiveColor, rgbaBefore)
         assertEquals(style.buttonBackgroundColor, argbBefore)
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = updated)
         host.syncFrame(root, inspectedLayoutRevision = 2L, cursorX = 2, cursorY = 2, inspectorPointerCaptured = false)
 
         host.render(ctx, 1200, 800)
@@ -508,10 +508,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker hue and alpha drag update state`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(80, 90, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(root, inspectedLayoutRevision = 1L, cursorX = 88, cursorY = 98, inspectorPointerCaptured = false)
 
@@ -556,10 +556,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker text input and mode controls stay synchronized`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -616,10 +616,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker input focus retargets by semantic key across rgb order switch`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -660,12 +660,12 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker rgb order buttons use dom semantic actions without double apply`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         var previews = 0
         var commits = 0
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(120, 120, 20, 18),
             title = "Popup",
             state = popupState().copy(mode = ColorFormatMode.RGB, rgbOrder = RgbChannelOrder.RGBA),
@@ -708,10 +708,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker mode trigger toggles dropdown through dom path without double apply`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -755,12 +755,12 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker mode option click changes mode and closes dropdown via dom path`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         var previews = 0
         var commits = 0
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(120, 120, 20, 18),
             title = "Popup",
             state = popupState(),
@@ -810,10 +810,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker mode dropdown is mounted in transient lane and stays interactive`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(120, 120, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -862,10 +862,10 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker pipette keeps system overlay visible and uses transient lane`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
 
-        pickerHost.open(anchorRect = Rect(140, 140, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(140, 140, 20, 18), title = "Popup", state = popupState())
         host.onInputFrame(1200, 800)
         host.syncFrame(
             root,
@@ -909,13 +909,13 @@ class SystemOverlayColorPickerEntryTests {
     @Test
     fun `system picker pipette transient entry emits visible tooltip commands`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         val gridColor = 0x7F4C93FF
         val checkerLight = 0x7F0AA0A0
         val checkerDark = 0x7F104040
 
-        pickerHost.open(
+        pickerService.open(
             anchorRect = Rect(140, 140, 20, 18),
             title = "Popup",
             state = popupState(),

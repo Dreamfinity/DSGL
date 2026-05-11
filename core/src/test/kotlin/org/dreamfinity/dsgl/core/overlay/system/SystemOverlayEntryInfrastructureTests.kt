@@ -74,9 +74,9 @@ class SystemOverlayEntryInfrastructureTests {
     @Test
     fun `color picker entry keeps panel state and identity stable across routine updates`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
-        pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
             host.syncFrame(
                 root,
@@ -109,7 +109,7 @@ class SystemOverlayEntryInfrastructureTests {
             assertTrue(host.debugMountedEntryIds().contains(SystemOverlayEntryId.ColorPickerPopup))
             assertTrue(host.debugActivePortalEntryIds().contains("system.ColorPickerPopup"))
         } finally {
-            pickerHost.close()
+            pickerService.close()
         }
 
         host.syncFrame(root, inspectedLayoutRevision = 3L, cursorX = 60, cursorY = 65, inspectorPointerCaptured = false)
@@ -121,10 +121,10 @@ class SystemOverlayEntryInfrastructureTests {
     fun `entry ordering stays explicit when both system entries are active`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        val pickerHost = host.systemInspectorColorPickerPortalService()
+        val pickerService = host.systemInspectorColorPickerService()
         val root = inspectedRoot()
         inspector.toggle()
-        pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
+        pickerService.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
             host.syncFrame(
                 root,
@@ -143,7 +143,7 @@ class SystemOverlayEntryInfrastructureTests {
             )
         } finally {
             inspector.deactivate()
-            pickerHost.close()
+            pickerService.close()
         }
     }
 

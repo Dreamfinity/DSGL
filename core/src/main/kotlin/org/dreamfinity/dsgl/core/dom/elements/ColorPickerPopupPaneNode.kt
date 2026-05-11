@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class ColorPickerPopupPaneNode(
@@ -58,8 +59,8 @@ class ColorPickerPopupPaneNode(
                     return@addEventListener
                 }
                 FocusManager.requestFocus(this@ColorPickerPopupPaneNode)
-                if (ColorPickerPortalServices.engine.isOpenFor(ownerToken)) {
-                    ColorPickerPortalServices.engine.close(ownerToken)
+                if (DomainPortalServices.applicationColorPickerEngine.isOpenFor(ownerToken)) {
+                    DomainPortalServices.applicationColorPickerEngine.close(ownerToken)
                 } else {
                     openPopup()
                 }
@@ -125,7 +126,7 @@ class ColorPickerPopupPaneNode(
                 color = textColor,
             )
         out +=
-            if (ColorPickerPortalServices.engine.isOpenFor(ownerToken)) {
+            if (DomainPortalServices.applicationColorPickerEngine.isOpenFor(ownerToken)) {
                 drawTextCommand(
                     ctx,
                     text = "^",
@@ -183,13 +184,13 @@ class ColorPickerPopupPaneNode(
     }
 
     private fun syncPopupIfOpen() {
-        if (!ColorPickerPortalServices.engine.isOpenFor(ownerToken)) return
-        ColorPickerPortalServices.engine.sync(openRequest())
+        if (!DomainPortalServices.applicationColorPickerEngine.isOpenFor(ownerToken)) return
+        DomainPortalServices.applicationColorPickerEngine.sync(openRequest())
         setOpenState(true)
     }
 
     private fun openPopup() {
-        ColorPickerPortalServices.engine.open(openRequest())
+        DomainPortalServices.applicationColorPickerEngine.open(openRequest())
         setOpenState(true)
     }
 

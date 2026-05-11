@@ -4,7 +4,7 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerPopupMount
 import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerPopupOverlayNode
-import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPortalService
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
@@ -26,7 +27,6 @@ import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectPortalController
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class SystemOverlayHost(
@@ -45,13 +45,13 @@ class SystemOverlayHost(
         )
     private val portalHost: PortalHost =
         PortalHost(OverlayLayerContracts.domainSurfaceForLayer(UiLayerId.SystemOverlay))
-    private val portalEntries: List<SystemOverlayPortalEntryAdapter> =
-        entryRegistry.allEntries().map(::SystemOverlayPortalEntryAdapter)
+    private val portalEntries: List<SystemOverlayPortalEntry> =
+        entryRegistry.allEntries().map(::SystemOverlayPortalEntry)
     private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =
         SystemOverlayTransientOwnershipRegistry()
     private val systemSelectPortal: SelectPortalController =
         SelectPortalController(
-            engine = SelectPortalServices.systemEngine,
+            engine = DomainPortalServices.systemSelectEngine,
             ownerScope = OverlayOwnerScope.System,
             entryId = "system.select",
         )
@@ -81,7 +81,7 @@ class SystemOverlayHost(
         portalEntries.forEach(portalHost::register)
     }
 
-    fun systemInspectorColorPickerPortalService(): InspectorColorPickerHost = colorPickerEntry
+    fun systemInspectorColorPickerService(): SystemColorPickerPortalService = colorPickerEntry
 
     fun isSystemColorPickerOpen(): Boolean = colorPickerEntry.isOpen()
 
@@ -272,7 +272,7 @@ class SystemOverlayHost(
     private fun reconcileMountedEntries() {
         val activeEntries =
             portalHost.entriesInPaintOrder().mapNotNull {
-                (it as? SystemOverlayPortalEntryAdapter)?.systemEntry
+                (it as? SystemOverlayPortalEntry)?.systemEntry
             }
         val panelNodes =
             activeEntries
@@ -291,7 +291,7 @@ class SystemOverlayHost(
     private fun activeEntriesTopFirst(): List<SystemOverlayEntry> =
         portalHost
             .entriesInInputOrder()
-            .mapNotNull { (it as? SystemOverlayPortalEntryAdapter)?.systemEntry }
+            .mapNotNull { (it as? SystemOverlayPortalEntry)?.systemEntry }
 
     private inline fun dispatchManualInput(handler: (SystemOverlayEntry) -> Boolean): Boolean =
         activeEntriesTopFirst()
@@ -385,7 +385,7 @@ class SystemOverlayHost(
 
     private class ColorPickerOverlayEntry :
         SystemOverlayEntry,
-        InspectorColorPickerHost {
+        SystemColorPickerPortalService {
         override val state: SystemOverlayEntryState =
             SystemOverlayEntryState(
                 id = SystemOverlayEntryId.ColorPickerPopup,

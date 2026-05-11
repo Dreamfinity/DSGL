@@ -1,6 +1,5 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -13,9 +12,9 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
@@ -34,8 +33,8 @@ class InspectorDragScrollDomMigrationTests {
     fun cleanup() {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
-        ColorPickerPortalServices.engine.closeAll()
-        SelectPortalServices.closeAll()
+        DomainPortalServices.applicationColorPickerEngine.closeAll()
+        DomainPortalServices.closeAllSelects()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -304,12 +303,12 @@ class InspectorDragScrollDomMigrationTests {
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
 
-        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertTrue(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
 
         fixture.host.handleMouseDown(clickX, clickY, MouseButton.LEFT)
         fixture.host.handleMouseUp(clickX, clickY, MouseButton.LEFT)
         syncAndRender(fixture, clickX, clickY)
-        assertFalse(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
+        assertFalse(DomainPortalServices.systemSelectEngine.isOpenFor(ownerKey))
     }
 
     @Test
@@ -328,7 +327,7 @@ class InspectorDragScrollDomMigrationTests {
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot(withManyChildren)
 
         inspector.toggle()

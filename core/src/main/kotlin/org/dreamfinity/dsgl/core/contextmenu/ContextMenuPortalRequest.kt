@@ -2,7 +2,7 @@ package org.dreamfinity.dsgl.core.contextmenu
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 
-interface ContextMenuHost {
+interface ContextMenuPortalService {
     fun openAtCursor(model: ContextMenuModel, x: Int, y: Int)
 
     fun openAnchored(model: ContextMenuModel, anchorRect: Rect)
@@ -26,18 +26,18 @@ data class ContextMenuTriggerScope(
     val anchorRect: Rect?,
     private val inheritedFontId: String?,
     private val inheritedFontSize: Int?,
-    private val host: ContextMenuHost,
+    private val portalService: ContextMenuPortalService,
 ) {
     fun openMenu(model: ContextMenuModel) {
-        host.openAtCursor(resolveModel(model), mouseX, mouseY)
+        portalService.openAtCursor(resolveModel(model), mouseX, mouseY)
     }
 
     fun openMenuAnchored(model: ContextMenuModel, anchor: Rect = anchorRect ?: Rect(mouseX, mouseY, 0, 0)) {
-        host.openAnchored(resolveModel(model), anchor)
+        portalService.openAnchored(resolveModel(model), anchor)
     }
 
     fun closeMenus() {
-        host.closeAll()
+        portalService.closeAll()
     }
 
     private fun resolveModel(model: ContextMenuModel): ContextMenuModel {

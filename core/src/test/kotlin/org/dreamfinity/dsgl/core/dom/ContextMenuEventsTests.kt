@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuHost
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuModel
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalService
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -13,7 +13,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ContextMenuEventsTests {
-    private class RecordingHost : ContextMenuHost {
+    private class RecordingPortalService : ContextMenuPortalService {
         var openedModel: ContextMenuModel? = null
         var openedAtCursor: Pair<Int, Int>? = null
         var openedAnchored: Rect? = null
@@ -35,14 +35,14 @@ class ContextMenuEventsTests {
 
     @Test
     fun `openMenu in context handler uses mouse root coordinates`() {
-        val host = RecordingHost()
+        val host = RecordingPortalService()
         val node = ContainerNode()
         node.bounds = Rect(10, 15, 120, 30)
         val model =
             contextMenu(id = "events.cursor") {
                 item("Open")
             }
-        node.onContextMenu(host = host) {
+        node.onContextMenu(portalService = host) {
             openMenu(model)
         }
 
@@ -56,14 +56,14 @@ class ContextMenuEventsTests {
 
     @Test
     fun `openMenuAnchored in context handler uses target bounds`() {
-        val host = RecordingHost()
+        val host = RecordingPortalService()
         val node = ContainerNode()
         node.bounds = Rect(22, 41, 86, 19)
         val model =
             contextMenu(id = "events.anchor") {
                 item("Open")
             }
-        node.onContextMenu(host = host) {
+        node.onContextMenu(portalService = host) {
             openMenuAnchored(model)
         }
 
@@ -79,7 +79,7 @@ class ContextMenuEventsTests {
 
     @Test
     fun `context menu inherits font settings from triggering node when model omits them`() {
-        val host = RecordingHost()
+        val host = RecordingPortalService()
         val node = ContainerNode()
         node.bounds = Rect(22, 41, 86, 19)
         node.fontId = "test-font"
@@ -88,7 +88,7 @@ class ContextMenuEventsTests {
             contextMenu(id = "events.font") {
                 item("Open")
             }
-        node.onContextMenu(host = host) {
+        node.onContextMenu(portalService = host) {
             openMenu(model)
         }
 
@@ -104,7 +104,7 @@ class ContextMenuEventsTests {
 
     @Test
     fun `context menu inherits font from clicked target on repeated opens`() {
-        val host = RecordingHost()
+        val host = RecordingPortalService()
         val parent = ContainerNode()
         val child = ContainerNode()
         child.parent = parent
@@ -117,7 +117,7 @@ class ContextMenuEventsTests {
             contextMenu(id = "events.target.font") {
                 item("Open")
             }
-        parent.onContextMenu(host = host) {
+        parent.onContextMenu(portalService = host) {
             openMenu(model)
         }
 

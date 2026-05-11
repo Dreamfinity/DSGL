@@ -3,10 +3,8 @@ package org.dreamfinity.dsgl.core.overlay
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalController
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalController
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -15,13 +13,12 @@ import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEngine
 import org.dreamfinity.dsgl.core.select.SelectPortalController
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class ApplicationOverlayHost(
-    contextMenuEngine: ContextMenuEngine = ContextMenuPortalServices.engine,
-    selectEngine: SelectEngine = SelectPortalServices.applicationEngine,
-    colorPickerEngine: ColorPickerPopupEngine = ColorPickerPortalServices.engine,
+    contextMenuEngine: ContextMenuEngine = DomainPortalServices.applicationContextMenuEngine,
+    selectEngine: SelectEngine = DomainPortalServices.applicationSelectEngine,
+    colorPickerEngine: ColorPickerPopupEngine = DomainPortalServices.applicationColorPickerEngine,
 ) : OverlayLayerHost {
     override val layerId: UiLayerId = UiLayerId.ApplicationOverlay
 

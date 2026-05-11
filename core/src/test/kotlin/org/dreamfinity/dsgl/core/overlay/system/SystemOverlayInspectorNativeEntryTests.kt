@@ -14,6 +14,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorMode
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
@@ -92,7 +93,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `live inspector path is native system-overlay entry and anti-legacy guarded`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         inspector.toggle()
@@ -118,7 +119,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `expanded inspector paints occluder above full highlight geometry`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val initialRoot = inspectedRoot()
 
         inspector.toggle()
@@ -168,7 +169,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector runtime interaction path supports selection controls and system-owned color edit`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         inspector.toggle()
@@ -246,7 +247,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector minimize restore and close reopen remain stable`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         inspector.toggle()
@@ -362,7 +363,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector native path preserves scroll and scrollbar drag behavior`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -412,7 +413,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `scrollbar drag release over control ends capture and does not trigger control click`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -465,7 +466,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `scrollbar drag release outside inspector consumes mouse up and stops capture`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -529,11 +530,11 @@ class SystemOverlayInspectorNativeEntryTests {
         val appOwner = Any()
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         try {
-            ColorPickerPortalServices.engine.open(
+            DomainPortalServices.applicationColorPickerEngine.open(
                 ColorPickerPopupRequest(
                     owner = appOwner,
                     ownerScope = OverlayOwnerScope.Application,
@@ -542,7 +543,7 @@ class SystemOverlayInspectorNativeEntryTests {
                     state = popupState(),
                 ),
             )
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
 
             inspector.toggle()
             host.onInputFrame(1280, 720)
@@ -586,9 +587,9 @@ class SystemOverlayInspectorNativeEntryTests {
 
             assertTrue(host.isSystemColorPickerOpen())
             assertEquals(OverlayOwnerScope.System, host.debugSystemColorPickerPopupOwnerScope())
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
 
-            host.systemInspectorColorPickerPortalService().close()
+            host.systemInspectorColorPickerService().close()
             host.syncFrame(
                 root,
                 inspectedLayoutRevision = 4L,
@@ -597,10 +598,10 @@ class SystemOverlayInspectorNativeEntryTests {
                 inspectorPointerCaptured = false,
             )
             assertFalse(host.isSystemColorPickerOpen())
-            assertTrue(ColorPickerPortalServices.engine.isOpenFor(appOwner))
+            assertTrue(DomainPortalServices.applicationColorPickerEngine.isOpenFor(appOwner))
         } finally {
-            host.systemInspectorColorPickerPortalService().close()
-            ColorPickerPortalServices.engine.close(appOwner)
+            host.systemInspectorColorPickerService().close()
+            DomainPortalServices.applicationColorPickerEngine.close(appOwner)
         }
     }
 
@@ -608,7 +609,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector-opened system color picker top controls expose hover feedback`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         fun sync(revision: Long, cursorX: Int, cursorY: Int) {
@@ -678,7 +679,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector-opened system color picker mode dropdown options hover and click reliably`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         fun sync(revision: Long, cursorX: Int, cursorY: Int) {
@@ -765,7 +766,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector native body content remains clipped in narrow viewport`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -853,7 +854,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector expanded body renders baseline info text`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         inspector.toggle()
@@ -886,7 +887,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector clipped body blocks hidden row input and accepts visible portion`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -992,7 +993,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector body consumes generic scroll viewport and content state`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1038,7 +1039,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector wheel scrolling works when hovering interactive input`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1102,7 +1103,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector shift wheel does not consume vertical wheel path`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1145,7 +1146,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector wheel scrolling remains symmetric across rebuilds`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1235,7 +1236,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector thumb drag remains active across rebuild without controller pointer capture`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1308,7 +1309,7 @@ class SystemOverlayInspectorNativeEntryTests {
 
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRoot()
 
         inspector.toggle()
@@ -1440,7 +1441,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector consumer scroll reacts on frame update without viewport resize`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1484,7 +1485,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector consumer thumb drag remains smooth and stable on release`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()
@@ -1563,7 +1564,7 @@ class SystemOverlayInspectorNativeEntryTests {
     fun `inspector consumer fast thumb drag to boundary stays stable`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
+        inspector.installColorPickerPortalService(host.systemInspectorColorPickerService())
         val root = inspectedRootWithManyChildren()
 
         inspector.toggle()

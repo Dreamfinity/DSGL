@@ -1,13 +1,13 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuHost
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuModel
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalService
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuTriggerScope
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 
 fun DOMNode.onContextMenu(
-    host: ContextMenuHost = ContextMenuPortalServices.engine,
+    portalService: ContextMenuPortalService = DomainPortalServices.applicationContextMenuEngine,
     handler: ContextMenuTriggerScope.() -> Unit,
 ) {
     val previous = onMouseDown
@@ -24,7 +24,7 @@ fun DOMNode.onContextMenu(
                     anchorRect = anchor,
                     inheritedFontId = sourceStyle?.fontId ?: sourceNode.fontId,
                     inheritedFontSize = sourceStyle?.fontSize ?: sourceNode.fontSize,
-                    host = host,
+                    portalService = portalService,
                 ),
             )
             event.cancelled = true
@@ -33,8 +33,8 @@ fun DOMNode.onContextMenu(
 }
 
 fun DOMNode.onContextMenuModel(
-    host: ContextMenuHost = ContextMenuPortalServices.engine,
+    portalService: ContextMenuPortalService = DomainPortalServices.applicationContextMenuEngine,
     modelProvider: () -> ContextMenuModel,
 ) {
-    onContextMenu(host = host, handler = { openMenu(modelProvider()) })
+    onContextMenu(portalService = portalService, handler = { openMenu(modelProvider()) })
 }

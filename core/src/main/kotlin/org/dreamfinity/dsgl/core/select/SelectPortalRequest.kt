@@ -3,18 +3,6 @@ package org.dreamfinity.dsgl.core.select
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 
-interface SelectHost {
-    fun open(request: SelectOpenRequest)
-
-    fun close(owner: Any)
-
-    fun closeAll()
-
-    fun isOpenFor(owner: Any): Boolean
-
-    fun isOpen(): Boolean
-}
-
 data class SelectOpenRequest(
     val owner: Any,
     val modelToken: Long,

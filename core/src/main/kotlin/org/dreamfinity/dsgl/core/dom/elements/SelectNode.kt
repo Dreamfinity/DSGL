@@ -7,12 +7,12 @@ import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEntry
 import org.dreamfinity.dsgl.core.select.SelectModel
 import org.dreamfinity.dsgl.core.select.SelectOpenRequest
-import org.dreamfinity.dsgl.core.select.SelectPortalServices
 
 class SelectNode(
     model: SelectModel,
@@ -65,7 +65,7 @@ class SelectNode(
     var disabledTextColor: Int = 0xFF8E8E8E.toInt()
     var minContentWidth: Int = 92
     var arrowGlyph: String =
-        SelectPortalServices.engine
+        DomainPortalServices.applicationSelectEngine
             .currentStyle()
             .arrowGlyph
     var arrowSpacing: Int = 8
@@ -81,8 +81,8 @@ class SelectNode(
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!this@SelectNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 FocusManager.requestFocus(this@SelectNode)
-                if (SelectPortalServices.isOpenFor(ownerToken)) {
-                    SelectPortalServices.close(ownerToken)
+                if (DomainPortalServices.isSelectOpenFor(ownerToken)) {
+                    DomainPortalServices.closeSelect(ownerToken)
                 } else {
                     openPopup()
                 }
@@ -91,7 +91,7 @@ class SelectNode(
             this@SelectNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
                 if (this@SelectNode.styleDisabled) return@addEventListener
                 if (!FocusManager.isFocused(this@SelectNode)) return@addEventListener
-                if (SelectPortalServices.isOpenFor(ownerToken)) return@addEventListener
+                if (DomainPortalServices.isSelectOpenFor(ownerToken)) return@addEventListener
                 when (event.keyCode) {
                     KeyCodes.ENTER, KeyCodes.SPACE -> {
                         openPopup()
@@ -100,20 +100,20 @@ class SelectNode(
 
                     KeyCodes.DOWN -> {
                         openPopup()
-                        SelectPortalServices.engineFor(ownerScope).moveHighlight(ownerToken, 1)
+                        DomainPortalServices.selectEngineFor(ownerScope).moveHighlight(ownerToken, 1)
                         event.cancelled = true
                     }
 
                     KeyCodes.UP -> {
                         openPopup()
-                        SelectPortalServices.engineFor(ownerScope).moveHighlight(ownerToken, -1)
+                        DomainPortalServices.selectEngineFor(ownerScope).moveHighlight(ownerToken, -1)
                         event.cancelled = true
                     }
                 }
             }
             this@SelectNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
-                if (SelectPortalServices.isOpenFor(ownerToken)) {
-                    SelectPortalServices.close(ownerToken)
+                if (DomainPortalServices.isSelectOpenFor(ownerToken)) {
+                    DomainPortalServices.closeSelect(ownerToken)
                 }
             }
         }
@@ -150,8 +150,8 @@ class SelectNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (styleDisabled && SelectPortalServices.isOpenFor(ownerToken)) {
-            SelectPortalServices.close(ownerToken)
+        if (styleDisabled && DomainPortalServices.isSelectOpenFor(ownerToken)) {
+            DomainPortalServices.closeSelect(ownerToken)
         }
         syncPopup()
         val isFocused = FocusManager.isFocused(this) && !styleDisabled
@@ -206,7 +206,7 @@ class SelectNode(
         var hash = 1L
         hash = 31L * hash + selectedLabelOrPlaceholder().hashCode()
         hash = 31L * hash + (selectedOptionId()?.hashCode() ?: 0)
-        hash = 31L * hash + if (SelectPortalServices.isOpenFor(ownerToken)) 1L else 0L
+        hash = 31L * hash + if (DomainPortalServices.isSelectOpenFor(ownerToken)) 1L else 0L
         return hash
     }
 
@@ -246,15 +246,15 @@ class SelectNode(
 
     private fun openPopup() {
         if (!hasEnabledOption()) return
-        SelectPortalServices.open(openRequest())
+        DomainPortalServices.openSelect(openRequest())
         setOpenState(true)
     }
 
     private fun syncPopup() {
-        val open = SelectPortalServices.isOpenFor(ownerToken)
+        val open = DomainPortalServices.isSelectOpenFor(ownerToken)
         setOpenState(open)
         if (open) {
-            SelectPortalServices.engineFor(ownerScope).sync(openRequest())
+            DomainPortalServices.selectEngineFor(ownerScope).sync(openRequest())
         }
     }
 

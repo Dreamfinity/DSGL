@@ -4,8 +4,8 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorTextCodec
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
-import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
 import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPanelManager
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPortalService
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.TextEditState
 import org.dreamfinity.dsgl.core.dom.elements.support.TextEditOps
@@ -30,9 +30,9 @@ enum class InspectorPanelState {
 }
 
 class InspectorController(
-    colorPickerManager: InspectorColorPickerHost = SystemColorPickerPanelManager(),
+    colorPickerManager: SystemColorPickerPortalService = SystemColorPickerPanelManager(),
 ) {
-    private var colorPickerManager: InspectorColorPickerHost = colorPickerManager
+    private var colorPickerManager: SystemColorPickerPortalService = colorPickerManager
 
     private enum class EditOperation {
         Decrement,
@@ -251,10 +251,10 @@ class InspectorController(
         deactivateInternal()
     }
 
-    fun installColorPickerHost(host: InspectorColorPickerHost) {
-        if (colorPickerManager === host) return
+    fun installColorPickerPortalService(portalService: SystemColorPickerPortalService) {
+        if (colorPickerManager === portalService) return
         colorPickerManager.close()
-        colorPickerManager = host
+        colorPickerManager = portalService
     }
 
     fun toggleMode() {
