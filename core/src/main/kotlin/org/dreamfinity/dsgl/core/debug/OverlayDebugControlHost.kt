@@ -55,7 +55,7 @@ class OverlayDebugControlHost(
     private val tree: DomTree =
         DomTree(
             root = rootNode,
-            styleScope = StyleApplicationScope.SystemOverlay,
+            styleScope = StyleApplicationScope.Debug,
         )
     private var lastToggleSnapshot: OverlayDebugToggleSnapshot? = null
 
@@ -151,6 +151,9 @@ class OverlayDebugControlHost(
     }
 
     internal fun debugLayout(): OverlayDebugControlLayout? = layout
+
+    internal val debugStyleScope: StyleApplicationScope
+        get() = StyleApplicationScope.Debug
 
     private fun buildLayout(viewportWidth: Int, viewportHeight: Int): OverlayDebugControlLayout {
         val panelWidth = 300

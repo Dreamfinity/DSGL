@@ -70,6 +70,30 @@ class SystemOverlayStyleIsolationTests {
         assertEquals(DsglColors.TEXT, systemProbe.appliedColor)
     }
 
+    @Test
+    fun `debug scope ignores user stylesheet rules`() {
+        val stylesDir =
+            createTempStylesDir(
+                """
+                * { color: #FF5500; }
+                probe { color: #00CCAA; }
+                """.trimIndent(),
+            )
+        StyleEngine.setStylesDirectory(stylesDir)
+        StyleEngine.forceReloadStylesheets()
+
+        val appRoot = ContainerNode(key = "app-root")
+        val appProbe = ProbeNode(key = "app-probe").applyParent(appRoot)
+        val debugRoot = ContainerNode(key = "debug-root")
+        val debugProbe = ProbeNode(key = "debug-probe").applyParent(debugRoot)
+
+        StyleEngine.applyStylesRecursively(appRoot, StyleApplicationScope.Application)
+        StyleEngine.applyStylesRecursively(debugRoot, StyleApplicationScope.Debug)
+
+        assertEquals(0xFF00CCAA.toInt(), appProbe.appliedColor)
+        assertEquals(DsglColors.TEXT, debugProbe.appliedColor)
+    }
+
     private fun createTempStylesDir(dss: String): File {
         val root = Files.createTempDirectory("dsgl-system-style-").toFile()
         root.resolve("test.dss").writeText(dss)

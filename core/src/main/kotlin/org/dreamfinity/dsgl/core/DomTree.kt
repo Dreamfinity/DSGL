@@ -124,7 +124,7 @@ class DomTree(
                 laidOut &&
                     lastWidth > 0 &&
                     lastHeight > 0 &&
-                    styleScope != StyleApplicationScope.SystemOverlay &&
+                    styleScope == StyleApplicationScope.Application &&
                     !styleReport.layoutDirty &&
                     !styleReport.visualDirty &&
                     scrollInvalidation.visualDirty &&
@@ -142,17 +142,15 @@ class DomTree(
                 ScrollPerformanceCounters.recordScrollVisualGeometryRefresh(translatedNodes)
                 ScrollPerformanceCounters.recordStickyVisualRefresh(resolvedStickyNodes)
             }
-            val requiresSystemOverlayScrollLayoutFallback =
-                styleScope == StyleApplicationScope.SystemOverlay && scrollInvalidation.visualDirty
-            if ((
-                    !laidOut ||
-                        styleReport.layoutDirty ||
-                        scrollInvalidation.layoutDirty ||
-                        requiresSystemOverlayScrollLayoutFallback
-                ) &&
-                lastWidth > 0 &&
-                lastHeight > 0
-            ) {
+            val requiresIsolatedScopeScrollLayoutFallback =
+                styleScope != StyleApplicationScope.Application && scrollInvalidation.visualDirty
+            val requiresLayoutPass =
+                !laidOut ||
+                    styleReport.layoutDirty ||
+                    scrollInvalidation.layoutDirty ||
+                    requiresIsolatedScopeScrollLayoutFallback
+            val hasKnownViewport = lastWidth > 0 && lastHeight > 0
+            if (requiresLayoutPass && hasKnownViewport) {
                 val layoutStartNanos = System.nanoTime()
                 root.resolveLayoutStyleValues(
                     ctx = ctx,

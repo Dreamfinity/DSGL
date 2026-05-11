@@ -4,6 +4,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import java.util.Locale
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -45,6 +46,13 @@ class OverlayDebugControlHostTests {
         assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Overlay Debug" })
         assertTrue(host.handleMouseDown(layout.panelRect.x + 3, layout.panelRect.y + 3, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(layout.panelRect.x + 3, layout.panelRect.y + 3, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `debug control host uses explicit debug style scope`() {
+        val host = OverlayDebugControlHost()
+
+        assertEquals(StyleApplicationScope.Debug, host.debugStyleScope)
     }
 
     @Test

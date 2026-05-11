@@ -376,6 +376,7 @@ object StyleEngine {
                 }
 
                 StyleApplicationScope.SystemOverlay -> 0L
+                StyleApplicationScope.Debug -> 0L
             }
         return base xor
             (pseudoStateVersion shl 3) xor
@@ -755,7 +756,9 @@ object StyleEngine {
     private fun snapshotForScope(scope: StyleApplicationScope): StylesheetSnapshot =
         when (scope) {
             StyleApplicationScope.Application -> StylesheetManager.snapshot()
-            StyleApplicationScope.SystemOverlay ->
+            StyleApplicationScope.SystemOverlay,
+            StyleApplicationScope.Debug,
+            ->
                 StylesheetSnapshot(
                     version = Long.MIN_VALUE,
                     index = RuleIndex.EMPTY,
@@ -764,7 +767,7 @@ object StyleEngine {
         }
 
     private fun resolvedVariables(snapshot: StylesheetSnapshot, scope: StyleApplicationScope): Map<String, String> {
-        if (scope == StyleApplicationScope.SystemOverlay) {
+        if (scope != StyleApplicationScope.Application) {
             return emptyMap()
         }
         val variables = linkedMapOf<String, String>()
