@@ -1,7 +1,9 @@
 package org.dreamfinity.dsgl.core.components.modal
 
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalRootNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
+import org.dreamfinity.dsgl.core.components.modal.internal.modalLifecycleKey
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.dsl.*
@@ -40,70 +42,25 @@ fun UiScope.modalHost(modals: List<ModalSpec>, modalKey: String = "modal.host", 
         content()
     }
 
+    val portalRoot = ModalPortalRootNode("$modalKey.portal")
+    val portalScope = childScope(portalRoot)
+    hostNode.refTarget = ModalRuntime.portalHostRef(modalKey)
+    ModalRuntime.registerPortalTemplate(modalKey, portalRoot)
+    portalRoot.onKeyDown = hostNode.onKeyDown
+    buildModalLayers(portalScope, modals, modalKey)
+}
+
+private fun buildModalLayers(hostScope: UiScope, modals: List<ModalSpec>, modalKey: String) {
     modals.forEachIndexed { index, spec ->
-        val isTopMost = index == modals.lastIndex
-        val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
-        val backdropColor =
-            when (spec.backdrop) {
-                BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
-                BackdropMode.False -> 0x00000000
-            }
-        hostScope.div({
-            key = "$modalKey.modal.${spec.key}.layer"
-            onMouseDown = { event ->
-                if (!isTopMost) {
-                    event.cancelled = true
-                } else {
-                    val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                    if (!insideDialog && spec.trapFocus) {
-                        FocusManager.requestFocusFirstInSubtree(dialogKey)
-                    }
-                    event.cancelled = true
-                }
-            }
-            onMouseClick = { event ->
-                if (!isTopMost) {
-                    event.cancelled = true
-                } else {
-                    val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                    if (!insideDialog) {
-                        if (spec.backdrop == BackdropMode.True) {
-                            spec.onHide?.invoke()
-                        }
-                        event.cancelled = true
-                    }
-                }
-            }
-            onMouseWheel = { event ->
-                val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                if (!insideDialog) {
-                    event.cancelled = true
-                }
-            }
-            style = {
-                backgroundColor = backdropColor
-                display = Display.Flex
-                flexDirection = FlexDirection.Column
-                alignItems = AlignItems.Center
-                justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
-                padding { all((if (spec.centered) 6 else 10).px) }
-            }
-        }) {
-            modalFrame(
-                spec = spec,
-                dialogKey = dialogKey,
-                scope =
-                    ModalScope(
-                        dismiss = spec.onHide,
-                        isTopMost = isTopMost,
-                        modalKey = spec.key,
-                    ),
-            )
-        }
+        hostScope.modalLayer(
+            spec = spec,
+            modalKey = modalKey,
+            isTopMost = index == modals.lastIndex,
+        )
     }
 
     hostScope.div({
-        key = "$modalKey.modal.lifecycle"
+        key = modalLifecycleKey(modalKey)
         ref =
             RefTarget { handle ->
                 if (handle != null) {
@@ -117,6 +74,68 @@ fun UiScope.modalHost(modals: List<ModalSpec>, modalKey: String = "modal.host", 
         }
     })
 }
+
+private fun UiScope.modalLayer(spec: ModalSpec, modalKey: String, isTopMost: Boolean) {
+    val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
+    div({
+        key = "$modalKey.modal.${spec.key}.layer"
+        onMouseDown = { event ->
+            if (!isTopMost) {
+                event.cancelled = true
+            } else {
+                val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
+                if (!insideDialog && spec.trapFocus) {
+                    FocusManager.requestFocusFirstInSubtree(dialogKey)
+                }
+                event.cancelled = true
+            }
+        }
+        onMouseClick = { event ->
+            if (!isTopMost) {
+                event.cancelled = true
+            } else {
+                val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
+                if (!insideDialog) {
+                    if (spec.backdrop == BackdropMode.True) {
+                        spec.onHide?.invoke()
+                    }
+                    event.cancelled = true
+                }
+            }
+        }
+        onMouseWheel = { event ->
+            val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
+            if (!insideDialog) {
+                event.cancelled = true
+            }
+        }
+        style = {
+            backgroundColor = spec.backdropColor()
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            alignItems = AlignItems.Center
+            justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
+            padding { all((if (spec.centered) 6 else 10).px) }
+        }
+    }) {
+        modalFrame(
+            spec = spec,
+            dialogKey = dialogKey,
+            scope =
+                ModalScope(
+                    dismiss = spec.onHide,
+                    isTopMost = isTopMost,
+                    modalKey = spec.key,
+                ),
+        )
+    }
+}
+
+private fun ModalSpec.backdropColor(): Int =
+    when (backdrop) {
+        BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
+        BackdropMode.False -> 0x00000000
+    }
 
 fun UiScope.modalFrame(
     spec: ModalSpec,
@@ -351,4 +370,33 @@ private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
         node = node.parent
     }
     return false
+}
+
+private fun isEventInsideDialog(
+    target: DOMNode?,
+    dialogKey: String,
+    mouseX: Int,
+    mouseY: Int,
+): Boolean {
+    if (isTargetInsideDialog(target, dialogKey)) return true
+    val root = target?.rootAncestor() ?: return false
+    val dialog = findNodeByKey(root, dialogKey) ?: return false
+    return dialog.bounds.contains(mouseX, mouseY)
+}
+
+private fun DOMNode.rootAncestor(): DOMNode {
+    var current = this
+    while (current.parent != null) {
+        current = current.parent ?: return current
+    }
+    return current
+}
+
+private fun findNodeByKey(root: DOMNode, key: Any?): DOMNode? {
+    if (root.key == key) return root
+    root.children.forEach { child ->
+        val found = findNodeByKey(child, key)
+        if (found != null) return found
+    }
+    return null
 }

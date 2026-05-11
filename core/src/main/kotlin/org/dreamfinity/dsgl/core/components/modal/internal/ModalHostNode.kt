@@ -70,3 +70,48 @@ internal class ModalHostNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
 }
+
+/**
+ * Application-portal root for modal layers. The regular modal host content stays
+ * in the application root; modal layers render through this full-viewport root.
+ */
+internal class ModalPortalRootNode(
+    key: Any?,
+) : DOMNode(key) {
+    override val styleType: String = "modal-portal-root"
+
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(
+            width = StyleEngine.viewportWidthPx().coerceAtLeast(0),
+            height = StyleEngine.viewportHeightPx().coerceAtLeast(0),
+        )
+
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
+        bounds =
+            Rect(
+                x = 0,
+                y = 0,
+                width =
+                    StyleEngine
+                        .viewportWidthPx()
+                        .coerceAtLeast(width)
+                        .coerceAtLeast(0),
+                height =
+                    StyleEngine
+                        .viewportHeightPx()
+                        .coerceAtLeast(height)
+                        .coerceAtLeast(0),
+            )
+        children.forEach { child ->
+            child.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
+        }
+    }
+
+    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) = Unit
+}

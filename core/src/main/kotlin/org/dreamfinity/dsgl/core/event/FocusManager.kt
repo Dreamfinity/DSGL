@@ -107,6 +107,11 @@ object FocusManager {
     fun requestFocusByKey(key: Any?): Boolean {
         if (key == null) return false
         val root = lastRoot ?: return false
+        return requestFocusByKey(root, key)
+    }
+
+    fun requestFocusByKey(root: DOMNode, key: Any?): Boolean {
+        if (key == null) return false
         val target = findByKey(root, key) ?: return false
         val focusable = findFirstFocusable(target) ?: return false
         requestFocus(focusable)
@@ -116,6 +121,11 @@ object FocusManager {
     fun requestFocusFirstInSubtree(rootKey: Any?): Boolean {
         if (rootKey == null) return false
         val root = lastRoot ?: return false
+        return requestFocusFirstInSubtree(root, rootKey)
+    }
+
+    fun requestFocusFirstInSubtree(root: DOMNode, rootKey: Any?): Boolean {
+        if (rootKey == null) return false
         val subtree = findByKey(root, rootKey) ?: return false
         val focusable = findFirstFocusable(subtree) ?: return false
         requestFocus(focusable)

@@ -3,6 +3,7 @@ package org.dreamfinity.dsgl.core.overlay
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalController
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalController
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -38,6 +39,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
         )
     internal val applicationColorPickerPortal: ColorPickerPortalController =
         ColorPickerPortalController(ColorPickerRuntime.engine)
+    internal val modalPortal: ModalPortalController = ModalPortalController()
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         rootNode.setViewportBounds(
@@ -48,7 +50,9 @@ class ApplicationOverlayHost : OverlayLayerHost {
 
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         rootNode.setViewportBounds(width, height)
+        modalPortal.sync(rootNode, width, height)
         tree.render(ctx, width, height)
+        modalPortal.commitActivePortals()
     }
 
     override fun paint(ctx: UiMeasureContext): List<RenderCommand> = tree.paint(ctx, applyStyles = true)
@@ -72,6 +76,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
         contextMenuPortal.close()
         applicationSelectPortal.close()
         applicationColorPickerPortal.close()
+        modalPortal.close()
     }
 
     internal fun debugRootBounds(): Rect = rootNode.bounds
