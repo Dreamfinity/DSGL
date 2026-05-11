@@ -8,13 +8,13 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
 /**
- * Root node for modal host composition:
+ * Root node for modal portal composition:
  * child[0] is regular content and children[1..] are full-viewport modal layers.
  */
-internal class ModalHostNode(
+internal class ModalPortalAnchorNode(
     key: Any?,
 ) : DOMNode(key) {
-    override val styleType: String = "modal-host"
+    override val styleType: String = "modal-portal"
 
     override fun measure(ctx: UiMeasureContext): Size {
         val content = children.firstOrNull()
@@ -72,7 +72,7 @@ internal class ModalHostNode(
 }
 
 /**
- * Application-portal root for modal layers. The regular modal host content stays
+ * Application-portal root for modal layers. The regular modal portal content stays
  * in the application root; modal layers render through this full-viewport root.
  */
 internal class ModalPortalRootNode(

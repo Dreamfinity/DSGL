@@ -7,10 +7,10 @@ import org.dreamfinity.dsgl.core.hooks.useState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ModalHostHookOwnerPropagationTests {
+class ModalPortalHookOwnerPropagationTests {
     @Test
-    fun `hooks inside modalHost content keep owner-bound UiScope`() {
-        val window = ModalHostStateWindow()
+    fun `hooks inside modalPortal content keep owner-bound UiScope`() {
+        val window = ModalPortalStateWindow()
 
         renderWithHookSession(window)
         assertEquals(0, window.lastSeenCount)
@@ -33,15 +33,15 @@ class ModalHostHookOwnerPropagationTests {
         }
     }
 
-    private class ModalHostStateWindow : DsglWindow() {
+    private class ModalPortalStateWindow : DsglWindow() {
         var pendingMutation: Int? = null
         var lastSeenCount: Int = -1
 
         override fun render(): DomTree =
             ui {
-                modalHost(
+                modalPortal(
                     modals = emptyList(),
-                    modalKey = "test.modal.host",
+                    key = "test.modal.portal",
                 ) {
                     var count by useState(0)
                     pendingMutation?.let { mutation ->

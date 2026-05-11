@@ -58,8 +58,8 @@ class ColorPickerPopupPaneNode(
                     return@addEventListener
                 }
                 FocusManager.requestFocus(this@ColorPickerPopupPaneNode)
-                if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
-                    ColorPickerRuntime.host.close(ownerToken)
+                if (ColorPickerPortalServices.engine.isOpenFor(ownerToken)) {
+                    ColorPickerPortalServices.engine.close(ownerToken)
                 } else {
                     openPopup()
                 }
@@ -125,7 +125,7 @@ class ColorPickerPopupPaneNode(
                 color = textColor,
             )
         out +=
-            if (ColorPickerRuntime.host.isOpenFor(ownerToken)) {
+            if (ColorPickerPortalServices.engine.isOpenFor(ownerToken)) {
                 drawTextCommand(
                     ctx,
                     text = "^",
@@ -183,13 +183,13 @@ class ColorPickerPopupPaneNode(
     }
 
     private fun syncPopupIfOpen() {
-        if (!ColorPickerRuntime.host.isOpenFor(ownerToken)) return
-        ColorPickerRuntime.engine.sync(openRequest())
+        if (!ColorPickerPortalServices.engine.isOpenFor(ownerToken)) return
+        ColorPickerPortalServices.engine.sync(openRequest())
         setOpenState(true)
     }
 
     private fun openPopup() {
-        ColorPickerRuntime.host.open(openRequest())
+        ColorPickerPortalServices.engine.open(openRequest())
         setOpenState(true)
     }
 

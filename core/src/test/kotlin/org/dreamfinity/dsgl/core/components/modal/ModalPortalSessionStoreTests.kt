@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalSessionStore
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -9,7 +9,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ModalRuntimeTests {
+class ModalPortalSessionStoreTests {
     @AfterTest
     fun cleanup() {
         FocusManager.clearFocus()
@@ -17,47 +17,47 @@ class ModalRuntimeTests {
 
     @Test
     fun restoresPreviousFocusWhenTopModalCloses() {
-        val hostKey = "tests.modal.host.restore"
+        val hostKey = "tests.modal.portal.restore"
         val contentRoot = buildRoot(hostKey, includeM1 = false, includeM2 = false)
         FocusManager.requestFocus(requireNodeByKey(contentRoot, "content.input"))
         FocusManager.retainFocus(contentRoot)
 
         val modal1 = ModalSpec(key = "m1") { _ -> }
-        ModalRuntime.onBuild(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onBuild(hostKey, listOf(modal1))
         val withModal = buildRoot(hostKey, includeM1 = true, includeM2 = false)
         FocusManager.retainFocus(withModal)
-        ModalRuntime.onCommit(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onCommit(hostKey, listOf(modal1))
         assertEquals("m1.input", FocusManager.focusedNode()?.key)
 
-        ModalRuntime.onBuild(hostKey, emptyList())
+        ModalPortalSessionStore.onBuild(hostKey, emptyList())
         val withoutModal = buildRoot(hostKey, includeM1 = false, includeM2 = false)
         FocusManager.retainFocus(withoutModal)
-        ModalRuntime.onCommit(hostKey, emptyList())
+        ModalPortalSessionStore.onCommit(hostKey, emptyList())
         assertEquals("content.input", FocusManager.focusedNode()?.key)
     }
 
     @Test
     fun focusesNewestTopmostAndRestoresUnderlyingModalFocusOnPop() {
-        val hostKey = "tests.modal.host.stack"
+        val hostKey = "tests.modal.portal.stack"
         val modal1 = ModalSpec(key = "m1") { _ -> }
         val modal2 = ModalSpec(key = "m2") { _ -> }
 
         val withM1 = buildRoot(hostKey, includeM1 = true, includeM2 = false)
         FocusManager.retainFocus(withM1)
-        ModalRuntime.onBuild(hostKey, listOf(modal1))
-        ModalRuntime.onCommit(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onBuild(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onCommit(hostKey, listOf(modal1))
         assertEquals("m1.input", FocusManager.focusedNode()?.key)
 
-        ModalRuntime.onBuild(hostKey, listOf(modal1, modal2))
+        ModalPortalSessionStore.onBuild(hostKey, listOf(modal1, modal2))
         val withM1M2 = buildRoot(hostKey, includeM1 = true, includeM2 = true)
         FocusManager.retainFocus(withM1M2)
-        ModalRuntime.onCommit(hostKey, listOf(modal1, modal2))
+        ModalPortalSessionStore.onCommit(hostKey, listOf(modal1, modal2))
         assertEquals("m2.input", FocusManager.focusedNode()?.key)
 
-        ModalRuntime.onBuild(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onBuild(hostKey, listOf(modal1))
         val backToM1 = buildRoot(hostKey, includeM1 = true, includeM2 = false)
         FocusManager.retainFocus(backToM1)
-        ModalRuntime.onCommit(hostKey, listOf(modal1))
+        ModalPortalSessionStore.onCommit(hostKey, listOf(modal1))
         assertEquals("m1.input", FocusManager.focusedNode()?.key)
     }
 
@@ -67,12 +67,12 @@ class ModalRuntimeTests {
             FocusableNode(key = "content.input").applyParent(this)
         }
         if (includeM1) {
-            ContainerNode(key = ModalRuntime.dialogKey(hostKey, "m1")).applyParent(root).apply {
+            ContainerNode(key = ModalPortalSessionStore.dialogKey(hostKey, "m1")).applyParent(root).apply {
                 FocusableNode(key = "m1.input").applyParent(this)
             }
         }
         if (includeM2) {
-            ContainerNode(key = ModalRuntime.dialogKey(hostKey, "m2")).applyParent(root).apply {
+            ContainerNode(key = ModalPortalSessionStore.dialogKey(hostKey, "m2")).applyParent(root).apply {
                 FocusableNode(key = "m2.input").applyParent(this)
             }
         }

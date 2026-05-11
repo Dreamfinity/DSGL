@@ -33,36 +33,20 @@ import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.UiLayerId
-import org.dreamfinity.dsgl.core.overlay.appendApplicationColorPickerOverlayCommands
-import org.dreamfinity.dsgl.core.overlay.appendApplicationSelectOverlayCommands
-import org.dreamfinity.dsgl.core.overlay.appendContextMenuOverlayCommands
-import org.dreamfinity.dsgl.core.overlay.applicationColorPickerOnFrame
-import org.dreamfinity.dsgl.core.overlay.applicationSelectOnFrame
-import org.dreamfinity.dsgl.core.overlay.captureApplicationColorPickerEyedropperSample
-import org.dreamfinity.dsgl.core.overlay.closeContextMenus
-import org.dreamfinity.dsgl.core.overlay.contextMenuOnFrame
-import org.dreamfinity.dsgl.core.overlay.handleApplicationColorPickerKeyDown
-import org.dreamfinity.dsgl.core.overlay.handleApplicationColorPickerMouseDown
-import org.dreamfinity.dsgl.core.overlay.handleApplicationColorPickerMouseMove
-import org.dreamfinity.dsgl.core.overlay.handleApplicationColorPickerMouseUp
-import org.dreamfinity.dsgl.core.overlay.handleApplicationColorPickerMouseWheel
-import org.dreamfinity.dsgl.core.overlay.handleApplicationSelectKeyDown
-import org.dreamfinity.dsgl.core.overlay.handleApplicationSelectMouseDown
-import org.dreamfinity.dsgl.core.overlay.handleApplicationSelectMouseMove
-import org.dreamfinity.dsgl.core.overlay.handleApplicationSelectMouseUp
-import org.dreamfinity.dsgl.core.overlay.handleApplicationSelectMouseWheel
-import org.dreamfinity.dsgl.core.overlay.handleContextMenuKeyDown
-import org.dreamfinity.dsgl.core.overlay.handleContextMenuMouseDown
-import org.dreamfinity.dsgl.core.overlay.handleContextMenuMouseMove
-import org.dreamfinity.dsgl.core.overlay.handleContextMenuMouseUp
-import org.dreamfinity.dsgl.core.overlay.handleContextMenuMouseWheel
-import org.dreamfinity.dsgl.core.overlay.hasActiveApplicationColorPickerEyedropper
-import org.dreamfinity.dsgl.core.overlay.isApplicationColorPickerOpen
-import org.dreamfinity.dsgl.core.overlay.isApplicationSelectOpen
-import org.dreamfinity.dsgl.core.overlay.isContextMenuOpen
+import org.dreamfinity.dsgl.core.overlay.appendPortalOverlayCommands
+import org.dreamfinity.dsgl.core.overlay.captureColorPickerEyedropperSample
+import org.dreamfinity.dsgl.core.overlay.closeFloatingPortals
+import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownAfterDom
+import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownBeforeDom
+import org.dreamfinity.dsgl.core.overlay.handlePortalPointerAfterDom
+import org.dreamfinity.dsgl.core.overlay.handlePortalPointerBeforeDom
+import org.dreamfinity.dsgl.core.overlay.hasActiveColorPickerEyedropper
+import org.dreamfinity.dsgl.core.overlay.hasOpenColorPickerPortal
+import org.dreamfinity.dsgl.core.overlay.hasOpenContextMenuPortal
+import org.dreamfinity.dsgl.core.overlay.hasOpenSelectPortal
+import org.dreamfinity.dsgl.core.overlay.syncPortalFrame
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectRuntime
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.lwjgl.input.Keyboard
@@ -416,10 +400,15 @@ abstract class DsglScreenHost(
     }
 
     private fun syncFeatureRuntimeFrame(tree: DomTree, dsglMouseX: Int, dsglMouseY: Int) {
-        applicationOverlayHost.contextMenuOnFrame(adapter, lastWidth, lastHeight, 1f)
-        applicationOverlayHost.applicationSelectOnFrame(adapter, lastWidth, lastHeight, 1f)
-        systemOverlayHost.systemSelectOnFrame(adapter, lastWidth, lastHeight, 1f)
-        applicationOverlayHost.applicationColorPickerOnFrame(lastWidth, lastHeight, dsglMouseX, dsglMouseY)
+        applicationOverlayHost.syncPortalFrame(
+            measureContext = adapter,
+            viewportWidth = lastWidth,
+            viewportHeight = lastHeight,
+            viewportScale = 1f,
+            mouseX = dsglMouseX,
+            mouseY = dsglMouseY,
+        )
+        systemOverlayHost.syncPortalFrame(adapter, lastWidth, lastHeight, 1f)
         refreshActiveColorSamplerOwner(tree.root)
     }
 
@@ -478,11 +467,11 @@ abstract class DsglScreenHost(
         systemOverlayCommandsBuffer.clear()
         systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
         if (systemOverlayRenderEnabled) {
-            systemOverlayHost.appendSystemSelectOverlayCommands(
-                adapter,
-                lastWidth,
-                lastHeight,
-                systemOverlayCommandsBuffer,
+            systemOverlayHost.appendPortalOverlayCommands(
+                measureContext = adapter,
+                viewportWidth = lastWidth,
+                viewportHeight = lastHeight,
+                out = systemOverlayCommandsBuffer,
             )
         }
     }
@@ -504,10 +493,11 @@ abstract class DsglScreenHost(
         systemOverlayInputEnabled: Boolean,
         inspectorBlocks: Boolean,
     ) {
-        val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.isContextMenuOpen()
+        val contextMenuBlocks =
+            appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.hasOpenContextMenuPortal()
         val selectBlocks =
-            appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.isApplicationSelectOpen()
-        val systemSelectBlocks = systemOverlayInputEnabled && systemOverlayHost.isSystemSelectOpen()
+            appOverlayInputEnabled && !inspectorBlocks && applicationOverlayHost.hasOpenSelectPortal()
+        val systemSelectBlocks = systemOverlayInputEnabled && systemOverlayHost.hasOpenPortal()
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         val colorPickerBlocks =
             !inspectorBlocks &&
@@ -515,7 +505,7 @@ abstract class DsglScreenHost(
                     (systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()) ||
                         (
                             appOverlayInputEnabled &&
-                                applicationOverlayHost.isApplicationColorPickerOpen() &&
+                                applicationOverlayHost.hasOpenColorPickerPortal() &&
                                 !inlineSamplerOwnsSession
                         )
                 )
@@ -562,19 +552,7 @@ abstract class DsglScreenHost(
                 lastHeight,
                 applicationOverlayCommandsBuffer,
             )
-            applicationOverlayHost.appendApplicationSelectOverlayCommands(
-                measureContext = adapter,
-                viewportWidth = lastWidth,
-                viewportHeight = lastHeight,
-                out = applicationOverlayCommandsBuffer,
-            )
-            applicationOverlayHost.appendContextMenuOverlayCommands(
-                measureContext = adapter,
-                viewportWidth = lastWidth,
-                viewportHeight = lastHeight,
-                out = applicationOverlayCommandsBuffer,
-            )
-            applicationOverlayHost.appendApplicationColorPickerOverlayCommands(
+            applicationOverlayHost.appendPortalOverlayCommands(
                 measureContext = adapter,
                 viewportWidth = lastWidth,
                 viewportHeight = lastHeight,
@@ -639,9 +617,8 @@ abstract class DsglScreenHost(
         ScreenColorSamplerBridge.install(null)
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
-        ColorPickerRuntime.engine.closeAll()
-        SelectRuntime.host.closeAll()
-        applicationOverlayHost.closeContextMenus()
+        applicationOverlayHost.closeFloatingPortals()
+        systemOverlayHost.clearRefs()
         clearActiveTarget()
         flushPendingCleanup()
         clearHoverChainStates()
@@ -687,7 +664,7 @@ abstract class DsglScreenHost(
         val height = viewport.height
         lastViewport = viewport
         if (force || width != lastWidth || height != lastHeight) {
-            applicationOverlayHost.closeContextMenus()
+            applicationOverlayHost.closeFloatingPortals()
             lastWidth = width
             lastHeight = height
             needsLayout = true
@@ -787,9 +764,11 @@ abstract class DsglScreenHost(
         )
         runOverlayInputFrame(applicationOverlayHost)
         runOverlayInputFrame(systemOverlayHost)
-        applicationOverlayHost.applicationColorPickerOnFrame(
+        applicationOverlayHost.syncPortalFrame(
+            measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
+            viewportScale = 1f,
             mouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX,
             mouseY = if (lastMoveY == Int.MIN_VALUE) lastMouseY else lastMoveY,
         )
@@ -945,19 +924,15 @@ abstract class DsglScreenHost(
 
     private fun syncMouseInputFrame(tree: DomTree, inputEvent: MouseInputEvent) {
         inspector.onCursorMoved(inputEvent.mouseX, inputEvent.mouseY)
-        applicationOverlayHost.contextMenuOnFrame(
+        applicationOverlayHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
             viewportScale = 1f,
+            mouseX = inputEvent.mouseX,
+            mouseY = inputEvent.mouseY,
         )
-        applicationOverlayHost.applicationSelectOnFrame(
-            measureContext = adapter,
-            viewportWidth = lastWidth,
-            viewportHeight = lastHeight,
-            viewportScale = 1f,
-        )
-        systemOverlayHost.systemSelectOnFrame(
+        systemOverlayHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -972,12 +947,6 @@ abstract class DsglScreenHost(
             cursorX = inputEvent.mouseX,
             cursorY = inputEvent.mouseY,
             inspectorPointerCaptured = inspectorPointerCaptured,
-        )
-        applicationOverlayHost.applicationColorPickerOnFrame(
-            viewportWidth = lastWidth,
-            viewportHeight = lastHeight,
-            mouseX = inputEvent.mouseX,
-            mouseY = inputEvent.mouseY,
         )
         refreshActiveColorSamplerOwner(tree.root)
     }
@@ -1136,7 +1105,7 @@ abstract class DsglScreenHost(
         inspectorMouseX: Int,
         inspectorMouseY: Int,
     ): Boolean {
-        if (systemOverlayHost.handleSystemSelectKeyDown(keyCode, keyChar)) {
+        if (systemOverlayHost.handlePortalKeyDown(keyCode, keyChar)) {
             return true
         }
         if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
@@ -1156,16 +1125,13 @@ abstract class DsglScreenHost(
     }
 
     private fun consumeApplicationOverlayKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        if (applicationOverlayHost.handleApplicationColorPickerKeyDown(keyCode, keyChar)) {
+        if (applicationOverlayHost.handlePortalKeyDownBeforeDom(keyCode, keyChar)) {
             return true
         }
         if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handleApplicationSelectKeyDown(keyCode, keyChar)) {
-            return true
-        }
-        if (applicationOverlayHost.handleContextMenuKeyDown(keyCode)) {
+        if (applicationOverlayHost.handlePortalKeyDownAfterDom(keyCode, keyChar)) {
             return true
         }
         return false
@@ -1253,7 +1219,7 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton?,
         buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && systemOverlayHost.handleSystemSelectMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && systemOverlayHost.handlePortalMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
@@ -1262,9 +1228,9 @@ abstract class DsglScreenHost(
         if (mouseButton != -1 && mappedButton != null) {
             val consumedBySystemSelect =
                 if (buttonPressed) {
-                    systemOverlayHost.handleSystemSelectMouseDown(mouseX, mouseY, mappedButton)
+                    systemOverlayHost.handlePortalMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    systemOverlayHost.handleSystemSelectMouseUp(mouseX, mouseY, mappedButton)
+                    systemOverlayHost.handlePortalMouseUp(mouseX, mouseY, mappedButton)
                 }
             if (consumedBySystemSelect) {
                 return true
@@ -1278,7 +1244,7 @@ abstract class DsglScreenHost(
             if (consumedBySystemOverlay) {
                 return true
             }
-        } else if (mouseButton == -1 && systemOverlayHost.handleSystemSelectMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && systemOverlayHost.handlePortalMouseMove(mouseX, mouseY)) {
             return true
         } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
             return true
@@ -1303,22 +1269,14 @@ abstract class DsglScreenHost(
     ): Boolean {
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         if (!inlineSamplerOwnsSession) {
-            if (dWheel != 0 && applicationOverlayHost.handleApplicationColorPickerMouseWheel(mouseX, mouseY, dWheel)) {
-                return true
-            }
-            if (mouseButton != -1 && mappedButton != null) {
-                val consumedByColorPicker =
-                    if (buttonPressed) {
-                        applicationOverlayHost.handleApplicationColorPickerMouseDown(mouseX, mouseY, mappedButton)
-                    } else {
-                        applicationOverlayHost.handleApplicationColorPickerMouseUp(mouseX, mouseY, mappedButton)
-                    }
-                if (consumedByColorPicker) {
-                    return true
-                }
-            } else if (
-                mouseButton == -1 &&
-                applicationOverlayHost.handleApplicationColorPickerMouseMove(mouseX, mouseY)
+            if (
+                applicationOverlayHost.handlePortalPointerBeforeDom(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    dWheel = dWheel,
+                    button = mappedButton,
+                    pressed = buttonPressed,
+                )
             ) {
                 return true
             }
@@ -1341,40 +1299,13 @@ abstract class DsglScreenHost(
             return true
         }
 
-        if (dWheel != 0 && applicationOverlayHost.handleContextMenuMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (dWheel != 0 && applicationOverlayHost.handleApplicationSelectMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (mouseButton != -1 && mappedButton != null) {
-            val consumedByContextMenu =
-                if (buttonPressed) {
-                    applicationOverlayHost.handleContextMenuMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    applicationOverlayHost.handleContextMenuMouseUp(mouseX, mouseY, mappedButton)
-                }
-            if (consumedByContextMenu) {
-                return true
-            }
-            val consumedBySelect =
-                if (buttonPressed) {
-                    applicationOverlayHost.handleApplicationSelectMouseDown(mouseX, mouseY, mappedButton)
-                } else {
-                    applicationOverlayHost.handleApplicationSelectMouseUp(mouseX, mouseY, mappedButton)
-                }
-            if (consumedBySelect) {
-                return true
-            }
-            return false
-        }
-        if (mouseButton == -1 && applicationOverlayHost.handleContextMenuMouseMove(mouseX, mouseY)) {
-            return true
-        }
-        if (mouseButton == -1 && applicationOverlayHost.handleApplicationSelectMouseMove(mouseX, mouseY)) {
-            return true
-        }
-        return false
+        return applicationOverlayHost.handlePortalPointerAfterDom(
+            mouseX = mouseX,
+            mouseY = mouseY,
+            dWheel = dWheel,
+            button = mappedButton,
+            pressed = buttonPressed,
+        )
     }
 
     private fun consumeOverlayPointerState(mouseX: Int, mouseY: Int) {
@@ -1394,7 +1325,7 @@ abstract class DsglScreenHost(
         }
 
     init {
-        inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPopupHost())
+        inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPortalService())
     }
 
     private fun refreshActiveColorSamplerOwner(root: DOMNode?) {
@@ -1408,7 +1339,7 @@ abstract class DsglScreenHost(
         }
         activeColorSamplerOwner =
             colorSamplerOwnershipRouter.update(
-                popupEyedropperActive = applicationOverlayHost.hasActiveApplicationColorPickerEyedropper(),
+                popupEyedropperActive = applicationOverlayHost.hasActiveColorPickerEyedropper(),
                 inlineActiveTokens = inlineByToken.keys.toSet(),
             )
         activeInlineColorSamplerNode =
@@ -1464,7 +1395,7 @@ abstract class DsglScreenHost(
             return
         }
         when (activeColorSamplerOwner) {
-            ActiveColorSamplerOwner.Popup -> applicationOverlayHost.captureApplicationColorPickerEyedropperSample()
+            ActiveColorSamplerOwner.Popup -> applicationOverlayHost.captureColorPickerEyedropperSample()
             is ActiveColorSamplerOwner.Inline -> {
                 val inline = activeInlineColorSamplerNode
                 if (inline != null && inline.wantsGlobalPointerInput()) {
@@ -1473,8 +1404,8 @@ abstract class DsglScreenHost(
             }
 
             ActiveColorSamplerOwner.None -> {
-                if (applicationOverlayHost.hasActiveApplicationColorPickerEyedropper()) {
-                    applicationOverlayHost.captureApplicationColorPickerEyedropperSample()
+                if (applicationOverlayHost.hasActiveColorPickerEyedropper()) {
+                    applicationOverlayHost.captureColorPickerEyedropperSample()
                 }
             }
         }

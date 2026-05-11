@@ -16,7 +16,7 @@
     <ID>ComplexCondition:InspectorController.kt$InspectorController$endedMode == DragMode.MinimizedMove &amp;&amp; clickLike &amp;&amp; panelState == InspectorPanelState.Minimized &amp;&amp; minimizedBounds.contains(mouseX, mouseY)</ID>
     <ID>ComplexCondition:InspectorController.kt$InspectorController$numberText.isEmpty() || numberText == "-" || numberText == "." || numberText == "-."</ID>
     <ID>ComplexCondition:LayerDomInputRouter.kt$LayerDomInputRouter$node.onMouseDown != null || node.onMouseUp != null || node.onMouseClick != null || node.onMouseDrag != null || node.onMouseWheel != null || node.onMouseMove != null || node.onKeyDown != null || node.onKeyUp != null</ID>
-    <ID>ComplexCondition:ModalRuntime.kt$ModalRuntime$(needsFocusOnTop || (topMost.trapFocus &amp;&amp; focusOutsideTop)) &amp;&amp; !FocusManager.requestFocusFirstInSubtree(topDialogKey)</ID>
+    <ID>ComplexCondition:ModalPortalSessionStore.kt$ModalPortalSessionStore$(needsFocusOnTop || (topMost.trapFocus &amp;&amp; focusOutsideTop)) &amp;&amp; !FocusManager.requestFocusFirstInSubtree(topDialogKey)</ID>
     <ID>ComplexCondition:SelectNode.kt$SelectNode$!controlled &amp;&amp; uncontrolledValue == null &amp;&amp; value != null &amp;&amp; optionExists(value)</ID>
     <ID>ComplexCondition:SingleLineInputNode.kt$SingleLineInputNode$!showPlaceholder &amp;&amp; focused &amp;&amp; !styleDisabled &amp;&amp; editState.isCaretVisible(caretBlinkPeriodMs)</ID>
     <ID>ComplexCondition:StyleSelector.kt$StyleSelector.Companion$index &lt; token.length &amp;&amp; (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')</ID>
@@ -60,7 +60,7 @@
     <ID>CyclomaticComplexMethod:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$fun build(context: InspectorStyleEditorSnapshotBuildContext): InspectorStyleEditorSnapshotBuildResult</ID>
     <ID>CyclomaticComplexMethod:KeyInput.kt$KeyInput$fun applyShift(ch: Char, shiftDown: Boolean): Char</ID>
     <ID>CyclomaticComplexMethod:MinecraftFormattingParser.kt$MinecraftFormattingParser$@Suppress("LoopWithTooManyJumpStatements") private fun parseMinecraft(text: String): ParsedText</ID>
-    <ID>CyclomaticComplexMethod:ModalDsl.kt$fun UiScope.modalHost(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
     <ID>CyclomaticComplexMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
     <ID>CyclomaticComplexMethod:OverlayPanel.kt$OverlayPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
     <ID>CyclomaticComplexMethod:SelectEngine.kt$SelectEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
@@ -116,7 +116,7 @@
     <ID>LongMethod:InspectorController.kt$InspectorController$private fun buildExpandedDomSnapshot( root: DOMNode, viewportWidth: Int, viewportHeight: Int, ): InspectorDomSnapshot</ID>
     <ID>LongMethod:InspectorController.kt$InspectorController$private fun literalFromComputed(style: ComputedStyle, property: StyleProperty): String</ID>
     <ID>LongMethod:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$fun build(context: InspectorStyleEditorSnapshotBuildContext): InspectorStyleEditorSnapshotBuildResult</ID>
-    <ID>LongMethod:ModalDsl.kt$fun UiScope.modalHost(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
+    <ID>LongMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
     <ID>LongMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
     <ID>LongMethod:OverlayPanel.kt$OverlayPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
     <ID>LongMethod:PositionedLayoutStickyBehaviorTests.kt$PositionedLayoutStickyBehaviorTests$@Test fun `non-sticky positioned modes remain unchanged with sticky enabled`()</ID>

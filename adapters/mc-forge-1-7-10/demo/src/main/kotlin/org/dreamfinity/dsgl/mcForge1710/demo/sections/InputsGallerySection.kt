@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
@@ -63,7 +63,7 @@ fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrol
             .sorted()
             .joinToString(",")
 
-    SelectRuntime.engine.setStyle(
+    SelectPortalServices.engine.setStyle(
         SelectStyle(
             panelBackgroundColor = 0xFF202A35.toInt(),
             panelBorderColor = 0xFF607286.toInt(),

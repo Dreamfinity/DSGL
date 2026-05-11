@@ -74,7 +74,7 @@ class SystemOverlayEntryInfrastructureTests {
     @Test
     fun `color picker entry keeps panel state and identity stable across routine updates`() {
         val host = SystemOverlayHost(InspectorController())
-        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val pickerHost = host.systemInspectorColorPickerPortalService()
         val root = inspectedRoot()
         pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())
         try {
@@ -121,7 +121,7 @@ class SystemOverlayEntryInfrastructureTests {
     fun `entry ordering stays explicit when both system entries are active`() {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        val pickerHost = host.systemInspectorColorPickerPopupHost()
+        val pickerHost = host.systemInspectorColorPickerPortalService()
         val root = inspectedRoot()
         inspector.toggle()
         pickerHost.open(anchorRect = Rect(36, 44, 20, 18), title = "Popup", state = popupState())

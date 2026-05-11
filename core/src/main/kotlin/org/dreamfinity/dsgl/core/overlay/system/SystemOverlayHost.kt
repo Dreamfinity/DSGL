@@ -26,7 +26,7 @@ import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelStyle
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectPortalController
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
 class SystemOverlayHost(
@@ -51,7 +51,7 @@ class SystemOverlayHost(
         SystemOverlayTransientOwnershipRegistry()
     private val systemSelectPortal: SelectPortalController =
         SelectPortalController(
-            engine = SelectRuntime.systemEngine,
+            engine = SelectPortalServices.systemEngine,
             ownerScope = OverlayOwnerScope.System,
             entryId = "system.select",
         )
@@ -81,7 +81,7 @@ class SystemOverlayHost(
         portalEntries.forEach(portalHost::register)
     }
 
-    fun systemInspectorColorPickerPopupHost(): InspectorColorPickerHost = colorPickerEntry
+    fun systemInspectorColorPickerPortalService(): InspectorColorPickerHost = colorPickerEntry
 
     fun isSystemColorPickerOpen(): Boolean = colorPickerEntry.isOpen()
 
@@ -95,7 +95,7 @@ class SystemOverlayHost(
 
     fun isOverlayPanelDemoOpen(): Boolean = overlayPanelDemoEntry.isOpen()
 
-    fun systemSelectOnFrame(
+    fun syncPortalFrame(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
@@ -109,7 +109,7 @@ class SystemOverlayHost(
         )
     }
 
-    fun appendSystemSelectOverlayCommands(
+    fun appendPortalOverlayCommands(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
@@ -123,21 +123,19 @@ class SystemOverlayHost(
         )
     }
 
-    fun isSystemSelectOpen(): Boolean = systemSelectPortal.isOpen()
+    fun hasOpenPortal(): Boolean = systemSelectPortal.isOpen()
 
-    fun handleSystemSelectKeyDown(keyCode: Int, keyChar: Char): Boolean =
-        systemSelectPortal.handleKeyDown(keyCode, keyChar)
+    fun handlePortalKeyDown(keyCode: Int, keyChar: Char): Boolean = systemSelectPortal.handleKeyDown(keyCode, keyChar)
 
-    fun handleSystemSelectMouseMove(mouseX: Int, mouseY: Int): Boolean =
-        systemSelectPortal.handleMouseMove(mouseX, mouseY)
+    fun handlePortalMouseMove(mouseX: Int, mouseY: Int): Boolean = systemSelectPortal.handleMouseMove(mouseX, mouseY)
 
-    fun handleSystemSelectMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    fun handlePortalMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         systemSelectPortal.handleMouseDown(mouseX, mouseY, button)
 
-    fun handleSystemSelectMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    fun handlePortalMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         systemSelectPortal.handleMouseUp(mouseX, mouseY, button)
 
-    fun handleSystemSelectMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+    fun handlePortalMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
         systemSelectPortal.handleMouseWheel(mouseX, mouseY, delta)
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {

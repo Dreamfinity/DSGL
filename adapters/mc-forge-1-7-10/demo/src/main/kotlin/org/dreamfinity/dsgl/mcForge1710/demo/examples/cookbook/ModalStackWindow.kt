@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.components.modal.modalBody
 import org.dreamfinity.dsgl.core.components.modal.modalFooter
 import org.dreamfinity.dsgl.core.components.modal.modalHeader
-import org.dreamfinity.dsgl.core.components.modal.modalHost
+import org.dreamfinity.dsgl.core.components.modal.modalPortal
 import org.dreamfinity.dsgl.core.components.modal.modalTitle
 import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.button
@@ -29,7 +29,7 @@ private fun UiScope.modalStackRecipe() {
         modals = modals.filterNot { it.key == key }
     }
 
-    modalHost(modals = modals, modalKey = "recipe.modal.host") {
+    modalPortal(modals = modals, key = "recipe.modal.host") {
         button("Open modal", {
             onMouseClick = {
                 modals +=

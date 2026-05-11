@@ -22,7 +22,7 @@ enum class DemoSection(
         "CSS Cascade & Combinators",
         "Descendant/child/sibling selectors, specificity, source order, !important, inheritance",
     ),
-    MODALS("Modals", "Declarative stacked modal host (RB-inspired)"),
+    MODALS("Modals", "Declarative stacked modal portal (RB-inspired)"),
     CONTEXT_MENU("Context Menu", "Right-click nested menus with overlay-first hit testing"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),

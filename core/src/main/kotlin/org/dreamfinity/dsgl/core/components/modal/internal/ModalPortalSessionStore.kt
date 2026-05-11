@@ -8,13 +8,13 @@ import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 import java.util.concurrent.ConcurrentHashMap
 
-internal fun modalLifecycleKey(hostKey: String): String = "$hostKey.modal.lifecycle"
+internal fun modalLifecycleKey(portalKey: String): String = "$portalKey.modal.lifecycle"
 
 private data class ModalMeta(
     val restoreFocus: Boolean,
 )
 
-private class ModalHostState {
+private class ModalPortalState {
     var previousKeys: List<String> = emptyList()
     var previousMetaByKey: Map<String, ModalMeta> = emptyMap()
     val restoreFocusByModalKey: MutableMap<String, Any?> = linkedMapOf()
@@ -23,18 +23,18 @@ private class ModalHostState {
     var currentModals: List<ModalSpec> = emptyList()
 }
 
-internal object ModalRuntime {
+internal object ModalPortalSessionStore {
     data class PortalSnapshot(
-        val hostKey: String,
+        val portalKey: String,
         val root: ModalPortalRootNode,
     )
 
-    private val states: MutableMap<String, ModalHostState> = ConcurrentHashMap()
+    private val states: MutableMap<String, ModalPortalState> = ConcurrentHashMap()
     private val portalTemplates: MutableMap<String, ModalPortalRootNode> = ConcurrentHashMap()
     private val portalHostRefs: MutableMap<String, RefTarget<ElementHandle>> = ConcurrentHashMap()
 
-    fun onBuild(hostKey: String, modals: List<ModalSpec>) {
-        val state = states.getOrPut(hostKey) { ModalHostState() }
+    fun onBuild(portalKey: String, modals: List<ModalSpec>) {
+        val state = states.getOrPut(portalKey) { ModalPortalState() }
         val currentKeys = modals.map { it.key }
         val previousKeys = state.previousKeys
 
@@ -63,7 +63,7 @@ internal object ModalRuntime {
         val previousTop = previousKeys.lastOrNull()
         val currentTop = currentKeys.lastOrNull()
         if (currentTop != null && currentTop != previousTop) {
-            state.pendingFocusDialogKey = dialogKey(hostKey, currentTop)
+            state.pendingFocusDialogKey = dialogKey(portalKey, currentTop)
         }
         if (currentTop == null) {
             state.pendingFocusDialogKey = null
@@ -77,68 +77,68 @@ internal object ModalRuntime {
             }
     }
 
-    fun onCommit(hostKey: String, modals: List<ModalSpec>, focusRoot: DOMNode? = null) {
-        val state = states[hostKey] ?: return
+    fun onCommit(portalKey: String, modals: List<ModalSpec>, focusRoot: DOMNode? = null) {
+        val state = states[portalKey] ?: return
         val topMost = modals.lastOrNull()
 
         if (topMost == null) {
             if (commitWithoutActiveModal(state, focusRoot)) {
-                states.remove(hostKey)
+                states.remove(portalKey)
             }
             return
         }
 
-        commitWithActiveModal(hostKey, state, topMost, focusRoot)
+        commitWithActiveModal(portalKey, state, topMost, focusRoot)
     }
 
-    fun registerPortalTemplate(hostKey: String, root: ModalPortalRootNode) {
-        val previous = portalTemplates.put(hostKey, root)
+    fun registerPortalTemplate(portalKey: String, root: ModalPortalRootNode) {
+        val previous = portalTemplates.put(portalKey, root)
         if (previous != null && previous !== root && previous.parent == null) {
             clearTemplateOwnedListeners(previous)
         }
     }
 
-    fun portalHostRef(hostKey: String): RefTarget<ElementHandle> =
-        portalHostRefs.getOrPut(hostKey) {
+    fun portalHostRef(portalKey: String): RefTarget<ElementHandle> =
+        portalHostRefs.getOrPut(portalKey) {
             RefTarget { handle ->
                 if (handle == null) {
-                    forgetPortal(hostKey)
+                    forgetPortal(portalKey)
                 }
             }
         }
 
-    fun commitPortal(hostKey: String, focusRoot: DOMNode) {
-        val state = states[hostKey] ?: return
-        onCommit(hostKey, state.currentModals, focusRoot)
+    fun commitPortal(portalKey: String, focusRoot: DOMNode) {
+        val state = states[portalKey] ?: return
+        onCommit(portalKey, state.currentModals, focusRoot)
     }
 
     fun portalSnapshots(): List<PortalSnapshot> =
         portalTemplates
             .entries
             .sortedBy { it.key }
-            .map { (hostKey, root) ->
+            .map { (portalKey, root) ->
                 PortalSnapshot(
-                    hostKey = hostKey,
+                    portalKey = portalKey,
                     root = root,
                 )
             }
 
-    fun shouldKeepPortalActive(hostKey: String): Boolean {
-        val template = portalTemplates[hostKey] ?: return false
-        val state = states[hostKey]
-        return template.children.any { it.key != modalLifecycleKey(hostKey) } ||
+    fun shouldKeepPortalActive(portalKey: String): Boolean {
+        val template = portalTemplates[portalKey] ?: return false
+        val state = states[portalKey]
+        return template.children.any { it.key != modalLifecycleKey(portalKey) } ||
             state?.previousKeys?.isNotEmpty() == true ||
             state?.pendingRestoreFocusKey != null ||
             state?.pendingFocusDialogKey != null
     }
 
-    fun forgetPortal(hostKey: String) {
-        portalTemplates.remove(hostKey)
-        portalHostRefs.remove(hostKey)
-        states.remove(hostKey)
+    fun forgetPortal(portalKey: String) {
+        portalTemplates.remove(portalKey)
+        portalHostRefs.remove(portalKey)
+        states.remove(portalKey)
     }
 
-    fun dialogKey(hostKey: String, modalKey: String): String = "$hostKey.modal.$modalKey.dialog"
+    fun dialogKey(portalKey: String, modalKey: String): String = "$portalKey.modal.$modalKey.dialog"
 }
 
 private fun clearTemplateOwnedListeners(root: DOMNode) {
@@ -166,7 +166,7 @@ private fun isOwnedByTemplateRoot(root: DOMNode, node: DOMNode): Boolean {
     return false
 }
 
-private fun commitWithoutActiveModal(state: ModalHostState, focusRoot: DOMNode?): Boolean {
+private fun commitWithoutActiveModal(state: ModalPortalState, focusRoot: DOMNode?): Boolean {
     val restoreKey = state.pendingRestoreFocusKey
     if (restoreKey != null) {
         val restored = requestFocusByKey(restoreKey, focusRoot)
@@ -181,14 +181,14 @@ private fun commitWithoutActiveModal(state: ModalHostState, focusRoot: DOMNode?)
 }
 
 private fun commitWithActiveModal(
-    hostKey: String,
-    state: ModalHostState,
+    portalKey: String,
+    state: ModalPortalState,
     topMost: ModalSpec,
     focusRoot: DOMNode?,
 ) {
     restorePendingFocus(state, focusRoot)
 
-    val topDialogKey = ModalRuntime.dialogKey(hostKey, topMost.key)
+    val topDialogKey = ModalPortalSessionStore.dialogKey(portalKey, topMost.key)
     val needsFocusOnTop = state.pendingFocusDialogKey == topDialogKey
     val focusOutsideTop = !FocusManager.isFocusWithinSubtree(topDialogKey)
     val shouldFocusTop = needsFocusOnTop || (topMost.trapFocus && focusOutsideTop)
@@ -198,7 +198,7 @@ private fun commitWithActiveModal(
     }
 }
 
-private fun restorePendingFocus(state: ModalHostState, focusRoot: DOMNode?) {
+private fun restorePendingFocus(state: ModalPortalState, focusRoot: DOMNode?) {
     val restoreKey = state.pendingRestoreFocusKey ?: return
     val restored = requestFocusByKey(restoreKey, focusRoot)
     if (restored || focusRoot != null) {

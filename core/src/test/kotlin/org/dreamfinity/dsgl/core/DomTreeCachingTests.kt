@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core
 
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalAnchorNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -189,8 +189,8 @@ class DomTreeCachingTests {
     }
 
     @Test
-    fun `modal host does not duplicate child commands in chunk assembly`() {
-        val host = ModalHostNode(key = "modal-host")
+    fun `modal portal does not duplicate child commands in chunk assembly`() {
+        val host = ModalPortalAnchorNode(key = "modal-host")
         CountingRectNode(color = 0xFFAA3300.toInt(), key = "content").applyParent(host)
         CountingRectNode(color = 0xFF0033AA.toInt(), key = "overlay").applyParent(host)
         val tree = DomTree(host)

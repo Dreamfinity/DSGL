@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -42,7 +42,7 @@ class InspectorTextEditingDomMigrationTests {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
         ClipboardBridge.install(null)
-        ColorPickerRuntime.engine.closeAll()
+        ColorPickerPortalServices.engine.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -212,7 +212,7 @@ class InspectorTextEditingDomMigrationTests {
     private fun openInspectorAndSelectTarget(): Fixture {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
         val (root, target) = inspectedRoot()
 
         inspector.toggle()

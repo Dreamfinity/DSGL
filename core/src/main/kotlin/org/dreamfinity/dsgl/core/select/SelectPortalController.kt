@@ -16,13 +16,14 @@ import org.dreamfinity.dsgl.core.overlay.PortalEntryState
 import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
+import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class SelectPortalController(
     private val engine: SelectEngine,
     ownerScope: OverlayOwnerScope,
     entryId: String,
-) {
+) : PortalPointerDispatch {
     private val portalHost: PortalHost =
         PortalHost(OverlayLayerContracts.portalSurfaceForOwner(ownerScope))
     private val entry: SelectPortalEntry =
@@ -62,16 +63,16 @@ internal class SelectPortalController(
 
     fun isOpen(): Boolean = engine.isOpen()
 
-    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
         portalHost.dispatchInput { it.handleMouseMove(mouseX, mouseY) }
 
-    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         portalHost.dispatchInput { it.handleMouseDown(mouseX, mouseY, button) }
 
-    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         portalHost.dispatchInput { it.handleMouseUp(mouseX, mouseY, button) }
 
-    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
         portalHost.dispatchInput { it.handleMouseWheel(mouseX, mouseY, delta) }
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =

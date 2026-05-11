@@ -2,12 +2,12 @@ package org.dreamfinity.dsgl.core.dom
 
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuHost
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuModel
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuTriggerScope
 import org.dreamfinity.dsgl.core.event.MouseButton
 
 fun DOMNode.onContextMenu(
-    host: ContextMenuHost = ContextMenuRuntime.host,
+    host: ContextMenuHost = ContextMenuPortalServices.engine,
     handler: ContextMenuTriggerScope.() -> Unit,
 ) {
     val previous = onMouseDown
@@ -33,7 +33,7 @@ fun DOMNode.onContextMenu(
 }
 
 fun DOMNode.onContextMenuModel(
-    host: ContextMenuHost = ContextMenuRuntime.host,
+    host: ContextMenuHost = ContextMenuPortalServices.engine,
     modelProvider: () -> ContextMenuModel,
 ) {
     onContextMenu(host = host, handler = { openMenu(modelProvider()) })

@@ -1,6 +1,5 @@
 package org.dreamfinity.dsgl.core.contextmenu
 
-object ContextMenuRuntime {
+object ContextMenuPortalServices {
     val engine: ContextMenuEngine = ContextMenuEngine()
-    val host: ContextMenuHost = engine
 }

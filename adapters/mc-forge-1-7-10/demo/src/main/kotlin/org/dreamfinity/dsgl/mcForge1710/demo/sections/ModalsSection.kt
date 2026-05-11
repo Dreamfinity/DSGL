@@ -154,7 +154,7 @@ private fun largeCenteredModal(onRemoveModal: (String) -> Unit): ModalSpec =
         }
         modalBody {
             text("Preset size: Lg; centered=true")
-            text("ModalHost keeps background inert while open.", { style = { color = DEMO_MUTED } })
+            text("Modal portal keeps background inert while open.", { style = { color = DEMO_MUTED } })
         }
         modalFooter {
             button("Done", {

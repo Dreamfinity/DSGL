@@ -2,7 +2,7 @@ package org.dreamfinity.dsgl.core.components.modal
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalSessionStore
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
@@ -30,7 +30,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class ModalHostKeyboardRegressionTests {
+class ModalPortalKeyboardRegressionTests {
     private val trees: MutableList<DomTree> = ArrayList()
     private val overlays: MutableList<ApplicationOverlayHost> = ArrayList()
     private val hostKeys: MutableSet<String> = LinkedHashSet()
@@ -57,7 +57,7 @@ class ModalHostKeyboardRegressionTests {
             }
         }
         overlays.forEach { overlay -> overlay.clearRefs() }
-        hostKeys.forEach(ModalRuntime::forgetPortal)
+        hostKeys.forEach(ModalPortalSessionStore::forgetPortal)
         trees.clear()
         overlays.clear()
         hostKeys.clear()
@@ -65,7 +65,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `escape is not cancelled after static modal closes`() {
-        val hostKey = "tests.modal.host.keyboard.regression"
+        val hostKey = "tests.modal.portal.keyboard.regression"
         val current = buildTree(hostKey, emptyList())
         trees += current
 
@@ -85,8 +85,8 @@ class ModalHostKeyboardRegressionTests {
     }
 
     @Test
-    fun `modal host fills root viewport bounds`() {
-        val tree = buildTree("tests.modal.host.layout.viewport", emptyList())
+    fun `modal portal fills root viewport bounds`() {
+        val tree = buildTree("tests.modal.portal.layout.viewport", emptyList())
         trees += tree
 
         tree.render(measureContext, 1920, 1080)
@@ -108,16 +108,16 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal layers mount through application overlay portal`() {
-        val hostKey = "tests.modal.host.portal"
+        val hostKey = "tests.modal.portal.portal"
         val tree = buildTree(hostKey, listOf(basicModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val modalHost =
+        val modalPortal =
             tree.root.children
                 .firstOrNull()
-        assertNotNull(modalHost)
-        assertEquals(listOf("$hostKey.content"), modalHost.children.map { it.key })
+        assertNotNull(modalPortal)
+        assertEquals(listOf("$hostKey.content"), modalPortal.children.map { it.key })
 
         val overlay = ApplicationOverlayHost()
         overlays += overlay
@@ -128,7 +128,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal blocks application root click through`() {
-        val hostKey = "tests.modal.host.portal.input"
+        val hostKey = "tests.modal.portal.portal.input"
         val tree = buildTree(hostKey, listOf(basicModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
@@ -142,7 +142,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal does not dismiss non static modal when clicking inside dialog body`() {
-        val hostKey = "tests.modal.host.portal.inside.dismiss"
+        val hostKey = "tests.modal.portal.portal.inside.dismiss"
         var hideCount = 0
         val tree = buildTree(hostKey, listOf(dismissibleBodyModal { hideCount += 1 }))
         trees += tree
@@ -152,7 +152,7 @@ class ModalHostKeyboardRegressionTests {
         overlays += overlay
         overlay.render(measureContext, 320, 180)
 
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalRuntime.dialogKey(hostKey, "modal.dismissible"))
+        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
         assertNotNull(dialog)
         val clickX = dialog.bounds.x + dialog.bounds.width / 2
         val clickY = dialog.bounds.y + dialog.bounds.height / 2
@@ -164,7 +164,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal dismisses non static modal when clicking backdrop`() {
-        val hostKey = "tests.modal.host.portal.backdrop.dismiss"
+        val hostKey = "tests.modal.portal.portal.backdrop.dismiss"
         var hideCount = 0
         val tree = buildTree(hostKey, listOf(dismissibleBodyModal { hideCount += 1 }))
         trees += tree
@@ -181,7 +181,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal keeps topmost focus request on overlay commit`() {
-        val hostKey = "tests.modal.host.portal.focus"
+        val hostKey = "tests.modal.portal.portal.focus"
         val current = buildTreeWithContentInput(hostKey, emptyList())
         trees += current
         current.render(measureContext, 320, 180)
@@ -201,7 +201,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal keeps underlying modal pointer interactive after top modal closes`() {
-        val hostKey = "tests.modal.host.portal.stack.pointer"
+        val hostKey = "tests.modal.portal.portal.stack.pointer"
         var stepOneClicks = 0
         val stepOne = clickableModal("step.one", "step.one.button") { stepOneClicks += 1 }
         val stepTwo = clickableModal("step.two", "step.two.button") {}
@@ -237,7 +237,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal restores showcase flow modal pointer interaction after closing step two`() {
-        val hostKey = "tests.modal.host.portal.showcase.flow"
+        val hostKey = "tests.modal.portal.portal.showcase.flow"
         var modals: List<ModalSpec> = emptyList()
 
         fun removeModal(key: String) {
@@ -271,7 +271,7 @@ class ModalHostKeyboardRegressionTests {
 
     @Test
     fun `modal portal restores showcase flow pointer interaction after closing step two header button`() {
-        val hostKey = "tests.modal.host.portal.showcase.flow.header"
+        val hostKey = "tests.modal.portal.portal.showcase.flow.header"
         var modals: List<ModalSpec> = emptyList()
 
         fun removeModal(key: String) {
@@ -296,7 +296,7 @@ class ModalHostKeyboardRegressionTests {
         clickOverlayButtonInDialog(
             overlay = overlay,
             text = "x",
-            dialogKey = ModalRuntime.dialogKey(hostKey, "modal.flow.2"),
+            dialogKey = ModalPortalSessionStore.dialogKey(hostKey, "modal.flow.2"),
         )
         assertEquals(listOf("modal.flow.1"), modals.map { it.key })
         tree = reconcileTree(tree, buildTree(hostKey, modals))
@@ -340,7 +340,7 @@ class ModalHostKeyboardRegressionTests {
     private fun buildTree(hostKey: String, modals: List<ModalSpec>): DomTree {
         hostKeys += hostKey
         return ui {
-            modalHost(modals = modals, modalKey = hostKey) {
+            modalPortal(modals = modals, key = hostKey) {
                 div({ key = "$hostKey.content" })
             }
         }
@@ -349,7 +349,7 @@ class ModalHostKeyboardRegressionTests {
     private fun buildTreeWithContentInput(hostKey: String, modals: List<ModalSpec>): DomTree {
         hostKeys += hostKey
         return ui {
-            modalHost(modals = modals, modalKey = hostKey) {
+            modalPortal(modals = modals, key = hostKey) {
                 input(InputType.Text(value = ""), {
                     key = "$hostKey.content.input"
                 })
@@ -510,7 +510,7 @@ class ModalHostKeyboardRegressionTests {
                 fun pushModal(modal: ModalSpec) {
                     modals += modal
                 }
-                modalHost(modals = modals, modalKey = "tests.modal.host.portal.hook.showcase") {
+                modalPortal(modals = modals, key = "tests.modal.portal.portal.hook.showcase") {
                     button("Open flow step 1", {
                         key = "open.flow"
                         onMouseClick = { pushModal(showcaseFlowStepOne(::pushModal, ::removeModal)) }

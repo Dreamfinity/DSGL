@@ -1,7 +1,7 @@
 
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuStyle
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dnd.*
@@ -753,7 +753,7 @@ fun UiScope.contextMenuSection(onInfo: (String) -> Unit) {
     }
 
     val entries = contextMenuVisibleFiles()
-    ContextMenuRuntime.engine.setStyle(
+    ContextMenuPortalServices.engine.setStyle(
         ContextMenuStyle(
             panelPaddingX = 4,
             panelPaddingY = 4,

@@ -240,7 +240,8 @@ select({
 
 Caveats:
 
-- popup behaviour is provided by select runtime/overlay internals; this API is the supported convenience entrypoint.
+- popup behaviour is provided by domain portal services; this API is the supported convenience entrypoint.
+- use `ownerScope = OverlayOwnerScope.System` when a select is hosted by system-owned UI (for example inspector/system tools).
 - keyboard and wheel behaviour are implemented and covered by `SelectEngineTests`.
 
 ### `colorPicker(...)` and `colorPickerPopup(...)`
@@ -280,7 +281,7 @@ framework contract.
 
 Public helper set:
 
-- `modalHost(modals, modalKey) { ... }`
+- `modalPortal(modals, key) { ... }`
 - `ModalSpec(...)`
 - `modalFrame`, `modalDialog`, `modalHeader`, `modalTitle`, `modalBody`, `modalFooter`
 - `alertModal`, `confirmModal`, `promptModal`
@@ -291,7 +292,7 @@ Small example:
 fun UiScope.modalSample() {
     var modals by useState(emptyList<ModalSpec>())
 
-    modalHost(modals = modals, modalKey = "example.modal.host") {
+    modalPortal(modals = modals, key = "example.modal.portal") {
         button("Open modal", {
             onMouseClick = {
                 modals = listOf(
@@ -311,7 +312,7 @@ fun UiScope.modalSample() {
 
 Caveat:
 
-- modal focus restore/trap/topmost handling is runtime-managed and tested (`ModalRuntimeTests`).
+- modal focus restore/trap/topmost handling is portal-session-managed and tested (`ModalPortalSessionStoreTests`).
 
 ### Context menu helpers
 

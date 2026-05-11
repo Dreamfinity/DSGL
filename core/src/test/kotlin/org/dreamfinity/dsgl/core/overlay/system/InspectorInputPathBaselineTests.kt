@@ -1,6 +1,6 @@
 package org.dreamfinity.dsgl.core.overlay.system
 
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -15,7 +15,7 @@ import org.dreamfinity.dsgl.core.inspector.InspectorEditorKind
 import org.dreamfinity.dsgl.core.inspector.InspectorStyleEditorRowSnapshot
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.*
@@ -34,8 +34,8 @@ class InspectorInputPathBaselineTests {
     fun cleanup() {
         FocusManager.clearFocus()
         KeyModifiers.sync(shift = false, control = false, meta = false)
-        ColorPickerRuntime.engine.closeAll()
-        SelectRuntime.host.closeAll()
+        ColorPickerPortalServices.engine.closeAll()
+        SelectPortalServices.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -45,7 +45,7 @@ class InspectorInputPathBaselineTests {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val (trigger, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
 
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
         assertNotNull(selectPanelRect(ownerKey, fixture))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
         assertFalse(fixture.inspector.closeOpenStyleDropdowns())
@@ -74,7 +74,7 @@ class InspectorInputPathBaselineTests {
     fun `inspector dropdown opens and closes from dom interactions`() {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val (trigger, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
 
         dispatchSystemMouseDown(fixture, trigger.x + 2, trigger.y + 2)
         dispatchSystemMouseUp(fixture, trigger.x + 2, trigger.y + 2)
@@ -91,9 +91,9 @@ class InspectorInputPathBaselineTests {
         val optionX = panel.x + 6
         val optionY = panel.y + 10
 
-        SelectRuntime.systemEngine.handleMouseMove(optionX, optionY)
-        assertTrue(SelectRuntime.systemEngine.handleMouseDown(optionX, optionY, MouseButton.LEFT))
-        assertTrue(SelectRuntime.systemEngine.handleMouseUp(optionX, optionY, MouseButton.LEFT))
+        SelectPortalServices.systemEngine.handleMouseMove(optionX, optionY)
+        assertTrue(SelectPortalServices.systemEngine.handleMouseDown(optionX, optionY, MouseButton.LEFT))
+        assertTrue(SelectPortalServices.systemEngine.handleMouseUp(optionX, optionY, MouseButton.LEFT))
         syncAndRender(fixture, optionX, optionY)
 
         waitForSystemSelectClosed(fixture, ownerKey, optionX, optionY)
@@ -107,7 +107,7 @@ class InspectorInputPathBaselineTests {
 
         val panel = selectPanelRect(ownerKey, fixture)
         syncAndRender(fixture, panel.x + 2, panel.y + 2)
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
 
@@ -116,7 +116,7 @@ class InspectorInputPathBaselineTests {
         val fixture = openInspectorAndSelectTarget(withManyChildren = false)
         val (_, ownerKey) = openDropdownFromVisibleSelectRow(fixture)
 
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
         assertFalse(fixture.inspector.handleOpenStyleDropdownWheel(-120))
 
@@ -128,7 +128,7 @@ class InspectorInputPathBaselineTests {
         assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
 
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
         assertEquals(beforePanelScroll, fixture.inspector.panelScrollOffsetY)
         assertFalse(fixture.inspector.hasOpenStyleDropdown())
     }
@@ -194,7 +194,7 @@ class InspectorInputPathBaselineTests {
         val wheelY = contentRect.y + 10
         assertTrue(dispatchSystemMouseWheel(fixture, wheelX, wheelY, -120))
         syncAndRender(fixture, wheelX, wheelY)
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
 
         val panelRect = fixture.inspector.overlayPanelRect() ?: error("expected panel rect")
         val outsideX = (panelRect.x - 12).coerceAtLeast(1)
@@ -211,7 +211,7 @@ class InspectorInputPathBaselineTests {
     private fun openInspectorAndSelectTarget(withManyChildren: Boolean): Fixture {
         val inspector = InspectorController()
         val host = SystemOverlayHost(inspector)
-        inspector.installColorPickerHost(host.systemInspectorColorPickerPopupHost())
+        inspector.installColorPickerHost(host.systemInspectorColorPickerPortalService())
         val root = inspectedRoot(withManyChildren)
 
         inspector.toggle()
@@ -331,22 +331,22 @@ class InspectorInputPathBaselineTests {
         dispatchSystemMouseUp(fixture, clickX, clickY)
         syncAndRender(fixture, clickX, clickY)
 
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
         return triggerRect to ownerKey
     }
 
     private fun selectPanelRect(ownerKey: String, fixture: Fixture): Rect {
-        SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
-        return SelectRuntime.systemEngine.debugPanelRect(ownerKey)
+        SelectPortalServices.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+        return SelectPortalServices.systemEngine.debugPanelRect(ownerKey)
             ?: error("expected system select popup for owner=$ownerKey")
     }
 
     private fun dispatchSystemMouseDown(fixture: Fixture, x: Int, y: Int): Boolean =
-        SelectRuntime.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
+        SelectPortalServices.systemEngine.handleMouseDown(x, y, MouseButton.LEFT) ||
             fixture.host.handleMouseDown(x, y, MouseButton.LEFT)
 
     private fun dispatchSystemMouseUp(fixture: Fixture, x: Int, y: Int): Boolean =
-        SelectRuntime.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
+        SelectPortalServices.systemEngine.handleMouseUp(x, y, MouseButton.LEFT) ||
             fixture.host.handleMouseUp(x, y, MouseButton.LEFT)
 
     private fun dispatchSystemMouseWheel(
@@ -355,7 +355,7 @@ class InspectorInputPathBaselineTests {
         y: Int,
         delta: Int,
     ): Boolean =
-        SelectRuntime.systemEngine.handleMouseWheel(x, y, delta) ||
+        SelectPortalServices.systemEngine.handleMouseWheel(x, y, delta) ||
             fixture.host.handleMouseWheel(x, y, delta)
 
     private fun waitForSystemSelectClosed(
@@ -365,12 +365,12 @@ class InspectorInputPathBaselineTests {
         cursorY: Int,
     ) {
         repeat(30) {
-            if (!SelectRuntime.systemEngine.isOpenFor(ownerKey)) return
+            if (!SelectPortalServices.systemEngine.isOpenFor(ownerKey)) return
             Thread.sleep(5)
             syncAndRender(fixture, cursorX, cursorY)
-            SelectRuntime.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
+            SelectPortalServices.systemEngine.onFrame(ctx, fixture.viewportWidth, fixture.viewportHeight, 1f)
         }
-        assertFalse(SelectRuntime.systemEngine.isOpenFor(ownerKey))
+        assertFalse(SelectPortalServices.systemEngine.isOpenFor(ownerKey))
     }
 
     private fun focusInputByClick(fixture: Fixture, input: TextInputNode): Pair<Int, Int> {

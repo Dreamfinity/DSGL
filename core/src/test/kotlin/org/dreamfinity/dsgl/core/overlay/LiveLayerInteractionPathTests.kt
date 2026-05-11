@@ -1,12 +1,12 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
 import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.contextmenu.contextMenu
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
@@ -23,7 +23,7 @@ import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelDemoNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEntry
 import org.dreamfinity.dsgl.core.select.SelectOpenRequest
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.select.selectModel
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -44,11 +44,11 @@ class LiveLayerInteractionPathTests {
         }
 
     @AfterTest
-    fun cleanupContextMenuRuntime() {
-        ContextMenuRuntime.engine.closeAll()
-        ColorPickerRuntime.engine.closeAll()
+    fun cleanupContextMenuPortalServices() {
+        ContextMenuPortalServices.engine.closeAll()
+        ColorPickerPortalServices.engine.closeAll()
         ScreenColorSamplerBridge.install(null)
-        SelectRuntime.host.closeAll()
+        SelectPortalServices.closeAll()
     }
 
     @Test
@@ -241,7 +241,7 @@ class LiveLayerInteractionPathTests {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(320, 180)
         var actionHits = 0
-        ContextMenuRuntime.host.openAtCursor(
+        ContextMenuPortalServices.engine.openAtCursor(
             contextMenu(id = "portal.context") {
                 item("Run") {
                     onClick { actionHits += 1 }
@@ -251,30 +251,32 @@ class LiveLayerInteractionPathTests {
             y = 24,
         )
 
-        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 180, 1f, 24, 24)
         val commands = ArrayList<RenderCommand>()
-        applicationOverlayHost.appendContextMenuOverlayCommands(ctx, 320, 180, commands)
-        val firstEntryRect = ContextMenuRuntime.engine.debugEntryRect(levelIndex = 0, entryIndex = 0)
+        applicationOverlayHost.appendPortalOverlayCommands(ctx, 320, 180, commands)
+        val firstEntryRect = ContextMenuPortalServices.engine.debugEntryRect(levelIndex = 0, entryIndex = 0)
         assertNotNull(firstEntryRect)
 
         val consumedByMenu =
-            applicationOverlayHost.handleContextMenuMouseDown(
+            applicationOverlayHost.handlePortalPointerAfterDom(
                 mouseX = firstEntryRect.x + 1,
                 mouseY = firstEntryRect.y + 1,
+                dWheel = 0,
                 button = MouseButton.LEFT,
+                pressed = true,
             )
 
         assertTrue(commands.isNotEmpty())
         assertTrue(consumedByMenu)
         assertEquals(1, actionHits)
-        assertFalse(applicationOverlayHost.isContextMenuOpen())
+        assertFalse(applicationOverlayHost.hasOpenContextMenuPortal())
     }
 
     @Test
     fun `application context menu portal blocks app-root fallthrough on outside dismiss`() {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(320, 180)
-        ContextMenuRuntime.host.openAtCursor(
+        ContextMenuPortalServices.engine.openAtCursor(
             contextMenu(id = "portal.dismiss") {
                 item("Run")
                 item("Build")
@@ -282,8 +284,8 @@ class LiveLayerInteractionPathTests {
             x = 24,
             y = 24,
         )
-        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
-        val panel = ContextMenuRuntime.engine.debugPanelRect(0)
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 180, 1f, 24, 24)
+        val panel = ContextMenuPortalServices.engine.debugPanelRect(0)
         assertNotNull(panel)
         val outsideX = panel.x + panel.width + 24
         val outsideY = panel.y + panel.height + 24
@@ -293,7 +295,7 @@ class LiveLayerInteractionPathTests {
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
-                    applicationOverlayHost.handleContextMenuMouseDown(x, y, button)
+                    applicationOverlayHost.handlePortalPointerAfterDom(x, y, 0, button, true)
                 },
             )
         var appRootReceived = false
@@ -305,14 +307,14 @@ class LiveLayerInteractionPathTests {
 
         assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
         assertFalse(appRootReceived)
-        assertFalse(applicationOverlayHost.isContextMenuOpen())
+        assertFalse(applicationOverlayHost.hasOpenContextMenuPortal())
     }
 
     @Test
     fun `application context menu portal consumes wheel and escape while open`() {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(320, 180)
-        ContextMenuRuntime.host.openAtCursor(
+        ContextMenuPortalServices.engine.openAtCursor(
             contextMenu(id = "portal.keyboard") {
                 item("Run")
                 item("Build")
@@ -320,11 +322,11 @@ class LiveLayerInteractionPathTests {
             x = 24,
             y = 24,
         )
-        applicationOverlayHost.contextMenuOnFrame(ctx, 320, 180, 1f)
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 180, 1f, 24, 24)
 
-        assertTrue(applicationOverlayHost.handleContextMenuMouseWheel(26, 26, -120))
-        assertTrue(applicationOverlayHost.handleContextMenuKeyDown(KeyCodes.ESCAPE))
-        assertFalse(applicationOverlayHost.isContextMenuOpen())
+        assertTrue(applicationOverlayHost.handlePortalPointerAfterDom(26, 26, -120, null, false))
+        assertTrue(applicationOverlayHost.handlePortalKeyDownAfterDom(KeyCodes.ESCAPE, Char.MIN_VALUE))
+        assertFalse(applicationOverlayHost.hasOpenContextMenuPortal())
     }
 
     @Test
@@ -333,20 +335,22 @@ class LiveLayerInteractionPathTests {
         applicationOverlayHost.onInputFrame(320, 180)
         var selected: String? = null
         val owner = "application-select-portal"
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application) { selected = it })
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.Application) { selected = it })
 
-        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 180, 1f)
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 180, 1f, 0, 0)
         val commands = ArrayList<RenderCommand>()
-        applicationOverlayHost.appendApplicationSelectOverlayCommands(ctx, 320, 180, commands)
-        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        applicationOverlayHost.appendPortalOverlayCommands(ctx, 320, 180, commands)
+        val panel = SelectPortalServices.applicationEngine.debugPanelRect(owner)
         assertNotNull(panel)
 
-        val style = SelectRuntime.applicationEngine.currentStyle()
+        val style = SelectPortalServices.applicationEngine.currentStyle()
         val consumed =
-            applicationOverlayHost.handleApplicationSelectMouseDown(
+            applicationOverlayHost.handlePortalPointerAfterDom(
                 mouseX = panel.x + style.panelPaddingX + 1,
                 mouseY = panel.y + style.panelPaddingY + 1,
+                dWheel = 0,
                 button = MouseButton.LEFT,
+                pressed = true,
             )
 
         assertTrue(commands.isNotEmpty())
@@ -359,9 +363,9 @@ class LiveLayerInteractionPathTests {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(320, 180)
         val owner = "application-select-dismiss"
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
-        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 180, 1f)
-        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.Application))
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 180, 1f, 0, 0)
+        val panel = SelectPortalServices.applicationEngine.debugPanelRect(owner)
         assertNotNull(panel)
         val outsideX = panel.x + panel.width + 24
         val outsideY = panel.y + panel.height + 24
@@ -370,7 +374,7 @@ class LiveLayerInteractionPathTests {
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
-                    applicationOverlayHost.handleApplicationSelectMouseDown(x, y, button)
+                    applicationOverlayHost.handlePortalPointerAfterDom(x, y, 0, button, true)
                 },
             )
 
@@ -391,7 +395,7 @@ class LiveLayerInteractionPathTests {
         applicationOverlayHost.onInputFrame(320, 120)
         val owner = "application-select-keyboard"
         var selected: String? = null
-        SelectRuntime.host.open(
+        SelectPortalServices.open(
             selectRequest(
                 owner = owner,
                 ownerScope = OverlayOwnerScope.Application,
@@ -407,18 +411,18 @@ class LiveLayerInteractionPathTests {
                 onSelect = { selected = it },
             ),
         )
-        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 120, 1f)
-        val panel = SelectRuntime.applicationEngine.debugPanelRect(owner)
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 120, 1f, 0, 0)
+        val panel = SelectPortalServices.applicationEngine.debugPanelRect(owner)
         assertNotNull(panel)
 
-        assertTrue(applicationOverlayHost.handleApplicationSelectMouseWheel(panel.x + 2, panel.y + 2, -120))
-        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(0, 'd'))
-        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(KeyCodes.ENTER, Char.MIN_VALUE))
+        assertTrue(applicationOverlayHost.handlePortalPointerAfterDom(panel.x + 2, panel.y + 2, -120, null, false))
+        assertTrue(applicationOverlayHost.handlePortalKeyDownAfterDom(0, 'd'))
+        assertTrue(applicationOverlayHost.handlePortalKeyDownAfterDom(KeyCodes.ENTER, Char.MIN_VALUE))
         assertEquals("d", selected)
 
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
-        applicationOverlayHost.applicationSelectOnFrame(ctx, 320, 120, 1f)
-        assertTrue(applicationOverlayHost.handleApplicationSelectKeyDown(KeyCodes.ESCAPE, Char.MIN_VALUE))
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.Application))
+        applicationOverlayHost.syncPortalFrame(ctx, 320, 120, 1f, 0, 0)
+        assertTrue(applicationOverlayHost.handlePortalKeyDownAfterDom(KeyCodes.ESCAPE, Char.MIN_VALUE))
     }
 
     @Test
@@ -426,12 +430,12 @@ class LiveLayerInteractionPathTests {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(360, 240)
         val owner = "application-color-picker-portal"
-        ColorPickerRuntime.host.open(colorPickerRequest(owner, OverlayOwnerScope.Application))
+        ColorPickerPortalServices.engine.open(colorPickerRequest(owner, OverlayOwnerScope.Application))
 
-        applicationOverlayHost.applicationColorPickerOnFrame(360, 240, 42, 48)
+        applicationOverlayHost.syncPortalFrame(ctx, 360, 240, 1f, 42, 48)
         val commands = ArrayList<RenderCommand>()
-        applicationOverlayHost.appendApplicationColorPickerOverlayCommands(ctx, 360, 240, commands)
-        val layout = ColorPickerRuntime.engine.debugBodyLayout(owner)
+        applicationOverlayHost.appendPortalOverlayCommands(ctx, 360, 240, commands)
+        val layout = ColorPickerPortalServices.engine.debugBodyLayout(owner)
         assertNotNull(layout)
 
         val harness =
@@ -439,7 +443,7 @@ class LiveLayerInteractionPathTests {
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
-                    applicationOverlayHost.handleApplicationColorPickerMouseDown(x, y, button)
+                    applicationOverlayHost.handlePortalPointerBeforeDom(x, y, 0, button, true)
                 },
             )
         var appRootReceived = false
@@ -456,7 +460,7 @@ class LiveLayerInteractionPathTests {
         assertTrue(commands.isNotEmpty())
         assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
         assertFalse(appRootReceived)
-        assertTrue(applicationOverlayHost.isApplicationColorPickerOpen())
+        assertTrue(applicationOverlayHost.hasOpenColorPickerPortal())
     }
 
     @Test
@@ -466,59 +470,68 @@ class LiveLayerInteractionPathTests {
         applicationOverlayHost.onInputFrame(480, 320)
         val owner = "application-color-picker-drag-eyedropper"
         var committed: RgbaColor? = null
-        ColorPickerRuntime.host.open(
+        ColorPickerPortalServices.engine.open(
             colorPickerRequest(owner, OverlayOwnerScope.Application) {
                 committed = it
             },
         )
-        applicationOverlayHost.applicationColorPickerOnFrame(480, 320, 120, 80)
+        applicationOverlayHost.syncPortalFrame(ctx, 480, 320, 1f, 120, 80)
 
-        val panelBefore = ColorPickerRuntime.engine.debugPanelRect(owner) ?: error("panel missing")
-        val header = ColorPickerRuntime.engine.debugHeaderRect(owner) ?: error("header missing")
+        val panelBefore = ColorPickerPortalServices.engine.debugPanelRect(owner) ?: error("panel missing")
+        val header = ColorPickerPortalServices.engine.debugHeaderRect(owner) ?: error("header missing")
         val dragStartX = header.x + 6
         val dragStartY = header.y + 6
-        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseDown(dragStartX, dragStartY, MouseButton.LEFT))
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(dragStartX, dragStartY, 0, MouseButton.LEFT, true))
         assertTrue(
-            applicationOverlayHost.handleApplicationColorPickerMouseMove(
-                dragStartX + 40,
-                dragStartY + 30,
+            applicationOverlayHost.handlePortalPointerBeforeDom(
+                mouseX = dragStartX + 40,
+                mouseY = dragStartY + 30,
+                dWheel = 0,
+                button = null,
+                pressed = false,
             ),
         )
         assertTrue(
-            applicationOverlayHost.handleApplicationColorPickerMouseUp(
-                dragStartX + 40,
-                dragStartY + 30,
-                MouseButton.LEFT,
+            applicationOverlayHost.handlePortalPointerBeforeDom(
+                mouseX = dragStartX + 40,
+                mouseY = dragStartY + 30,
+                dWheel = 0,
+                button = MouseButton.LEFT,
+                pressed = false,
             ),
         )
-        val panelAfter = ColorPickerRuntime.engine.debugPanelRect(owner) ?: error("panel missing")
+        val panelAfter = ColorPickerPortalServices.engine.debugPanelRect(owner) ?: error("panel missing")
         assertNotEquals(panelBefore.x, panelAfter.x)
 
-        val layout = ColorPickerRuntime.engine.debugBodyLayout(owner) ?: error("layout missing")
+        val layout = ColorPickerPortalServices.engine.debugBodyLayout(owner) ?: error("layout missing")
         assertTrue(
-            applicationOverlayHost.handleApplicationColorPickerMouseDown(
-                layout.pipetteRect.x + 2,
-                layout.pipetteRect.y + 2,
-                MouseButton.LEFT,
+            applicationOverlayHost.handlePortalPointerBeforeDom(
+                mouseX = layout.pipetteRect.x + 2,
+                mouseY = layout.pipetteRect.y + 2,
+                dWheel = 0,
+                button = MouseButton.LEFT,
+                pressed = true,
             ),
         )
-        assertTrue(applicationOverlayHost.hasActiveApplicationColorPickerEyedropper())
-        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseMove(25, 52))
-        applicationOverlayHost.captureApplicationColorPickerEyedropperSample()
-        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseDown(25, 52, MouseButton.LEFT))
-        assertTrue(applicationOverlayHost.handleApplicationColorPickerMouseUp(25, 52, MouseButton.LEFT))
+        assertTrue(applicationOverlayHost.hasActiveColorPickerEyedropper())
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, null, false))
+        applicationOverlayHost.captureColorPickerEyedropperSample()
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, MouseButton.LEFT, true))
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, MouseButton.LEFT, false))
         val expected = RgbaColor.fromArgbInt((0xFF shl 24) or (25 shl 16) or (52 shl 8) or 0x44)
         assertEquals(expected.toArgbInt(), committed?.toArgbInt())
 
-        val closeRect = ColorPickerRuntime.engine.debugCloseRect(owner) ?: error("close missing")
+        val closeRect = ColorPickerPortalServices.engine.debugCloseRect(owner) ?: error("close missing")
         assertTrue(
-            applicationOverlayHost.handleApplicationColorPickerMouseDown(
-                closeRect.x + 1,
-                closeRect.y + 1,
-                MouseButton.LEFT,
+            applicationOverlayHost.handlePortalPointerBeforeDom(
+                mouseX = closeRect.x + 1,
+                mouseY = closeRect.y + 1,
+                dWheel = 0,
+                button = MouseButton.LEFT,
+                pressed = true,
             ),
         )
-        assertFalse(applicationOverlayHost.isApplicationColorPickerOpen())
+        assertFalse(applicationOverlayHost.hasOpenColorPickerPortal())
     }
 
     @Test
@@ -526,17 +539,17 @@ class LiveLayerInteractionPathTests {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(360, 240)
         val owner = "system-color-picker-owner"
-        ColorPickerRuntime.host.open(colorPickerRequest(owner, OverlayOwnerScope.System))
+        ColorPickerPortalServices.engine.open(colorPickerRequest(owner, OverlayOwnerScope.System))
 
-        applicationOverlayHost.applicationColorPickerOnFrame(360, 240, 42, 48)
+        applicationOverlayHost.syncPortalFrame(ctx, 360, 240, 1f, 42, 48)
         val commands = ArrayList<RenderCommand>()
-        applicationOverlayHost.appendApplicationColorPickerOverlayCommands(ctx, 360, 240, commands)
-        val panel = ColorPickerRuntime.engine.debugPanelRect(owner)
+        applicationOverlayHost.appendPortalOverlayCommands(ctx, 360, 240, commands)
+        val panel = ColorPickerPortalServices.engine.debugPanelRect(owner)
         assertNotNull(panel)
 
-        assertTrue(ColorPickerRuntime.engine.isOpenFor(owner))
-        assertFalse(applicationOverlayHost.isApplicationColorPickerOpen())
-        assertFalse(applicationOverlayHost.handleApplicationColorPickerMouseDown(panel.x + 2, panel.y + 2, MouseButton.LEFT))
+        assertTrue(ColorPickerPortalServices.engine.isOpenFor(owner))
+        assertFalse(applicationOverlayHost.hasOpenColorPickerPortal())
+        assertFalse(applicationOverlayHost.handlePortalPointerBeforeDom(panel.x + 2, panel.y + 2, 0, MouseButton.LEFT, true))
         assertTrue(commands.isEmpty())
     }
 
@@ -546,20 +559,20 @@ class LiveLayerInteractionPathTests {
         systemHost.onInputFrame(320, 180)
         val owner = "system-select-portal"
         var selected: String? = null
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.System) { selected = it })
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.System) { selected = it })
 
-        systemHost.systemSelectOnFrame(ctx, 320, 180, 1f)
+        systemHost.syncPortalFrame(ctx, 320, 180, 1f)
         val commands = ArrayList<RenderCommand>()
-        systemHost.appendSystemSelectOverlayCommands(ctx, 320, 180, commands)
-        val panel = SelectRuntime.systemEngine.debugPanelRect(owner)
+        systemHost.appendPortalOverlayCommands(ctx, 320, 180, commands)
+        val panel = SelectPortalServices.systemEngine.debugPanelRect(owner)
         assertNotNull(panel)
-        val style = SelectRuntime.systemEngine.currentStyle()
+        val style = SelectPortalServices.systemEngine.currentStyle()
 
         val harness =
             LiveLayerInputHarness(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { x, y, button ->
-                    systemHost.handleSystemSelectMouseDown(x, y, button)
+                    systemHost.handlePortalMouseDown(x, y, button)
                 },
                 applicationOverlayHandler = { _, _, _ -> false },
             )
@@ -578,20 +591,20 @@ class LiveLayerInteractionPathTests {
         assertEquals(UiLayerId.SystemOverlay, consumedBy)
         assertFalse(appRootReceived)
         assertEquals("a", selected)
-        assertFalse(SelectRuntime.applicationEngine.isOpenFor(owner))
+        assertFalse(SelectPortalServices.applicationEngine.isOpenFor(owner))
     }
 
     @Test
     fun `select owner migration preserves application system routing`() {
         val owner = "select-owner-migration"
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.Application))
-        assertTrue(SelectRuntime.applicationEngine.isOpenFor(owner))
-        assertFalse(SelectRuntime.systemEngine.isOpenFor(owner))
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.Application))
+        assertTrue(SelectPortalServices.applicationEngine.isOpenFor(owner))
+        assertFalse(SelectPortalServices.systemEngine.isOpenFor(owner))
 
-        SelectRuntime.host.open(selectRequest(owner, OverlayOwnerScope.System))
+        SelectPortalServices.open(selectRequest(owner, OverlayOwnerScope.System))
 
-        assertFalse(SelectRuntime.applicationEngine.isOpenFor(owner))
-        assertTrue(SelectRuntime.systemEngine.isOpenFor(owner))
+        assertFalse(SelectPortalServices.applicationEngine.isOpenFor(owner))
+        assertTrue(SelectPortalServices.systemEngine.isOpenFor(owner))
     }
 
     @Test

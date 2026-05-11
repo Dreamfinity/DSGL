@@ -21,24 +21,24 @@ import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
 internal class ModalPortalController {
     private val portalHost: PortalHost =
         PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
-    private val entriesByHostKey: LinkedHashMap<String, ModalPortalEntry> = LinkedHashMap()
+    private val entriesByPortalKey: LinkedHashMap<String, ModalPortalEntry> = LinkedHashMap()
 
     fun sync(rootNode: DOMNode, viewportWidth: Int, viewportHeight: Int) {
-        val snapshots = ModalRuntime.portalSnapshots()
-        val activeHostKeys = snapshots.mapTo(LinkedHashSet()) { it.hostKey }
+        val snapshots = ModalPortalSessionStore.portalSnapshots()
+        val activePortalKeys = snapshots.mapTo(LinkedHashSet()) { it.portalKey }
         snapshots.forEach { snapshot ->
             val entry =
-                entriesByHostKey.getOrPut(snapshot.hostKey) {
-                    ModalPortalEntry(snapshot.hostKey, snapshot.root).also(portalHost::register)
+                entriesByPortalKey.getOrPut(snapshot.portalKey) {
+                    ModalPortalEntry(snapshot.portalKey, snapshot.root).also(portalHost::register)
                 }
             entry.reconcile(snapshot.root)
             entry.syncActive(viewportWidth, viewportHeight)
         }
-        entriesByHostKey
+        entriesByPortalKey
             .keys
-            .filter { it !in activeHostKeys }
-            .forEach { hostKey ->
-                val entry = entriesByHostKey.remove(hostKey) ?: return@forEach
+            .filter { it !in activePortalKeys }
+            .forEach { portalKey ->
+                val entry = entriesByPortalKey.remove(portalKey) ?: return@forEach
                 portalHost.unregister(entry.state.id)
                 entry.detach()
             }
@@ -46,19 +46,21 @@ internal class ModalPortalController {
     }
 
     fun close() {
-        entriesByHostKey.values.forEach { entry ->
+        entriesByPortalKey.values.forEach { entry ->
             portalHost.unregister(entry.state.id)
             entry.detach()
         }
-        entriesByHostKey.clear()
+        entriesByPortalKey.clear()
     }
 
     fun commitActivePortals() {
         portalHost
             .entriesInPaintOrder()
             .mapNotNull { it as? ModalPortalEntry }
-            .forEach { entry -> ModalRuntime.commitPortal(entry.hostKey, entry.root) }
+            .forEach { entry -> ModalPortalSessionStore.commitPortal(entry.portalKey, entry.root) }
     }
+
+    fun hasActivePortal(): Boolean = entriesByPortalKey.values.any { entry -> entry.state.active }
 
     internal fun debugActivePortalEntryIds(): List<String> = portalHost.entriesInPaintOrder().map { it.state.id.value }
 
@@ -75,7 +77,7 @@ internal class ModalPortalController {
             portalHost
                 .entriesInPaintOrder()
                 .mapNotNull { (it as? ModalPortalEntry)?.root }
-        entriesByHostKey.values.forEach { entry ->
+        entriesByPortalKey.values.forEach { entry ->
             if (entry.root !in activeRoots) {
                 entry.detach()
             }
@@ -105,7 +107,7 @@ internal class ModalPortalController {
 }
 
 private class ModalPortalEntry(
-    val hostKey: String,
+    val portalKey: String,
     templateRoot: ModalPortalRootNode,
 ) : PortalEntry {
     private var tree: DomTree = DomTree(templateRoot)
@@ -115,8 +117,8 @@ private class ModalPortalEntry(
 
     override val state: PortalEntryState =
         PortalEntryState(
-            id = PortalEntryId("application.modal.$hostKey"),
-            ownerToken = hostKey,
+            id = PortalEntryId("application.modal.$portalKey"),
+            ownerToken = portalKey,
             surface = OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
             order = PortalEntryOrder(zIndex = -100),
             dismissPolicy = PortalDismissPolicy.None,
@@ -144,7 +146,7 @@ private class ModalPortalEntry(
     }
 
     fun syncActive(viewportWidth: Int, viewportHeight: Int) {
-        if (!ModalRuntime.shouldKeepPortalActive(hostKey)) {
+        if (!ModalPortalSessionStore.shouldKeepPortalActive(portalKey)) {
             state.deactivate()
             return
         }
@@ -168,7 +170,7 @@ private class ModalPortalEntry(
     }
 
     override fun close() {
-        ModalRuntime.forgetPortal(hostKey)
+        ModalPortalSessionStore.forgetPortal(portalKey)
         state.deactivate()
     }
 

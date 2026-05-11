@@ -646,7 +646,7 @@ class ColorPickerPopupEngine : ColorPickerPopupHost {
 }
 
 class ColorPickerPopupManager(
-    private val host: ColorPickerPopupHost = ColorPickerRuntime.host,
+    private val host: ColorPickerPopupHost = ColorPickerPortalServices.engine,
     private val ownerToken: Any = Any(),
 ) {
     fun open(
@@ -689,7 +689,6 @@ class ColorPickerPopupManager(
     fun isOpen(): Boolean = host.isOpenFor(ownerToken)
 }
 
-object ColorPickerRuntime {
+object ColorPickerPortalServices {
     val engine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-    val host: ColorPickerPopupHost = engine
 }

@@ -1,25 +1,31 @@
 package org.dreamfinity.dsgl.core.overlay
 
 import org.dreamfinity.dsgl.core.DomTree
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalController
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerRuntime
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalServices
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalController
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
+import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalServices
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.select.SelectEngine
 import org.dreamfinity.dsgl.core.select.SelectPortalController
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
-class ApplicationOverlayHost : OverlayLayerHost {
+class ApplicationOverlayHost(
+    contextMenuEngine: ContextMenuEngine = ContextMenuPortalServices.engine,
+    selectEngine: SelectEngine = SelectPortalServices.applicationEngine,
+    colorPickerEngine: ColorPickerPopupEngine = ColorPickerPortalServices.engine,
+) : OverlayLayerHost {
     override val layerId: UiLayerId = UiLayerId.ApplicationOverlay
 
-    private val rootNode: ApplicationOverlayRootNode = ApplicationOverlayRootNode()
+    internal val rootNode: ApplicationOverlayRootNode = ApplicationOverlayRootNode()
     private val tree: DomTree =
         DomTree(
             root = rootNode,
@@ -30,16 +36,17 @@ class ApplicationOverlayHost : OverlayLayerHost {
             rootProvider = { rootNode },
         )
     internal val contextMenuPortal: ContextMenuPortalController =
-        ContextMenuPortalController(ContextMenuRuntime.engine)
+        ContextMenuPortalController(contextMenuEngine)
     internal val applicationSelectPortal: SelectPortalController =
         SelectPortalController(
-            engine = SelectRuntime.applicationEngine,
+            engine = selectEngine,
             ownerScope = OverlayOwnerScope.Application,
             entryId = "application.select",
         )
     internal val applicationColorPickerPortal: ColorPickerPortalController =
-        ColorPickerPortalController(ColorPickerRuntime.engine)
+        ColorPickerPortalController(colorPickerEngine)
     internal val modalPortal: ModalPortalController = ModalPortalController()
+    private var modalPortalWasActive: Boolean = false
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
         rootNode.setViewportBounds(
@@ -51,6 +58,7 @@ class ApplicationOverlayHost : OverlayLayerHost {
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         rootNode.setViewportBounds(width, height)
         modalPortal.sync(rootNode, width, height)
+        closeStaleFloatingPortalsAfterModalOpen()
         tree.render(ctx, width, height)
         modalPortal.commitActivePortals()
     }
@@ -77,14 +85,119 @@ class ApplicationOverlayHost : OverlayLayerHost {
         applicationSelectPortal.close()
         applicationColorPickerPortal.close()
         modalPortal.close()
+        modalPortalWasActive = false
     }
 
-    internal fun debugRootBounds(): Rect = rootNode.bounds
+    private fun closeStaleFloatingPortalsAfterModalOpen() {
+        val modalActive = modalPortal.hasActivePortal()
+        if (modalActive && !modalPortalWasActive) {
+            closeFloatingPortals()
+        }
+        modalPortalWasActive = modalActive
+    }
+}
+
+internal fun ApplicationOverlayHost.debugRootBounds(): Rect = rootNode.bounds
+
+fun ApplicationOverlayHost.syncPortalFrame(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    viewportScale: Float,
+    mouseX: Int,
+    mouseY: Int,
+) {
+    contextMenuPortal.onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
+    applicationSelectPortal.onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
+    applicationColorPickerPortal.onFrame(viewportWidth, viewportHeight, mouseX, mouseY)
+}
+
+fun ApplicationOverlayHost.appendPortalOverlayCommands(
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    out: MutableList<RenderCommand>,
+) {
+    applicationSelectPortal.appendCommands(measureContext, viewportWidth, viewportHeight, out)
+    contextMenuPortal.appendCommands(measureContext, viewportWidth, viewportHeight, out)
+    applicationColorPickerPortal.appendCommands(measureContext, viewportWidth, viewportHeight, out)
+}
+
+fun ApplicationOverlayHost.closeFloatingPortals() {
+    contextMenuPortal.close()
+    applicationSelectPortal.close()
+    applicationColorPickerPortal.close()
+}
+
+fun ApplicationOverlayHost.hasOpenContextMenuPortal(): Boolean = contextMenuPortal.isOpen()
+
+fun ApplicationOverlayHost.hasOpenSelectPortal(): Boolean = applicationSelectPortal.isOpen()
+
+fun ApplicationOverlayHost.hasOpenColorPickerPortal(): Boolean = applicationColorPickerPortal.isOpen
+
+fun ApplicationOverlayHost.hasActiveColorPickerEyedropper(): Boolean = applicationColorPickerPortal.hasActiveEyedropper
+
+fun ApplicationOverlayHost.captureColorPickerEyedropperSample() {
+    applicationColorPickerPortal.captureEyedropperSample()
+}
+
+fun ApplicationOverlayHost.handlePortalKeyDownBeforeDom(keyCode: Int, keyChar: Char): Boolean =
+    applicationColorPickerPortal.handleKeyDown(keyCode, keyChar)
+
+fun ApplicationOverlayHost.handlePortalKeyDownAfterDom(keyCode: Int, keyChar: Char): Boolean =
+    applicationSelectPortal.handleKeyDown(keyCode, keyChar) ||
+        contextMenuPortal.handleKeyDown(keyCode)
+
+fun ApplicationOverlayHost.handlePortalPointerBeforeDom(
+    mouseX: Int,
+    mouseY: Int,
+    dWheel: Int,
+    button: MouseButton?,
+    pressed: Boolean,
+): Boolean = handlePortalPointer(applicationColorPickerPortal, mouseX, mouseY, dWheel, button, pressed)
+
+fun ApplicationOverlayHost.handlePortalPointerAfterDom(
+    mouseX: Int,
+    mouseY: Int,
+    dWheel: Int,
+    button: MouseButton?,
+    pressed: Boolean,
+): Boolean =
+    handlePortalPointer(contextMenuPortal, mouseX, mouseY, dWheel, button, pressed) ||
+        handlePortalPointer(applicationSelectPortal, mouseX, mouseY, dWheel, button, pressed)
+
+private fun handlePortalPointer(
+    portal: PortalPointerDispatch,
+    mouseX: Int,
+    mouseY: Int,
+    dWheel: Int,
+    button: MouseButton?,
+    pressed: Boolean,
+): Boolean {
+    if (dWheel != 0 && portal.handleMouseWheel(mouseX, mouseY, dWheel)) return true
+    if (button != null) {
+        return if (pressed) {
+            portal.handleMouseDown(mouseX, mouseY, button)
+        } else {
+            portal.handleMouseUp(mouseX, mouseY, button)
+        }
+    }
+    return portal.handleMouseMove(mouseX, mouseY)
+}
+
+internal interface PortalPointerDispatch {
+    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean
+
+    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean
+
+    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean
+
+    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean
 }
 
 internal class ContextMenuPortalController(
     private val engine: ContextMenuEngine,
-) {
+) : PortalPointerDispatch {
     private val portalHost: PortalHost =
         PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
     private val entry: ContextMenuPortalEntry = ContextMenuPortalEntry(engine)
@@ -118,16 +231,16 @@ internal class ContextMenuPortalController(
 
     fun isOpen(): Boolean = engine.isOpen()
 
-    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
         portalHost.dispatchInput { it.handleMouseMove(mouseX, mouseY) }
 
-    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         portalHost.dispatchInput { it.handleMouseDown(mouseX, mouseY, button) }
 
-    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         portalHost.dispatchInput { it.handleMouseUp(mouseX, mouseY, button) }
 
-    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+    override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
         portalHost.dispatchInput { it.handleMouseWheel(mouseX, mouseY, delta) }
 
     fun handleKeyDown(keyCode: Int): Boolean =
@@ -229,96 +342,3 @@ private class ContextMenuPortalEntry(
         )
     }
 }
-
-fun ApplicationOverlayHost.contextMenuOnFrame(
-    measureContext: UiMeasureContext,
-    viewportWidth: Int,
-    viewportHeight: Int,
-    viewportScale: Float,
-) {
-    contextMenuPortal.onFrame(
-        measureContext = measureContext,
-        viewportWidth = viewportWidth,
-        viewportHeight = viewportHeight,
-        viewportScale = viewportScale,
-    )
-}
-
-fun ApplicationOverlayHost.appendContextMenuOverlayCommands(
-    measureContext: UiMeasureContext,
-    viewportWidth: Int,
-    viewportHeight: Int,
-    out: MutableList<RenderCommand>,
-) {
-    contextMenuPortal.appendCommands(
-        measureContext = measureContext,
-        viewportWidth = viewportWidth,
-        viewportHeight = viewportHeight,
-        out = out,
-    )
-}
-
-fun ApplicationOverlayHost.closeContextMenus() {
-    contextMenuPortal.close()
-}
-
-fun ApplicationOverlayHost.isContextMenuOpen(): Boolean = contextMenuPortal.isOpen()
-
-fun ApplicationOverlayHost.handleContextMenuMouseMove(mouseX: Int, mouseY: Int): Boolean =
-    contextMenuPortal.handleMouseMove(mouseX, mouseY)
-
-fun ApplicationOverlayHost.handleContextMenuMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    contextMenuPortal.handleMouseDown(mouseX, mouseY, button)
-
-fun ApplicationOverlayHost.handleContextMenuMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    contextMenuPortal.handleMouseUp(mouseX, mouseY, button)
-
-fun ApplicationOverlayHost.handleContextMenuMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
-    contextMenuPortal.handleMouseWheel(mouseX, mouseY, delta)
-
-fun ApplicationOverlayHost.handleContextMenuKeyDown(keyCode: Int): Boolean = contextMenuPortal.handleKeyDown(keyCode)
-
-fun ApplicationOverlayHost.applicationSelectOnFrame(
-    measureContext: UiMeasureContext,
-    viewportWidth: Int,
-    viewportHeight: Int,
-    viewportScale: Float,
-) {
-    applicationSelectPortal.onFrame(
-        measureContext = measureContext,
-        viewportWidth = viewportWidth,
-        viewportHeight = viewportHeight,
-        viewportScale = viewportScale,
-    )
-}
-
-fun ApplicationOverlayHost.appendApplicationSelectOverlayCommands(
-    measureContext: UiMeasureContext,
-    viewportWidth: Int,
-    viewportHeight: Int,
-    out: MutableList<RenderCommand>,
-) {
-    applicationSelectPortal.appendCommands(
-        measureContext = measureContext,
-        viewportWidth = viewportWidth,
-        viewportHeight = viewportHeight,
-        out = out,
-    )
-}
-
-fun ApplicationOverlayHost.isApplicationSelectOpen(): Boolean = applicationSelectPortal.isOpen()
-
-fun ApplicationOverlayHost.handleApplicationSelectKeyDown(keyCode: Int, keyChar: Char): Boolean =
-    applicationSelectPortal.handleKeyDown(keyCode, keyChar)
-
-fun ApplicationOverlayHost.handleApplicationSelectMouseMove(mouseX: Int, mouseY: Int): Boolean =
-    applicationSelectPortal.handleMouseMove(mouseX, mouseY)
-
-fun ApplicationOverlayHost.handleApplicationSelectMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    applicationSelectPortal.handleMouseDown(mouseX, mouseY, button)
-
-fun ApplicationOverlayHost.handleApplicationSelectMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-    applicationSelectPortal.handleMouseUp(mouseX, mouseY, button)
-
-fun ApplicationOverlayHost.handleApplicationSelectMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
-    applicationSelectPortal.handleMouseWheel(mouseX, mouseY, delta)

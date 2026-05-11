@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.DsglColors
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.animation.keyframes
 import org.dreamfinity.dsgl.core.components.modal.ModalSpec
-import org.dreamfinity.dsgl.core.components.modal.modalHost
+import org.dreamfinity.dsgl.core.components.modal.modalPortal
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.style.Display
@@ -109,7 +109,7 @@ class ShowcaseWindow : DsglWindow() {
         renderPasses += 1
 
         return ui {
-            modalHost(modals = demoModals, modalKey = "showcase.modalHost") {
+            modalPortal(modals = demoModals, key = "showcase.modalPortal") {
                 div({
                     key = "showcase.root"
                     style = {

@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.core.inspector.internal
+package org.dreamfinity.dsgl.core.inspector.internal
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.ScrollSessionSnapshot
@@ -15,7 +15,7 @@ import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.TextWrap
@@ -1034,7 +1034,7 @@ internal class SystemInspectorOverlayNode(
         hovered: Boolean,
         onSelected: (String) -> Unit,
     ): DOMNode {
-        val open = SelectRuntime.host.isOpenFor(key)
+        val open = SelectPortalServices.isOpenFor(key)
         val selectNode =
             scope.select(
                 props = {

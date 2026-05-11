@@ -9,7 +9,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.select.SelectPortalServices
 import org.dreamfinity.dsgl.core.select.selectModel
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -37,7 +37,7 @@ class SelectPopupAnchoringStickyTests {
 
     @AfterTest
     fun cleanup() {
-        SelectRuntime.host.closeAll()
+        SelectPortalServices.closeAll()
         StyleEngine.clearAllInspectorOverrides()
         StyleEngine.clearCache()
     }
@@ -96,7 +96,7 @@ class SelectPopupAnchoringStickyTests {
         val y = visible.y + visible.height / 2
 
         assertTrue(fixture.router.handleMouseDown(x, y, MouseButton.LEFT))
-        assertTrue(SelectRuntime.host.isOpenFor(fixture.ownerKey))
+        assertTrue(SelectPortalServices.isOpenFor(fixture.ownerKey))
         assertTrue(fixture.router.handleMouseUp(x, y, MouseButton.LEFT))
     }
 
@@ -106,19 +106,19 @@ class SelectPopupAnchoringStickyTests {
         val y = visible.y + visible.height / 2
         assertTrue(fixture.router.handleMouseDown(x, y, MouseButton.LEFT))
         assertTrue(fixture.router.handleMouseUp(x, y, MouseButton.LEFT))
-        assertTrue(SelectRuntime.host.isOpenFor(fixture.ownerKey))
+        assertTrue(SelectPortalServices.isOpenFor(fixture.ownerKey))
 
-        SelectRuntime.engine.onFrame(
+        SelectPortalServices.engine.onFrame(
             measureContext = ctx,
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,
             viewportScale = 1f,
         )
         val anchor =
-            SelectRuntime.engine.debugAnchorRect(fixture.ownerKey)
+            SelectPortalServices.engine.debugAnchorRect(fixture.ownerKey)
                 ?: error("Expected select anchor rect for owner=${fixture.ownerKey}")
         val panel =
-            SelectRuntime.engine.debugPanelRect(fixture.ownerKey)
+            SelectPortalServices.engine.debugPanelRect(fixture.ownerKey)
                 ?: error("Expected select panel rect for owner=${fixture.ownerKey}")
         return PopupGeometry(anchor = anchor, panel = panel)
     }

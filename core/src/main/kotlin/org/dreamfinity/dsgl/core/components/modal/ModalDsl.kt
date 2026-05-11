@@ -1,8 +1,8 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalAnchorNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalRootNode
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalSessionStore
 import org.dreamfinity.dsgl.core.components.modal.internal.modalLifecycleKey
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
@@ -15,13 +15,13 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 
-fun UiScope.modalHost(modals: List<ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit) {
-    ModalRuntime.onBuild(modalKey, modals)
-    val hostNode = mount(ModalHostNode(modalKey))
+fun UiScope.modalPortal(modals: List<ModalSpec>, key: String = "modal.portal", content: UiScope.() -> Unit) {
+    ModalPortalSessionStore.onBuild(key, modals)
+    val hostNode = mount(ModalPortalAnchorNode(key))
     hostNode.onKeyDown = { event ->
         val topMost = modals.lastOrNull()
         if (topMost != null) {
-            val topDialogKey = ModalRuntime.dialogKey(modalKey, topMost.key)
+            val topDialogKey = ModalPortalSessionStore.dialogKey(key, topMost.key)
             val focusInsideTop = FocusManager.isFocusWithinSubtree(topDialogKey)
             if (event.keyCode == KeyCodes.ESCAPE) {
                 if (topMost.keyboard) {
@@ -38,16 +38,16 @@ fun UiScope.modalHost(modals: List<ModalSpec>, modalKey: String = "modal.host", 
     }
 
     val hostScope = childScope(hostNode)
-    hostScope.div({ key = "$modalKey.content" }) {
+    hostScope.div({ this.key = "$key.content" }) {
         content()
     }
 
-    val portalRoot = ModalPortalRootNode("$modalKey.portal")
+    val portalRoot = ModalPortalRootNode("$key.portal")
     val portalScope = childScope(portalRoot)
-    hostNode.refTarget = ModalRuntime.portalHostRef(modalKey)
-    ModalRuntime.registerPortalTemplate(modalKey, portalRoot)
+    hostNode.refTarget = ModalPortalSessionStore.portalHostRef(key)
+    ModalPortalSessionStore.registerPortalTemplate(key, portalRoot)
     portalRoot.onKeyDown = hostNode.onKeyDown
-    buildModalLayers(portalScope, modals, modalKey)
+    buildModalLayers(portalScope, modals, key)
 }
 
 private fun buildModalLayers(hostScope: UiScope, modals: List<ModalSpec>, modalKey: String) {
@@ -64,7 +64,7 @@ private fun buildModalLayers(hostScope: UiScope, modals: List<ModalSpec>, modalK
         ref =
             RefTarget { handle ->
                 if (handle != null) {
-                    ModalRuntime.onCommit(modalKey, modals)
+                    ModalPortalSessionStore.onCommit(modalKey, modals)
                 }
             }
         style = {
@@ -76,7 +76,7 @@ private fun buildModalLayers(hostScope: UiScope, modals: List<ModalSpec>, modalK
 }
 
 private fun UiScope.modalLayer(spec: ModalSpec, modalKey: String, isTopMost: Boolean) {
-    val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
+    val dialogKey = ModalPortalSessionStore.dialogKey(modalKey, spec.key)
     div({
         key = "$modalKey.modal.${spec.key}.layer"
         onMouseDown = { event ->
