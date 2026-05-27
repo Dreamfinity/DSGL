@@ -821,33 +821,27 @@ abstract class DsglScreenHost(
             mc.dispatchKeypresses()
             return true
         }
-        if (consumeOverlayKeyDown(
+        when (
+            dispatchDomainKeyDown(
                 keyCode = keyCode,
                 keyChar = keyChar,
                 inspectorMouseX = inspectorMouseX,
                 inspectorMouseY = inspectorMouseY,
             )
         ) {
-            mc.dispatchKeypresses()
-            return true
-        }
-        if (keyCode == Keyboard.KEY_F6) {
-            StyleEngine.forceReloadStylesheets()
-            requestRebuild("style reload")
-        }
-        if (pressedKeys.add(keyCode)) {
-            val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
-            EventBus.post(downEvent)
-            if (downEvent.cancelled) {
-                pressedKeys.remove(keyCode)
-            } else {
-                window.onKeyTyped(keyChar, keyCode)
-                if (keyCode == Keyboard.KEY_ESCAPE) {
-                    mc.displayGuiScreen(null)
-                }
+            DomainKeyDispatchResult.HigherSurfaceConsumed -> {
+                mc.dispatchKeypresses()
+                return true
             }
+
+            DomainKeyDispatchResult.ApplicationRootHandled, DomainKeyDispatchResult.None -> return false
         }
-        return false
+    }
+
+    private enum class DomainKeyDispatchResult {
+        None,
+        HigherSurfaceConsumed,
+        ApplicationRootHandled,
     }
 
     private fun handleKeyboardKeyUp(
@@ -880,12 +874,17 @@ abstract class DsglScreenHost(
         val tree = prepareMouseInputTree() ?: return
         val inputEvent = readMouseInputEvent()
         syncMouseInputFrame(tree, inputEvent)
-        if (consumeOverlayPointerPhase(inputEvent)) return
-        refreshHoverTarget(inputEvent.mouseX, inputEvent.mouseY)
-        if (inputEvent.mouseButton > 2) return
-        dispatchApplicationRootPointerPhase(tree, inputEvent)
-        dispatchApplicationRootWheelPhase(inputEvent)
-        finishMouseInputEvent(inputEvent)
+        when (dispatchDomainPointerPhase(tree, inputEvent)) {
+            DomainPointerDispatchResult.HigherSurfaceConsumed -> return
+            DomainPointerDispatchResult.ApplicationRootHandled, DomainPointerDispatchResult.None ->
+                finishMouseInputEvent(inputEvent)
+        }
+    }
+
+    private enum class DomainPointerDispatchResult {
+        None,
+        HigherSurfaceConsumed,
+        ApplicationRootHandled,
     }
 
     private data class MouseInputEvent(
@@ -893,6 +892,13 @@ abstract class DsglScreenHost(
         val mouseY: Int,
         val dWheel: Int,
         val mouseButton: Int,
+    )
+
+    private data class DomainPointerDispatchContext(
+        val inputEvent: MouseInputEvent,
+        val mappedButton: MouseButton?,
+        val buttonPressed: Boolean,
+        val applicationRootPressMove: Boolean,
     )
 
     private fun prepareMouseInputTree(): DomTree? {
@@ -948,30 +954,115 @@ abstract class DsglScreenHost(
         host.onInputFrame(lastWidth, lastHeight)
     }
 
-    private fun consumeOverlayPointerPhase(inputEvent: MouseInputEvent): Boolean {
-        val appPressMove = inputEvent.mouseButton == -1 && eventButton != -1
-        if (!appPressMove &&
-            consumeOverlayPointerEvent(
-                mouseX = inputEvent.mouseX,
-                mouseY = inputEvent.mouseY,
-                dWheel = inputEvent.dWheel,
-                mouseButton = inputEvent.mouseButton,
+    private fun dispatchDomainPointerPhase(tree: DomTree, inputEvent: MouseInputEvent): DomainPointerDispatchResult {
+        val context =
+            DomainPointerDispatchContext(
+                inputEvent = inputEvent,
+                mappedButton = mapButton(inputEvent.mouseButton),
+                buttonPressed = Mouse.getEventButtonState(),
+                applicationRootPressMove = inputEvent.mouseButton == -1 && eventButton != -1,
             )
-        ) {
-            consumeOverlayPointerState(inputEvent.mouseX, inputEvent.mouseY)
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    consumeDomainPointerSurface(surface = surface, tree = tree, context = context)
+                },
+                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
+            )
+        return when (consumedBy) {
+            null -> DomainPointerDispatchResult.None
+            ScreenDomainSurfaces.ApplicationRoot -> DomainPointerDispatchResult.ApplicationRootHandled
+            else -> {
+                consumeOverlayPointerState(inputEvent.mouseX, inputEvent.mouseY)
+                DomainPointerDispatchResult.HigherSurfaceConsumed
+            }
+        }
+    }
+
+    private fun consumeDomainPointerSurface(
+        surface: ScreenDomainSurface,
+        tree: DomTree,
+        context: DomainPointerDispatchContext,
+    ): Boolean =
+        when (surface) {
+            ScreenDomainSurfaces.DebugPortal -> false
+            ScreenDomainSurfaces.DebugRoot -> consumeDebugRootPointerSurface(context)
+            ScreenDomainSurfaces.SystemPortal -> consumeSystemPortalPointerSurface(context)
+            ScreenDomainSurfaces.SystemRoot -> false
+            ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalPointerSurface(context)
+            ScreenDomainSurfaces.ApplicationRoot ->
+                dispatchApplicationRootPointerSurface(
+                    tree = tree,
+                    inputEvent = context.inputEvent,
+                )
+
+            else -> false
+        }
+
+    private fun consumeDebugRootPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeDebugPointerEvent(
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mappedButton = context.mappedButton,
+            mouseButton = context.inputEvent.mouseButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun consumeSystemPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeSystemOverlayPointerEvent(
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mouseButton = context.inputEvent.mouseButton,
+            mappedButton = context.mappedButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun consumeApplicationPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeApplicationOverlayPointerEvent(
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mouseButton = context.inputEvent.mouseButton,
+            mappedButton = context.mappedButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun dispatchApplicationRootPointerSurface(tree: DomTree, inputEvent: MouseInputEvent): Boolean {
+        refreshHoverTarget(inputEvent.mouseX, inputEvent.mouseY)
+        if (inputEvent.mouseButton > 2) {
+            return false
+        }
+        val pointerHandled = dispatchApplicationRootPointerPhase(tree, inputEvent)
+        val wheelHandled = dispatchApplicationRootWheelPhase(inputEvent)
+        return pointerHandled || wheelHandled
+    }
+
+    private fun dispatchApplicationRootPointerPhase(tree: DomTree, inputEvent: MouseInputEvent): Boolean {
+        if (Mouse.getEventButtonState()) {
+            dispatchApplicationRootPointerDown(tree, inputEvent)
+            return true
+        } else if (inputEvent.mouseButton != -1 && eventButton == inputEvent.mouseButton) {
+            dispatchApplicationRootPointerUp(tree, inputEvent)
+            return true
+        } else if (eventButton != -1 && lastMouseEvent > 0L) {
+            dispatchApplicationRootPointerDrag(tree, inputEvent)
             return true
         }
         return false
-    }
-
-    private fun dispatchApplicationRootPointerPhase(tree: DomTree, inputEvent: MouseInputEvent) {
-        if (Mouse.getEventButtonState()) {
-            dispatchApplicationRootPointerDown(tree, inputEvent)
-        } else if (inputEvent.mouseButton != -1 && eventButton == inputEvent.mouseButton) {
-            dispatchApplicationRootPointerUp(tree, inputEvent)
-        } else if (eventButton != -1 && lastMouseEvent > 0L) {
-            dispatchApplicationRootPointerDrag(tree, inputEvent)
-        }
     }
 
     private fun dispatchApplicationRootPointerDown(tree: DomTree, inputEvent: MouseInputEvent) {
@@ -1045,7 +1136,7 @@ abstract class DsglScreenHost(
         }
     }
 
-    private fun dispatchApplicationRootWheelPhase(inputEvent: MouseInputEvent) {
+    private fun dispatchApplicationRootWheelPhase(inputEvent: MouseInputEvent): Boolean {
         if (inputEvent.dWheel != 0) {
             val wheelTarget = resolveWheelTarget()
             if (wheelTarget != null) {
@@ -1055,8 +1146,10 @@ abstract class DsglScreenHost(
                 if (!wheelEvent.cancelled) {
                     bubbleGenericWheel(wheelTarget, inputEvent.mouseX, inputEvent.mouseY, inputEvent.dWheel)
                 }
+                return true
             }
         }
+        return false
     }
 
     private fun finishMouseInputEvent(inputEvent: MouseInputEvent) {
@@ -1064,12 +1157,12 @@ abstract class DsglScreenHost(
         lastMouseY = inputEvent.mouseY
     }
 
-    private fun consumeOverlayKeyDown(
+    private fun dispatchDomainKeyDown(
         keyCode: Int,
         keyChar: Char,
         inspectorMouseX: Int,
         inspectorMouseY: Int,
-    ): Boolean {
+    ): DomainKeyDispatchResult {
         val consumedBy =
             domainOrchestrator.firstInputConsumer(
                 canConsume = { surface ->
@@ -1086,12 +1179,41 @@ abstract class DsglScreenHost(
                             )
 
                         ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.ApplicationRoot -> {
+                            dispatchApplicationRootKeyDown(keyCode, keyChar)
+                            true
+                        }
+                        ScreenDomainSurfaces.SystemRoot -> false
                         else -> false
                     }
                 },
                 isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
             )
-        return consumedBy != null
+        return when (consumedBy) {
+            null -> DomainKeyDispatchResult.None
+            ScreenDomainSurfaces.ApplicationRoot -> DomainKeyDispatchResult.ApplicationRootHandled
+            else -> DomainKeyDispatchResult.HigherSurfaceConsumed
+        }
+    }
+
+    private fun dispatchApplicationRootKeyDown(keyCode: Int, keyChar: Char) {
+        // TODO(Veritaris): remove this handling from production build
+        if (keyCode == Keyboard.KEY_F6) {
+            StyleEngine.forceReloadStylesheets()
+            requestRebuild("style reload")
+        }
+        if (pressedKeys.add(keyCode)) {
+            val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
+            EventBus.post(downEvent)
+            if (downEvent.cancelled) {
+                pressedKeys.remove(keyCode)
+            } else {
+                window.onKeyTyped(keyChar, keyCode)
+                if (keyCode == Keyboard.KEY_ESCAPE) {
+                    mc.displayGuiScreen(null)
+                }
+            }
+        }
     }
 
     private fun consumeSystemOverlayKeyDown(
@@ -1130,57 +1252,6 @@ abstract class DsglScreenHost(
             return true
         }
         return false
-    }
-
-    private fun consumeOverlayPointerEvent(
-        mouseX: Int,
-        mouseY: Int,
-        dWheel: Int,
-        mouseButton: Int,
-    ): Boolean {
-        val mappedButton = mapButton(mouseButton)
-        val buttonPressed = Mouse.getEventButtonState()
-        val consumedBy =
-            domainOrchestrator.firstInputConsumer(
-                canConsume = { surface ->
-                    when (surface) {
-                        ScreenDomainSurfaces.DebugPortal -> false
-                        ScreenDomainSurfaces.DebugRoot ->
-                            consumeDebugPointerEvent(
-                                mouseX = mouseX,
-                                mouseY = mouseY,
-                                dWheel = dWheel,
-                                mappedButton = mappedButton,
-                                mouseButton = mouseButton,
-                                buttonPressed = buttonPressed,
-                            )
-
-                        ScreenDomainSurfaces.SystemPortal ->
-                            consumeSystemOverlayPointerEvent(
-                                mouseX = mouseX,
-                                mouseY = mouseY,
-                                dWheel = dWheel,
-                                mouseButton = mouseButton,
-                                mappedButton = mappedButton,
-                                buttonPressed = buttonPressed,
-                            )
-
-                        ScreenDomainSurfaces.ApplicationPortal ->
-                            consumeApplicationOverlayPointerEvent(
-                                mouseX = mouseX,
-                                mouseY = mouseY,
-                                dWheel = dWheel,
-                                mouseButton = mouseButton,
-                                mappedButton = mappedButton,
-                                buttonPressed = buttonPressed,
-                            )
-
-                        else -> false
-                    }
-                },
-                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
-            )
-        return consumedBy != null
     }
 
     private fun consumeDebugPointerEvent(

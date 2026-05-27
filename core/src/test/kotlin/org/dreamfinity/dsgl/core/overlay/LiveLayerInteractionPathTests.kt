@@ -51,16 +51,24 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `runtime layer path resolves in debug system app-overlay app-root order`() {
-        val callOrder = ArrayList<ScreenDomainSurface>(4)
+    fun `runtime input path resolves in full domain surface order`() {
+        val callOrder = ArrayList<ScreenDomainSurface>(6)
         val fixture =
             LiveLayerInputFixture(
+                debugPortalHandler = { _, _, _ ->
+                    callOrder += ScreenDomainSurfaces.DebugPortal
+                    false
+                },
                 debugHandler = { _, _, _ ->
                     callOrder += ScreenDomainSurfaces.DebugRoot
                     false
                 },
                 systemOverlayHandler = { _, _, _ ->
                     callOrder += ScreenDomainSurfaces.SystemPortal
+                    false
+                },
+                systemRootHandler = { _, _, _ ->
+                    callOrder += ScreenDomainSurfaces.SystemRoot
                     false
                 },
                 applicationOverlayHandler = { _, _, _ ->
@@ -77,8 +85,10 @@ class LiveLayerInteractionPathTests {
         assertEquals(ScreenDomainSurfaces.ApplicationRoot, consumedBy)
         assertEquals(
             listOf(
+                ScreenDomainSurfaces.DebugPortal,
                 ScreenDomainSurfaces.DebugRoot,
                 ScreenDomainSurfaces.SystemPortal,
+                ScreenDomainSurfaces.SystemRoot,
                 ScreenDomainSurfaces.ApplicationPortal,
                 ScreenDomainSurfaces.ApplicationRoot,
             ),
@@ -87,7 +97,42 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `debug layer consumption prevents lower-layer fallthrough`() {
+    fun `debug portal consumption prevents lower-domain fallthrough`() {
+        var debugRootReceived = false
+        var systemReceived = false
+        var appOverlayReceived = false
+        var appRootReceived = false
+        val fixture =
+            LiveLayerInputFixture(
+                debugPortalHandler = { _, _, _ -> true },
+                debugHandler = { _, _, _ ->
+                    debugRootReceived = true
+                    false
+                },
+                systemOverlayHandler = { _, _, _ ->
+                    systemReceived = true
+                    false
+                },
+                applicationOverlayHandler = { _, _, _ ->
+                    appOverlayReceived = true
+                    false
+                },
+            )
+        val consumedBy =
+            fixture.dispatchMouseDown(12, 14, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.DebugPortal, consumedBy)
+        assertFalse(debugRootReceived)
+        assertFalse(systemReceived)
+        assertFalse(appOverlayReceived)
+        assertFalse(appRootReceived)
+    }
+
+    @Test
+    fun `debug root consumption prevents lower-domain fallthrough`() {
         var systemReceived = false
         var appOverlayReceived = false
         var appRootReceived = false
@@ -111,6 +156,31 @@ class LiveLayerInteractionPathTests {
 
         assertEquals(ScreenDomainSurfaces.DebugRoot, consumedBy)
         assertFalse(systemReceived)
+        assertFalse(appOverlayReceived)
+        assertFalse(appRootReceived)
+    }
+
+    @Test
+    fun `system root consumption prevents lower-domain fallthrough`() {
+        var appOverlayReceived = false
+        var appRootReceived = false
+        val fixture =
+            LiveLayerInputFixture(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                systemRootHandler = { _, _, _ -> true },
+                applicationOverlayHandler = { _, _, _ ->
+                    appOverlayReceived = true
+                    false
+                },
+            )
+        val consumedBy =
+            fixture.dispatchMouseDown(12, 14, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.SystemRoot, consumedBy)
         assertFalse(appOverlayReceived)
         assertFalse(appRootReceived)
     }
@@ -703,6 +773,8 @@ class LiveLayerInteractionPathTests {
         private val debugHandler: (Int, Int, MouseButton) -> Boolean,
         private val systemOverlayHandler: (Int, Int, MouseButton) -> Boolean,
         private val applicationOverlayHandler: (Int, Int, MouseButton) -> Boolean,
+        private val debugPortalHandler: (Int, Int, MouseButton) -> Boolean = { _, _, _ -> false },
+        private val systemRootHandler: (Int, Int, MouseButton) -> Boolean = { _, _, _ -> false },
     ) {
         fun dispatchMouseDown(
             mouseX: Int,
@@ -713,10 +785,10 @@ class LiveLayerInteractionPathTests {
             ScreenDomainSurfaces.firstInputConsumer(
                 canConsume = { surface ->
                     when (surface) {
-                        ScreenDomainSurfaces.DebugPortal -> false
+                        ScreenDomainSurfaces.DebugPortal -> debugPortalHandler(mouseX, mouseY, button)
                         ScreenDomainSurfaces.DebugRoot -> debugHandler(mouseX, mouseY, button)
                         ScreenDomainSurfaces.SystemPortal -> systemOverlayHandler(mouseX, mouseY, button)
-                        ScreenDomainSurfaces.SystemRoot -> false
+                        ScreenDomainSurfaces.SystemRoot -> systemRootHandler(mouseX, mouseY, button)
                         ScreenDomainSurfaces.ApplicationPortal -> applicationOverlayHandler(mouseX, mouseY, button)
                         ScreenDomainSurfaces.ApplicationRoot -> applicationRootHandler()
                         else -> false
