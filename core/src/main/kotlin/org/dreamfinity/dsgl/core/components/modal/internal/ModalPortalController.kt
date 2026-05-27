@@ -5,8 +5,6 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalEntry
 import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
@@ -17,10 +15,11 @@ import org.dreamfinity.dsgl.core.overlay.PortalEntryState
 import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 
 internal class ModalPortalController {
     private val portalHost: PortalHost =
-        PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
+        PortalHost(ScreenDomainSurfaces.ApplicationPortal)
     private val entriesByPortalKey: LinkedHashMap<String, ModalPortalEntry> = LinkedHashMap()
 
     fun sync(rootNode: DOMNode, viewportWidth: Int, viewportHeight: Int) {
@@ -119,7 +118,7 @@ private class ModalPortalEntry(
         PortalEntryState(
             id = PortalEntryId("application.modal.$portalKey"),
             ownerToken = portalKey,
-            surface = OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
+            surface = ScreenDomainSurfaces.ApplicationPortal,
             order = PortalEntryOrder(zIndex = -100),
             dismissPolicy = PortalDismissPolicy.None,
             inputPolicy = PortalInputPolicy.DomOnly,

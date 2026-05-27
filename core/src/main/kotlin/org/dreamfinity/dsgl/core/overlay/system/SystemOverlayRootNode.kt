@@ -12,7 +12,7 @@ import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.font.FontRegistry
 import org.dreamfinity.dsgl.core.overlay.OverlayDebugVisualization
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleEngine
 
@@ -85,7 +85,7 @@ internal class SystemOverlayRootNode(
     ) {
         setViewportBounds(width, height)
         bounds = Rect(0, 0, viewportWidth, viewportHeight)
-        val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(UiLayerId.SystemOverlay)
+        val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(ScreenDomainSurfaces.SystemPortal)
         if (tintEnabled) {
             debugTintNode.display = Display.Block
             debugTintNode.backgroundColor = OverlayDebugVisualization.systemOverlayFillColor

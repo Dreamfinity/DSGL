@@ -4,7 +4,6 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalEntry
@@ -17,6 +16,7 @@ import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class SelectPortalController(
@@ -25,7 +25,7 @@ internal class SelectPortalController(
     entryId: String,
 ) : PortalPointerDispatch {
     private val portalHost: PortalHost =
-        PortalHost(OverlayLayerContracts.portalSurfaceForOwner(ownerScope))
+        PortalHost(ScreenDomainSurfaces.portalSurfaceForOwner(ownerScope))
     private val entry: SelectPortalEntry =
         SelectPortalEntry(
             engine = engine,
@@ -88,7 +88,7 @@ private class SelectPortalEntry(
         PortalEntryState(
             id = PortalEntryId(entryId),
             ownerToken = engine,
-            surface = OverlayLayerContracts.portalSurfaceForOwner(ownerScope),
+            surface = ScreenDomainSurfaces.portalSurfaceForOwner(ownerScope),
             order = PortalEntryOrder(zIndex = 0),
             dismissPolicy = PortalDismissPolicy.EscapeOrOutsidePointerDown,
             inputPolicy = PortalInputPolicy.ManualOnly,

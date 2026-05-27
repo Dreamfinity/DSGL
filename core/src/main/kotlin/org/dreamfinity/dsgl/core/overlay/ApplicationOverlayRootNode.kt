@@ -52,7 +52,7 @@ class ApplicationOverlayRootNode(
     ) {
         setViewportBounds(width, height)
         bounds = Rect(0, 0, viewportWidth, viewportHeight)
-        val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(UiLayerId.ApplicationOverlay)
+        val tintEnabled = OverlayDebugVisualization.enabled && isTintEnabled(ScreenDomainSurfaces.ApplicationPortal)
         if (tintEnabled) {
             debugTintNode.display = Display.Block
             debugTintNode.backgroundColor = OverlayDebugVisualization.applicationOverlayFillColor

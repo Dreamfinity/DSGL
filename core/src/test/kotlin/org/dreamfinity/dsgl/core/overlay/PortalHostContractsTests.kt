@@ -167,14 +167,14 @@ class PortalHostContractsTests {
     }
 
     @Test
-    fun `overlay layer adapter maps current application and system hosts to portal surfaces`() {
+    fun `domain surface adapter maps current application and system hosts to portal surfaces`() {
         assertEquals(
-            ScreenDomainSurface(ScreenDomainId.Application, ScreenDomainSurfaceRole.Portal),
-            OverlayLayerPortalHostAdapter(ApplicationOverlayHost()).surface,
+            ScreenDomainSurfaces.ApplicationPortal,
+            DomainSurfacePortalHostAdapter(ApplicationOverlayHost()).surface,
         )
         assertEquals(
-            ScreenDomainSurface(ScreenDomainId.System, ScreenDomainSurfaceRole.Portal),
-            OverlayLayerPortalHostAdapter(SystemOverlayHost(InspectorController())).surface,
+            ScreenDomainSurfaces.SystemPortal,
+            DomainSurfacePortalHostAdapter(SystemOverlayHost(InspectorController())).surface,
         )
     }
 

@@ -171,8 +171,8 @@ internal class PortalHost(
     fun dispatchInput(handler: (PortalEntry) -> Boolean): Boolean = entriesInInputOrder().any(handler)
 }
 
-internal data class OverlayLayerPortalHostAdapter(
-    val layerHost: OverlayLayerHost,
+internal data class DomainSurfacePortalHostAdapter(
+    val surfaceHost: DomainSurfaceHost,
 ) {
-    val surface: ScreenDomainSurface = OverlayLayerContracts.domainSurfaceForLayer(layerHost.layerId)
+    val surface: ScreenDomainSurface = surfaceHost.surface
 }

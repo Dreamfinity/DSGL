@@ -7,16 +7,13 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.HotReloadBridge
-import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.debug.OverlayDebugControlHost
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
-import org.dreamfinity.dsgl.core.dnd.DndRuntime
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
-import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
-import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
-import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
@@ -26,13 +23,12 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglX
 import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
-import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.inspector.InspectorMode
+import org.dreamfinity.dsgl.core.inspector.*
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
+import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.overlay.appendPortalOverlayCommands
 import org.dreamfinity.dsgl.core.overlay.captureColorPickerEyedropperSample
 import org.dreamfinity.dsgl.core.overlay.closeFloatingPortals
@@ -47,17 +43,14 @@ import org.dreamfinity.dsgl.core.overlay.hasOpenSelectPortal
 import org.dreamfinity.dsgl.core.overlay.syncPortalFrame
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
-import java.util.ArrayList
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.LinkedHashMap
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
@@ -348,10 +341,10 @@ abstract class DsglScreenHost(
         if (inspectorPointerCaptured) {
             inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
-        val appOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.ApplicationOverlay)
-        val systemOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.SystemOverlay)
-        val appOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.ApplicationOverlay)
-        val systemOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.SystemOverlay)
+        val appOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.SystemPortal)
+        val appOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.SystemPortal)
         val inspectorBlocks =
             systemOverlayInputEnabled &&
                 (
@@ -575,7 +568,7 @@ abstract class DsglScreenHost(
             systemPortal = systemOverlayCommandsBuffer,
             debugRoot = debugOverlayCommands,
             out = stagingCommandsBuffer,
-            shouldRenderLayer = OverlayLayerDebugState::isRenderEnabled,
+            shouldRenderSurface = OverlayLayerDebugState::isRenderEnabled,
         )
         val keepPrevious =
             shouldKeepPreviousFrameCommands(
@@ -951,7 +944,7 @@ abstract class DsglScreenHost(
         refreshActiveColorSamplerOwner(tree.root)
     }
 
-    private fun runOverlayInputFrame(host: OverlayLayerHost) {
+    private fun runOverlayInputFrame(host: DomainSurfaceHost) {
         host.onInputFrame(lastWidth, lastHeight)
     }
 
@@ -1079,10 +1072,12 @@ abstract class DsglScreenHost(
     ): Boolean {
         val consumedBy =
             domainOrchestrator.firstInputConsumer(
-                canConsume = { layer ->
-                    when (layer) {
-                        UiLayerId.Debug -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
-                        UiLayerId.SystemOverlay ->
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.DebugPortal -> false
+                        ScreenDomainSurfaces.DebugRoot -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
+
+                        ScreenDomainSurfaces.SystemPortal ->
                             consumeSystemOverlayKeyDown(
                                 keyCode = keyCode,
                                 keyChar = keyChar,
@@ -1090,11 +1085,11 @@ abstract class DsglScreenHost(
                                 inspectorMouseY = inspectorMouseY,
                             )
 
-                        UiLayerId.ApplicationOverlay -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
-                        UiLayerId.ApplicationRoot -> false
+                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
+                        else -> false
                     }
                 },
-                isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled,
+                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
             )
         return consumedBy != null
     }
@@ -1147,9 +1142,10 @@ abstract class DsglScreenHost(
         val buttonPressed = Mouse.getEventButtonState()
         val consumedBy =
             domainOrchestrator.firstInputConsumer(
-                canConsume = { layer ->
-                    when (layer) {
-                        UiLayerId.Debug ->
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.DebugPortal -> false
+                        ScreenDomainSurfaces.DebugRoot ->
                             consumeDebugPointerEvent(
                                 mouseX = mouseX,
                                 mouseY = mouseY,
@@ -1159,7 +1155,7 @@ abstract class DsglScreenHost(
                                 buttonPressed = buttonPressed,
                             )
 
-                        UiLayerId.SystemOverlay ->
+                        ScreenDomainSurfaces.SystemPortal ->
                             consumeSystemOverlayPointerEvent(
                                 mouseX = mouseX,
                                 mouseY = mouseY,
@@ -1169,7 +1165,7 @@ abstract class DsglScreenHost(
                                 buttonPressed = buttonPressed,
                             )
 
-                        UiLayerId.ApplicationOverlay ->
+                        ScreenDomainSurfaces.ApplicationPortal ->
                             consumeApplicationOverlayPointerEvent(
                                 mouseX = mouseX,
                                 mouseY = mouseY,
@@ -1179,10 +1175,10 @@ abstract class DsglScreenHost(
                                 buttonPressed = buttonPressed,
                             )
 
-                        UiLayerId.ApplicationRoot -> false
+                        else -> false
                     }
                 },
-                isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled,
+                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
             )
         return consumedBy != null
     }
@@ -1371,8 +1367,8 @@ abstract class DsglScreenHost(
     }
 
     private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
-        val layer = OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application)
-        if (layer != UiLayerId.ApplicationOverlay) return
+        val surface = ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.Application)
+        if (surface != ScreenDomainSurfaces.ApplicationPortal) return
         if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
             val inline = activeInlineColorSamplerNode ?: return
             if (!inline.wantsGlobalPointerInput()) return
@@ -1386,11 +1382,11 @@ abstract class DsglScreenHost(
 
     private fun captureColorPickerEyedropperSamples() {
         refreshActiveColorSamplerOwner(domTree?.root)
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.System) == UiLayerId.SystemOverlay) {
+        if (ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.System) == ScreenDomainSurfaces.SystemPortal) {
             systemOverlayHost.captureSystemColorPickerEyedropperSample()
         }
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application) !=
-            UiLayerId.ApplicationOverlay
+        if (ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.Application) !=
+            ScreenDomainSurfaces.ApplicationPortal
         ) {
             return
         }
@@ -1446,29 +1442,33 @@ abstract class DsglScreenHost(
     internal fun debugComposeDomainPaintCommandsForTests(
         applicationRoot: List<RenderCommand>,
         applicationPortal: List<RenderCommand>,
+        systemRoot: List<RenderCommand> = emptyList(),
         systemPortal: List<RenderCommand>,
         debugRoot: List<RenderCommand>,
-        shouldRenderLayer: (UiLayerId) -> Boolean = { true },
+        debugPortal: List<RenderCommand> = emptyList(),
+        shouldRenderSurface: (ScreenDomainSurface) -> Boolean = { true },
     ): List<RenderCommand> {
         val out = ArrayList<RenderCommand>()
         domainOrchestrator.composePaintCommands(
             applicationRoot = applicationRoot,
             applicationPortal = applicationPortal,
+            systemRoot = systemRoot,
             systemPortal = systemPortal,
             debugRoot = debugRoot,
+            debugPortal = debugPortal,
             out = out,
-            shouldRenderLayer = shouldRenderLayer,
+            shouldRenderSurface = shouldRenderSurface,
         )
         return out
     }
 
     internal fun debugFirstDomainInputConsumerForTests(
-        canConsume: (UiLayerId) -> Boolean,
-        isLayerInputEnabled: (UiLayerId) -> Boolean = { true },
-    ): UiLayerId? =
+        canConsume: (ScreenDomainSurface) -> Boolean,
+        isSurfaceInputEnabled: (ScreenDomainSurface) -> Boolean = { true },
+    ): ScreenDomainSurface? =
         domainOrchestrator.firstInputConsumer(
             canConsume = canConsume,
-            isLayerInputEnabled = isLayerInputEnabled,
+            isSurfaceInputEnabled = isSurfaceInputEnabled,
         )
 
     private fun setDragCapture(target: DOMNode) {

@@ -1,6 +1,7 @@
 package org.dreamfinity.dsgl.core.debug
 
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 
 data class OverlayLayerDebugSnapshot(
     val applicationOverlayRenderEnabled: Boolean,
@@ -58,28 +59,25 @@ object OverlayLayerDebugState {
                 .getBoolean("dsgl.overlay.controls")
         }
 
-    fun isRenderEnabled(layer: UiLayerId): Boolean =
-        when (layer) {
-            UiLayerId.ApplicationOverlay -> applicationOverlayRenderEnabled
-            UiLayerId.SystemOverlay -> systemOverlayRenderEnabled
-            UiLayerId.Debug -> true
-            UiLayerId.ApplicationRoot -> true
+    fun isRenderEnabled(surface: ScreenDomainSurface): Boolean =
+        when {
+            surface == ScreenDomainSurfaces.ApplicationPortal -> applicationOverlayRenderEnabled
+            surface == ScreenDomainSurfaces.SystemPortal -> systemOverlayRenderEnabled
+            else -> true
         }
 
-    fun isTintEnabled(layer: UiLayerId): Boolean =
-        when (layer) {
-            UiLayerId.ApplicationOverlay -> applicationOverlayTintEnabled
-            UiLayerId.SystemOverlay -> systemOverlayTintEnabled
-            UiLayerId.Debug -> true
-            UiLayerId.ApplicationRoot -> true
+    fun isTintEnabled(surface: ScreenDomainSurface): Boolean =
+        when {
+            surface == ScreenDomainSurfaces.ApplicationPortal -> applicationOverlayTintEnabled
+            surface == ScreenDomainSurfaces.SystemPortal -> systemOverlayTintEnabled
+            else -> true
         }
 
-    fun isInputEnabled(layer: UiLayerId): Boolean =
-        when (layer) {
-            UiLayerId.ApplicationOverlay -> applicationOverlayInputEnabled
-            UiLayerId.SystemOverlay -> systemOverlayInputEnabled
-            UiLayerId.Debug -> true
-            UiLayerId.ApplicationRoot -> true
+    fun isInputEnabled(surface: ScreenDomainSurface): Boolean =
+        when {
+            surface == ScreenDomainSurfaces.ApplicationPortal -> applicationOverlayInputEnabled
+            surface == ScreenDomainSurfaces.SystemPortal -> systemOverlayInputEnabled
+            else -> true
         }
 
     fun resetAll() {

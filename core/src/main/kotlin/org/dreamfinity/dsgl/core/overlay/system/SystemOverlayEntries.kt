@@ -3,7 +3,6 @@ package org.dreamfinity.dsgl.core.overlay.system
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalEntry
 import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
@@ -13,7 +12,7 @@ import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
 import org.dreamfinity.dsgl.core.overlay.PortalEntryState
 import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
 import java.util.IdentityHashMap
@@ -122,7 +121,7 @@ internal class SystemOverlayPortalEntry(
         PortalEntryState(
             id = PortalEntryId("system.${entry.state.id.name}"),
             ownerToken = entry.state,
-            surface = OverlayLayerContracts.domainSurfaceForLayer(UiLayerId.SystemOverlay),
+            surface = ScreenDomainSurfaces.SystemPortal,
             order =
                 PortalEntryOrder(
                     zIndex = entry.state.lane.zOrder,

@@ -2,7 +2,7 @@ package org.dreamfinity.dsgl.core.debug
 
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import java.util.Locale
@@ -196,7 +196,7 @@ class OverlayDebugControlHostTests {
     }
 
     @Test
-    fun `debug layer remains enabled in state even when app and system layers are disabled`() {
+    fun `debug domain surfaces remain enabled in state even when app and system portals are disabled`() {
         OverlayLayerDebugState.applicationOverlayTintEnabled = false
         OverlayLayerDebugState.applicationOverlayRenderEnabled = false
         OverlayLayerDebugState.applicationOverlayInputEnabled = false
@@ -204,8 +204,10 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.systemOverlayTintEnabled = false
         OverlayLayerDebugState.systemOverlayInputEnabled = false
 
-        assertTrue(OverlayLayerDebugState.isRenderEnabled(UiLayerId.Debug))
-        assertTrue(OverlayLayerDebugState.isInputEnabled(UiLayerId.Debug))
+        assertTrue(OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugRoot))
+        assertTrue(OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.DebugRoot))
+        assertTrue(OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugPortal))
+        assertTrue(OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.DebugPortal))
         assertEquals(
             OverlayLayerDebugSnapshot(
                 applicationOverlayRenderEnabled = false,

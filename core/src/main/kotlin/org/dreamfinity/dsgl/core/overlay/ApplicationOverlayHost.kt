@@ -19,8 +19,8 @@ class ApplicationOverlayHost(
     contextMenuEngine: ContextMenuEngine = DomainPortalServices.applicationContextMenuEngine,
     selectEngine: SelectEngine = DomainPortalServices.applicationSelectEngine,
     colorPickerEngine: ColorPickerPopupEngine = DomainPortalServices.applicationColorPickerEngine,
-) : OverlayLayerHost {
-    override val layerId: UiLayerId = UiLayerId.ApplicationOverlay
+) : DomainSurfaceHost {
+    override val surface: ScreenDomainSurface = ScreenDomainSurfaces.ApplicationPortal
 
     internal val rootNode: ApplicationOverlayRootNode = ApplicationOverlayRootNode()
     private val tree: DomTree =
@@ -196,7 +196,7 @@ internal class ContextMenuPortalController(
     private val engine: ContextMenuEngine,
 ) : PortalPointerDispatch {
     private val portalHost: PortalHost =
-        PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
+        PortalHost(ScreenDomainSurfaces.ApplicationPortal)
     private val entry: ContextMenuPortalEntry = ContextMenuPortalEntry(engine)
 
     init {
@@ -253,7 +253,7 @@ private class ContextMenuPortalEntry(
         PortalEntryState(
             id = PortalEntryId("application.context-menu"),
             ownerToken = engine,
-            surface = OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
+            surface = ScreenDomainSurfaces.ApplicationPortal,
             order = PortalEntryOrder(zIndex = 0),
             dismissPolicy = PortalDismissPolicy.EscapeOrOutsidePointerDown,
             inputPolicy = PortalInputPolicy.ManualOnly,

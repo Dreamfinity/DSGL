@@ -31,6 +31,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+@Suppress("LargeClass")
 class LiveLayerInteractionPathTests {
     private val ctx =
         object : UiMeasureContext {
@@ -51,31 +52,36 @@ class LiveLayerInteractionPathTests {
 
     @Test
     fun `runtime layer path resolves in debug system app-overlay app-root order`() {
-        val callOrder = ArrayList<UiLayerId>(4)
-        val harness =
-            LiveLayerInputHarness(
+        val callOrder = ArrayList<ScreenDomainSurface>(4)
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ ->
-                    callOrder += UiLayerId.Debug
+                    callOrder += ScreenDomainSurfaces.DebugRoot
                     false
                 },
                 systemOverlayHandler = { _, _, _ ->
-                    callOrder += UiLayerId.SystemOverlay
+                    callOrder += ScreenDomainSurfaces.SystemPortal
                     false
                 },
                 applicationOverlayHandler = { _, _, _ ->
-                    callOrder += UiLayerId.ApplicationOverlay
+                    callOrder += ScreenDomainSurfaces.ApplicationPortal
                     false
                 },
             )
         val consumedBy =
-            harness.dispatchMouseDown(10, 10, MouseButton.LEFT) {
-                callOrder += UiLayerId.ApplicationRoot
+            fixture.dispatchMouseDown(10, 10, MouseButton.LEFT) {
+                callOrder += ScreenDomainSurfaces.ApplicationRoot
                 true
             }
 
-        assertEquals(UiLayerId.ApplicationRoot, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationRoot, consumedBy)
         assertEquals(
-            listOf(UiLayerId.Debug, UiLayerId.SystemOverlay, UiLayerId.ApplicationOverlay, UiLayerId.ApplicationRoot),
+            listOf(
+                ScreenDomainSurfaces.DebugRoot,
+                ScreenDomainSurfaces.SystemPortal,
+                ScreenDomainSurfaces.ApplicationPortal,
+                ScreenDomainSurfaces.ApplicationRoot,
+            ),
             callOrder,
         )
     }
@@ -85,8 +91,8 @@ class LiveLayerInteractionPathTests {
         var systemReceived = false
         var appOverlayReceived = false
         var appRootReceived = false
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> true },
                 systemOverlayHandler = { _, _, _ ->
                     systemReceived = true
@@ -98,12 +104,12 @@ class LiveLayerInteractionPathTests {
                 },
             )
         val consumedBy =
-            harness.dispatchMouseDown(12, 14, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(12, 14, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.Debug, consumedBy)
+        assertEquals(ScreenDomainSurfaces.DebugRoot, consumedBy)
         assertFalse(systemReceived)
         assertFalse(appOverlayReceived)
         assertFalse(appRootReceived)
@@ -125,20 +131,20 @@ class LiveLayerInteractionPathTests {
 
         val entryState = systemHost.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("panel demo state missing")
         val panelRect = entryState.panelState.currentRectOrNull() ?: error("panel demo rect missing")
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
                 applicationOverlayHandler = { _, _, _ -> false },
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(panelRect.x + 20, panelRect.y + 70, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(panelRect.x + 20, panelRect.y + 70, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.SystemOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.SystemPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 
@@ -164,8 +170,8 @@ class LiveLayerInteractionPathTests {
         val outsideY = (panelRect.y + panelRect.height / 2).coerceIn(1, 719)
         assertFalse(panelRect.contains(outsideX, outsideY))
 
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
                 applicationOverlayHandler = { _, _, _ -> false },
@@ -173,30 +179,30 @@ class LiveLayerInteractionPathTests {
 
         var appRootReceivedOutside = false
         val consumedOutside =
-            harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
                 appRootReceivedOutside = true
                 true
             }
-        assertEquals(UiLayerId.ApplicationRoot, consumedOutside)
+        assertEquals(ScreenDomainSurfaces.ApplicationRoot, consumedOutside)
         assertTrue(appRootReceivedOutside)
     }
 
     @Test
     fun `application overlay consumption prevents app-root fallthrough`() {
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { _, _, _ -> true },
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(24, 30, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(24, 30, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 
@@ -215,8 +221,8 @@ class LiveLayerInteractionPathTests {
         assertTrue(applicationOverlayHost.handleMouseUp(50, 50, MouseButton.LEFT))
         assertEquals(1, clicks)
 
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
@@ -225,12 +231,12 @@ class LiveLayerInteractionPathTests {
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(50, 50, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(50, 50, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 
@@ -288,8 +294,8 @@ class LiveLayerInteractionPathTests {
         val outsideX = panel.x + panel.width + 24
         val outsideY = panel.y + panel.height + 24
 
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
@@ -298,12 +304,12 @@ class LiveLayerInteractionPathTests {
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
         assertFalse(applicationOverlayHost.hasOpenContextMenuPortal())
     }
@@ -367,8 +373,8 @@ class LiveLayerInteractionPathTests {
         assertNotNull(panel)
         val outsideX = panel.x + panel.width + 24
         val outsideY = panel.y + panel.height + 24
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
@@ -378,12 +384,12 @@ class LiveLayerInteractionPathTests {
 
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(outsideX, outsideY, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 
@@ -436,8 +442,8 @@ class LiveLayerInteractionPathTests {
         val layout = DomainPortalServices.applicationColorPickerEngine.debugBodyLayout(owner)
         assertNotNull(layout)
 
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { _, _, _ -> false },
                 applicationOverlayHandler = { x, y, button ->
@@ -446,7 +452,7 @@ class LiveLayerInteractionPathTests {
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(
+            fixture.dispatchMouseDown(
                 layout.colorFieldRect.x + 4,
                 layout.colorFieldRect.y + 4,
                 MouseButton.LEFT,
@@ -456,7 +462,7 @@ class LiveLayerInteractionPathTests {
             }
 
         assertTrue(commands.isNotEmpty())
-        assertEquals(UiLayerId.ApplicationOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
         assertTrue(applicationOverlayHost.hasOpenColorPickerPortal())
     }
@@ -566,8 +572,8 @@ class LiveLayerInteractionPathTests {
         assertNotNull(panel)
         val style = DomainPortalServices.systemSelectEngine.currentStyle()
 
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { x, y, button ->
                     systemHost.handlePortalMouseDown(x, y, button)
@@ -576,7 +582,7 @@ class LiveLayerInteractionPathTests {
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(
+            fixture.dispatchMouseDown(
                 panel.x + style.panelPaddingX + 1,
                 panel.y + style.panelPaddingY + 1,
                 MouseButton.LEFT,
@@ -586,7 +592,7 @@ class LiveLayerInteractionPathTests {
             }
 
         assertTrue(commands.isNotEmpty())
-        assertEquals(UiLayerId.SystemOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.SystemPortal, consumedBy)
         assertFalse(appRootReceived)
         assertEquals("a", selected)
         assertFalse(DomainPortalServices.applicationSelectEngine.isOpenFor(owner))
@@ -625,20 +631,20 @@ class LiveLayerInteractionPathTests {
                 ?: error("panel demo node missing")
         val buttonRect = demoNode.buttonRect()
         assertNotNull(buttonRect)
-        val harness =
-            LiveLayerInputHarness(
+        val fixture =
+            LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
                 systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
                 applicationOverlayHandler = { _, _, _ -> false },
             )
         var appRootReceived = false
         val consumedBy =
-            harness.dispatchMouseDown(buttonRect.x + 1, buttonRect.y + 1, MouseButton.LEFT) {
+            fixture.dispatchMouseDown(buttonRect.x + 1, buttonRect.y + 1, MouseButton.LEFT) {
                 appRootReceived = true
                 true
             }
 
-        assertEquals(UiLayerId.SystemOverlay, consumedBy)
+        assertEquals(ScreenDomainSurfaces.SystemPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 
@@ -693,7 +699,7 @@ class LiveLayerInteractionPathTests {
             onCommit = onCommit,
         )
 
-    private class LiveLayerInputHarness(
+    private class LiveLayerInputFixture(
         private val debugHandler: (Int, Int, MouseButton) -> Boolean,
         private val systemOverlayHandler: (Int, Int, MouseButton) -> Boolean,
         private val applicationOverlayHandler: (Int, Int, MouseButton) -> Boolean,
@@ -703,14 +709,17 @@ class LiveLayerInteractionPathTests {
             mouseY: Int,
             button: MouseButton,
             applicationRootHandler: () -> Boolean,
-        ): UiLayerId? =
-            OverlayLayerContracts.firstInputConsumer(
-                canConsume = { layer ->
-                    when (layer) {
-                        UiLayerId.Debug -> debugHandler(mouseX, mouseY, button)
-                        UiLayerId.SystemOverlay -> systemOverlayHandler(mouseX, mouseY, button)
-                        UiLayerId.ApplicationOverlay -> applicationOverlayHandler(mouseX, mouseY, button)
-                        UiLayerId.ApplicationRoot -> applicationRootHandler()
+        ): ScreenDomainSurface? =
+            ScreenDomainSurfaces.firstInputConsumer(
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.DebugPortal -> false
+                        ScreenDomainSurfaces.DebugRoot -> debugHandler(mouseX, mouseY, button)
+                        ScreenDomainSurfaces.SystemPortal -> systemOverlayHandler(mouseX, mouseY, button)
+                        ScreenDomainSurfaces.SystemRoot -> false
+                        ScreenDomainSurfaces.ApplicationPortal -> applicationOverlayHandler(mouseX, mouseY, button)
+                        ScreenDomainSurfaces.ApplicationRoot -> applicationRootHandler()
+                        else -> false
                     }
                 },
             )

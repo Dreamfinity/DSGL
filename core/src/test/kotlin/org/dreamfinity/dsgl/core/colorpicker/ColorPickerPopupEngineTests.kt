@@ -3,9 +3,8 @@ package org.dreamfinity.dsgl.core.colorpicker
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -467,8 +466,8 @@ class ColorPickerPopupEngineTests {
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.Application, engine.debugActiveOwnerScope())
         assertEquals(
-            UiLayerId.ApplicationOverlay,
-            OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!),
+            ScreenDomainSurfaces.ApplicationPortal,
+            ScreenDomainSurfaces.portalSurfaceForOwner(engine.debugActiveOwnerScope()!!),
         )
     }
 
@@ -495,8 +494,8 @@ class ColorPickerPopupEngineTests {
         assertTrue(overlay.isNotEmpty())
         assertEquals(OverlayOwnerScope.System, engine.debugActiveOwnerScope())
         assertEquals(
-            UiLayerId.SystemOverlay,
-            OverlayLayerContracts.resolveTransientLayer(engine.debugActiveOwnerScope()!!),
+            ScreenDomainSurfaces.SystemPortal,
+            ScreenDomainSurfaces.portalSurfaceForOwner(engine.debugActiveOwnerScope()!!),
         )
     }
 

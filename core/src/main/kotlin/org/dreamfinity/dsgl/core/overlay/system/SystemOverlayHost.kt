@@ -15,12 +15,12 @@ import org.dreamfinity.dsgl.core.inspector.InspectorController
 import org.dreamfinity.dsgl.core.inspector.InspectorPanelState
 import org.dreamfinity.dsgl.core.inspector.internal.SystemInspectorOverlayNode
 import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
+import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.PortalFrameContext
 import org.dreamfinity.dsgl.core.overlay.PortalHost
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.overlay.input.dispatchManualThenDomFallback
 import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
@@ -29,10 +29,11 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectPortalController
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
+@Suppress("TooManyFunctions")
 class SystemOverlayHost(
     private val inspectorController: InspectorController,
-) : OverlayLayerHost {
-    override val layerId: UiLayerId = UiLayerId.SystemOverlay
+) : DomainSurfaceHost {
+    override val surface: ScreenDomainSurface = ScreenDomainSurfaces.SystemPortal
 
     private val rootNode: SystemOverlayRootNode = SystemOverlayRootNode()
     private val inspectorEntry: SystemOverlayEntry = InspectorOverlayEntry(inspectorController)
@@ -44,7 +45,7 @@ class SystemOverlayHost(
             listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry),
         )
     private val portalHost: PortalHost =
-        PortalHost(OverlayLayerContracts.domainSurfaceForLayer(UiLayerId.SystemOverlay))
+        PortalHost(ScreenDomainSurfaces.SystemPortal)
     private val portalEntries: List<SystemOverlayPortalEntry> =
         entryRegistry.allEntries().map(::SystemOverlayPortalEntry)
     private val transientOwnershipRegistry: SystemOverlayTransientOwnershipRegistry =

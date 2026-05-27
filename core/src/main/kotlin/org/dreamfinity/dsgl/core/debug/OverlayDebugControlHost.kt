@@ -15,8 +15,9 @@ import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerHost
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
+import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -45,8 +46,8 @@ private data class OverlayDebugToggleSnapshot(
 
 class OverlayDebugControlHost(
     private val state: OverlayLayerDebugState = OverlayLayerDebugState,
-) : OverlayLayerHost {
-    override val layerId: UiLayerId = UiLayerId.Debug
+) : DomainSurfaceHost {
+    override val surface: ScreenDomainSurface = ScreenDomainSurfaces.DebugRoot
 
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1

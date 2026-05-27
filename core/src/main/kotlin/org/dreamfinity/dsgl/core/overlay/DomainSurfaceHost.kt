@@ -4,8 +4,8 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
-interface OverlayLayerHost {
-    val layerId: UiLayerId
+interface DomainSurfaceHost {
+    val surface: ScreenDomainSurface
 
     fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {}
 

@@ -4,7 +4,6 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalEntry
@@ -17,13 +16,14 @@ import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class ColorPickerPortalController(
     private val engine: ColorPickerPopupEngine,
 ) : PortalPointerDispatch {
     private val portalHost: PortalHost =
-        PortalHost(OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application))
+        PortalHost(ScreenDomainSurfaces.ApplicationPortal)
     private val entry: ColorPickerPortalEntry = ColorPickerPortalEntry(engine)
 
     init {
@@ -89,7 +89,7 @@ private class ColorPickerPortalEntry(
         PortalEntryState(
             id = PortalEntryId("application.color-picker"),
             ownerToken = engine,
-            surface = OverlayLayerContracts.portalSurfaceForOwner(OverlayOwnerScope.Application),
+            surface = ScreenDomainSurfaces.ApplicationPortal,
             order = PortalEntryOrder(zIndex = 0),
             dismissPolicy = PortalDismissPolicy.EscapeOrOutsidePointerDown,
             inputPolicy = PortalInputPolicy.ManualOnly,
