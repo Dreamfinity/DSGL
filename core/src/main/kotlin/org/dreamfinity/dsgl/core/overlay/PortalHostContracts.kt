@@ -47,6 +47,11 @@ internal enum class PortalDismissPolicy {
     EscapeOrOutsidePointerDown,
 }
 
+internal enum class PortalBackdropPolicy {
+    None,
+    ConsumeOutsidePointerDown,
+}
+
 internal enum class PortalInputPolicy {
     None,
     DomOnly,
@@ -60,6 +65,23 @@ internal enum class PortalFocusPolicy {
     TrapFocus,
 }
 
+internal enum class PortalLifecyclePolicy {
+    Manual,
+    CloseOnUnmount,
+}
+
+internal enum class PortalPointerRegion {
+    InsideEntry,
+    OutsideEntry,
+}
+
+internal data class PortalPointerPolicyResult(
+    val entry: PortalEntry,
+    val region: PortalPointerRegion,
+    val shouldClose: Boolean,
+    val consumed: Boolean,
+)
+
 internal data class PortalEntryState(
     val id: PortalEntryId,
     val ownerToken: Any,
@@ -68,11 +90,14 @@ internal data class PortalEntryState(
     val dismissPolicy: PortalDismissPolicy = PortalDismissPolicy.None,
     val inputPolicy: PortalInputPolicy = PortalInputPolicy.DomOnly,
     val focusPolicy: PortalFocusPolicy = PortalFocusPolicy.Preserve,
+    val backdropPolicy: PortalBackdropPolicy = PortalBackdropPolicy.None,
+    val lifecyclePolicy: PortalLifecyclePolicy = PortalLifecyclePolicy.CloseOnUnmount,
 ) {
     var active: Boolean = false
         internal set
     var placement: PortalEntryPlacement? = null
         internal set
+    private var protectedBounds: List<Rect> = emptyList()
 
     fun activate(placement: PortalEntryPlacement) {
         this.placement = placement
@@ -82,6 +107,22 @@ internal data class PortalEntryState(
     fun deactivate() {
         active = false
         placement = null
+        protectedBounds = emptyList()
+    }
+
+    fun updateProtectedBounds(bounds: List<Rect>) {
+        protectedBounds = bounds.filter { it.width > 0 && it.height > 0 }
+    }
+
+    fun containsPointer(mouseX: Int, mouseY: Int, node: DOMNode?): Boolean {
+        if (node?.containsGlobalPoint(mouseX, mouseY) == true) return true
+        val activePlacement = placement ?: return false
+        if (activePlacement.bounds.entryBounds
+                .contains(mouseX, mouseY)
+        ) {
+            return true
+        }
+        return protectedBounds.any { it.contains(mouseX, mouseY) }
     }
 }
 
@@ -163,13 +204,50 @@ internal class PortalHost(
     fun clearRefs() {
         entriesById.values.forEach { entry ->
             entry.clearRefs()
-            entry.close()
+            if (entry.state.lifecyclePolicy == PortalLifecyclePolicy.CloseOnUnmount) {
+                entry.close()
+            } else {
+                entry.state.deactivate()
+            }
         }
         entriesById.clear()
     }
 
     fun dispatchInput(handler: (PortalEntry) -> Boolean): Boolean = entriesInInputOrder().any(handler)
 }
+
+internal fun PortalHost.handleOutsidePointerDownPolicy(mouseX: Int, mouseY: Int): Boolean {
+    val result = evaluateOutsidePointerDown(mouseX, mouseY) ?: return false
+    if (result.shouldClose) {
+        result.entry.close()
+    }
+    return result.consumed
+}
+
+internal fun PortalHost.evaluateOutsidePointerDown(mouseX: Int, mouseY: Int): PortalPointerPolicyResult? =
+    entriesInInputOrder().firstNotNullOfOrNull { entry ->
+        if (entry.state.containsPointer(mouseX, mouseY, entry.node)) {
+            return@firstNotNullOfOrNull PortalPointerPolicyResult(
+                entry = entry,
+                region = PortalPointerRegion.InsideEntry,
+                shouldClose = false,
+                consumed = false,
+            )
+        }
+        val shouldClose =
+            entry.state.dismissPolicy == PortalDismissPolicy.OutsidePointerDown ||
+                entry.state.dismissPolicy == PortalDismissPolicy.EscapeOrOutsidePointerDown
+        val consumed = shouldClose || entry.state.backdropPolicy == PortalBackdropPolicy.ConsumeOutsidePointerDown
+        if (!consumed) {
+            return@firstNotNullOfOrNull null
+        }
+        PortalPointerPolicyResult(
+            entry = entry,
+            region = PortalPointerRegion.OutsideEntry,
+            shouldClose = shouldClose,
+            consumed = true,
+        )
+    }
 
 internal data class DomainSurfacePortalHostAdapter(
     val surfaceHost: DomainSurfaceHost,
