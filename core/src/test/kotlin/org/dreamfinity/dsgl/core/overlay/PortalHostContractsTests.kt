@@ -374,6 +374,34 @@ class PortalHostContractsTests {
     }
 
     @Test
+    fun `protected-only containment treats full viewport portal backdrop as outside`() {
+        val host = PortalHost(applicationSurface())
+        val entry =
+            FakePortalEntry(
+                id = "modal",
+                config =
+                    FakePortalEntryConfig(
+                        dismissPolicy = PortalDismissPolicy.OutsidePointerDown,
+                        insidePointerPolicy = PortalInsidePointerPolicy.ConsumePointerDown,
+                        pointerContainmentPolicy = PortalPointerContainmentPolicy.ProtectedBoundsOnly,
+                    ),
+            )
+        host.register(entry)
+        entry.activate(entryBounds = Rect(0, 0, 320, 240))
+        entry.state.updateProtectedBounds(listOf(Rect(80, 60, 120, 80)))
+
+        val inside = host.evaluateOutsidePointerDown(mouseX = 100, mouseY = 80) ?: error("inside policy missing")
+        val outside = host.evaluateOutsidePointerDown(mouseX = 20, mouseY = 20) ?: error("outside policy missing")
+
+        assertEquals(PortalPointerRegion.InsideEntry, inside.region)
+        assertTrue(inside.consumed)
+        assertFalse(inside.shouldClose)
+        assertEquals(PortalPointerRegion.OutsideEntry, outside.region)
+        assertTrue(outside.consumed)
+        assertTrue(outside.shouldClose)
+    }
+
+    @Test
     fun `manual lifecycle entry deactivates on host clear without component close`() {
         val host = PortalHost(applicationSurface())
         val entry =
@@ -475,6 +503,8 @@ class PortalHostContractsTests {
                 dismissPolicy = config.dismissPolicy,
                 focusPolicy = config.focusPolicy,
                 backdropPolicy = config.backdropPolicy,
+                insidePointerPolicy = config.insidePointerPolicy,
+                pointerContainmentPolicy = config.pointerContainmentPolicy,
                 lifecyclePolicy = config.lifecyclePolicy,
             )
         override val node: DOMNode? = config.node
@@ -529,6 +559,8 @@ class PortalHostContractsTests {
         val dismissPolicy: PortalDismissPolicy = PortalDismissPolicy.None,
         val focusPolicy: PortalFocusPolicy = PortalFocusPolicy.Preserve,
         val backdropPolicy: PortalBackdropPolicy = PortalBackdropPolicy.None,
+        val insidePointerPolicy: PortalInsidePointerPolicy = PortalInsidePointerPolicy.PassThrough,
+        val pointerContainmentPolicy: PortalPointerContainmentPolicy = PortalPointerContainmentPolicy.DomOrEntryBounds,
         val lifecyclePolicy: PortalLifecyclePolicy = PortalLifecyclePolicy.CloseOnUnmount,
         val node: DOMNode? = null,
         val consumeMouseDown: Boolean = false,

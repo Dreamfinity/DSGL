@@ -22,6 +22,8 @@ import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
+import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
+import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -138,6 +140,151 @@ class ModalPortalKeyboardRegressionTests {
         overlay.render(measureContext, 320, 180)
 
         assertTrue(overlay.handleMouseDown(4, 4, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `modal portal generic policy classifies dialog as inside and backdrop as outside`() {
+        val hostKey = "tests.modal.portal.portal.policy"
+        val tree = buildTree(hostKey, listOf(dismissibleBodyModal {}))
+        trees += tree
+        tree.render(measureContext, 320, 180)
+
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+        overlay.render(measureContext, 320, 180)
+
+        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
+        assertNotNull(dialog)
+        val inside =
+            overlay.modalPortal.debugEvaluatePointerDownPolicy(
+                mouseX = dialog.bounds.x + dialog.bounds.width / 2,
+                mouseY = dialog.bounds.y + dialog.bounds.height / 2,
+            )
+        val outside = overlay.modalPortal.debugEvaluatePointerDownPolicy(mouseX = 2, mouseY = 2)
+
+        assertNotNull(inside)
+        assertEquals(PortalPointerRegion.InsideEntry, inside.region)
+        assertTrue(inside.consumed)
+        assertFalse(inside.shouldClose)
+        assertNotNull(outside)
+        assertEquals(PortalPointerRegion.OutsideEntry, outside.region)
+        assertTrue(outside.consumed)
+        assertTrue(outside.shouldClose)
+    }
+
+    @Test
+    fun `modal portal policy blocks application root fallthrough for non interactive dialog body`() {
+        val hostKey = "tests.modal.portal.portal.policy.inside"
+        val tree = buildTree(hostKey, listOf(dismissibleBodyModal {}))
+        trees += tree
+        tree.render(measureContext, 320, 180)
+
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+        overlay.render(measureContext, 320, 180)
+
+        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
+        assertNotNull(dialog)
+        var applicationRootReceived = false
+        val consumedBy =
+            dispatchApplicationPortalPointer(
+                overlay = overlay,
+                mouseX = dialog.bounds.x + dialog.bounds.width / 2,
+                mouseY = dialog.bounds.y + dialog.bounds.height / 2,
+                pressed = true,
+            ) {
+                applicationRootReceived = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
+        assertFalse(applicationRootReceived)
+    }
+
+    @Test
+    fun `static modal backdrop consumes without dismissing or falling through`() {
+        val hostKey = "tests.modal.portal.portal.policy.static"
+        var hideCount = 0
+        val tree =
+            buildTree(
+                hostKey,
+                listOf(
+                    ModalSpec(
+                        key = "modal.static.backdrop",
+                        backdrop = BackdropMode.Static,
+                        onHide = { hideCount += 1 },
+                    ) { _ -> },
+                ),
+            )
+        trees += tree
+        tree.render(measureContext, 320, 180)
+
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+        overlay.render(measureContext, 320, 180)
+
+        var applicationRootReceived = false
+        val consumedBy =
+            dispatchApplicationPortalPointer(
+                overlay = overlay,
+                mouseX = 2,
+                mouseY = 2,
+                pressed = true,
+            ) {
+                applicationRootReceived = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
+        assertFalse(applicationRootReceived)
+        assertEquals(0, hideCount)
+    }
+
+    @Test
+    fun `modal backdrop dismiss consumes full pointer sequence and does not click through`() {
+        val hostKey = "tests.modal.portal.portal.policy.full.click"
+        var modals: List<ModalSpec> = emptyList()
+        modals = listOf(dismissibleBodyModal { modals = emptyList() })
+        var tree = buildTree(hostKey, modals)
+        trees += tree
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+        renderTreeAndOverlay(tree, overlay)
+
+        var applicationRootReceivedDown = false
+        val consumedDown =
+            dispatchApplicationPortalPointer(
+                overlay = overlay,
+                mouseX = 2,
+                mouseY = 2,
+                pressed = true,
+            ) {
+                applicationRootReceivedDown = true
+                true
+            }
+
+        assertEquals(listOf("modal.dismissible"), modals.map { it.key })
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedDown)
+        assertFalse(applicationRootReceivedDown)
+
+        var applicationRootReceivedUp = false
+        val consumedUp =
+            dispatchApplicationPortalPointer(
+                overlay = overlay,
+                mouseX = 2,
+                mouseY = 2,
+                pressed = false,
+            ) {
+                applicationRootReceivedUp = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedUp)
+        assertFalse(applicationRootReceivedUp)
+        assertEquals(emptyList(), modals)
+
+        tree = reconcileTree(tree, buildTree(hostKey, modals))
+        renderTreeAndOverlay(tree, overlay)
     }
 
     @Test
@@ -543,6 +690,28 @@ class ModalPortalKeyboardRegressionTests {
             },
         )
     }
+
+    private fun dispatchApplicationPortalPointer(
+        overlay: ApplicationOverlayHost,
+        mouseX: Int,
+        mouseY: Int,
+        pressed: Boolean,
+        applicationRootHandler: () -> Boolean,
+    ) = ScreenDomainSurfaces.firstInputConsumer(
+        canConsume = { surface ->
+            when (surface) {
+                ScreenDomainSurfaces.ApplicationPortal ->
+                    if (pressed) {
+                        overlay.handleMouseDown(mouseX, mouseY, MouseButton.LEFT)
+                    } else {
+                        overlay.handleMouseUp(mouseX, mouseY, MouseButton.LEFT)
+                    }
+
+                ScreenDomainSurfaces.ApplicationRoot -> applicationRootHandler()
+                else -> false
+            }
+        },
+    )
 
     private fun requireNodeByKey(root: DOMNode, key: Any): DOMNode {
         if (root.key == key) return root

@@ -81,6 +81,7 @@ abstract class DsglScreenHost(
     private var needsLayout: Boolean = true
     private var lastMouseEvent: Long = 0
     private var eventButton: Int = -1
+    private var higherSurfacePointerButton: Int = -1
     private var lastMouseX: Int = 0
     private var lastMouseY: Int = 0
     private var lastMoveX: Int = Int.MIN_VALUE
@@ -157,6 +158,7 @@ abstract class DsglScreenHost(
         )
         inspector.deactivate()
         inspectorPointerCaptured = false
+        higherSurfacePointerButton = -1
         colorSamplerOwnershipRouter.reset()
         activeColorSamplerOwner = ActiveColorSamplerOwner.None
         activeInlineColorSamplerNode = null
@@ -970,9 +972,17 @@ abstract class DsglScreenHost(
                 isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
             )
         return when (consumedBy) {
-            null -> DomainPointerDispatchResult.None
+            null ->
+                if (isHigherSurfaceOwnedPointerRelease(context)) {
+                    higherSurfacePointerButton = -1
+                    consumeOverlayPointerState(inputEvent.mouseX, inputEvent.mouseY)
+                    DomainPointerDispatchResult.HigherSurfaceConsumed
+                } else {
+                    DomainPointerDispatchResult.None
+                }
             ScreenDomainSurfaces.ApplicationRoot -> DomainPointerDispatchResult.ApplicationRootHandled
             else -> {
+                updateHigherSurfacePointerOwnership(context)
                 consumeOverlayPointerState(inputEvent.mouseX, inputEvent.mouseY)
                 DomainPointerDispatchResult.HigherSurfaceConsumed
             }
@@ -991,13 +1001,31 @@ abstract class DsglScreenHost(
             ScreenDomainSurfaces.SystemRoot -> false
             ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalPointerSurface(context)
             ScreenDomainSurfaces.ApplicationRoot ->
-                dispatchApplicationRootPointerSurface(
-                    tree = tree,
-                    inputEvent = context.inputEvent,
-                )
+                if (isHigherSurfaceOwnedPointerRelease(context)) {
+                    false
+                } else {
+                    dispatchApplicationRootPointerSurface(
+                        tree = tree,
+                        inputEvent = context.inputEvent,
+                    )
+                }
 
             else -> false
         }
+
+    private fun isHigherSurfaceOwnedPointerRelease(context: DomainPointerDispatchContext): Boolean =
+        context.inputEvent.mouseButton != -1 &&
+            !context.buttonPressed &&
+            context.inputEvent.mouseButton == higherSurfacePointerButton
+
+    private fun updateHigherSurfacePointerOwnership(context: DomainPointerDispatchContext) {
+        if (context.inputEvent.mouseButton == -1 || context.mappedButton == null) return
+        if (context.buttonPressed) {
+            higherSurfacePointerButton = context.inputEvent.mouseButton
+        } else if (higherSurfacePointerButton == context.inputEvent.mouseButton) {
+            higherSurfacePointerButton = -1
+        }
+    }
 
     private fun consumeDebugRootPointerSurface(context: DomainPointerDispatchContext): Boolean {
         if (context.applicationRootPressMove) {
@@ -1541,6 +1569,50 @@ abstract class DsglScreenHost(
             canConsume = canConsume,
             isSurfaceInputEnabled = isSurfaceInputEnabled,
         )
+
+    internal fun debugDispatchApplicationPortalThenRootPointerForTests(
+        mouseButton: Int,
+        buttonPressed: Boolean,
+        applicationPortalConsumes: () -> Boolean,
+        applicationRootConsumes: () -> Boolean,
+    ): ScreenDomainSurface? {
+        val context =
+            DomainPointerDispatchContext(
+                inputEvent =
+                    MouseInputEvent(
+                        mouseX = 0,
+                        mouseY = 0,
+                        dWheel = 0,
+                        mouseButton = mouseButton,
+                    ),
+                mappedButton = mapButton(mouseButton),
+                buttonPressed = buttonPressed,
+                applicationRootPressMove = false,
+            )
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.ApplicationPortal -> applicationPortalConsumes()
+                        ScreenDomainSurfaces.ApplicationRoot ->
+                            if (isHigherSurfaceOwnedPointerRelease(context)) {
+                                false
+                            } else {
+                                applicationRootConsumes()
+                            }
+
+                        else -> false
+                    }
+                },
+            )
+        if (consumedBy != null && consumedBy != ScreenDomainSurfaces.ApplicationRoot) {
+            updateHigherSurfacePointerOwnership(context)
+        } else if (consumedBy == null && isHigherSurfaceOwnedPointerRelease(context)) {
+            higherSurfacePointerButton = -1
+            return ScreenDomainSurfaces.ApplicationPortal
+        }
+        return consumedBy
+    }
 
     private fun setDragCapture(target: DOMNode) {
         dragCaptureTarget = target

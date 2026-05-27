@@ -64,11 +64,17 @@ class ApplicationOverlayHost(
 
     override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = domInputRouter.handleMouseMove(mouseX, mouseY)
 
-    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-        domInputRouter.handleMouseDown(mouseX, mouseY, button)
+    override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val isConsumedByDOM = domInputRouter.handleMouseDown(mouseX, mouseY, button)
+        val isConsumedByPolicy = modalPortal.handlePointerPolicy(mouseX, mouseY, button, pressed = true)
+        return isConsumedByDOM || isConsumedByPolicy
+    }
 
-    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-        domInputRouter.handleMouseUp(mouseX, mouseY, button)
+    override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val isConsumedByDOM = domInputRouter.handleMouseUp(mouseX, mouseY, button)
+        val isConsumedByPolicy = modalPortal.handlePointerPolicy(mouseX, mouseY, button, pressed = false)
+        return isConsumedByDOM || isConsumedByPolicy
+    }
 
     override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
         domInputRouter.handleMouseWheel(mouseX, mouseY, delta)

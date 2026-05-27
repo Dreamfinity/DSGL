@@ -27,6 +27,7 @@ internal object ModalPortalSessionStore {
     data class PortalSnapshot(
         val portalKey: String,
         val root: ModalPortalRootNode,
+        val topMostModal: ModalSpec?,
     )
 
     private val states: MutableMap<String, ModalPortalState> = ConcurrentHashMap()
@@ -120,6 +121,7 @@ internal object ModalPortalSessionStore {
                 PortalSnapshot(
                     portalKey = portalKey,
                     root = root,
+                    topMostModal = states[portalKey]?.currentModals?.lastOrNull(),
                 )
             }
 

@@ -52,6 +52,16 @@ internal enum class PortalBackdropPolicy {
     ConsumeOutsidePointerDown,
 }
 
+internal enum class PortalInsidePointerPolicy {
+    PassThrough,
+    ConsumePointerDown,
+}
+
+internal enum class PortalPointerContainmentPolicy {
+    DomOrEntryBounds,
+    ProtectedBoundsOnly,
+}
+
 internal enum class PortalInputPolicy {
     None,
     DomOnly,
@@ -87,16 +97,19 @@ internal data class PortalEntryState(
     val ownerToken: Any,
     val surface: ScreenDomainSurface,
     val order: PortalEntryOrder,
-    val dismissPolicy: PortalDismissPolicy = PortalDismissPolicy.None,
+    var dismissPolicy: PortalDismissPolicy = PortalDismissPolicy.None,
     val inputPolicy: PortalInputPolicy = PortalInputPolicy.DomOnly,
     val focusPolicy: PortalFocusPolicy = PortalFocusPolicy.Preserve,
-    val backdropPolicy: PortalBackdropPolicy = PortalBackdropPolicy.None,
+    var backdropPolicy: PortalBackdropPolicy = PortalBackdropPolicy.None,
+    val insidePointerPolicy: PortalInsidePointerPolicy = PortalInsidePointerPolicy.PassThrough,
+    val pointerContainmentPolicy: PortalPointerContainmentPolicy = PortalPointerContainmentPolicy.DomOrEntryBounds,
     val lifecyclePolicy: PortalLifecyclePolicy = PortalLifecyclePolicy.CloseOnUnmount,
 ) {
     var active: Boolean = false
         internal set
     var placement: PortalEntryPlacement? = null
         internal set
+    var dismissAction: (() -> Unit)? = null
     private var protectedBounds: List<Rect> = emptyList()
 
     fun activate(placement: PortalEntryPlacement) {
@@ -115,6 +128,9 @@ internal data class PortalEntryState(
     }
 
     fun containsPointer(mouseX: Int, mouseY: Int, node: DOMNode?): Boolean {
+        if (pointerContainmentPolicy == PortalPointerContainmentPolicy.ProtectedBoundsOnly) {
+            return protectedBounds.any { it.contains(mouseX, mouseY) }
+        }
         if (node?.containsGlobalPoint(mouseX, mouseY) == true) return true
         val activePlacement = placement ?: return false
         if (activePlacement.bounds.entryBounds
@@ -123,6 +139,10 @@ internal data class PortalEntryState(
             return true
         }
         return protectedBounds.any { it.contains(mouseX, mouseY) }
+    }
+
+    fun dismiss(entry: PortalEntry) {
+        dismissAction?.invoke() ?: entry.close()
     }
 }
 
@@ -219,7 +239,8 @@ internal class PortalHost(
 internal fun PortalHost.handleOutsidePointerDownPolicy(mouseX: Int, mouseY: Int): Boolean {
     val result = evaluateOutsidePointerDown(mouseX, mouseY) ?: return false
     if (result.shouldClose) {
-        result.entry.close()
+        result.entry.state
+            .dismiss(result.entry)
     }
     return result.consumed
 }
@@ -231,7 +252,7 @@ internal fun PortalHost.evaluateOutsidePointerDown(mouseX: Int, mouseY: Int): Po
                 entry = entry,
                 region = PortalPointerRegion.InsideEntry,
                 shouldClose = false,
-                consumed = false,
+                consumed = entry.state.insidePointerPolicy == PortalInsidePointerPolicy.ConsumePointerDown,
             )
         }
         val shouldClose =

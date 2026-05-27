@@ -91,17 +91,7 @@ private fun UiScope.modalLayer(spec: ModalSpec, modalKey: String, isTopMost: Boo
             }
         }
         onMouseClick = { event ->
-            if (!isTopMost) {
-                event.cancelled = true
-            } else {
-                val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
-                if (!insideDialog) {
-                    if (spec.backdrop == BackdropMode.True) {
-                        spec.onHide?.invoke()
-                    }
-                    event.cancelled = true
-                }
-            }
+            event.cancelled = true
         }
         onMouseWheel = { event ->
             val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)

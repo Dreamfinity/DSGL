@@ -7,6 +7,7 @@ import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -128,6 +129,43 @@ class DsglScreenHostDomainOrchestrationTests {
         val consumed = host.debugFirstDomainInputConsumerForTests(canConsume = { false })
 
         assertNull(consumed)
+    }
+
+    @Test
+    fun `host suppresses application root release after portal-owned pointer down`() {
+        val host = createHost()
+        var rootReceivedRelease = false
+
+        val consumedDown =
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = true,
+                applicationPortalConsumes = { true },
+                applicationRootConsumes = { true },
+            )
+
+        val consumedUp =
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = false,
+                applicationPortalConsumes = { false },
+                applicationRootConsumes = {
+                    rootReceivedRelease = true
+                    true
+                },
+            )
+        val consumedNextRelease =
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = false,
+                applicationPortalConsumes = { false },
+                applicationRootConsumes = { true },
+            )
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedDown)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedUp)
+        assertEquals(ScreenDomainSurfaces.ApplicationRoot, consumedNextRelease)
+        assertFalse(rootReceivedRelease)
     }
 
     private fun createHost(): DsglScreenHost =
