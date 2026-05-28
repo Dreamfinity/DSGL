@@ -9,7 +9,8 @@ import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.HotReloadBridge
 import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.colorpicker.*
-import org.dreamfinity.dsgl.core.debug.OverlayDebugControlHost
+import org.dreamfinity.dsgl.core.debug.DebugDomainPortalHost
+import org.dreamfinity.dsgl.core.debug.DebugDomainRootHost
 import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -106,7 +107,8 @@ abstract class DsglScreenHost(
     private val inspector: InspectorController = InspectorController()
     private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
     private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
-    private val debugOverlayHost: OverlayDebugControlHost = OverlayDebugControlHost()
+    private val debugDomainRootHost: DebugDomainRootHost = DebugDomainRootHost()
+    private val debugDomainPortalHost: DebugDomainPortalHost = DebugDomainPortalHost()
     private val domainOrchestrator: ScreenDomainSurfaceOrchestrator = ScreenDomainSurfaceOrchestrator()
     private val colorSamplerOwnershipRouter: ActiveColorSamplerOwnershipRouter = ActiveColorSamplerOwnershipRouter()
     private var activeColorSamplerOwner: ActiveColorSamplerOwner = ActiveColorSamplerOwner.None
@@ -225,7 +227,7 @@ abstract class DsglScreenHost(
             systemOverlayCommands = systemOverlayCommands,
             systemOverlayRenderEnabled = overlayState.systemOverlayRenderEnabled,
         )
-        val debugOverlayCommands = collectDebugOverlayCommands()
+        val debugDomainCommands = collectDebugDomainCommands()
         updateFrameInteractionState(
             tree = tree,
             dtSeconds = dtSeconds,
@@ -243,7 +245,7 @@ abstract class DsglScreenHost(
         composeAndPresentFrame(
             tree = tree,
             commands = commands,
-            debugOverlayCommands = debugOverlayCommands,
+            debugDomainCommands = debugDomainCommands,
             rebuiltThisFrame = rebuiltThisFrame,
             layoutCommittedThisFrame = layoutPhase.layoutCommittedThisFrame,
         )
@@ -271,6 +273,11 @@ abstract class DsglScreenHost(
         val appOverlayInputEnabled: Boolean,
         val systemOverlayInputEnabled: Boolean,
         val inspectorBlocks: Boolean,
+    )
+
+    private data class DebugDomainCommands(
+        val root: List<RenderCommand>,
+        val portal: List<RenderCommand>,
     )
 
     private fun prepareFrameCursor(): FrameCursorPosition {
@@ -471,13 +478,23 @@ abstract class DsglScreenHost(
         }
     }
 
-    private fun collectDebugOverlayCommands(): List<RenderCommand> =
-        runCatching {
-            debugOverlayHost.render(adapter, lastWidth, lastHeight)
-            debugOverlayHost.paint(adapter)
-        }.getOrElse {
-            emptyList()
-        }
+    private fun collectDebugDomainCommands(): DebugDomainCommands {
+        val root =
+            runCatching {
+                debugDomainRootHost.render(adapter, lastWidth, lastHeight)
+                debugDomainRootHost.paint(adapter)
+            }.getOrElse {
+                emptyList()
+            }
+        val portal =
+            runCatching {
+                debugDomainPortalHost.render(adapter, lastWidth, lastHeight)
+                debugDomainPortalHost.paint(adapter)
+            }.getOrElse {
+                emptyList()
+            }
+        return DebugDomainCommands(root = root, portal = portal)
+    }
 
     private fun updateFrameInteractionState(
         tree: DomTree,
@@ -560,7 +577,7 @@ abstract class DsglScreenHost(
     private fun composeAndPresentFrame(
         tree: DomTree,
         commands: List<RenderCommand>,
-        debugOverlayCommands: List<RenderCommand>,
+        debugDomainCommands: DebugDomainCommands,
         rebuiltThisFrame: Boolean,
         layoutCommittedThisFrame: Boolean,
     ) {
@@ -568,7 +585,8 @@ abstract class DsglScreenHost(
             applicationRoot = commands,
             applicationPortal = applicationOverlayCommandsBuffer,
             systemPortal = systemOverlayCommandsBuffer,
-            debugRoot = debugOverlayCommands,
+            debugRoot = debugDomainCommands.root,
+            debugPortal = debugDomainCommands.portal,
             out = stagingCommandsBuffer,
             shouldRenderSurface = OverlayLayerDebugState::isRenderEnabled,
         )
@@ -628,7 +646,8 @@ abstract class DsglScreenHost(
         domTree?.clearRefs()
         applicationOverlayHost.clearRefs()
         systemOverlayHost.clearRefs()
-        debugOverlayHost.clearRefs()
+        debugDomainRootHost.clearRefs()
+        debugDomainPortalHost.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }
@@ -941,6 +960,8 @@ abstract class DsglScreenHost(
         )
         runOverlayInputFrame(applicationOverlayHost)
         runOverlayInputFrame(systemOverlayHost)
+        runOverlayInputFrame(debugDomainRootHost)
+        runOverlayInputFrame(debugDomainPortalHost)
         inspectorPointerCaptured = inspector.isPointerCaptured
         systemOverlayHost.syncFrame(
             inspectedRoot = tree.root,
@@ -995,7 +1016,7 @@ abstract class DsglScreenHost(
         context: DomainPointerDispatchContext,
     ): Boolean =
         when (surface) {
-            ScreenDomainSurfaces.DebugPortal -> false
+            ScreenDomainSurfaces.DebugPortal -> consumeDebugPortalPointerSurface(context)
             ScreenDomainSurfaces.DebugRoot -> consumeDebugRootPointerSurface(context)
             ScreenDomainSurfaces.SystemPortal -> consumeSystemPortalPointerSurface(context)
             ScreenDomainSurfaces.SystemRoot -> false
@@ -1032,6 +1053,22 @@ abstract class DsglScreenHost(
             return false
         }
         return consumeDebugPointerEvent(
+            host = debugDomainRootHost,
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mappedButton = context.mappedButton,
+            mouseButton = context.inputEvent.mouseButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun consumeDebugPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeDebugPointerEvent(
+            host = debugDomainPortalHost,
             mouseX = context.inputEvent.mouseX,
             mouseY = context.inputEvent.mouseY,
             dWheel = context.inputEvent.dWheel,
@@ -1195,8 +1232,8 @@ abstract class DsglScreenHost(
             domainOrchestrator.firstInputConsumer(
                 canConsume = { surface ->
                     when (surface) {
-                        ScreenDomainSurfaces.DebugPortal -> false
-                        ScreenDomainSurfaces.DebugRoot -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.DebugPortal -> debugDomainPortalHost.handleKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.DebugRoot -> debugDomainRootHost.handleKeyDown(keyCode, keyChar)
 
                         ScreenDomainSurfaces.SystemPortal ->
                             consumeSystemOverlayKeyDown(
@@ -1283,6 +1320,7 @@ abstract class DsglScreenHost(
     }
 
     private fun consumeDebugPointerEvent(
+        host: DomainSurfaceHost,
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
@@ -1290,17 +1328,17 @@ abstract class DsglScreenHost(
         mouseButton: Int,
         buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && debugOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && host.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
             return if (buttonPressed) {
-                debugOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                host.handleMouseDown(mouseX, mouseY, mappedButton)
             } else {
-                debugOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                host.handleMouseUp(mouseX, mouseY, mappedButton)
             }
         }
-        if (mouseButton == -1 && debugOverlayHost.handleMouseMove(mouseX, mouseY)) {
+        if (mouseButton == -1 && host.handleMouseMove(mouseX, mouseY)) {
             return true
         }
         return false

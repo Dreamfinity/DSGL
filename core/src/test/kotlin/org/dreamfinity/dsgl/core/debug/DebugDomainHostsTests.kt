@@ -1,7 +1,15 @@
 package org.dreamfinity.dsgl.core.debug
 
+import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.overlay.PortalEntry
+import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
+import org.dreamfinity.dsgl.core.overlay.PortalEntryId
+import org.dreamfinity.dsgl.core.overlay.PortalEntryOrder
+import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
+import org.dreamfinity.dsgl.core.overlay.PortalEntryState
+import org.dreamfinity.dsgl.core.overlay.PortalFrameContext
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -13,7 +21,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class OverlayDebugControlHostTests {
+class DebugDomainHostsTests {
     private val ctx =
         object : UiMeasureContext {
             override val fontHeight: Int = 9
@@ -36,21 +44,21 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.applicationOverlayInputEnabled = false
         OverlayLayerDebugState.systemOverlayRenderEnabled = false
         OverlayLayerDebugState.systemOverlayInputEnabled = false
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
         val layout = host.debugLayout()
         val commands = host.paint(ctx)
 
         assertNotNull(layout)
-        assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Overlay Debug" })
+        assertTrue(commands.any { it is RenderCommand.DrawText && it.text == "Debug Domain" })
         assertTrue(host.handleMouseDown(layout.panelRect.x + 3, layout.panelRect.y + 3, MouseButton.LEFT))
         assertTrue(host.handleMouseUp(layout.panelRect.x + 3, layout.panelRect.y + 3, MouseButton.LEFT))
     }
 
     @Test
     fun `debug control host uses explicit debug style scope`() {
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         assertEquals(StyleApplicationScope.Debug, host.debugStyleScope)
     }
@@ -62,10 +70,11 @@ class OverlayDebugControlHostTests {
         OverlayLayerDebugState.applicationOverlayInputEnabled = false
         OverlayLayerDebugState.systemOverlayRenderEnabled = false
         OverlayLayerDebugState.systemOverlayInputEnabled = false
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
+        host.paint(ctx)
         assertTrue(host.handleMouseDown(layout.resetRect.x + 2, layout.resetRect.y + 2, MouseButton.LEFT))
 
         assertTrue(OverlayLayerDebugState.applicationOverlayRenderEnabled)
@@ -78,10 +87,11 @@ class OverlayDebugControlHostTests {
     fun `debug panel toggles mutate independent app and system overlay state`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
         OverlayLayerDebugState.resetAll()
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
+        host.paint(ctx)
 
         assertTrue(
             host.handleMouseDown(
@@ -110,7 +120,7 @@ class OverlayDebugControlHostTests {
     fun `debug panel status shows fps and frame time`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
         OverlayLayerDebugState.updateFrameTiming(0.025)
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
         host.paint(ctx)
@@ -120,7 +130,7 @@ class OverlayDebugControlHostTests {
                 .filterIsInstance<RenderCommand.DrawText>()
         val statusTexts =
             drawTexts
-                .filter { it.sourceKey == "dsgl-overlay-debug-status" }
+                .filter { it.sourceKey == "dsgl-debug-domain-status" }
                 .map { it.text }
         val statusTextValue =
             assertNotNull(
@@ -141,7 +151,7 @@ class OverlayDebugControlHostTests {
     fun `toggle button label updates immediately after state change`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
         OverlayLayerDebugState.resetAll()
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
         val layout = host.debugLayout() ?: error("layout missing")
@@ -149,7 +159,7 @@ class OverlayDebugControlHostTests {
             host
                 .paint(ctx)
                 .filterIsInstance<RenderCommand.DrawText>()
-                .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+                .lastOrNull { it.sourceKey == "dsgl-debug-domain-toggle-app-render" }
                 ?.text
         assertEquals("ON", initialText)
 
@@ -166,7 +176,7 @@ class OverlayDebugControlHostTests {
             host
                 .paint(ctx)
                 .filterIsInstance<RenderCommand.DrawText>()
-                .lastOrNull { it.sourceKey == "dsgl-overlay-debug-toggle-app-render" }
+                .lastOrNull { it.sourceKey == "dsgl-debug-domain-toggle-app-render" }
                 ?.text
         assertEquals("OFF", updatedText)
     }
@@ -186,13 +196,46 @@ class OverlayDebugControlHostTests {
     @Test
     fun `controls visibility obeys debug-only toggle`() {
         OverlayLayerDebugState.setControlsEnabledTestOverride(false)
-        val host = OverlayDebugControlHost()
+        val host = DebugDomainRootHost()
         host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isEmpty())
 
         OverlayLayerDebugState.setControlsEnabledTestOverride(true)
         host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isNotEmpty())
+    }
+
+    @Test
+    fun `debug portal host starts empty but participates as debug portal surface`() {
+        val host = DebugDomainPortalHost()
+
+        host.onInputFrame(960, 540)
+        host.render(ctx, 960, 540)
+
+        assertEquals(ScreenDomainSurfaces.DebugPortal, host.surface)
+        assertTrue(host.paint(ctx).isEmpty())
+        assertFalse(host.handleMouseDown(12, 12, MouseButton.LEFT))
+        assertTrue(host.debugActivePortalEntryIds.isEmpty())
+    }
+
+    @Test
+    fun `debug portal host dispatches registered portal entries`() {
+        val host = DebugDomainPortalHost()
+        val entry = FakeDebugPortalEntry()
+        host.debugRegisterPortalEntryForTests(entry)
+        entry.activate()
+
+        host.onInputFrame(960, 540)
+        host.render(ctx, 960, 540)
+        val consumed = host.handleMouseDown(14, 14, MouseButton.LEFT)
+        val commands = host.paint(ctx)
+
+        assertTrue(consumed)
+        assertEquals(1, entry.inputFrameCalls)
+        assertEquals(1, entry.renderCalls)
+        assertEquals(1, entry.mouseDownCalls)
+        assertEquals(listOf("debug.test"), host.debugActivePortalEntryIds)
+        assertTrue(commands.any { it is RenderCommand.DrawRect && it.color == 0xFF336699.toInt() })
     }
 
     @Test
@@ -223,5 +266,50 @@ class OverlayDebugControlHostTests {
             ),
             OverlayLayerDebugState.snapshot(),
         )
+    }
+
+    private class FakeDebugPortalEntry : PortalEntry {
+        override val state: PortalEntryState =
+            PortalEntryState(
+                id = PortalEntryId("debug.test"),
+                ownerToken = this,
+                surface = ScreenDomainSurfaces.DebugPortal,
+                order = PortalEntryOrder(zIndex = 0),
+            )
+        override val node = null
+        var inputFrameCalls: Int = 0
+            private set
+        var renderCalls: Int = 0
+            private set
+        var mouseDownCalls: Int = 0
+            private set
+
+        fun activate() {
+            state.activate(
+                PortalEntryPlacement(
+                    anchorBounds = Rect(10, 10, 20, 20),
+                    bounds =
+                        PortalEntryBounds(
+                            viewportBounds = Rect(0, 0, 960, 540),
+                            entryBounds = Rect(12, 12, 100, 80),
+                        ),
+                ),
+            )
+        }
+
+        override fun onInputFrame(context: PortalFrameContext) {
+            inputFrameCalls += 1
+        }
+
+        override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
+            renderCalls += 1
+        }
+
+        override fun paint(ctx: UiMeasureContext): List<RenderCommand> = listOf(RenderCommand.DrawRect(0, 0, 1, 1, 0xFF336699.toInt()))
+
+        override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+            mouseDownCalls += 1
+            return true
+        }
     }
 }
