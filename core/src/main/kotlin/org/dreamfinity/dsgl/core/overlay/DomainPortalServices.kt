@@ -34,6 +34,9 @@ object DomainPortalServices {
         systemSelectEngine.closeAll()
     }
 
+    fun isSelectClosingFor(owner: Any): Boolean =
+        applicationSelectEngine.isClosingFor(owner) || systemSelectEngine.isClosingFor(owner)
+
     fun isSelectOpenFor(owner: Any): Boolean =
         applicationSelectEngine.isOpenFor(owner) || systemSelectEngine.isOpenFor(owner)
 

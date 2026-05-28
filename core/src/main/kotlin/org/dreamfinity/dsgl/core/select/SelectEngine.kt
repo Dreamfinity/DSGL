@@ -32,6 +32,7 @@ class SelectEngine(
         var scrollOffset: Int = 0,
         var scrollbarDragging: Boolean = false,
         var scrollbarDragThumbOffsetY: Int = 0,
+        var pressedOptionIndex: Int = -1,
     )
 
     data class Snapshot(
@@ -149,6 +150,11 @@ class SelectEngine(
         return current.owner == owner && visibilityState != VisibilityState.Hidden
     }
 
+    internal fun isClosingFor(owner: Any): Boolean {
+        val current = popup ?: return false
+        return current.owner == owner && visibilityState == VisibilityState.Closing
+    }
+
     fun isOpen(): Boolean = popup != null && visibilityState != VisibilityState.Hidden
 
     fun snapshot(): Snapshot {
@@ -173,6 +179,29 @@ class SelectEngine(
         val current = popup ?: return null
         if (current.owner != owner) return null
         return current.anchorRect
+    }
+
+    internal fun shouldCaptureScrollbarDrag(mouseX: Int, mouseY: Int): Boolean {
+        val current = popup ?: return false
+        if (visibilityState == VisibilityState.Hidden) return false
+        ensureLayout()
+        return scrollbarTrackRect(current)?.contains(mouseX, mouseY) == true
+    }
+
+    internal fun isScrollbarDragging(): Boolean = popup?.scrollbarDragging == true
+
+    internal fun cancelScrollbarDrag() {
+        popup?.let {
+            it.scrollbarDragging = false
+            it.pressedOptionIndex = -1
+        }
+    }
+
+    internal fun debugScrollbarTrackRect(owner: Any): Rect? {
+        val current = popup ?: return null
+        if (current.owner != owner) return null
+        ensureLayout()
+        return scrollbarTrackRect(current)
     }
 
     fun onFrame(
@@ -391,35 +420,63 @@ class SelectEngine(
         return true
     }
 
-    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        handleMouseDown(mouseX, mouseY, button, closeOutside = true)
+
+    internal fun handlePortalMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        handleMouseDown(mouseX, mouseY, button, closeOutside = false)
+
+    private fun handleMouseDown(
+        mouseX: Int,
+        mouseY: Int,
+        button: MouseButton,
+        closeOutside: Boolean,
+    ): Boolean {
         val current = popup ?: return false
         if (visibilityState == VisibilityState.Hidden) return false
         ensureLayout()
-        if (!current.panelRect.contains(mouseX, mouseY)) {
-            startVisibilityTransition(0f, style.closeDurationMs)
-            return true
+        current.pressedOptionIndex = -1
+        return when {
+            !current.panelRect.contains(mouseX, mouseY) -> {
+                if (closeOutside) {
+                    startVisibilityTransition(0f, style.closeDurationMs)
+                }
+                true
+            }
+
+            button != MouseButton.LEFT && button != MouseButton.RIGHT -> true
+            button == MouseButton.LEFT && startScrollbarDragIfNeeded(current, mouseX, mouseY) -> true
+            else -> {
+                val entryIndex = entryAt(current, mouseX, mouseY)
+                current.pressedOptionIndex = entryIndex
+                true
+            }
         }
-        if (button != MouseButton.LEFT && button != MouseButton.RIGHT) {
-            return true
-        }
-        if (button == MouseButton.LEFT && startScrollbarDragIfNeeded(current, mouseX, mouseY)) {
-            return true
-        }
-        val entryIndex = entryAt(current, mouseX, mouseY)
-        if (entryIndex < 0) return true
-        activate(current, entryIndex)
-        return true
     }
 
-    fun handleMouseUp(_mouseX: Int, _mouseY: Int, button: MouseButton): Boolean {
+    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val current = popup ?: return false
         if (visibilityState == VisibilityState.Hidden) return false
         if (button == MouseButton.LEFT && current.scrollbarDragging) {
             current.scrollbarDragging = false
+            current.pressedOptionIndex = -1
             return true
         }
         return when (button) {
-            MouseButton.LEFT, MouseButton.RIGHT, MouseButton.MIDDLE -> true
+            MouseButton.LEFT, MouseButton.RIGHT -> {
+                val pressedOptionIndex = current.pressedOptionIndex
+                val releaseIndex = entryAt(current, mouseX, mouseY)
+                current.pressedOptionIndex = -1
+                if (pressedOptionIndex >= 0 && pressedOptionIndex == releaseIndex) {
+                    activate(current, pressedOptionIndex)
+                }
+                true
+            }
+
+            MouseButton.MIDDLE -> {
+                current.pressedOptionIndex = -1
+                true
+            }
         }
     }
 

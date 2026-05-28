@@ -125,6 +125,50 @@ class SelectEngineTests {
     }
 
     @Test
+    fun `opening same owner while closing reverses close transition`() {
+        val clock = FakeClock()
+        val owner = "select.reopen"
+        val engine = SelectEngine(clock = clock)
+        engine.setStyle(SelectStyle(openDurationMs = 20L, closeDurationMs = 200L))
+        val model =
+            selectModel {
+                option("a", "A")
+                option("b", "B")
+            }
+        val request =
+            SelectOpenRequest(
+                owner = owner,
+                modelToken = model.token,
+                entries = model.entries,
+                selectedId = "a",
+                anchorRect = Rect(30, 30, 90, 18),
+                closeOnSelect = true,
+            )
+
+        engine.open(request)
+        clock.advance(25L)
+        engine.onFrame(ctx, 320, 180, 1f)
+        val panel = requireNotNull(engine.debugPanelRect(owner))
+        val style = engine.currentStyle()
+        val optionX = panel.x + style.panelPaddingX + style.rowPaddingX + 1
+        val optionY = panel.y + style.panelPaddingY + 1
+
+        assertTrue(engine.handleMouseDown(optionX, optionY, MouseButton.LEFT))
+        assertFalse(engine.isClosingFor(owner))
+        assertTrue(engine.handleMouseUp(optionX, optionY, MouseButton.LEFT))
+        assertTrue(engine.isOpen())
+        assertTrue(engine.isClosingFor(owner))
+
+        engine.open(request)
+        assertTrue(engine.isOpen())
+        assertFalse(engine.isClosingFor(owner))
+        clock.advance(25L)
+        engine.onFrame(ctx, 320, 180, 1f)
+
+        assertTrue(engine.isOpenFor(owner))
+    }
+
+    @Test
     fun `keyboard navigation skips disabled options and enter selects`() {
         val clock = FakeClock()
         val owner = "select.keyboard"

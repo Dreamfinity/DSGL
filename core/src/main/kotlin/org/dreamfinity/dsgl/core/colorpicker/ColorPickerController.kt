@@ -1041,9 +1041,13 @@ class ColorPickerController(
     }
 
     fun sampleEyedropperAtHover() {
-        if (!eyedropperActive) return
-        if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return
-        sampleEyedropper(hoverX, hoverY, commit = false)
+        sampleEyedropperAtHoverAndReportChange()
+    }
+
+    internal fun sampleEyedropperAtHoverAndReportChange(): Boolean {
+        if (!eyedropperActive) return false
+        if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return false
+        return sampleEyedropper(hoverX, hoverY, commit = false)
     }
 
     private fun commitInputEdit(key: String) {
@@ -1287,8 +1291,8 @@ class ColorPickerController(
         applyColor(state.color.copy(a = progress), notifyPreview = true, commit = commit)
     }
 
-    private fun sampleEyedropper(x: Int, y: Int, commit: Boolean) {
-        val argb = screenSampler?.sampleColorAt(x, y) ?: return
+    private fun sampleEyedropper(x: Int, y: Int, commit: Boolean): Boolean {
+        val argb = screenSampler?.sampleColorAt(x, y) ?: return false
         val sampled = RgbaColor.fromArgbInt(argb)
         val color =
             if (state.alphaEnabled) {
@@ -1296,7 +1300,9 @@ class ColorPickerController(
             } else {
                 sampled.copy(a = 1f)
             }
+        val before = state.color.toArgbInt()
         applyColor(color, notifyPreview = true, commit = commit)
+        return state.color.toArgbInt() != before
     }
 
     private fun normalizedEyedropperGridSize(): Int {

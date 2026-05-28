@@ -81,7 +81,10 @@ class SelectNode(
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!this@SelectNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 FocusManager.requestFocus(this@SelectNode)
-                if (DomainPortalServices.isSelectOpenFor(ownerToken)) {
+                if (
+                    DomainPortalServices.isSelectOpenFor(ownerToken) &&
+                    !DomainPortalServices.isSelectClosingFor(ownerToken)
+                ) {
                     DomainPortalServices.closeSelect(ownerToken)
                 } else {
                     openPopup()

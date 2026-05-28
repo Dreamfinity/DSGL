@@ -11,6 +11,7 @@ object FocusManager {
     private var focusedKey: Any? = null
     private var focusedPath: IntArray? = null
     private var lastRoot: DOMNode? = null
+    private var preservePointerFocusDepth: Int = 0
 
     /** Current focused node, if any. */
     fun focusedNode(): DOMNode? = focused
@@ -60,11 +61,21 @@ object FocusManager {
 
     /** Updates focus from an event target. */
     fun updateFocusFromTarget(target: DOMNode?) {
+        if (preservePointerFocusDepth > 0) return
         val focusable = resolveFocusable(target)
         if (focusable != null) {
             requestFocus(focusable)
         } else {
             clearFocus()
+        }
+    }
+
+    internal inline fun <T> preservePointerFocus(block: () -> T): T {
+        preservePointerFocusDepth += 1
+        return try {
+            block()
+        } finally {
+            preservePointerFocusDepth -= 1
         }
     }
 

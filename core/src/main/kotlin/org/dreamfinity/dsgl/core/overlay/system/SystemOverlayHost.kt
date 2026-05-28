@@ -601,7 +601,10 @@ class SystemOverlayHost(
                 ?.snapshot()
 
         fun captureEyedropperSample() {
-            popupMount.popupEngine.captureEyedropperSample()
+            if (popupMount.popupEngine.captureEyedropperSample()) {
+                popupMount.node.invalidateColorState()
+                popupMount.transientNode.invalidateColorState()
+            }
         }
 
         fun debugOwnerScope(): OverlayOwnerScope? = popupMount.popupEngine.debugOwnerScope(popupMount.ownerToken)

@@ -289,9 +289,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
         current.controller.handleMouseMove(mouseX, mouseY, current.layout)
     }
 
-    fun captureEyedropperSample() {
-        popup?.controller?.sampleEyedropperAtHover()
-    }
+    fun captureEyedropperSample(): Boolean = popup?.controller?.sampleEyedropperAtHoverAndReportChange() == true
 
     fun hasActiveEyedropper(): Boolean = popup?.controller?.isEyedropperActive() == true
 

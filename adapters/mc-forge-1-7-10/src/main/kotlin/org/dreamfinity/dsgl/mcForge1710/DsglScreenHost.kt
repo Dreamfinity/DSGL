@@ -1377,6 +1377,18 @@ abstract class DsglScreenHost(
             }
         }
 
+        if (
+            applicationOverlayHost.handlePortalPointerAfterDom(
+                mouseX = mouseX,
+                mouseY = mouseY,
+                dWheel = dWheel,
+                button = mappedButton,
+                pressed = buttonPressed,
+            )
+        ) {
+            return true
+        }
+
         if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
@@ -1394,13 +1406,7 @@ abstract class DsglScreenHost(
             return true
         }
 
-        return applicationOverlayHost.handlePortalPointerAfterDom(
-            mouseX = mouseX,
-            mouseY = mouseY,
-            dWheel = dWheel,
-            button = mappedButton,
-            pressed = buttonPressed,
-        )
+        return false
     }
 
     private fun consumeOverlayPointerState(mouseX: Int, mouseY: Int) {

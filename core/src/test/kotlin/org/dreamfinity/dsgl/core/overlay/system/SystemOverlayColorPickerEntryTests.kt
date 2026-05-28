@@ -4,8 +4,11 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupRequest
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
+import org.dreamfinity.dsgl.core.colorpicker.ColorTextCodec
 import org.dreamfinity.dsgl.core.colorpicker.RgbChannelOrder
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSampler
+import org.dreamfinity.dsgl.core.colorpicker.ScreenColorSamplerBridge
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
@@ -983,6 +986,87 @@ class SystemOverlayColorPickerEntryTests {
         )
     }
 
+    @Test
+    fun `system picker pipette capture invalidates rendered sampled value`() {
+        ScreenColorSamplerBridge.install(
+            ScreenColorSampler { x, y ->
+                (0xFF shl 24) or ((x and 0xFF) shl 16) or ((y and 0xFF) shl 8) or 0x44
+            },
+        )
+        try {
+            val host = SystemOverlayHost(InspectorController())
+            val pickerService = host.systemInspectorColorPickerService()
+            val root = inspectedRoot()
+
+            pickerService.open(anchorRect = Rect(140, 140, 20, 18), title = "Popup", state = popupState())
+            host.onInputFrame(1200, 800)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 1L,
+                cursorX = 146,
+                cursorY = 146,
+                inspectorPointerCaptured = false,
+            )
+
+            val layout = host.debugSystemColorPickerBodyLayout() ?: error("layout missing")
+            val pipette = layout.pipetteRect
+            assertTrue(host.handleMouseDown(pipette.x + 2, pipette.y + 2, MouseButton.LEFT))
+
+            val firstX = pipette.x + 32
+            val firstY = pipette.y + 28
+            host.handleMouseMove(firstX, firstY)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 2L,
+                cursorX = firstX,
+                cursorY = firstY,
+                inspectorPointerCaptured = false,
+            )
+            host.render(ctx, 1200, 800)
+            host.paint(ctx)
+            host.captureSystemColorPickerEyedropperSample()
+            host.render(ctx, 1200, 800)
+            val firstCommands = host.paint(ctx)
+            val firstColor = sampledColor(firstX, firstY)
+            assertEquals(
+                firstColor.toArgbInt(),
+                host
+                    .debugSystemColorPickerState()
+                    ?.color
+                    ?.toArgbInt(),
+            )
+            assertTrue(firstCommands.containsRenderedColorText(firstColor))
+
+            val secondX = pipette.x + 54
+            val secondY = pipette.y + 43
+            host.handleMouseMove(secondX, secondY)
+            host.syncFrame(
+                root,
+                inspectedLayoutRevision = 3L,
+                cursorX = secondX,
+                cursorY = secondY,
+                inspectorPointerCaptured = false,
+            )
+            host.render(ctx, 1200, 800)
+            host.paint(ctx)
+            host.captureSystemColorPickerEyedropperSample()
+            host.render(ctx, 1200, 800)
+            val secondCommands = host.paint(ctx)
+            val secondColor = sampledColor(secondX, secondY)
+            assertEquals(
+                secondColor.toArgbInt(),
+                host
+                    .debugSystemColorPickerState()
+                    ?.color
+                    ?.toArgbInt(),
+            )
+            assertTrue(secondCommands.containsRenderedColorText(secondColor))
+            assertNotEquals(firstColor.toArgbInt(), secondColor.toArgbInt())
+        } finally {
+            ScreenColorSamplerBridge.install(null)
+        }
+    }
+
     private fun collectStyleTypes(root: DOMNode): Set<String> {
         val out = LinkedHashSet<String>()
 
@@ -1002,6 +1086,19 @@ class SystemOverlayColorPickerEntryTests {
             alphaEnabled = true,
             closeOnSelect = false,
         )
+
+    private fun sampledColor(x: Int, y: Int): RgbaColor = RgbaColor.fromArgbInt((0xFF shl 24) or ((x and 0xFF) shl 16) or ((y and 0xFF) shl 8) or 0x44)
+
+    private fun List<RenderCommand>.containsRenderedColorText(color: RgbaColor): Boolean {
+        val expected =
+            ColorTextCodec.format(
+                color,
+                ColorFormatMode.RGB,
+                includeAlpha = true,
+                rgbOrder = RgbChannelOrder.RGBA,
+            )
+        return filterIsInstance<RenderCommand.DrawText>().any { command -> command.text == expected }
+    }
 
     private fun inspectedRoot(): ContainerNode {
         val root = ContainerNode(key = "root")

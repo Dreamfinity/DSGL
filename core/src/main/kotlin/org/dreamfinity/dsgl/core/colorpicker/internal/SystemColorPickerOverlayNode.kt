@@ -41,6 +41,10 @@ internal class ColorPickerPopupOverlayNode(
         domInputRoutingReady = false
     }
 
+    fun invalidateColorState() {
+        markRenderCommandsDirty()
+    }
+
     override fun measure(ctx: UiMeasureContext): Size =
         Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
 

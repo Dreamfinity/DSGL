@@ -12,6 +12,7 @@ import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class ColorPickerInlineNodeTests {
@@ -151,8 +152,11 @@ class ColorPickerInlineNodeTests {
 
     @Test
     fun `inline eyedropper samples color on mouse move even outside picker bounds`() {
-        val sampledArgb = 0xFF25AEEF.toInt()
-        ScreenColorSamplerBridge.install(ScreenColorSampler { _, _ -> sampledArgb })
+        ScreenColorSamplerBridge.install(
+            ScreenColorSampler { x, y ->
+                (0xFF shl 24) or ((x and 0xFF) shl 16) or ((y and 0xFF) shl 8) or 0x44
+            },
+        )
         try {
             var current = RgbaColor.WHITE
             val picker =
@@ -188,7 +192,21 @@ class ColorPickerInlineNodeTests {
             )
             picker.captureEyedropperSample()
 
-            assertEquals(sampledArgb, current.toArgbInt())
+            val first = current.toArgbInt()
+            assertEquals((0xFF shl 24) or (0xB0 shl 16) or (0x84 shl 8) or 0x44, first)
+
+            EventBus.post(
+                MouseMoveEvent(
+                    mouseX = 1234,
+                    mouseY = 912,
+                    prevX = 1200,
+                    prevY = 900,
+                ).also { it.target = picker },
+            )
+            picker.captureEyedropperSample()
+
+            assertEquals((0xFF shl 24) or (0xD2 shl 16) or (0x90 shl 8) or 0x44, current.toArgbInt())
+            assertNotEquals(first, current.toArgbInt())
         } finally {
             ScreenColorSamplerBridge.install(null)
         }

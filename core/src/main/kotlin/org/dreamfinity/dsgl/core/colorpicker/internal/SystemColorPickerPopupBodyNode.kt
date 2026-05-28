@@ -815,6 +815,10 @@ internal class SystemColorPickerTransientOverlayNode(
         modeDropdownOverlayNode.render(ctx, x, y, width, height)
         eyedropperOverlayNode.render(ctx, x, y, width, height)
     }
+
+    fun invalidateColorState() {
+        markRenderCommandsDirty()
+    }
 }
 
 internal class SystemColorPickerModeDropdownOverlayNode(

@@ -136,7 +136,10 @@ class ColorPickerInlineNode(
     }
 
     fun captureEyedropperSample() {
-        controller.sampleEyedropperAtHover()
+        if (controller.sampleEyedropperAtHoverAndReportChange()) {
+            refreshLayout()
+            markRenderCommandsDirty()
+        }
     }
 
     internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =

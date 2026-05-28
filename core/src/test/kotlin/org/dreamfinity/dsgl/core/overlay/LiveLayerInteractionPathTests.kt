@@ -429,6 +429,16 @@ class LiveLayerInteractionPathTests {
 
         assertTrue(commands.isNotEmpty())
         assertTrue(consumed)
+        assertEquals(null, selected)
+        assertTrue(
+            applicationOverlayHost.handlePortalPointerAfterDom(
+                mouseX = panel.x + style.panelPaddingX + 1,
+                mouseY = panel.y + style.panelPaddingY + 1,
+                dWheel = 0,
+                button = MouseButton.LEFT,
+                pressed = false,
+            ),
+        )
         assertEquals("a", selected)
     }
 
@@ -590,9 +600,21 @@ class LiveLayerInteractionPathTests {
         assertTrue(applicationOverlayHost.hasActiveColorPickerEyedropper())
         assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, null, false))
         applicationOverlayHost.captureColorPickerEyedropperSample()
-        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, MouseButton.LEFT, true))
-        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(25, 52, 0, MouseButton.LEFT, false))
-        val expected = RgbaColor.fromArgbInt((0xFF shl 24) or (25 shl 16) or (52 shl 8) or 0x44)
+        val firstExpected = RgbaColor.fromArgbInt((0xFF shl 24) or (25 shl 16) or (52 shl 8) or 0x44)
+        assertEquals(
+            firstExpected.toArgbInt(),
+            DomainPortalServices.applicationColorPickerEngine
+                .debugController(owner)
+                ?.snapshot()
+                ?.color
+                ?.toArgbInt(),
+        )
+
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(31, 64, 0, null, false))
+        applicationOverlayHost.captureColorPickerEyedropperSample()
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(31, 64, 0, MouseButton.LEFT, true))
+        assertTrue(applicationOverlayHost.handlePortalPointerBeforeDom(31, 64, 0, MouseButton.LEFT, false))
+        val expected = RgbaColor.fromArgbInt((0xFF shl 24) or (31 shl 16) or (64 shl 8) or 0x44)
         assertEquals(expected.toArgbInt(), committed?.toArgbInt())
 
         val closeRect = DomainPortalServices.applicationColorPickerEngine.debugCloseRect(owner) ?: error("close missing")
@@ -664,6 +686,14 @@ class LiveLayerInteractionPathTests {
         assertTrue(commands.isNotEmpty())
         assertEquals(ScreenDomainSurfaces.SystemPortal, consumedBy)
         assertFalse(appRootReceived)
+        assertEquals(null, selected)
+        assertTrue(
+            systemHost.handlePortalMouseUp(
+                panel.x + style.panelPaddingX + 1,
+                panel.y + style.panelPaddingY + 1,
+                MouseButton.LEFT,
+            ),
+        )
         assertEquals("a", selected)
         assertFalse(DomainPortalServices.applicationSelectEngine.isOpenFor(owner))
     }
