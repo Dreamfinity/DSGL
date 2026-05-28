@@ -27,7 +27,6 @@ class SystemOverlayEntryInfrastructureTests {
                 SystemOverlayEntryId.Inspector,
                 SystemOverlayEntryId.ColorPickerPopup,
                 SystemOverlayEntryId.ColorPickerTransient,
-                SystemOverlayEntryId.PanelDemo,
             ),
             host.debugRegisteredEntryIds(),
         )
@@ -36,7 +35,6 @@ class SystemOverlayEntryInfrastructureTests {
                 "system.Inspector",
                 "system.ColorPickerPopup",
                 "system.ColorPickerTransient",
-                "system.PanelDemo",
             ),
             host.debugRegisteredPortalEntryIds(),
         )

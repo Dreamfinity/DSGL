@@ -21,7 +21,6 @@ enum class SystemOverlayEntryId {
     Inspector,
     ColorPickerPopup,
     ColorPickerTransient,
-    PanelDemo,
     TransientSession,
 }
 

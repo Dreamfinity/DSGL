@@ -127,7 +127,6 @@
     <ID>LongMethod:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext)</ID>
     <ID>LongMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
     <ID>LongMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector wheel scrolling remains symmetric across rebuilds`()</ID>
-    <ID>LongMethod:SystemOverlayPanelDemoEntryTests.kt$SystemOverlayPanelDemoEntryTests$@Test fun `panel panel demo remains stable across open drag body click drag close reopen sequence`()</ID>
     <ID>LongMethod:TextPerformanceHotPathCharacterizationTests.kt$TextPerformanceHotPathCharacterizationTests$@Test fun `cache boundaries are explicit for wrapped layout paths`()</ID>
     <ID>LongParameterList:ColorPickerInlineNode.kt$ColorPickerInlineNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
     <ID>LongParameterList:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
@@ -365,12 +364,6 @@
     <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$64</ID>
     <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$86</ID>
     <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$96</ID>
-    <ID>MagicNumber:SystemOverlayHost.kt$SystemOverlayHost.OverlayPanelDemoOverlayEntry$190</ID>
-    <ID>MagicNumber:SystemOverlayHost.kt$SystemOverlayHost.OverlayPanelDemoOverlayEntry$300</ID>
-    <ID>MagicNumber:SystemOverlayPanelDemoNode.kt$SystemOverlayPanelDemoNode.DemoBodyNode$120</ID>
-    <ID>MagicNumber:SystemOverlayPanelDemoNode.kt$SystemOverlayPanelDemoNode.DemoBodyNode$24</ID>
-    <ID>MagicNumber:SystemOverlayPanelDemoNode.kt$SystemOverlayPanelDemoNode.DemoBodyNode$44</ID>
-    <ID>MagicNumber:SystemOverlayPanelDemoNode.kt$SystemOverlayPanelDemoNode.DemoBodyNode$6</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$17L</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$31L</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$6</ID>

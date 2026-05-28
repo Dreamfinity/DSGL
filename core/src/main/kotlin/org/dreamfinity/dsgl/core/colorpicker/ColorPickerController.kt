@@ -141,6 +141,8 @@ class ColorPickerController(
 
     internal fun viewHoverPosition(): Pair<Int, Int> = hoverX to hoverY
 
+    internal fun clearHover(): Boolean = interaction.clearHover()
+
     internal fun viewModeDropdownOpen(): Boolean = modeDropdownOpen
 
     internal fun viewActiveInputKey(): String? = activeInputKey

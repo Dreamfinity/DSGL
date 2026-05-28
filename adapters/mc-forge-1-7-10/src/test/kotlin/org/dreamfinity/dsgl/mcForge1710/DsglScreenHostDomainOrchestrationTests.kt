@@ -2,16 +2,42 @@ package org.dreamfinity.dsgl.mcForge1710
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
+import org.dreamfinity.dsgl.core.colorpicker.ColorFormatMode
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerController
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerLayout
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
+import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
+import org.dreamfinity.dsgl.core.event.MouseMoveEvent
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class DsglScreenHostDomainOrchestrationTests {
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
+
     @Test
     fun `host domain paint orchestration uses six surface render order`() {
         val host = createHost()
@@ -168,12 +194,139 @@ class DsglScreenHostDomainOrchestrationTests {
         assertFalse(rootReceivedRelease)
     }
 
-    private fun createHost(): DsglScreenHost =
+    @Test
+    fun `application portal dom target blocks application root frame hover`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 1280, 720) }
+        val rootButton =
+            ButtonNode("Root", key = "root-button")
+                .apply { bounds = Rect(240, 180, 520, 300) }
+                .applyParent(root)
+        var leaveCount = 0
+        EventBus.run {
+            rootButton.addEventListener(Events.MOUSELEAVE) { _: MouseLeaveEvent ->
+                leaveCount++
+            }
+        }
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 300, mouseY = 230)
+        assertSame(rootButton, host.debugHoverTargetForTests())
+        assertEquals(0, leaveCount)
+
+        applicationOverlay.onInputFrame(1280, 720)
+        applicationOverlay.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationOverlay.render(ctx, 1280, 720)
+        val portalBodyX = 540
+        val portalBodyY = 370
+
+        host.debugUpdateFrameInteractionStateForTests(
+            tree = tree,
+            mouseX = portalBodyX,
+            mouseY = portalBodyY,
+        )
+        assertNull(host.debugHoverTargetForTests())
+        assertEquals(1, leaveCount)
+    }
+
+    @Test
+    fun `application portal live pointer consumption clears application root hover immediately`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 1280, 720) }
+        val rootButton =
+            ButtonNode("Root", key = "root-button")
+                .apply { bounds = Rect(240, 180, 520, 300) }
+                .applyParent(root)
+        var leaveCount = 0
+        EventBus.run {
+            rootButton.addEventListener(Events.MOUSELEAVE) { _: MouseLeaveEvent ->
+                leaveCount++
+            }
+        }
+        val tree = DomTree(root)
+        val host = createHost(tree)
+
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 300, mouseY = 230)
+        assertSame(rootButton, host.debugHoverTargetForTests())
+
+        val consumedBy =
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = -1,
+                buttonPressed = false,
+                mouseX = 540,
+                mouseY = 370,
+                applicationPortalConsumes = { true },
+                applicationRootConsumes = { true },
+            )
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
+        assertNull(host.debugHoverTargetForTests())
+        assertEquals(1, leaveCount)
+    }
+
+    @Test
+    fun `application root frame hover still updates outside application portal dom target`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 1280, 720) }
+        val rootButton =
+            ButtonNode("Root", key = "root-button")
+                .apply { bounds = Rect(620, 500, 120, 32) }
+                .applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+
+        applicationOverlay.onInputFrame(1280, 720)
+        applicationOverlay.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationOverlay.render(ctx, 1280, 720)
+
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 630, mouseY = 510)
+
+        assertSame(rootButton, host.debugHoverTargetForTests())
+    }
+
+    @Test
+    fun `application portal dom target clears inline color picker hover before root paint`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 1280, 720) }
+        val picker =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true,
+                key = "picker",
+            ).applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+        val probeLayout = colorPickerLayoutProbe()
+        val style = ColorPickerStyle()
+        val hoverX = probeLayout.copyRect.x + 2
+        val hoverY = probeLayout.copyRect.y + 2
+
+        tree.render(ctx, 1280, 720)
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = hoverX, mouseY = hoverY)
+        EventBus.post(MouseMoveEvent(hoverX, hoverY, hoverX - 1, hoverY - 1).also { it.target = picker })
+        assertRenderColorPresent(tree.paint(ctx), style.buttonHoverColor)
+
+        applicationOverlay.onInputFrame(1280, 720)
+        applicationOverlay.toggleFloatingWindowDemo(anchorX = hoverX, anchorY = hoverY)
+        applicationOverlay.render(ctx, 1280, 720)
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = hoverX, mouseY = hoverY)
+
+        assertNull(host.debugHoverTargetForTests())
+        assertRenderColorAbsent(tree.paint(ctx), style.buttonHoverColor)
+    }
+
+    private fun createHost(): DsglScreenHost = createHost(DomTree(ContainerNode(key = "root")))
+
+    private fun createHost(tree: DomTree): DsglScreenHost =
         object : DsglScreenHost(
             object : DsglWindow() {
-                override fun render(): DomTree = DomTree(ContainerNode(key = "root"))
+                override fun render(): DomTree = tree
             },
-        ) {}
+        ) {}.also { host ->
+            host.debugBindTreeForTests(tree, needsLayout = false)
+        }
 
     private fun command(color: Int): RenderCommand = RenderCommand.DrawRect(0, 0, 1, 1, color)
 
@@ -181,4 +334,24 @@ class DsglScreenHostDomainOrchestrationTests {
         commands.map { command ->
             (command as RenderCommand.DrawRect).color
         }
+
+    private fun assertRenderColorPresent(commands: List<RenderCommand>, color: Int) {
+        assertEquals(true, commands.any { command -> command is RenderCommand.DrawRect && command.color == color })
+    }
+
+    private fun assertRenderColorAbsent(commands: List<RenderCommand>, color: Int) {
+        assertEquals(false, commands.any { command -> command is RenderCommand.DrawRect && command.color == color })
+    }
+
+    private fun colorPickerLayoutProbe(): ColorPickerLayout =
+        ColorPickerController(
+            initial =
+                ColorPickerState(
+                    color = RgbaColor.WHITE,
+                    previous = RgbaColor.WHITE,
+                    mode = ColorFormatMode.RGB,
+                    alphaEnabled = true,
+                    closeOnSelect = false,
+                ),
+        ).buildLayout(Rect(0, 0, 1280, 392))
 }

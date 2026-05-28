@@ -176,6 +176,20 @@ class LayerDomInputRouter(
         return true
     }
 
+    fun hasPointerTargetAt(mouseX: Int, mouseY: Int): Boolean {
+        val root = rootProvider() ?: return false
+        if (dragCaptureTarget != null) return true
+        val chain = ArrayList<DOMNode>(hoverChain.size + 4)
+        return collectHoverChainLocal(
+            root = root,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            parentTransform = AffineTransform2D.IDENTITY,
+            parentInputClipRect = null,
+            out = chain,
+        )
+    }
+
     fun clear() {
         clearHoverChainStates()
         hoverTarget = null

@@ -39,10 +39,9 @@ class SystemOverlayHost(
     private val inspectorEntry: SystemOverlayEntry = InspectorOverlayEntry(inspectorController)
     private val colorPickerEntry: ColorPickerOverlayEntry = ColorPickerOverlayEntry()
     private val colorPickerTransientEntry: SystemOverlayEntry = ColorPickerTransientOverlayEntry(colorPickerEntry)
-    private val overlayPanelDemoEntry: OverlayPanelDemoOverlayEntry = OverlayPanelDemoOverlayEntry()
     private val entryRegistry: SystemOverlayEntryRegistry =
         SystemOverlayEntryRegistry(
-            listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry, overlayPanelDemoEntry),
+            listOf(inspectorEntry, colorPickerEntry, colorPickerTransientEntry),
         )
     private val portalHost: PortalHost =
         PortalHost(ScreenDomainSurfaces.SystemPortal)
@@ -89,12 +88,6 @@ class SystemOverlayHost(
     fun captureSystemColorPickerEyedropperSample() {
         colorPickerEntry.captureEyedropperSample()
     }
-
-    fun togglePanelDemo(anchorX: Int, anchorY: Int) {
-        overlayPanelDemoEntry.toggle(anchorX, anchorY, knownViewportWidth, knownViewportHeight)
-    }
-
-    fun isOverlayPanelDemoOpen(): Boolean = overlayPanelDemoEntry.isOpen()
 
     fun syncPortalFrame(
         measureContext: UiMeasureContext,
@@ -217,7 +210,6 @@ class SystemOverlayHost(
         tree.clearRefs()
         transientOwnershipRegistry.clear()
         colorPickerEntry.close()
-        overlayPanelDemoEntry.close()
         systemSelectPortal.close()
         portalEntries.forEach { it.syncPlacement(knownViewportWidth, knownViewportHeight) }
         domInputRouter.clear()
@@ -623,142 +615,6 @@ class SystemOverlayHost(
 
         override fun sync(frame: SystemOverlayFrameContext) {
             state.active = panelEntry.state.active && panelEntry.isTransientActive()
-        }
-    }
-
-    private class OverlayPanelDemoOverlayEntry : SystemOverlayEntry {
-        override val state: SystemOverlayEntryState =
-            SystemOverlayEntryState(
-                id = SystemOverlayEntryId.PanelDemo,
-                order = 300,
-                lane = SystemOverlayLane.PanelContent,
-            )
-        private val overlayPanel: OverlayPanel =
-            OverlayPanel(
-                ownerId = state.id,
-                panelState = state.panelState,
-                dragSession = state.dragSession,
-            )
-        private val demoNode: SystemOverlayPanelDemoNode = SystemOverlayPanelDemoNode(overlayPanel)
-        override val node: DOMNode = demoNode
-        private var opened: Boolean = false
-        private var viewportWidth: Int = 1
-        private var viewportHeight: Int = 1
-        private var buttonClicks: Int = 0
-
-        fun toggle(
-            anchorX: Int,
-            anchorY: Int,
-            viewportWidth: Int,
-            viewportHeight: Int,
-        ) {
-            if (opened) {
-                close()
-                return
-            }
-            this.viewportWidth = viewportWidth.coerceAtLeast(1)
-            this.viewportHeight = viewportHeight.coerceAtLeast(1)
-            val width = 300
-            val height = 190
-            val maxX = (this.viewportWidth - width - 2).coerceAtLeast(2)
-            val maxY = (this.viewportHeight - height - 2).coerceAtLeast(2)
-            val x = anchorX.coerceIn(2, maxX)
-            val y = anchorY.coerceIn(2, maxY)
-            state.panelState.updateFromRect(Rect(x, y, width, height))
-            opened = true
-            state.active = true
-        }
-
-        fun close() {
-            opened = false
-            state.active = false
-            state.dragSession.end()
-            state.panelState.hide()
-        }
-
-        fun isOpen(): Boolean = opened
-
-        override fun sync(frame: SystemOverlayFrameContext) {
-            state.active = opened
-            if (!state.active) {
-                state.panelState.hide()
-                state.dragSession.end()
-                return
-            }
-            overlayPanel.configure(
-                title = "Overlay PanelF",
-                draggable = true,
-                style = OverlayPanelStyle(fontSize = 16),
-                onClose = ::close,
-            )
-            overlayPanel.syncPanelRect(state.panelState.currentRectOrNull())
-            demoNode.setButtonClicks(buttonClicks)
-            overlayPanel.handleMouseMove(
-                mouseX = frame.cursorX,
-                mouseY = frame.cursorY,
-                viewportWidth = viewportWidth,
-                viewportHeight = viewportHeight,
-            ) { rect ->
-                state.panelState.updateFromRect(rect)
-            }
-        }
-
-        override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
-            this.viewportWidth = viewportWidth
-            this.viewportHeight = viewportHeight
-        }
-
-        override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
-            if (!state.active) return false
-            if (overlayPanel.handleMouseMove(
-                    mouseX = mouseX,
-                    mouseY = mouseY,
-                    viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight,
-                ) { rect ->
-                    state.panelState.updateFromRect(rect)
-                }
-            ) {
-                return true
-            }
-            val panelRect = state.panelState.currentRectOrNull() ?: return false
-            return panelRect.contains(mouseX, mouseY)
-        }
-
-        override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-            if (!state.active) return false
-            if (overlayPanel.handleMouseDown(mouseX, mouseY, button)) {
-                return true
-            }
-            val panelRect = state.panelState.currentRectOrNull() ?: return false
-            if (!panelRect.contains(mouseX, mouseY)) {
-                return false
-            }
-            val buttonRect = demoNode.buttonRect()
-            if (button == MouseButton.LEFT && buttonRect != null && buttonRect.contains(mouseX, mouseY)) {
-                buttonClicks += 1
-                demoNode.setButtonClicks(buttonClicks)
-                return true
-            }
-            return true
-        }
-
-        override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
-            if (!state.active) return false
-            if (overlayPanel.handleMouseUp(
-                    mouseX = mouseX,
-                    mouseY = mouseY,
-                    button = button,
-                    viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight,
-                ) { rect ->
-                    state.panelState.updateFromRect(rect)
-                }
-            ) {
-                return true
-            }
-            val panelRect = state.panelState.currentRectOrNull() ?: return false
-            return panelRect.contains(mouseX, mouseY)
         }
     }
 

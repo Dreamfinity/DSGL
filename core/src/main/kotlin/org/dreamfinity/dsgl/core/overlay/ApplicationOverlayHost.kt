@@ -28,7 +28,7 @@ class ApplicationOverlayHost(
             root = rootNode,
             styleScope = StyleApplicationScope.Application,
         )
-    private val domInputRouter: LayerDomInputRouter =
+    internal val domInputRouter: LayerDomInputRouter =
         LayerDomInputRouter(
             rootProvider = { rootNode },
         )
@@ -43,6 +43,8 @@ class ApplicationOverlayHost(
     internal val applicationColorPickerPortal: ColorPickerPortalController =
         ColorPickerPortalController(colorPickerEngine)
     internal val modalPortal: ModalPortalController = ModalPortalController()
+    internal val floatingWindowPortal: ApplicationFloatingWindowPortalController =
+        ApplicationFloatingWindowPortalController()
     private var modalPortalWasActive: Boolean = false
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
@@ -50,10 +52,12 @@ class ApplicationOverlayHost(
             width = viewportWidth.coerceAtLeast(1),
             height = viewportHeight.coerceAtLeast(1),
         )
+        floatingWindowPortal.onInputFrame(viewportWidth, viewportHeight)
     }
 
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         rootNode.setViewportBounds(width, height)
+        floatingWindowPortal.sync(rootNode, width, height)
         modalPortal.sync(rootNode, width, height)
         closeStaleFloatingPortalsAfterModalOpen()
         tree.render(ctx, width, height)
@@ -88,6 +92,7 @@ class ApplicationOverlayHost(
         applicationSelectPortal.close()
         applicationColorPickerPortal.close()
         modalPortal.close()
+        floatingWindowPortal.clearRefs()
         modalPortalWasActive = false
     }
 
@@ -113,6 +118,7 @@ fun ApplicationOverlayHost.syncPortalFrame(
     contextMenuPortal.onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
     applicationSelectPortal.onFrame(measureContext, viewportWidth, viewportHeight, viewportScale)
     applicationColorPickerPortal.onFrame(viewportWidth, viewportHeight, mouseX, mouseY)
+    floatingWindowPortal.onFrameCursor(viewportWidth, viewportHeight, mouseX, mouseY)
 }
 
 fun ApplicationOverlayHost.appendPortalOverlayCommands(
@@ -130,6 +136,7 @@ fun ApplicationOverlayHost.closeFloatingPortals() {
     contextMenuPortal.close()
     applicationSelectPortal.close()
     applicationColorPickerPortal.close()
+    floatingWindowPortal.close()
 }
 
 fun ApplicationOverlayHost.hasOpenContextMenuPortal(): Boolean = contextMenuPortal.isOpen()
@@ -143,6 +150,15 @@ fun ApplicationOverlayHost.hasActiveColorPickerEyedropper(): Boolean = applicati
 fun ApplicationOverlayHost.captureColorPickerEyedropperSample() {
     applicationColorPickerPortal.captureEyedropperSample()
 }
+
+fun ApplicationOverlayHost.toggleFloatingWindowDemo(anchorX: Int, anchorY: Int) {
+    floatingWindowPortal.toggle(anchorX, anchorY)
+}
+
+fun ApplicationOverlayHost.isFloatingWindowDemoOpen(): Boolean = floatingWindowPortal.open
+
+fun ApplicationOverlayHost.hasDomPointerTargetAt(mouseX: Int, mouseY: Int): Boolean =
+    domInputRouter.hasPointerTargetAt(mouseX, mouseY)
 
 fun ApplicationOverlayHost.handlePortalKeyDownBeforeDom(keyCode: Int, keyChar: Char): Boolean =
     applicationColorPickerPortal.handleKeyDown(keyCode, keyChar)

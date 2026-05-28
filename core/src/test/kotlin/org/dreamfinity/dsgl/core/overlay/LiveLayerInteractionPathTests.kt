@@ -15,10 +15,8 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayEntryId
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayPanelDemoNode
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEntry
 import org.dreamfinity.dsgl.core.select.SelectOpenRequest
@@ -186,11 +184,12 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `system overlay consumption prevents lower-layer fallthrough`() {
-        val systemHost = SystemOverlayHost(InspectorController())
+    fun `system portal consumption prevents lower-domain fallthrough`() {
+        val inspector = InspectorController()
+        val systemHost = SystemOverlayHost(inspector)
         val root = inspectedRoot()
         systemHost.onInputFrame(1280, 720)
-        systemHost.togglePanelDemo(anchorX = 240, anchorY = 180)
+        inspector.toggle()
         systemHost.syncFrame(
             root,
             inspectedLayoutRevision = 1L,
@@ -198,9 +197,10 @@ class LiveLayerInteractionPathTests {
             cursorY = 186,
             inspectorPointerCaptured = false,
         )
+        systemHost.render(ctx, 1280, 720)
 
-        val entryState = systemHost.debugEntryState(SystemOverlayEntryId.PanelDemo) ?: error("panel demo state missing")
-        val panelRect = entryState.panelState.currentRectOrNull() ?: error("panel demo rect missing")
+        val entryState = systemHost.debugEntryState(SystemOverlayEntryId.Inspector) ?: error("inspector state missing")
+        val panelRect = entryState.panelState.currentRectOrNull() ?: error("inspector panel rect missing")
         val fixture =
             LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
@@ -712,30 +712,20 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `rendered system overlay content is reachable through same live interaction path`() {
-        val systemHost = SystemOverlayHost(InspectorController())
-        val root = inspectedRoot()
-        systemHost.onInputFrame(1280, 720)
-        systemHost.togglePanelDemo(anchorX = 260, anchorY = 200)
-        systemHost.syncFrame(
-            root,
-            inspectedLayoutRevision = 1L,
-            cursorX = 260,
-            cursorY = 200,
-            inspectorPointerCaptured = false,
-        )
-        systemHost.render(ctx, 1280, 720)
+    fun `F10 application portal content is reachable through same live interaction path`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(1280, 720)
+        applicationOverlayHost.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationOverlayHost.render(ctx, 1280, 720)
 
-        val demoNode =
-            systemHost.debugEntryNode(SystemOverlayEntryId.PanelDemo) as? SystemOverlayPanelDemoNode
-                ?: error("panel demo node missing")
+        val demoNode = applicationOverlayHost.floatingWindowPortal.debugNode()
         val buttonRect = demoNode.buttonRect()
         assertNotNull(buttonRect)
         val fixture =
             LiveLayerInputFixture(
                 debugHandler = { _, _, _ -> false },
-                systemOverlayHandler = { x, y, button -> systemHost.handleMouseDown(x, y, button) },
-                applicationOverlayHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button -> applicationOverlayHost.handleMouseDown(x, y, button) },
             )
         var appRootReceived = false
         val consumedBy =
@@ -744,7 +734,34 @@ class LiveLayerInteractionPathTests {
                 true
             }
 
-        assertEquals(ScreenDomainSurfaces.SystemPortal, consumedBy)
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
+        assertFalse(appRootReceived)
+    }
+
+    @Test
+    fun `F10 application portal body blocks app-root fallthrough`() {
+        val applicationOverlayHost = ApplicationOverlayHost()
+        applicationOverlayHost.onInputFrame(1280, 720)
+        applicationOverlayHost.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationOverlayHost.render(ctx, 1280, 720)
+
+        val demoNode = applicationOverlayHost.floatingWindowPortal.debugNode()
+        val bodyRect = demoNode.bodyRect()
+        assertNotNull(bodyRect)
+        val fixture =
+            LiveLayerInputFixture(
+                debugHandler = { _, _, _ -> false },
+                systemOverlayHandler = { _, _, _ -> false },
+                applicationOverlayHandler = { x, y, button -> applicationOverlayHost.handleMouseDown(x, y, button) },
+            )
+        var appRootReceived = false
+        val consumedBy =
+            fixture.dispatchMouseDown(bodyRect.x + bodyRect.width - 8, bodyRect.y + bodyRect.height - 8, MouseButton.LEFT) {
+                appRootReceived = true
+                true
+            }
+
+        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
         assertFalse(appRootReceived)
     }
 

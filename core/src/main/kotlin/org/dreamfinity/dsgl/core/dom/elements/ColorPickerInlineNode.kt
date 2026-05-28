@@ -87,6 +87,7 @@ class ColorPickerInlineNode(
                 }
             }
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEMOVE) { event: MouseMoveEvent ->
+                if (!shouldAcceptPointerHoverEvent(event.target)) return@addEventListener
                 val currentLayout = layout ?: return@addEventListener
                 val moved = controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)
                 if (moved) {
@@ -106,8 +107,14 @@ class ColorPickerInlineNode(
                 }
             }
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEOVER) { event: MouseOverEvent ->
+                if (!shouldAcceptPointerHoverEvent(event.target)) return@addEventListener
                 val currentLayout = layout ?: return@addEventListener
                 if (controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)) {
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSELEAVE) { _: MouseLeaveEvent ->
+                if (controller.clearHover()) {
                     markRenderCommandsDirty()
                 }
             }
@@ -124,6 +131,15 @@ class ColorPickerInlineNode(
 
     override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
         dragCaptured || containsGlobalPoint(mouseX, mouseY)
+
+    private fun shouldAcceptPointerHoverEvent(target: DOMNode?): Boolean {
+        if (dragCaptured || controller.isEyedropperActive()) return true
+        var current = target ?: return false
+        while (true) {
+            if (current === this) return true
+            current = current.parent ?: return false
+        }
+    }
 
     fun wantsGlobalPointerInput(): Boolean = controller.isEyedropperActive()
 

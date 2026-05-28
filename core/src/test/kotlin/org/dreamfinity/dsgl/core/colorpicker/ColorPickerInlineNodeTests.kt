@@ -7,7 +7,9 @@ import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseDragEvent
+import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
 import org.dreamfinity.dsgl.core.event.MouseMoveEvent
+import org.dreamfinity.dsgl.core.event.MouseOverEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
@@ -118,6 +120,71 @@ class ColorPickerInlineNodeTests {
                 .filter { text -> ColorFormatMode.entries.any { it.name == text } }
 
         assertTrue(modeTexts.size >= 5)
+    }
+
+    @Test
+    fun `inline picker clears custom hover state on mouse leave`() {
+        val picker =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
+        picker.render(ctx, 0, 0, 350, 392)
+        val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
+        val style = ColorPickerStyle()
+        val copyX = probeLayout.copyRect.x + 2
+        val copyY = probeLayout.copyRect.y + 2
+
+        EventBus.post(MouseMoveEvent(copyX, copyY, copyX - 1, copyY - 1).also { it.target = picker })
+
+        assertEquals(style.buttonHoverColor, fillForRect(buildCommands(picker), probeLayout.copyRect))
+
+        EventBus.post(MouseLeaveEvent(copyX, copyY).also { it.target = picker })
+
+        assertEquals(style.buttonBackgroundColor, fillForRect(buildCommands(picker), probeLayout.copyRect))
+    }
+
+    @Test
+    fun `inline picker ignores targetless hover events`() {
+        val picker =
+            ColorPickerInlineNode(
+                controlled = true,
+                value = RgbaColor.WHITE,
+                mode = ColorFormatMode.RGB,
+                alphaEnabled = true,
+                key = "picker",
+            ).apply {
+                closeOnSelect = false
+            }
+        picker.render(ctx, 0, 0, 350, 392)
+        val probeLayout = layoutProbe(mode = ColorFormatMode.RGB, alphaEnabled = true)
+        val style = ColorPickerStyle()
+        val inputX =
+            probeLayout.inputSlots
+                .first()
+                .inputRect.x + 2
+        val inputY =
+            probeLayout.inputSlots
+                .first()
+                .inputRect.y + 2
+
+        EventBus.post(MouseMoveEvent(inputX, inputY, inputX - 1, inputY - 1))
+        EventBus.post(MouseOverEvent(inputX, inputY))
+
+        assertEquals(
+            style.inputBorderColor,
+            borderColorForRect(
+                buildCommands(picker),
+                probeLayout.inputSlots
+                    .first()
+                    .inputRect,
+            ),
+        )
     }
 
     @Test
@@ -330,6 +397,26 @@ class ColorPickerInlineNodeTests {
         )
         return out
     }
+
+    private fun fillForRect(commands: List<RenderCommand>, rect: Rect): Int =
+        commands
+            .filterIsInstance<RenderCommand.DrawRect>()
+            .first { command ->
+                command.x == rect.x &&
+                    command.y == rect.y &&
+                    command.width == rect.width &&
+                    command.height == rect.height
+            }.color
+
+    private fun borderColorForRect(commands: List<RenderCommand>, rect: Rect): Int =
+        commands
+            .filterIsInstance<RenderCommand.DrawRect>()
+            .first { command ->
+                command.x == rect.x &&
+                    command.y == rect.y &&
+                    command.width == rect.width &&
+                    command.height == 1
+            }.color
 
     private fun layoutProbe(mode: ColorFormatMode, alphaEnabled: Boolean): ColorPickerLayout =
         ColorPickerController(
