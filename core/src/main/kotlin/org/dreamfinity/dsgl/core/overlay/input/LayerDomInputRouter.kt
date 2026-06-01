@@ -9,6 +9,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyboardKeyDownEvent
+import org.dreamfinity.dsgl.core.event.KeyboardKeyUpEvent
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
@@ -168,9 +169,21 @@ class LayerDomInputRouter(
                 clear()
                 return false
             }
-        val focused = FocusManager.focusedNode() ?: return false
-        if (!isSameOrAncestor(root, focused)) return false
+        val focused = FocusManager.focusedNodeWithin(root) ?: return false
         val event = KeyboardKeyDownEvent(keyChar = keyChar, keyCode = keyCode)
+        event.target = focused
+        EventBus.post(event)
+        return true
+    }
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean {
+        val root =
+            rootProvider() ?: run {
+                clear()
+                return false
+            }
+        val focused = FocusManager.focusedNodeWithin(root) ?: return false
+        val event = KeyboardKeyUpEvent(keyChar = keyChar, keyCode = keyCode)
         event.target = focused
         EventBus.post(event)
         return true
@@ -226,9 +239,6 @@ class LayerDomInputRouter(
 
     private fun releaseDragCapture() {
         dragCaptureTarget?.cancelPointerCapture()
-        RangeInputNode.clearActiveDrag()
-        SingleLineInputNode.clearActiveDrag()
-        TextAreaNode.clearActiveDrag()
         dragCaptureTarget = null
         dragCaptureKey = null
         dragCaptureClass = null
@@ -275,6 +285,9 @@ class LayerDomInputRouter(
 
     private fun hasFocusChangedSinceCapture(): Boolean {
         if (dragCaptureFocusKey == null) return false
+        val captured = dragCaptureTarget
+        val currentFocus = FocusManager.focusedNode()
+        if (captured != null && isSameOrAncestor(captured, currentFocus)) return false
         val currentFocusKey = FocusManager.focusedNode()?.key
         return currentFocusKey != dragCaptureFocusKey
     }

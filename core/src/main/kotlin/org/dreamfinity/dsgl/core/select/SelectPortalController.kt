@@ -26,10 +26,10 @@ import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
 import org.dreamfinity.dsgl.core.overlay.PortalPointerPolicyResult
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.overlay.evaluateOutsidePointerDown
-import org.dreamfinity.dsgl.core.overlay.handleOutsidePointerDownPolicy
 import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
+@Suppress("TooManyFunctions")
 internal class SelectPortalController(
     private val engine: SelectEngine,
     ownerScope: OverlayOwnerScope,
@@ -79,8 +79,16 @@ internal class SelectPortalController(
         portalHost.dispatchInput { it.handleMouseMove(mouseX, mouseY) }
 
     override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-        portalHost.dispatchInput { it.handleMouseDown(mouseX, mouseY, button) } ||
-            portalHost.handleOutsidePointerDownPolicy(mouseX, mouseY)
+        if (portalHost.dispatchInput { it.handleMouseDown(mouseX, mouseY, button) }) {
+            true
+        } else {
+            val outside = portalHost.evaluateOutsidePointerDown(mouseX, mouseY)
+            if (outside?.shouldClose == true) {
+                outside.entry.state
+                    .dismiss(outside.entry)
+            }
+            false
+        }
 
     override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
         portalHost.dispatchInput { it.handleMouseUp(mouseX, mouseY, button) }
@@ -90,6 +98,9 @@ internal class SelectPortalController(
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
         portalHost.dispatchInput { it.handleKeyDown(keyCode, keyChar) }
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean =
+        portalHost.dispatchInput { it.handleKeyUp(keyCode, keyChar) }
 
     internal fun debugPortalState(mouseX: Int, mouseY: Int): SelectPortalDebugState =
         SelectPortalDebugState(

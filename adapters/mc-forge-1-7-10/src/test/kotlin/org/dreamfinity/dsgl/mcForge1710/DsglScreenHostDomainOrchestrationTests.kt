@@ -8,24 +8,36 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerLayout
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.components.modal.ModalSpec
+import org.dreamfinity.dsgl.core.components.modal.modalPortal
+import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
 import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
+import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.text
+import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.Events
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
 import org.dreamfinity.dsgl.core.event.MouseMoveEvent
+import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.overlay.hasActiveModalPortal
 import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DsglScreenHostDomainOrchestrationTests {
@@ -317,6 +329,267 @@ class DsglScreenHostDomainOrchestrationTests {
         assertRenderColorAbsent(tree.paint(ctx), style.buttonHoverColor)
     }
 
+    @Test
+    fun `application root frame movement continues captured range drag`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val range =
+            RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range")
+                .apply {
+                    bounds = Rect(20, 40, 100, 12)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+
+        host.debugDispatchApplicationRootPointerDownForTests(tree, mouseX = 20, mouseY = 46)
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 120, mouseY = 46)
+
+        assertEquals(100L, range.value)
+    }
+
+    @Test
+    fun `application root frame movement continues captured text selection drag`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val input =
+            SingleLineInputNode(text = "abcdef", key = "text-input")
+                .apply {
+                    bounds = Rect(20, 40, 120, 12)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+
+        host.debugDispatchApplicationRootPointerDownForTests(tree, mouseX = 20, mouseY = 46)
+        host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 56, mouseY = 46)
+
+        assertRenderColorPresent(input.buildCommandsForTest(), input.selectionColor)
+    }
+
+    @Test
+    fun `application portal pointer down clears pending root dnd before frame movement`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val draggable =
+            ContainerNode(key = "draggable")
+                .apply {
+                    draggable = true
+                    bounds = Rect(20, 40, 80, 20)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val down =
+            MouseDownEvent(24, 44, MouseButton.LEFT)
+                .also { event ->
+                    event.target = draggable
+                }
+
+        DndRuntime.engine.cancelActiveDrag()
+        try {
+            DndRuntime.engine.onMouseDown(root, draggable, down)
+            assertTrue(DndRuntime.engine.isPointerCaptured)
+
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = true,
+                mouseX = 60,
+                mouseY = 60,
+                applicationPortalConsumes = { true },
+                applicationRootConsumes = { true },
+            )
+            DndRuntime.engine.onMouseMove(root, 120, 60)
+
+            assertFalse(DndRuntime.engine.isPointerCaptured)
+            assertFalse(DndRuntime.engine.isDragging)
+        } finally {
+            DndRuntime.engine.cancelActiveDrag()
+        }
+    }
+
+    @Test
+    fun `active application modal cancels root dnd before ghost can render`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val draggable =
+            ContainerNode(key = "draggable")
+                .apply {
+                    draggable = true
+                    bounds = Rect(20, 40, 80, 20)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val overlay = host.debugApplicationOverlayHostForTests()
+        val modalKey = "tests.host.modal.cancel.dnd"
+        val down =
+            MouseDownEvent(24, 44, MouseButton.LEFT)
+                .also { event ->
+                    event.target = draggable
+                }
+
+        DndRuntime.engine.cancelActiveDrag()
+        try {
+            DndRuntime.engine.onMouseDown(root, draggable, down)
+            DndRuntime.engine.onMouseMove(root, 120, 60)
+            assertTrue(DndRuntime.engine.isDragging)
+
+            val modalTree =
+                ui {
+                    modalPortal(
+                        modals =
+                            listOf(
+                                ModalSpec(key = "static-modal") {
+                                    text("Static")
+                                },
+                            ),
+                        key = modalKey,
+                    ) {
+                        text("content")
+                    }
+                }
+            modalTree.render(ctx, 300, 120)
+            overlay.render(ctx, 300, 120)
+            assertTrue(overlay.hasActiveModalPortal())
+
+            host.debugCancelApplicationRootDndBehindModalForTests()
+
+            assertFalse(DndRuntime.engine.isPointerCaptured)
+            assertFalse(DndRuntime.engine.isDragging)
+        } finally {
+            val emptyModalTree =
+                ui {
+                    modalPortal(modals = emptyList(), key = modalKey) {
+                        text("content")
+                    }
+                }
+            emptyModalTree.render(ctx, 300, 120)
+            overlay.render(ctx, 300, 120)
+            DndRuntime.engine.cancelActiveDrag()
+        }
+    }
+
+    @Test
+    fun `active application modal frame blocks and cancels root dnd`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val draggable =
+            ContainerNode(key = "draggable")
+                .apply {
+                    draggable = true
+                    bounds = Rect(20, 40, 80, 20)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val overlay = host.debugApplicationOverlayHostForTests()
+        val modalKey = "tests.host.modal.frame.blocks.dnd"
+        val down =
+            MouseDownEvent(24, 44, MouseButton.LEFT)
+                .also { event ->
+                    event.target = draggable
+                }
+
+        DndRuntime.engine.cancelActiveDrag()
+        try {
+            activateStaticModal(overlay, modalKey)
+            DndRuntime.engine.onMouseDown(root, draggable, down)
+            DndRuntime.engine.onMouseMove(root, 120, 60)
+            assertTrue(DndRuntime.engine.isDragging)
+
+            host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 120, mouseY = 60)
+
+            assertFalse(DndRuntime.engine.isPointerCaptured)
+            assertFalse(DndRuntime.engine.isDragging)
+        } finally {
+            clearStaticModal(overlay, modalKey)
+            DndRuntime.engine.cancelActiveDrag()
+        }
+    }
+
+    @Test
+    fun `active application modal suppresses root dnd ghost commands`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val draggable =
+            ContainerNode(key = "draggable")
+                .apply {
+                    draggable = true
+                    bounds = Rect(20, 40, 80, 20)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val overlay = host.debugApplicationOverlayHostForTests()
+        val modalKey = "tests.host.modal.suppresses.ghost.commands"
+        val down =
+            MouseDownEvent(24, 44, MouseButton.LEFT)
+                .also { event ->
+                    event.target = draggable
+                }
+
+        DndRuntime.engine.cancelActiveDrag()
+        try {
+            activateStaticModal(overlay, modalKey)
+            DndRuntime.engine.onMouseDown(root, draggable, down)
+            DndRuntime.engine.onMouseMove(root, 120, 60)
+            assertTrue(DndRuntime.engine.isDragging)
+            assertTrue(overlay.hasActiveModalPortal())
+
+            val staged =
+                host.debugStageApplicationOverlayCommandsForTests(
+                    tree = tree,
+                    applicationOverlayCommands = overlay.paint(ctx),
+                    measureContext = ctx,
+                )
+
+            assertFalse(
+                staged.any { command ->
+                    command is RenderCommand.DrawText && command.text == "drag"
+                },
+            )
+        } finally {
+            clearStaticModal(overlay, modalKey)
+            DndRuntime.engine.cancelActiveDrag()
+        }
+    }
+
+    @Test
+    fun `application portal pointer release clears active root dnd`() {
+        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
+        val draggable =
+            ContainerNode(key = "draggable")
+                .apply {
+                    draggable = true
+                    bounds = Rect(20, 40, 80, 20)
+                }.applyParent(root)
+        val tree = DomTree(root)
+        val host = createHost(tree)
+        val down =
+            MouseDownEvent(24, 44, MouseButton.LEFT)
+                .also { event ->
+                    event.target = draggable
+                }
+
+        DndRuntime.engine.cancelActiveDrag()
+        try {
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = true,
+                mouseX = 60,
+                mouseY = 60,
+                applicationPortalConsumes = { true },
+                applicationRootConsumes = { true },
+            )
+            DndRuntime.engine.onMouseDown(root, draggable, down)
+            DndRuntime.engine.onMouseMove(root, 120, 60)
+            assertTrue(DndRuntime.engine.isDragging)
+
+            host.debugDispatchApplicationPortalThenRootPointerForTests(
+                mouseButton = 0,
+                buttonPressed = false,
+                mouseX = 120,
+                mouseY = 60,
+                applicationPortalConsumes = { true },
+                applicationRootConsumes = { true },
+            )
+
+            assertFalse(DndRuntime.engine.isPointerCaptured)
+            assertFalse(DndRuntime.engine.isDragging)
+        } finally {
+            DndRuntime.engine.cancelActiveDrag()
+        }
+    }
+
     private fun createHost(): DsglScreenHost = createHost(DomTree(ContainerNode(key = "root")))
 
     private fun createHost(tree: DomTree): DsglScreenHost =
@@ -341,6 +614,42 @@ class DsglScreenHostDomainOrchestrationTests {
 
     private fun assertRenderColorAbsent(commands: List<RenderCommand>, color: Int) {
         assertEquals(false, commands.any { command -> command is RenderCommand.DrawRect && command.color == color })
+    }
+
+    private fun SingleLineInputNode.buildCommandsForTest(): List<RenderCommand> =
+        ArrayList<RenderCommand>().also { out ->
+            buildRenderCommands(ctx, out)
+        }
+
+    private fun activateStaticModal(overlay: ApplicationOverlayHost, modalKey: String) {
+        val modalTree =
+            ui {
+                modalPortal(
+                    modals =
+                        listOf(
+                            ModalSpec(key = "static-modal") {
+                                text("Static")
+                            },
+                        ),
+                    key = modalKey,
+                ) {
+                    text("content")
+                }
+            }
+        modalTree.render(ctx, 300, 120)
+        overlay.render(ctx, 300, 120)
+        assertTrue(overlay.hasActiveModalPortal())
+    }
+
+    private fun clearStaticModal(overlay: ApplicationOverlayHost, modalKey: String) {
+        val emptyModalTree =
+            ui {
+                modalPortal(modals = emptyList(), key = modalKey) {
+                    text("content")
+                }
+            }
+        emptyModalTree.render(ctx, 300, 120)
+        overlay.render(ctx, 300, 120)
     }
 
     private fun colorPickerLayoutProbe(): ColorPickerLayout =

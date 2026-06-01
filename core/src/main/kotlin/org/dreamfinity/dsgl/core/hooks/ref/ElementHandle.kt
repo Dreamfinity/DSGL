@@ -25,9 +25,7 @@ internal class NodeElementHandle(
         get() = nodeRef?.bounds ?: Rect(0, 0, 0, 0)
 
     override fun requestFocus() {
-        val node = nodeRef ?: return
-        val focusable = FocusManager.resolveFocusable(node) ?: return
-        FocusManager.requestFocus(focusable)
+        FocusManager.requestFocusFrom(nodeRef)
     }
 
     @Suppress("ForbiddenComment")

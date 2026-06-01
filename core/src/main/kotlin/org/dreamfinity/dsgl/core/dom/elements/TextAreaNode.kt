@@ -96,6 +96,7 @@ class TextAreaNode(
                 }
                 if (!this@TextAreaNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 handleTextPointerDown(event.mouseX, event.mouseY)
+                event.cancelled = true
             }
             this@TextAreaNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
                 if (this@TextAreaNode.styleDisabled) return@addEventListener
@@ -335,6 +336,65 @@ class TextAreaNode(
 
     fun shouldCaptureAnyDrag(mouseX: Int, mouseY: Int): Boolean =
         shouldCaptureScrollbarDrag(mouseX, mouseY) || shouldCaptureTextSelectionDrag(mouseX, mouseY)
+
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        shouldCaptureAnyDrag(mouseX, mouseY) || super.shouldCapturePointerDrag(mouseX, mouseY)
+
+    override fun beginPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        if (isActiveScrollbarDragTarget() || isActiveSelectionDragTarget()) return
+        if (handleScrollbarMouseDown(mouseX, mouseY)) return
+        if (containsGlobalPoint(mouseX, mouseY)) {
+            handleTextPointerDown(mouseX, mouseY)
+        }
+    }
+
+    override fun continuePointerCapture(
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int,
+        button: MouseButton,
+    ) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        when {
+            isActiveScrollbarDragTarget() -> {
+                updateScrollbarFromDrag(mouseY)
+                persistState()
+            }
+
+            isActiveSelectionDragTarget() -> {
+                updateSelectionFromPointerDrag(mouseX, mouseY)
+                persistState()
+            }
+        }
+    }
+
+    override fun endPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT) return
+        var handled = false
+        if (isActiveScrollbarDragTarget()) {
+            activeScrollbarDragIdentity = null
+            handled = true
+        }
+        if (isActiveSelectionDragTarget()) {
+            activeSelectionDragIdentity = null
+            if (!editState.hasSelection()) {
+                editState.clearSelection()
+            }
+            handled = true
+        }
+        if (handled) {
+            editState.resetBlinkClock()
+            persistState()
+        }
+    }
+
+    override fun cancelPointerCapture() {
+        if (isActiveScrollbarDragTarget() || isActiveSelectionDragTarget()) {
+            clearActiveDrag()
+        }
+    }
 
     override fun inspectorScrollOffset(): Pair<Int, Int>? = 0 to editState.scrollY
 

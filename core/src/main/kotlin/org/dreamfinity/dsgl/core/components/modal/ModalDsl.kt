@@ -4,7 +4,6 @@ import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalAnchorNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalRootNode
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalSessionStore
 import org.dreamfinity.dsgl.core.components.modal.internal.modalLifecycleKey
-import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
@@ -79,26 +78,6 @@ private fun UiScope.modalLayer(spec: ModalSpec, modalKey: String, isTopMost: Boo
     val dialogKey = ModalPortalSessionStore.dialogKey(modalKey, spec.key)
     div({
         key = "$modalKey.modal.${spec.key}.layer"
-        onMouseDown = { event ->
-            if (!isTopMost) {
-                event.cancelled = true
-            } else {
-                val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
-                if (!insideDialog && spec.trapFocus) {
-                    FocusManager.requestFocusFirstInSubtree(dialogKey)
-                }
-                event.cancelled = true
-            }
-        }
-        onMouseClick = { event ->
-            event.cancelled = true
-        }
-        onMouseWheel = { event ->
-            val insideDialog = isEventInsideDialog(event.target, dialogKey, event.mouseX, event.mouseY)
-            if (!insideDialog) {
-                event.cancelled = true
-            }
-        }
         style = {
             backgroundColor = spec.backdropColor()
             display = Display.Flex
@@ -352,41 +331,3 @@ fun promptModal(
             })
         }
     }
-
-private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
-    var node = target
-    while (node != null) {
-        if (node.key == dialogKey) return true
-        node = node.parent
-    }
-    return false
-}
-
-private fun isEventInsideDialog(
-    target: DOMNode?,
-    dialogKey: String,
-    mouseX: Int,
-    mouseY: Int,
-): Boolean {
-    if (isTargetInsideDialog(target, dialogKey)) return true
-    val root = target?.rootAncestor() ?: return false
-    val dialog = findNodeByKey(root, dialogKey) ?: return false
-    return dialog.bounds.contains(mouseX, mouseY)
-}
-
-private fun DOMNode.rootAncestor(): DOMNode {
-    var current = this
-    while (current.parent != null) {
-        current = current.parent ?: return current
-    }
-    return current
-}
-
-private fun findNodeByKey(root: DOMNode, key: Any?): DOMNode? {
-    if (root.key == key) return root
-    root.children.forEach { child ->
-        val found = findNodeByKey(child, key)
-        if (found != null) return found
-    }
-    return null
-}

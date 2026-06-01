@@ -24,6 +24,9 @@ import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
 import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownBeforeDom
+import org.dreamfinity.dsgl.core.overlay.isFloatingWindowDemoOpen
+import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -129,6 +132,28 @@ class ModalPortalKeyboardRegressionTests {
     }
 
     @Test
+    fun `modal activation detaches stale application floating window before paint`() {
+        val hostKey = "tests.modal.portal.floating.stale"
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+
+        overlay.onInputFrame(320, 180)
+        overlay.toggleFloatingWindowDemo(anchorX = 24, anchorY = 24)
+        overlay.render(measureContext, 320, 180)
+        val floatingNode = overlay.floatingWindowPortal.debugNode()
+        assertTrue(floatingNode.parent === overlay.rootNode)
+
+        val tree = buildTree(hostKey, listOf(basicModal()))
+        trees += tree
+        tree.render(measureContext, 320, 180)
+        overlay.render(measureContext, 320, 180)
+
+        assertFalse(overlay.isFloatingWindowDemoOpen())
+        assertTrue(floatingNode.parent == null)
+        assertEquals(listOf("application.modal.$hostKey"), overlay.modalPortal.debugActivePortalEntryIds())
+    }
+
+    @Test
     fun `modal portal blocks application root click through`() {
         val hostKey = "tests.modal.portal.portal.input"
         val tree = buildTree(hostKey, listOf(basicModal()))
@@ -140,6 +165,24 @@ class ModalPortalKeyboardRegressionTests {
         overlay.render(measureContext, 320, 180)
 
         assertTrue(overlay.handleMouseDown(4, 4, MouseButton.LEFT))
+    }
+
+    @Test
+    fun `modal portal escape is handled before focused application root`() {
+        val hostKey = "tests.modal.portal.escape.pre.dom"
+        var hideCount = 0
+        val tree = buildTreeWithContentInput(hostKey, listOf(dismissibleBodyModal { hideCount += 1 }))
+        trees += tree
+        tree.render(measureContext, 320, 180)
+        val focusedContentInput = requireNodeByKey(tree.root, "$hostKey.content.input")
+        FocusManager.requestFocus(focusedContentInput)
+
+        val overlay = ApplicationOverlayHost()
+        overlays += overlay
+        overlay.render(measureContext, 320, 180)
+
+        assertTrue(overlay.handlePortalKeyDownBeforeDom(KeyCodes.ESCAPE, 0.toChar()))
+        assertEquals(1, hideCount)
     }
 
     @Test

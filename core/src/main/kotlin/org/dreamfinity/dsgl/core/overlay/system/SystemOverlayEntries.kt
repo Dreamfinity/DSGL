@@ -71,6 +71,8 @@ internal interface SystemOverlayEntry {
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean = false
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = false
 }
 
 class SystemOverlayTransientSession(
@@ -173,6 +175,8 @@ internal class SystemOverlayPortalEntry(
         entry.handleMouseWheel(mouseX, mouseY, delta)
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = entry.handleKeyDown(keyCode, keyChar)
+
+    override fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = entry.handleKeyUp(keyCode, keyChar)
 
     private fun SystemOverlayEntry.inputPolicy(): PortalInputPolicy =
         when {

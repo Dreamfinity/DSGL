@@ -144,6 +144,37 @@ class LayerDomInputRouterTests {
     }
 
     @Test
+    fun `keyboard key up follows focused node root membership`() {
+        val (rootA, routerA) = createLayerRouter("layer-a")
+        val (rootB, routerB) = createLayerRouter("layer-b")
+        val keyUps = mutableListOf<String>()
+
+        val parentA =
+            ContainerNode(key = "a-parent").apply {
+                onKeyUp = { keyUps += "parent:${it.keyChar}" }
+            }
+        parentA.applyParent(rootA)
+        val inputA =
+            TextInputNode(text = "a", key = "a-input").apply {
+                bounds = Rect(10, 10, 100, 20)
+                onKeyUp = { keyUps += "input:${it.keyChar}" }
+            }
+        inputA.applyParent(parentA)
+
+        val inputB =
+            TextInputNode(text = "b", key = "b-input").apply {
+                bounds = Rect(10, 10, 100, 20)
+                onKeyUp = { keyUps += "wrong:${it.keyChar}" }
+            }
+        inputB.applyParent(rootB)
+
+        FocusManager.requestFocus(inputA)
+        assertTrue(routerA.handleKeyUp(KeyCodes.Z, 'z'))
+        assertFalse(routerB.handleKeyUp(KeyCodes.X, 'x'))
+        assertEquals(listOf("input:z", "parent:z"), keyUps)
+    }
+
+    @Test
     fun `pointer drag capture is generic for header and thumb style controls`() {
         listOf("header-drag", "thumb-drag").forEach { key ->
             val (root, router) = createLayerRouter(key)
@@ -215,6 +246,63 @@ class LayerDomInputRouterTests {
         assertTrue(router.handleMouseMove(220, 26))
         assertTrue(router.handleMouseUp(220, 26, MouseButton.LEFT))
         assertTrue(range.value > 0L)
+    }
+
+    @Test
+    fun `range input drag survives focus changing to captured control`() {
+        val (root, router) = createLayerRouter("range-drag-focus")
+        val previousFocus =
+            TextInputNode(text = "before", key = "range-drag-focus-before").apply {
+                bounds = Rect(4, 4, 80, 20)
+            }
+        previousFocus.applyParent(root)
+        val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = "range-drag-focus-range")
+        range.applyParent(root)
+        range.render(ctx, 20, 40, 120, 12)
+
+        FocusManager.requestFocus(previousFocus)
+        assertTrue(router.handleMouseDown(20, 46, MouseButton.LEFT))
+        assertTrue(FocusManager.isFocused(range))
+        assertTrue(router.handleMouseMove(220, 46))
+        assertTrue(router.handleMouseUp(220, 46, MouseButton.LEFT))
+        assertTrue(range.value > 0L)
+    }
+
+    @Test
+    fun `range input drag is not cancelled by unrelated router clear`() {
+        val (rootA, routerA) = createLayerRouter("range-drag-owner")
+        val (_, routerB) = createLayerRouter("unrelated-router")
+        val range = RangeInputNode(value = 0L, min = 0L, max = 100L, key = "owned-range")
+        range.applyParent(rootA)
+        range.render(ctx, 20, 20, 120, 12)
+
+        assertTrue(routerA.handleMouseDown(20, 26, MouseButton.LEFT))
+        routerB.clear()
+        assertTrue(routerA.handleMouseMove(220, 26))
+        assertTrue(routerA.handleMouseUp(220, 26, MouseButton.LEFT))
+
+        assertEquals(100L, range.value)
+    }
+
+    @Test
+    fun `text selection drag is not cancelled by unrelated router clear`() {
+        ClipboardBridge.install(clipboard)
+        val (rootA, routerA) = createLayerRouter("text-drag-owner")
+        val (_, routerB) = createLayerRouter("unrelated-text-router")
+        val input =
+            TextInputNode(text = "abcdef", key = "owned-text").apply {
+                bounds = Rect(20, 20, 160, 20)
+            }
+        input.applyParent(rootA)
+
+        assertTrue(routerA.handleMouseDown(20, 26, MouseButton.LEFT))
+        routerB.clear()
+        assertTrue(routerA.handleMouseMove(80, 26))
+        assertTrue(routerA.handleMouseUp(80, 26, MouseButton.LEFT))
+        KeyModifiers.sync(shift = false, control = true, meta = false)
+        assertTrue(routerA.handleKeyDown(KeyCodes.C, 'c'))
+
+        assertTrue(clipboard.value.isNotEmpty())
     }
 
     @Test

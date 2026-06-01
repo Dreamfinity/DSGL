@@ -421,16 +421,17 @@ class SelectEngine(
     }
 
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-        handleMouseDown(mouseX, mouseY, button, closeOutside = true)
+        handleMouseDown(mouseX, mouseY, button, closeOutside = true, consumeOutside = true)
 
     internal fun handlePortalMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
-        handleMouseDown(mouseX, mouseY, button, closeOutside = false)
+        handleMouseDown(mouseX, mouseY, button, closeOutside = true, consumeOutside = false)
 
     private fun handleMouseDown(
         mouseX: Int,
         mouseY: Int,
         button: MouseButton,
         closeOutside: Boolean,
+        consumeOutside: Boolean,
     ): Boolean {
         val current = popup ?: return false
         if (visibilityState == VisibilityState.Hidden) return false
@@ -441,7 +442,7 @@ class SelectEngine(
                 if (closeOutside) {
                     startVisibilityTransition(0f, style.closeDurationMs)
                 }
-                true
+                consumeOutside
             }
 
             button != MouseButton.LEFT && button != MouseButton.RIGHT -> true

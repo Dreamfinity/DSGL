@@ -367,17 +367,17 @@ object StyleEngine {
     fun lastStyleApplyReport(): StyleApplyReport = lastApplyReport
 
     fun currentStyleRevision(scope: StyleApplicationScope = StyleApplicationScope.Application): Long {
-        val base =
-            when (scope) {
-                StyleApplicationScope.Application -> {
-                    (StylesheetManager.snapshot().version shl 2) xor
-                        (themeVersion shl 1) xor
-                        inspectorOverridesVersion
-                }
-
-                StyleApplicationScope.SystemOverlay -> 0L
-                StyleApplicationScope.Debug -> 0L
+        val snapshotVersion = snapshotForScope(scope).version
+        val inspectorVersion =
+            if (scope == StyleApplicationScope.Application) {
+                inspectorOverridesVersion
+            } else {
+                0L
             }
+        val base =
+            (snapshotVersion shl 2) xor
+                (themeVersion shl 1) xor
+                inspectorVersion
         return base xor
             (pseudoStateVersion shl 3) xor
             (selectorStateVersion shl 4) xor

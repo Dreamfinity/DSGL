@@ -122,6 +122,10 @@ object DefaultDndEngine : DndEngine {
     }
 
     override fun onMouseDown(_root: DOMNode, target: DOMNode?, event: MouseDownEvent) {
+        if (event.cancelled) {
+            pendingDrag = null
+            return
+        }
         if (event.mouseButton != MouseButton.LEFT) {
             pendingDrag = null
             return

@@ -156,6 +156,7 @@ internal data class PortalFrameContext(
     }
 }
 
+@Suppress("TooManyFunctions")
 internal interface PortalEntry {
     val state: PortalEntryState
     val node: DOMNode?
@@ -181,6 +182,8 @@ internal interface PortalEntry {
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean = false
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = false
 }
 
 internal class PortalHost(

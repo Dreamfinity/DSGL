@@ -6,6 +6,8 @@ import org.dreamfinity.dsgl.core.components.modal.ModalSpec
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.EventBus
+import org.dreamfinity.dsgl.core.event.FocusManager
+import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.overlay.PortalBackdropPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
@@ -20,14 +22,18 @@ import org.dreamfinity.dsgl.core.overlay.PortalHost
 import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalInsidePointerPolicy
 import org.dreamfinity.dsgl.core.overlay.PortalPointerContainmentPolicy
+import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.overlay.evaluateOutsidePointerDown
+import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
 
+@Suppress("TooManyFunctions")
 internal class ModalPortalController {
     private val portalHost: PortalHost =
         PortalHost(ScreenDomainSurfaces.ApplicationPortal)
     private val entriesByPortalKey: LinkedHashMap<String, ModalPortalEntry> = LinkedHashMap()
     private var pendingPolicyPointerSequence: PendingPolicyPointerSequence? = null
+    private var pendingDomPointerSequence: PendingDomPointerSequence? = null
 
     fun sync(rootNode: DOMNode, viewportWidth: Int, viewportHeight: Int) {
         val snapshots = ModalPortalSessionStore.portalSnapshots()
@@ -59,6 +65,7 @@ internal class ModalPortalController {
         }
         entriesByPortalKey.clear()
         pendingPolicyPointerSequence = null
+        pendingDomPointerSequence = null
     }
 
     fun commitActivePortals() {
@@ -72,6 +79,95 @@ internal class ModalPortalController {
     }
 
     fun hasActivePortal(): Boolean = entriesByPortalKey.values.any { entry -> entry.state.active }
+
+    fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean {
+        if (!hasActivePortal()) return false
+        val pendingEntry = pendingDomPointerSequence?.entry
+        if (pendingEntry != null) {
+            pendingEntry.handleDomMouseMove(mouseX, mouseY)
+            return true
+        }
+        val result =
+            portalHost.evaluateOutsidePointerDown(mouseX, mouseY)
+                ?: run {
+                    clearDomPointerState()
+                    return true
+                }
+        if (result.region == PortalPointerRegion.InsideEntry) {
+            val entry = result.entry as? ModalPortalEntry
+            clearDomPointerStateExcept(entry)
+            entry?.handleDomMouseMove(mouseX, mouseY)
+        } else {
+            clearDomPointerState()
+        }
+        return true
+    }
+
+    fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val result =
+            portalHost.evaluateOutsidePointerDown(mouseX, mouseY)
+                ?: run {
+                    clearDomPointerState()
+                    return hasActivePortal()
+                }
+        if (result.region == PortalPointerRegion.InsideEntry) {
+            val entry = result.entry as? ModalPortalEntry ?: return true
+            clearDomPointerStateExcept(entry)
+            entry.handleDomMouseDown(mouseX, mouseY, button)
+            pendingDomPointerSequence = PendingDomPointerSequence(button = button, entry = entry)
+            pendingPolicyPointerSequence = null
+            return true
+        }
+        clearDomPointerState()
+        if (result.consumed) {
+            (result.entry as? ModalPortalEntry)?.requestFocusForOutsidePointer()
+            pendingPolicyPointerSequence =
+                PendingPolicyPointerSequence(
+                    button = button,
+                    dismissEntry = result.entry.takeIf { result.shouldClose },
+                )
+            pendingDomPointerSequence = null
+        }
+        return result.consumed
+    }
+
+    fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        val pendingDom = pendingDomPointerSequence
+        if (pendingDom != null && pendingDom.button == button) {
+            pendingDom.entry.handleDomMouseUp(mouseX, mouseY, button)
+            pendingDomPointerSequence = null
+            pendingPolicyPointerSequence = null
+            return true
+        }
+        val pendingPolicy = pendingPolicyPointerSequence
+        if (pendingPolicy != null && pendingPolicy.button == button) {
+            pendingPolicy.dismissEntry?.let { entry -> entry.state.dismiss(entry) }
+            clearDomPointerState()
+            pendingPolicyPointerSequence = null
+            pendingDomPointerSequence = null
+            return true
+        }
+        clearDomPointerState()
+        return hasActivePortal()
+    }
+
+    fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean {
+        if (!hasActivePortal()) return false
+        val result =
+            portalHost.evaluateOutsidePointerDown(mouseX, mouseY)
+                ?: run {
+                    clearDomPointerState()
+                    return true
+                }
+        if (result.region == PortalPointerRegion.InsideEntry) {
+            val entry = result.entry as? ModalPortalEntry
+            clearDomPointerStateExcept(entry)
+            entry?.handleDomMouseWheel(mouseX, mouseY, delta)
+        } else {
+            clearDomPointerState()
+        }
+        return true
+    }
 
     fun handlePointerPolicy(
         mouseX: Int,
@@ -88,6 +184,9 @@ internal class ModalPortalController {
         }
         val result = portalHost.evaluateOutsidePointerDown(mouseX, mouseY) ?: return false
         if (result.consumed) {
+            if (result.region == PortalPointerRegion.OutsideEntry) {
+                (result.entry as? ModalPortalEntry)?.requestFocusForOutsidePointer()
+            }
             pendingPolicyPointerSequence =
                 PendingPolicyPointerSequence(
                     button = button,
@@ -96,6 +195,16 @@ internal class ModalPortalController {
         }
         return result.consumed
     }
+
+    fun handleWheelPolicy(mouseX: Int, mouseY: Int): Boolean {
+        val result = portalHost.evaluateOutsidePointerDown(mouseX, mouseY) ?: return false
+        return result.region == PortalPointerRegion.OutsideEntry && result.consumed
+    }
+
+    fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
+        portalHost.dispatchInput {
+            it.handleKeyDown(keyCode, keyChar)
+        }
 
     internal fun debugActivePortalEntryIds(): List<String> = portalHost.entriesInPaintOrder().map { it.state.id.value }
 
@@ -131,6 +240,18 @@ internal class ModalPortalController {
         rootNode.children.removeAll(activeRoots.toSet())
         rootNode.children.addAll(activeRoots)
     }
+
+    private fun clearDomPointerState() {
+        entriesByPortalKey.values.forEach { entry -> entry.clearDomPointerState() }
+    }
+
+    private fun clearDomPointerStateExcept(entryToKeep: ModalPortalEntry?) {
+        entriesByPortalKey.values.forEach { entry ->
+            if (entry !== entryToKeep) {
+                entry.clearDomPointerState()
+            }
+        }
+    }
 }
 
 private data class PendingPolicyPointerSequence(
@@ -138,11 +259,21 @@ private data class PendingPolicyPointerSequence(
     val dismissEntry: PortalEntry?,
 )
 
+private data class PendingDomPointerSequence(
+    val button: MouseButton,
+    val entry: ModalPortalEntry,
+)
+
+@Suppress("TooManyFunctions")
 private class ModalPortalEntry(
     val portalKey: String,
     templateRoot: ModalPortalRootNode,
 ) : PortalEntry {
     private var tree: DomTree = DomTree(templateRoot)
+    private val domInputRouter: LayerDomInputRouter =
+        LayerDomInputRouter(
+            rootProvider = { root },
+        )
     private var topMostModal: ModalSpec? = null
 
     val root: ModalPortalRootNode
@@ -230,15 +361,38 @@ private class ModalPortalEntry(
         state.updateProtectedBounds(listOfNotNull(dialog?.bounds))
     }
 
+    fun requestFocusForOutsidePointer() {
+        val topMost = topMostModal ?: return
+        if (!topMost.trapFocus) return
+        FocusManager.requestFocusFirstInSubtree(ModalPortalSessionStore.dialogKey(portalKey, topMost.key))
+    }
+
     fun detach() {
         root.parent
             ?.children
             ?.remove(root)
         root.parent = null
+        domInputRouter.clear()
+    }
+
+    fun handleDomMouseMove(mouseX: Int, mouseY: Int): Boolean = domInputRouter.handleMouseMove(mouseX, mouseY)
+
+    fun handleDomMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        domInputRouter.handleMouseDown(mouseX, mouseY, button)
+
+    fun handleDomMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
+        domInputRouter.handleMouseUp(mouseX, mouseY, button)
+
+    fun handleDomMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
+        domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
+
+    fun clearDomPointerState() {
+        domInputRouter.clear()
     }
 
     override fun clearRefs() {
         tree.clearRefs()
+        domInputRouter.clear()
         EventBus.run { root.clearListenersDeep() }
     }
 
@@ -252,6 +406,15 @@ private class ModalPortalEntry(
     override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
 
     override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean = false
+
+    override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
+        val topMost = topMostModal ?: return false
+        if (keyCode != KeyCodes.ESCAPE) return false
+        if (topMost.keyboard) {
+            topMost.onHide?.invoke()
+        }
+        return true
+    }
 }
 
 private fun findNode(root: DOMNode, predicate: (DOMNode) -> Boolean): DOMNode? {

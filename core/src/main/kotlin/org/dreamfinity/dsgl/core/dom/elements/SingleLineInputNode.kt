@@ -75,12 +75,14 @@ open class SingleLineInputNode(
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!this@SingleLineInputNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 handlePointerDown(event.mouseX)
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
                 if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 if (!isActiveSelectionDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
                 updateSelectionFromPointerDrag(currentX)
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
@@ -91,6 +93,7 @@ open class SingleLineInputNode(
                 }
                 editState.resetBlinkClock()
                 persistState()
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
                 if (this@SingleLineInputNode.styleDisabled) return@addEventListener
@@ -252,6 +255,42 @@ open class SingleLineInputNode(
     fun shouldCaptureTextSelectionDrag(mouseX: Int, mouseY: Int): Boolean {
         if (styleDisabled) return false
         return containsGlobalPoint(mouseX, mouseY)
+    }
+
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        shouldCaptureTextSelectionDrag(mouseX, mouseY) || super.shouldCapturePointerDrag(mouseX, mouseY)
+
+    override fun beginPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        if (isActiveSelectionDragTarget()) return
+        handlePointerDown(mouseX)
+    }
+
+    override fun continuePointerCapture(
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int,
+        button: MouseButton,
+    ) {
+        if (button != MouseButton.LEFT || styleDisabled || !isActiveSelectionDragTarget()) return
+        updateSelectionFromPointerDrag(mouseX)
+    }
+
+    override fun endPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || !isActiveSelectionDragTarget()) return
+        clearActiveDrag()
+        if (!editState.hasSelection()) {
+            editState.clearSelection()
+        }
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    override fun cancelPointerCapture() {
+        if (isActiveSelectionDragTarget()) {
+            clearActiveDrag()
+        }
     }
 
     private fun handlePointerDown(mouseX: Int) {

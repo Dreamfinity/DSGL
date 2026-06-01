@@ -82,6 +82,7 @@ private data class DebugDomainToggleSnapshot(
     val systemOverlayInputEnabled: Boolean,
 )
 
+@Suppress("TooManyFunctions")
 class DebugDomainRootHost(
     private val state: OverlayLayerDebugState = OverlayLayerDebugState,
 ) : DomainSurfaceHost {
@@ -139,6 +140,8 @@ class DebugDomainRootHost(
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = domInputRouter.handleKeyDown(keyCode, keyChar)
 
+    override fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = domInputRouter.handleKeyUp(keyCode, keyChar)
+
     override fun clearRefs() {
         layout = null
         lastToggleSnapshot = null
@@ -183,6 +186,7 @@ class DebugDomainRootHost(
     }
 }
 
+@Suppress("TooManyFunctions")
 class DebugDomainPortalHost : DomainSurfaceHost {
     override val surface: ScreenDomainSurface = ScreenDomainSurfaces.DebugPortal
 
@@ -218,6 +222,9 @@ class DebugDomainPortalHost : DomainSurfaceHost {
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
         portalHost.dispatchInput { it.handleKeyDown(keyCode, keyChar) }
+
+    override fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean =
+        portalHost.dispatchInput { it.handleKeyUp(keyCode, keyChar) }
 
     override fun clearRefs() {
         portalHost.clearRefs()

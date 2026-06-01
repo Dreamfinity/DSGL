@@ -15,6 +15,7 @@ import org.dreamfinity.dsgl.core.select.SelectEngine
 import org.dreamfinity.dsgl.core.select.SelectPortalController
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 
+@Suppress("TooManyFunctions")
 class ApplicationOverlayHost(
     contextMenuEngine: ContextMenuEngine = DomainPortalServices.applicationContextMenuEngine,
     selectEngine: SelectEngine = DomainPortalServices.applicationSelectEngine,
@@ -57,33 +58,53 @@ class ApplicationOverlayHost(
 
     override fun render(ctx: UiMeasureContext, width: Int, height: Int) {
         rootNode.setViewportBounds(width, height)
-        floatingWindowPortal.sync(rootNode, width, height)
         modalPortal.sync(rootNode, width, height)
         closeStaleFloatingPortalsAfterModalOpen()
+        floatingWindowPortal.sync(rootNode, width, height)
         tree.render(ctx, width, height)
         modalPortal.commitActivePortals()
     }
 
     override fun paint(ctx: UiMeasureContext): List<RenderCommand> = tree.paint(ctx, applyStyles = true)
 
-    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean = domInputRouter.handleMouseMove(mouseX, mouseY)
+    override fun handleMouseMove(mouseX: Int, mouseY: Int): Boolean =
+        if (modalPortal.hasActivePortal()) {
+            domInputRouter.clear()
+            modalPortal.handleMouseMove(mouseX, mouseY)
+        } else {
+            domInputRouter.handleMouseMove(mouseX, mouseY)
+        }
 
     override fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        if (modalPortal.hasActivePortal()) {
+            domInputRouter.clear()
+            return modalPortal.handleMouseDown(mouseX, mouseY, button)
+        }
         val isConsumedByDOM = domInputRouter.handleMouseDown(mouseX, mouseY, button)
         val isConsumedByPolicy = modalPortal.handlePointerPolicy(mouseX, mouseY, button, pressed = true)
         return isConsumedByDOM || isConsumedByPolicy
     }
 
     override fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
+        if (modalPortal.hasActivePortal()) {
+            domInputRouter.clear()
+            return modalPortal.handleMouseUp(mouseX, mouseY, button)
+        }
         val isConsumedByDOM = domInputRouter.handleMouseUp(mouseX, mouseY, button)
         val isConsumedByPolicy = modalPortal.handlePointerPolicy(mouseX, mouseY, button, pressed = false)
         return isConsumedByDOM || isConsumedByPolicy
     }
 
     override fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean =
-        domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
+        if (modalPortal.hasActivePortal()) {
+            modalPortal.handleMouseWheel(mouseX, mouseY, delta)
+        } else {
+            domInputRouter.handleMouseWheel(mouseX, mouseY, delta)
+        }
 
     override fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = domInputRouter.handleKeyDown(keyCode, keyChar)
+
+    override fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = domInputRouter.handleKeyUp(keyCode, keyChar)
 
     override fun clearRefs() {
         tree.clearRefs()
@@ -145,6 +166,8 @@ fun ApplicationOverlayHost.hasOpenSelectPortal(): Boolean = applicationSelectPor
 
 fun ApplicationOverlayHost.hasOpenColorPickerPortal(): Boolean = applicationColorPickerPortal.isOpen
 
+fun ApplicationOverlayHost.hasActiveModalPortal(): Boolean = modalPortal.hasActivePortal()
+
 fun ApplicationOverlayHost.hasActiveColorPickerEyedropper(): Boolean = applicationColorPickerPortal.hasActiveEyedropper
 
 fun ApplicationOverlayHost.captureColorPickerEyedropperSample() {
@@ -152,6 +175,7 @@ fun ApplicationOverlayHost.captureColorPickerEyedropperSample() {
 }
 
 fun ApplicationOverlayHost.toggleFloatingWindowDemo(anchorX: Int, anchorY: Int) {
+    if (hasActiveModalPortal()) return
     floatingWindowPortal.toggle(anchorX, anchorY)
 }
 
@@ -161,11 +185,19 @@ fun ApplicationOverlayHost.hasDomPointerTargetAt(mouseX: Int, mouseY: Int): Bool
     domInputRouter.hasPointerTargetAt(mouseX, mouseY)
 
 fun ApplicationOverlayHost.handlePortalKeyDownBeforeDom(keyCode: Int, keyChar: Char): Boolean =
-    applicationColorPickerPortal.handleKeyDown(keyCode, keyChar)
+    applicationColorPickerPortal.handleKeyDown(keyCode, keyChar) ||
+        modalPortal.handleKeyDown(keyCode, keyChar)
 
 fun ApplicationOverlayHost.handlePortalKeyDownAfterDom(keyCode: Int, keyChar: Char): Boolean =
     applicationSelectPortal.handleKeyDown(keyCode, keyChar) ||
         contextMenuPortal.handleKeyDown(keyCode)
+
+fun ApplicationOverlayHost.handlePortalKeyUpBeforeDom(keyCode: Int, keyChar: Char): Boolean =
+    applicationColorPickerPortal.handleKeyUp(keyCode, keyChar)
+
+fun ApplicationOverlayHost.handlePortalKeyUpAfterDom(keyCode: Int, keyChar: Char): Boolean =
+    applicationSelectPortal.handleKeyUp(keyCode, keyChar) ||
+        contextMenuPortal.handleKeyUp(keyCode, keyChar)
 
 fun ApplicationOverlayHost.handlePortalPointerBeforeDom(
     mouseX: Int,
@@ -265,6 +297,11 @@ internal class ContextMenuPortalController(
     fun handleKeyDown(keyCode: Int): Boolean =
         portalHost.dispatchInput {
             it.handleKeyDown(keyCode, Char.MIN_VALUE)
+        }
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean =
+        portalHost.dispatchInput {
+            it.handleKeyUp(keyCode, keyChar)
         }
 }
 

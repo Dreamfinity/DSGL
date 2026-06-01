@@ -49,45 +49,22 @@ class RangeInputNode(
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
-                activeDragIdentity = dragIdentity()
-                activeDragStartValue = this@RangeInputNode.value
-                val before = this@RangeInputNode.value
-                updateFromMouse(event.mouseX)
-                if (this@RangeInputNode.value != before) {
-                    postInput(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value,
-                    )
-                }
+                beginActiveDrag(event.mouseX)
+                event.cancelled = true
             }
             this@RangeInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
-                val start = activeDragStartValue ?: this@RangeInputNode.value
-                if (this@RangeInputNode.value != start) {
-                    postChange(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value,
-                    )
-                }
-                clearActiveDrag()
+                completeActiveDrag()
+                event.cancelled = true
             }
             this@RangeInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
-                val before = this@RangeInputNode.value
-                updateFromMouse(currentX)
-                if (this@RangeInputNode.value != before) {
-                    postInput(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value,
-                    )
-                }
+                updateActiveDrag(currentX)
+                event.cancelled = true
             }
         }
     }
@@ -128,6 +105,37 @@ class RangeInputNode(
         bounds = Rect(x, y, width, height)
     }
 
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        !styleDisabled && containsGlobalPoint(mouseX, mouseY)
+
+    override fun beginPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        if (isActiveDragTarget()) return
+        beginActiveDrag(mouseX)
+    }
+
+    override fun continuePointerCapture(
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int,
+        button: MouseButton,
+    ) {
+        if (button != MouseButton.LEFT || styleDisabled || !isActiveDragTarget()) return
+        updateActiveDrag(mouseX)
+    }
+
+    override fun endPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || !isActiveDragTarget()) return
+        completeActiveDrag()
+    }
+
+    override fun cancelPointerCapture() {
+        if (isActiveDragTarget()) {
+            clearActiveDrag()
+        }
+    }
+
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         val geometry = sliderGeometry()
         addBackgroundImageCommand(out)
@@ -161,6 +169,36 @@ class RangeInputNode(
             }
         }
         setValue(next)
+    }
+
+    private fun beginActiveDrag(mouseX: Int) {
+        activeDragIdentity = dragIdentity()
+        activeDragStartValue = this@RangeInputNode.value
+        updateActiveDrag(mouseX)
+    }
+
+    private fun updateActiveDrag(mouseX: Int) {
+        val before = this@RangeInputNode.value
+        updateFromMouse(mouseX)
+        if (this@RangeInputNode.value != before) {
+            postInput(
+                this@RangeInputNode,
+                this@RangeInputNode.value.toString(),
+                this@RangeInputNode.value,
+            )
+        }
+    }
+
+    private fun completeActiveDrag() {
+        val start = activeDragStartValue ?: this@RangeInputNode.value
+        if (this@RangeInputNode.value != start) {
+            postChange(
+                this@RangeInputNode,
+                this@RangeInputNode.value.toString(),
+                this@RangeInputNode.value,
+            )
+        }
+        clearActiveDrag()
     }
 
     private fun valueToX(geometry: SliderGeometry): Int {

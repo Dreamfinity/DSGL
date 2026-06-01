@@ -443,7 +443,7 @@ class LiveLayerInteractionPathTests {
     }
 
     @Test
-    fun `application select portal blocks app-root fallthrough on outside dismiss`() {
+    fun `application select portal closes and allows app-root fallthrough on outside dismiss`() {
         val applicationOverlayHost = ApplicationOverlayHost()
         applicationOverlayHost.onInputFrame(320, 180)
         val owner = "application-select-dismiss"
@@ -469,8 +469,8 @@ class LiveLayerInteractionPathTests {
                 true
             }
 
-        assertEquals(ScreenDomainSurfaces.ApplicationPortal, consumedBy)
-        assertFalse(appRootReceived)
+        assertEquals(ScreenDomainSurfaces.ApplicationRoot, consumedBy)
+        assertTrue(appRootReceived)
     }
 
     @Test

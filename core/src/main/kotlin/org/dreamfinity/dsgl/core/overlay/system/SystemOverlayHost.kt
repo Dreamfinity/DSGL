@@ -121,6 +121,8 @@ class SystemOverlayHost(
 
     fun handlePortalKeyDown(keyCode: Int, keyChar: Char): Boolean = systemSelectPortal.handleKeyDown(keyCode, keyChar)
 
+    fun handlePortalKeyUp(keyCode: Int, keyChar: Char): Boolean = systemSelectPortal.handleKeyUp(keyCode, keyChar)
+
     fun handlePortalMouseMove(mouseX: Int, mouseY: Int): Boolean = systemSelectPortal.handleMouseMove(mouseX, mouseY)
 
     fun handlePortalMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean =
@@ -204,6 +206,12 @@ class SystemOverlayHost(
         dispatchManualThenDomFallback(
             manualDispatch = { dispatchManualInput { entry -> entry.handleKeyDown(keyCode, keyChar) } },
             domFallbackDispatch = { domInputRouter.handleKeyDown(keyCode, keyChar) },
+        )
+
+    override fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean =
+        dispatchManualThenDomFallback(
+            manualDispatch = { dispatchManualInput { entry -> entry.handleKeyUp(keyCode, keyChar) } },
+            domFallbackDispatch = { domInputRouter.handleKeyUp(keyCode, keyChar) },
         )
 
     override fun clearRefs() {

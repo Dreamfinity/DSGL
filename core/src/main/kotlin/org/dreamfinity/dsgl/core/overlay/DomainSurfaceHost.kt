@@ -24,4 +24,6 @@ interface DomainSurfaceHost {
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean = false
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean = false
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean = false
 }

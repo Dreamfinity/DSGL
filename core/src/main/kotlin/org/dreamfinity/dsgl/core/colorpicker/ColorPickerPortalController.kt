@@ -80,6 +80,9 @@ internal class ColorPickerPortalController(
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
         portalHost.dispatchInput { it.handleKeyDown(keyCode, keyChar) }
+
+    fun handleKeyUp(keyCode: Int, keyChar: Char): Boolean =
+        portalHost.dispatchInput { it.handleKeyUp(keyCode, keyChar) }
 }
 
 private class ColorPickerPortalEntry(

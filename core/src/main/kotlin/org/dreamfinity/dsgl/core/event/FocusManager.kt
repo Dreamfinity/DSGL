@@ -16,6 +16,12 @@ object FocusManager {
     /** Current focused node, if any. */
     fun focusedNode(): DOMNode? = focused
 
+    /** Current focused node when it belongs to the given physical DOM root. */
+    fun focusedNodeWithin(root: DOMNode): DOMNode? {
+        val currentFocus = focused ?: return null
+        return if (isSameOrAncestor(root, currentFocus)) currentFocus else null
+    }
+
     /** Returns true if the given node is focused. */
     fun isFocused(node: DOMNode): Boolean = focused === node
 
@@ -42,6 +48,13 @@ object FocusManager {
             target.setFocusedState(true)
             postFocus(target, previous?.key)
         }
+    }
+
+    /** Resolves and requests focus from a node reference. */
+    fun requestFocusFrom(start: DOMNode?): Boolean {
+        val focusable = resolveFocusable(start) ?: return false
+        requestFocus(focusable)
+        return true
     }
 
     /** Clears current focus. */
@@ -193,5 +206,14 @@ object FocusManager {
             if (found != null) return found
         }
         return null
+    }
+
+    private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
+        var current = node
+        while (current != null) {
+            if (current === candidate) return true
+            current = current.parent
+        }
+        return false
     }
 }

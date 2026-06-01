@@ -97,7 +97,7 @@ class SelectPortalControllerTests {
     }
 
     @Test
-    fun `outside press uses generic portal policy and closes without manual outside routing`() {
+    fun `outside press uses generic portal policy closes and passes through`() {
         val fixture = openSelect()
         val outsideX = 2
         val outsideY = 2
@@ -110,7 +110,7 @@ class SelectPortalControllerTests {
         assertEquals(PortalPointerRegion.OutsideEntry, policy.region)
         assertTrue(policy.shouldClose)
         assertTrue(policy.consumed)
-        assertTrue(fixture.controller.handleMouseDown(outsideX, outsideY, MouseButton.LEFT))
+        assertFalse(fixture.controller.handleMouseDown(outsideX, outsideY, MouseButton.LEFT))
 
         fixture.clock.advance(CLOSE_DURATION_MS + 1)
         fixture.controller.onFrame(ctx, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 1f)
