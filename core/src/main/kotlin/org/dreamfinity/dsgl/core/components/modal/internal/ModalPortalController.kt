@@ -196,11 +196,6 @@ internal class ModalPortalController {
         return result.consumed
     }
 
-    fun handleWheelPolicy(mouseX: Int, mouseY: Int): Boolean {
-        val result = portalHost.evaluateOutsidePointerDown(mouseX, mouseY) ?: return false
-        return result.region == PortalPointerRegion.OutsideEntry && result.consumed
-    }
-
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean =
         portalHost.dispatchInput {
             it.handleKeyDown(keyCode, keyChar)

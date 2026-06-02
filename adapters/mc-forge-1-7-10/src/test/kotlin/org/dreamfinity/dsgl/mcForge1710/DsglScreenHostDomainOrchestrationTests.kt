@@ -403,66 +403,6 @@ class DsglScreenHostDomainOrchestrationTests {
     }
 
     @Test
-    fun `active application modal cancels root dnd before ghost can render`() {
-        val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
-        val draggable =
-            ContainerNode(key = "draggable")
-                .apply {
-                    draggable = true
-                    bounds = Rect(20, 40, 80, 20)
-                }.applyParent(root)
-        val tree = DomTree(root)
-        val host = createHost(tree)
-        val overlay = host.debugApplicationOverlayHostForTests()
-        val modalKey = "tests.host.modal.cancel.dnd"
-        val down =
-            MouseDownEvent(24, 44, MouseButton.LEFT)
-                .also { event ->
-                    event.target = draggable
-                }
-
-        DndRuntime.engine.cancelActiveDrag()
-        try {
-            DndRuntime.engine.onMouseDown(root, draggable, down)
-            DndRuntime.engine.onMouseMove(root, 120, 60)
-            assertTrue(DndRuntime.engine.isDragging)
-
-            val modalTree =
-                ui {
-                    modalPortal(
-                        modals =
-                            listOf(
-                                ModalSpec(key = "static-modal") {
-                                    text("Static")
-                                },
-                            ),
-                        key = modalKey,
-                    ) {
-                        text("content")
-                    }
-                }
-            modalTree.render(ctx, 300, 120)
-            overlay.render(ctx, 300, 120)
-            assertTrue(overlay.hasActiveModalPortal())
-
-            host.debugCancelApplicationRootDndBehindModalForTests()
-
-            assertFalse(DndRuntime.engine.isPointerCaptured)
-            assertFalse(DndRuntime.engine.isDragging)
-        } finally {
-            val emptyModalTree =
-                ui {
-                    modalPortal(modals = emptyList(), key = modalKey) {
-                        text("content")
-                    }
-                }
-            emptyModalTree.render(ctx, 300, 120)
-            overlay.render(ctx, 300, 120)
-            DndRuntime.engine.cancelActiveDrag()
-        }
-    }
-
-    @Test
     fun `active application modal frame blocks and cancels root dnd`() {
         val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
         val draggable =

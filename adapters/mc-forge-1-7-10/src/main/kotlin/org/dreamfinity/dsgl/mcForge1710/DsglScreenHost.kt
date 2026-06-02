@@ -237,7 +237,6 @@ abstract class DsglScreenHost(
             systemOverlayInputEnabled = overlayState.systemOverlayInputEnabled,
             inspectorBlocks = overlayState.inspectorBlocks,
         )
-        cancelApplicationRootDndBehindModal()
         val commands =
             paintApplicationRootOrFallback(
                 tree = tree,
@@ -421,12 +420,6 @@ abstract class DsglScreenHost(
         )
         systemOverlayHost.syncPortalFrame(adapter, lastWidth, lastHeight, 1f)
         refreshActiveColorSamplerOwner(tree.root)
-    }
-
-    private fun cancelApplicationRootDndBehindModal() {
-        if (applicationOverlayHost.hasActiveModalPortal()) {
-            DndRuntime.engine.cancelActiveDrag()
-        }
     }
 
     private fun syncApplicationOverlaySurface(appOverlayEnabled: Boolean) {
@@ -1998,10 +1991,6 @@ abstract class DsglScreenHost(
             systemOverlayInputEnabled = systemOverlayInputEnabled,
             inspectorBlocks = inspectorBlocks,
         )
-    }
-
-    internal fun debugCancelApplicationRootDndBehindModalForTests() {
-        cancelApplicationRootDndBehindModal()
     }
 
     internal fun debugDispatchApplicationRootPointerDownForTests(
