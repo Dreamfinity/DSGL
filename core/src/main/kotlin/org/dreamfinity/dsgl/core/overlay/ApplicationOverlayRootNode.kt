@@ -64,6 +64,7 @@ class ApplicationOverlayRootNode(
         }
         children.forEach { child ->
             if (child === debugTintNode) return@forEach
+            child.resolveLayoutStyleValues(ctx, bounds.width, bounds.height)
             child.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
         }
     }

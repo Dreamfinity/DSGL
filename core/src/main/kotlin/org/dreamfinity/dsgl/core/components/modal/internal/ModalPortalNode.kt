@@ -109,6 +109,7 @@ internal class ModalPortalRootNode(
                         .coerceAtLeast(0),
             )
         children.forEach { child ->
+            child.resolveLayoutStyleValues(ctx, bounds.width, bounds.height)
             child.render(ctx, bounds.x, bounds.y, bounds.width, bounds.height)
         }
     }

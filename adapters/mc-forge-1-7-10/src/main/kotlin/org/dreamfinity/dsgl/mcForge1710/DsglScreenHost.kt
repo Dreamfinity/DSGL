@@ -213,8 +213,9 @@ abstract class DsglScreenHost(
             dsglMouseX = frameCursor.mouseX,
             dsglMouseY = frameCursor.mouseY,
         )
-        cancelApplicationRootDndBehindModal()
-        val applicationOverlayCommands = collectApplicationOverlayCommands(overlayState.appOverlayRenderEnabled)
+        syncApplicationOverlaySurface(
+            appOverlayEnabled = overlayState.appOverlayRenderEnabled || overlayState.appOverlayInputEnabled,
+        )
         val systemOverlayCommands =
             syncSystemOverlayAndCollectCommands(
                 tree = tree,
@@ -236,6 +237,7 @@ abstract class DsglScreenHost(
             systemOverlayInputEnabled = overlayState.systemOverlayInputEnabled,
             inspectorBlocks = overlayState.inspectorBlocks,
         )
+        cancelApplicationRootDndBehindModal()
         val commands =
             paintApplicationRootOrFallback(
                 tree = tree,
@@ -244,10 +246,10 @@ abstract class DsglScreenHost(
                 mouseY = mouseY,
                 partialTicks = partialTicks,
             ) ?: return
-        stageApplicationOverlayCommands(
+        syncCollectAndStageApplicationOverlayAfterRootPaint(
             tree = tree,
-            applicationOverlayCommands = applicationOverlayCommands,
             appOverlayRenderEnabled = overlayState.appOverlayRenderEnabled,
+            appOverlayInputEnabled = overlayState.appOverlayInputEnabled,
         )
         composeAndPresentFrame(
             tree = tree,
@@ -427,12 +429,41 @@ abstract class DsglScreenHost(
         }
     }
 
+    private fun syncApplicationOverlaySurface(appOverlayEnabled: Boolean) {
+        if (!appOverlayEnabled) return
+        try {
+            applicationOverlayHost.render(adapter, lastWidth, lastHeight)
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
+            logPipelineError(
+                key = "draw.applicationOverlay.sync",
+                message = "[DSGL] Application overlay sync failed; skipping app overlay sync frame: ${error.message}",
+            )
+        }
+    }
+
+    private fun syncCollectAndStageApplicationOverlayAfterRootPaint(
+        tree: DomTree,
+        appOverlayRenderEnabled: Boolean,
+        appOverlayInputEnabled: Boolean,
+    ) {
+        syncApplicationOverlaySurface(
+            appOverlayEnabled = appOverlayRenderEnabled || appOverlayInputEnabled,
+        )
+        val applicationOverlayCommands = collectApplicationOverlayCommands(appOverlayRenderEnabled)
+        stageApplicationOverlayCommands(
+            tree = tree,
+            applicationOverlayCommands = applicationOverlayCommands,
+            appOverlayRenderEnabled = appOverlayRenderEnabled,
+        )
+    }
+
     private fun collectApplicationOverlayCommands(appOverlayRenderEnabled: Boolean): List<RenderCommand> {
         if (!appOverlayRenderEnabled) {
             return emptyList()
         }
         return try {
-            applicationOverlayHost.render(adapter, lastWidth, lastHeight)
             applicationOverlayHost.paint(adapter)
         } catch (
             @Suppress("TooGenericExceptionCaught") error: Throwable,
@@ -531,9 +562,18 @@ abstract class DsglScreenHost(
         val dx = dsglMouseX - prevX
         val dy = dsglMouseY - prevY
         val applicationModalBlocks = applicationOverlayHost.hasActiveModalPortal()
+        val applicationPortalBlocks =
+            isApplicationPortalFrameBlocking(
+                dsglMouseX = dsglMouseX,
+                dsglMouseY = dsglMouseY,
+                appOverlayInputEnabled = appOverlayInputEnabled,
+            )
         if (applicationRootFrameBlocked) {
             if (applicationModalBlocks) {
                 DndRuntime.engine.cancelActiveDrag()
+            }
+            if (applicationModalBlocks || applicationPortalBlocks) {
+                applicationOverlayHost.handleMouseMove(dsglMouseX, dsglMouseY)
             }
             clearHoverChainStates(postLeaveEvents = true, mouseX = dsglMouseX, mouseY = dsglMouseY)
             hoverTarget = null
@@ -1852,6 +1892,27 @@ abstract class DsglScreenHost(
         )
         return applicationOverlayCommandsBuffer.toList()
     }
+
+    internal fun debugSyncApplicationOverlaySurfaceForTests(
+        measureContext: UiMeasureContext,
+        width: Int,
+        height: Int,
+        appOverlayEnabled: Boolean = true,
+    ) {
+        if (appOverlayEnabled) {
+            applicationOverlayHost.render(measureContext, width, height)
+        }
+    }
+
+    internal fun debugCollectApplicationOverlayCommandsForTests(
+        measureContext: UiMeasureContext,
+        appOverlayRenderEnabled: Boolean = true,
+    ): List<RenderCommand> =
+        if (appOverlayRenderEnabled) {
+            applicationOverlayHost.paint(measureContext)
+        } else {
+            emptyList()
+        }
 
     internal fun debugFirstDomainInputConsumerForTests(
         canConsume: (ScreenDomainSurface) -> Boolean,
