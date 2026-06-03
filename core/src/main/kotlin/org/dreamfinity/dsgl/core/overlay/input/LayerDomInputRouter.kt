@@ -1,8 +1,6 @@
 package org.dreamfinity.dsgl.core.overlay.input
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
-import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
 import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.dom.layout.Rect
@@ -26,10 +24,7 @@ class LayerDomInputRouter(
 ) {
     private val hoverChain: MutableList<DOMNode> = ArrayList()
     private var hoverTarget: DOMNode? = null
-    private var dragCaptureTarget: DOMNode? = null
-    private var dragCaptureKey: Any? = null
-    private var dragCaptureClass: Class<out DOMNode>? = null
-    private var dragCaptureFocusKey: Any? = null
+    private val pointerCapture: PointerCaptureSession = PointerCaptureSession()
     private var activeTarget: DOMNode? = null
     private var pressedButton: MouseButton? = null
     private var draggedSincePress: Boolean = false
@@ -50,21 +45,21 @@ class LayerDomInputRouter(
         updateHoverLocal(root, hoverChain, mouseX, mouseY, dx, dy)
         hoverTarget = hoverChain.lastOrNull()
 
-        if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
+        if (pointerCapture.hasCapture && pointerCapture.hasFocusChanged()) {
             releaseDragCapture()
         }
 
         if (dx != 0 || dy != 0) {
             val move = MouseMoveEvent(mouseX, mouseY, prevX, prevY)
-            move.target = dragCaptureTarget ?: hoverTarget
+            move.target = pointerCapture.target ?: hoverTarget
             EventBus.post(move)
             val button = pressedButton
             if (button != null) {
                 draggedSincePress = true
                 val drag = MouseDragEvent(prevX, prevY, dx, dy, button)
-                drag.target = dragCaptureTarget ?: hoverTarget
+                drag.target = pointerCapture.target ?: hoverTarget
                 EventBus.post(drag)
-                dragCaptureTarget?.continuePointerCapture(
+                pointerCapture.target?.continuePointerCapture(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     mouseDX = dx,
@@ -75,7 +70,7 @@ class LayerDomInputRouter(
         }
         lastMoveX = mouseX
         lastMoveY = mouseY
-        return dragCaptureTarget != null || hoverTarget != null
+        return pointerCapture.hasCapture || hoverTarget != null
     }
 
     fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
@@ -95,7 +90,7 @@ class LayerDomInputRouter(
 
         if (button == MouseButton.LEFT) {
             setActiveTarget(target)
-            val capture = resolveDragCaptureTarget(target, mouseX, mouseY)
+            val capture = PointerCaptureSession.resolveCaptureTarget(target, mouseX, mouseY)
             if (capture != null) {
                 setDragCapture(capture)
                 capture.beginPointerCapture(mouseX, mouseY, button)
@@ -119,8 +114,8 @@ class LayerDomInputRouter(
         restoreDragCapture(root)
         updateHoverLocal(root, hoverChain, mouseX, mouseY, 0, 0)
         hoverTarget = hoverChain.lastOrNull()
-        val releaseTarget = dragCaptureTarget ?: hoverTarget ?: activeTarget
-        val hadCapture = dragCaptureTarget != null
+        val releaseTarget = pointerCapture.target ?: hoverTarget ?: activeTarget
+        val hadCapture = pointerCapture.hasCapture
         val pressed = pressedButton
         if (pressed != button && releaseTarget == null) {
             return false
@@ -129,7 +124,7 @@ class LayerDomInputRouter(
         val up = MouseUpEvent(mouseX, mouseY, button)
         up.target = releaseTarget
         EventBus.post(up)
-        dragCaptureTarget?.endPointerCapture(mouseX, mouseY, button)
+        pointerCapture.target?.endPointerCapture(mouseX, mouseY, button)
         if (!hadCapture && !draggedSincePress && pressed == button) {
             val click = MouseClickEvent(mouseX, mouseY, button)
             click.target = hoverTarget
@@ -191,7 +186,7 @@ class LayerDomInputRouter(
 
     fun hasPointerTargetAt(mouseX: Int, mouseY: Int): Boolean {
         val root = rootProvider() ?: return false
-        if (dragCaptureTarget != null) return true
+        if (pointerCapture.hasCapture) return true
         val chain = ArrayList<DOMNode>(hoverChain.size + 4)
         return collectHoverChainLocal(
             root = root,
@@ -214,82 +209,16 @@ class LayerDomInputRouter(
         lastMoveY = Int.MIN_VALUE
     }
 
-    private fun resolveDragCaptureTarget(start: DOMNode?, mouseX: Int, mouseY: Int): DOMNode? {
-        var current = start
-        while (current != null) {
-            when (current) {
-                is RangeInputNode -> return current
-                is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
-                is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
-            }
-            if (current.shouldCapturePointerDrag(mouseX, mouseY)) {
-                return current
-            }
-            current = current.parent
-        }
-        return null
-    }
-
     private fun setDragCapture(target: DOMNode) {
-        dragCaptureTarget = target
-        dragCaptureKey = target.key
-        dragCaptureClass = target.javaClass
-        dragCaptureFocusKey = FocusManager.focusedNode()?.key
+        pointerCapture.capture(target)
     }
 
     private fun releaseDragCapture() {
-        dragCaptureTarget?.cancelPointerCapture()
-        dragCaptureTarget = null
-        dragCaptureKey = null
-        dragCaptureClass = null
-        dragCaptureFocusKey = null
+        pointerCapture.release()
     }
 
     private fun restoreDragCapture(root: DOMNode) {
-        if (dragCaptureTarget == null) return
-        val key = dragCaptureKey
-        val cls = dragCaptureClass
-        if (cls == null) {
-            releaseDragCapture()
-            return
-        }
-        if (key == null) {
-            val captured = dragCaptureTarget
-            if (captured != null && captured.javaClass == cls) {
-                if (pressedButton != null) {
-                    return
-                }
-                if (isSameOrAncestor(root, captured)) {
-                    return
-                }
-            }
-            releaseDragCapture()
-            return
-        }
-        val restored = findByKeyAndClass(root, key, cls)
-        if (restored != null) {
-            dragCaptureTarget = restored
-            return
-        }
-        releaseDragCapture()
-    }
-
-    private fun findByKeyAndClass(node: DOMNode, key: Any, cls: Class<out DOMNode>): DOMNode? {
-        if (node.key == key && node.javaClass == cls) return node
-        node.children.forEach { child ->
-            val found = findByKeyAndClass(child, key, cls)
-            if (found != null) return found
-        }
-        return null
-    }
-
-    private fun hasFocusChangedSinceCapture(): Boolean {
-        if (dragCaptureFocusKey == null) return false
-        val captured = dragCaptureTarget
-        val currentFocus = FocusManager.focusedNode()
-        if (captured != null && isSameOrAncestor(captured, currentFocus)) return false
-        val currentFocusKey = FocusManager.focusedNode()?.key
-        return currentFocusKey != dragCaptureFocusKey
+        pointerCapture.restore(root, pointerPressed = pressedButton != null)
     }
 
     private fun setActiveTarget(target: DOMNode?) {
@@ -323,15 +252,6 @@ class LayerDomInputRouter(
             if (current.handleGenericWheel(mouseX, mouseY, delta)) {
                 return true
             }
-            current = current.parent
-        }
-        return false
-    }
-
-    private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
-        var current = node
-        while (current != null) {
-            if (current === candidate) return true
             current = current.parent
         }
         return false

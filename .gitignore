@@ -49,3 +49,5 @@ build
 
 # docs generated folder
 /site/
+# Added by code-review-graph
+.code-review-graph/

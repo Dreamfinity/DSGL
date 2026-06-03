@@ -46,6 +46,7 @@ import org.dreamfinity.dsgl.core.overlay.hasDomPointerTargetAt
 import org.dreamfinity.dsgl.core.overlay.hasOpenColorPickerPortal
 import org.dreamfinity.dsgl.core.overlay.hasOpenContextMenuPortal
 import org.dreamfinity.dsgl.core.overlay.hasOpenSelectPortal
+import org.dreamfinity.dsgl.core.overlay.input.PointerCaptureSession
 import org.dreamfinity.dsgl.core.overlay.syncPortalFrame
 import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
 import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
@@ -96,10 +97,7 @@ abstract class DsglScreenHost(
     private val pressedKeys: MutableSet<Int> = HashSet()
     private val hoverChain: MutableList<DOMNode> = mutableListOf()
     private var hoverTarget: DOMNode? = null
-    private var dragCaptureTarget: DOMNode? = null
-    private var dragCaptureKey: Any? = null
-    private var dragCaptureClass: Class<out DOMNode>? = null
-    private var dragCaptureFocusKey: Any? = null
+    private val pointerCapture: PointerCaptureSession = PointerCaptureSession()
     private var inspectorPointerCaptured: Boolean = false
     private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableSet<DOMNode> =
@@ -588,7 +586,7 @@ abstract class DsglScreenHost(
         inspectorBlocks: Boolean,
     ): Boolean {
         if (appOverlayInputEnabled && applicationOverlayHost.hasActiveModalPortal()) return true
-        if (isApplicationRootPointerDragActive() && dragCaptureTarget != null) return false
+        if (isApplicationRootPointerDragActive() && pointerCapture.target != null) return false
         if (inspectorBlocks || higherSurfacePointerButton != -1) return true
         if (isApplicationPortalFrameBlocking(dsglMouseX, dsglMouseY, appOverlayInputEnabled)) return true
         if (systemOverlayInputEnabled && systemOverlayHost.hasOpenPortal()) return true
@@ -633,7 +631,7 @@ abstract class DsglScreenHost(
     ) {
         updateHover(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
         hoverTarget = hoverChain.lastOrNull()
-        if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
+        if (pointerCapture.target != null && pointerCapture.hasFocusChanged()) {
             releaseDragCapture()
         }
         if (dx != 0 || dy != 0) {
@@ -652,7 +650,7 @@ abstract class DsglScreenHost(
             } else {
                 DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
                 val moveEvent = MouseMoveEvent(dsglMouseX, dsglMouseY, prevX, prevY)
-                moveEvent.target = resolveForcedPointerTarget() ?: dragCaptureTarget ?: hoverTarget
+                moveEvent.target = resolveForcedPointerTarget() ?: pointerCapture.target ?: hoverTarget
                 EventBus.post(moveEvent)
             }
         }
@@ -1272,11 +1270,15 @@ abstract class DsglScreenHost(
             if (mappedButton == MouseButton.LEFT) {
                 setActiveTarget(event.target ?: hoverTarget)
                 val captureTarget =
-                    resolveDragCaptureTarget(event.target ?: hoverTarget, inputEvent.mouseX, inputEvent.mouseY)
+                    PointerCaptureSession.resolveCaptureTarget(
+                        start = event.target ?: hoverTarget,
+                        mouseX = inputEvent.mouseX,
+                        mouseY = inputEvent.mouseY,
+                    )
                 if (captureTarget != null) {
                     setDragCapture(captureTarget)
                     captureTarget.beginPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
-                } else if (dragCaptureTarget != null) {
+                } else if (pointerCapture.target != null) {
                     releaseDragCapture()
                 }
                 if (captureTarget == null && !event.cancelled) {
@@ -1290,13 +1292,13 @@ abstract class DsglScreenHost(
 
     private fun dispatchApplicationRootPointerUp(tree: DomTree, inputEvent: MouseInputEvent) {
         val releaseTarget = resolvePointerUpTarget()
-        val hadDragCapture = dragCaptureTarget != null
+        val hadDragCapture = pointerCapture.target != null
         eventButton = -1
         mapButton(inputEvent.mouseButton)?.let { mappedButton ->
             val upEvent = MouseUpEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
             upEvent.target = releaseTarget
             EventBus.post(upEvent)
-            dragCaptureTarget?.endPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            pointerCapture.target?.endPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
             val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
             if (!hadDragCapture && !dndConsumed) {
                 val clickEvent = MouseClickEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
@@ -1338,7 +1340,7 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton? = mapButton(eventButton),
     ) {
         val button = mappedButton ?: return
-        val captured = dragCaptureTarget
+        val captured = pointerCapture.target
         if (captured == null) {
             DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
         }
@@ -2014,18 +2016,11 @@ abstract class DsglScreenHost(
     }
 
     private fun setDragCapture(target: DOMNode) {
-        dragCaptureTarget = target
-        dragCaptureKey = target.key
-        dragCaptureClass = target.javaClass
-        dragCaptureFocusKey = FocusManager.focusedNode()?.key
+        pointerCapture.capture(target)
     }
 
     private fun releaseDragCapture() {
-        dragCaptureTarget?.cancelPointerCapture()
-        dragCaptureTarget = null
-        dragCaptureKey = null
-        dragCaptureClass = null
-        dragCaptureFocusKey = null
+        pointerCapture.release()
     }
 
     private fun setActiveTarget(target: DOMNode?) {
@@ -2041,70 +2036,8 @@ abstract class DsglScreenHost(
         activeTarget = null
     }
 
-    private fun resolveDragCaptureTarget(start: DOMNode?, mouseX: Int, mouseY: Int): DOMNode? {
-        var current = start
-        while (current != null) {
-            when (current) {
-                is RangeInputNode -> return current
-                is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
-                is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
-            }
-            if (current.shouldCapturePointerDrag(mouseX, mouseY)) {
-                return current
-            }
-            current = current.parent
-        }
-        return null
-    }
-
     private fun restoreDragCapture(root: DOMNode) {
-        if (dragCaptureTarget == null) return
-        val key = dragCaptureKey
-        val cls = dragCaptureClass
-        if (cls == null) {
-            releaseDragCapture()
-            return
-        }
-        if (key == null) {
-            val captured = dragCaptureTarget
-            if (captured != null && captured.javaClass == cls) {
-                if (eventButton != -1) {
-                    return
-                }
-                if (isSameOrAncestor(root, captured)) {
-                    return
-                }
-            }
-            releaseDragCapture()
-            return
-        }
-
-        val restored = findByKeyAndClass(root, key, cls)
-        if (restored != null) {
-            dragCaptureTarget = restored
-        } else {
-            releaseDragCapture()
-        }
-    }
-
-    private fun findByKeyAndClass(node: DOMNode, key: Any, cls: Class<out DOMNode>): DOMNode? {
-        if (node.key == key && node.javaClass == cls) return node
-        for (child in node.children) {
-            val found = findByKeyAndClass(child, key, cls)
-            if (found != null) {
-                return found
-            }
-        }
-        return null
-    }
-
-    private fun hasFocusChangedSinceCapture(): Boolean {
-        if (dragCaptureFocusKey == null) return false
-        val captured = dragCaptureTarget
-        val currentFocus = FocusManager.focusedNode()
-        if (captured != null && isSameOrAncestor(captured, currentFocus)) return false
-        val currentFocusKey = currentFocus?.key
-        return currentFocusKey != dragCaptureFocusKey
+        pointerCapture.restore(root, pointerPressed = eventButton != -1)
     }
 
     private fun refreshHoverTarget(mouseX: Int, mouseY: Int) {
@@ -2122,7 +2055,8 @@ abstract class DsglScreenHost(
 
     private fun resolvePointerDownTarget(): DOMNode? = resolveForcedPointerTarget() ?: hoverTarget
 
-    private fun resolvePointerUpTarget(): DOMNode? = dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
+    private fun resolvePointerUpTarget(): DOMNode? =
+        pointerCapture.target ?: resolveForcedPointerTarget() ?: hoverTarget
 
     private fun resolveClickTarget(): DOMNode? = hoverTarget
 
