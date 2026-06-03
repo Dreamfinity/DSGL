@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
@@ -322,7 +322,7 @@ class ScrollbarRenderingInteractionTests {
                     onClick { }
                 }.applyParent(child)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         KeyModifiers.sync(shift = false, control = false, meta = false)
         val wheelX = childButton.bounds.x + 1
         val wheelY = childButton.bounds.y + 1
@@ -397,7 +397,7 @@ class ScrollbarRenderingInteractionTests {
                 bounds = Rect(inner.bounds.x, inner.bounds.y, 120, 320)
             }.applyParent(inner)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         KeyModifiers.sync(shift = false, control = false, meta = false)
         val innerMax = inner.scrollContainerState().maxScrollY
         inner.setScrollOffsets(0, innerMax)
@@ -450,7 +450,7 @@ class ScrollbarRenderingInteractionTests {
                 bounds = Rect(inner.bounds.x, inner.bounds.y, 130, 360)
             }.applyParent(inner)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         val innerThumb =
             inner
                 .debugScrollbarVisualState()
@@ -523,7 +523,7 @@ class ScrollbarRenderingInteractionTests {
             }
         wheelTarget.applyParent(viewport)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return Quad(root, viewport, wheelTarget, router)
     }
 
@@ -531,6 +531,6 @@ class ScrollbarRenderingInteractionTests {
         val root: ContainerNode,
         val viewport: ContainerNode,
         val wheelTarget: ButtonNode,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
     )
 }

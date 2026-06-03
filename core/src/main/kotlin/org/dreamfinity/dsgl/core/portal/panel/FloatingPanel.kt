@@ -1,0 +1,657 @@
+package org.dreamfinity.dsgl.core.portal.panel
+
+import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ButtonNode
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.elements.TextNode
+import org.dreamfinity.dsgl.core.dom.elements.TextSource
+import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.dom.layout.Size
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
+import org.dreamfinity.dsgl.core.dsl.UiScope
+import org.dreamfinity.dsgl.core.dsl.button
+import org.dreamfinity.dsgl.core.dsl.div
+import org.dreamfinity.dsgl.core.dsl.text
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.style.TextWrap
+
+data class FloatingPanelStyle(
+    val headerHeight: Int = 26,
+    val panelPadding: Int = 6,
+    val resizeHandleSize: Int = 8,
+    val closeButtonWidth: Int = 16,
+    val closeButtonHeight: Int = 16,
+    val closeButtonMarginTop: Int = 4,
+    val closeButtonMarginRight: Int = 4,
+    val panelBackgroundColor: Int = 0xFF1E252F.toInt(),
+    val panelBorderColor: Int = 0xFF5A6C80.toInt(),
+    val panelShadowColor: Int = 0x7A0C1118,
+    val headerBackgroundColor: Int = 0xFF2E3A49.toInt(),
+    val headerBorderColor: Int = 0xFF607A95.toInt(),
+    val closeButtonBackgroundColor: Int = 0xFF2E3A49.toInt(),
+    val closeButtonBorderColor: Int = 0xFF607A95.toInt(),
+    val textColor: Int = 0xFFFFFFFF.toInt(),
+    val fontSize: Int = 20,
+    val closeGlyph: String = "x",
+)
+
+data class FloatingPanelFrame(
+    val panelRect: Rect,
+    val headerRect: Rect,
+    val bodyRect: Rect,
+    val closeRect: Rect,
+)
+
+class FloatingPanel(
+    private val ownerId: Any,
+    private val panelState: FloatingPanelState,
+    private val dragSession: FloatingPanelDragSession,
+    private var style: FloatingPanelStyle = FloatingPanelStyle(),
+) {
+    private val rootNode: FloatingPanelRootNode =
+        FloatingPanelRootNode(
+            owner = this,
+            key = "dsgl-floating-panel-$ownerId",
+        )
+    private val shadowNode: ContainerNode
+    private val panelNode: ContainerNode
+    private val headerNode: ContainerNode
+    private var titleNode: TextNode
+    private val closeButtonNode: ButtonNode
+    private var bodyContentNode: DOMNode? = null
+    private var floatingContentNode: DOMNode? = null
+    var title: String = ""
+        private set
+    var draggable: Boolean = true
+        private set
+    var resizable: Boolean = false
+        private set
+    var minWidth: Int = 120
+        private set
+    var minHeight: Int = 80
+        private set
+    private var onClose: (() -> Unit)? = null
+    private var frame: FloatingPanelFrame? = null
+
+    init {
+        val scope = UiScope(rootNode)
+        shadowNode =
+            scope.div({
+                key = "dsgl-floating-panel-shadow-$ownerId"
+                style = {
+                    display = Display.Block
+                }
+            })
+        panelNode =
+            scope.div({
+                key = "dsgl-floating-panel-frame-$ownerId"
+                style = {
+                    display = Display.Block
+                }
+            })
+        headerNode =
+            scope.div({
+                key = "dsgl-floating-panel-header-$ownerId"
+                style = {
+                    display = Display.Flex
+                    flexDirection = FlexDirection.Row
+                }
+            })
+        titleNode =
+            scope.text(props = {
+                key = "dsgl-floating-panel-title-$ownerId"
+                value = ""
+                style = {
+                    textWrap = TextWrap.NoWrap
+                }
+            })
+        closeButtonNode =
+            scope.button(style.closeGlyph, {
+                key = "dsgl-floating-panel-close-$ownerId"
+                onMouseClick = {
+                    onClose?.invoke()
+                    it.cancelled = true
+                }
+            })
+        applyStyleToNodes(style)
+        rebuildFrameFromState()
+    }
+
+    fun node(): DOMNode = rootNode
+
+    fun setBodyContent(node: DOMNode?) {
+        if (bodyContentNode === node) return
+        detachNode(bodyContentNode)
+        bodyContentNode = node
+        attachNodeBeforeFloatingContent(node)
+    }
+
+    fun setFloatingContent(node: DOMNode?) {
+        if (floatingContentNode === node) return
+        detachNode(floatingContentNode)
+        floatingContentNode = node
+        attachNodeAtTop(node)
+    }
+
+    fun configure(
+        title: String,
+        draggable: Boolean,
+        resizable: Boolean = this.resizable,
+        minWidth: Int = this.minWidth,
+        minHeight: Int = this.minHeight,
+        style: FloatingPanelStyle = this.style,
+        onClose: (() -> Unit)? = this.onClose,
+    ) {
+        val titleChanged = this.title != title
+        val styleChanged = this.style != style
+        this.title = title
+        this.draggable = draggable
+        this.resizable = resizable
+        this.minWidth = minWidth.coerceAtLeast(1)
+        this.minHeight = minHeight.coerceAtLeast(1)
+        this.style = style
+        this.onClose = onClose
+        if (titleChanged) {
+            replaceTitleNode()
+        }
+        if (styleChanged) {
+            applyStyleToNodes(style)
+        }
+        closeButtonNode.text = style.closeGlyph
+        rebuildFrameFromState()
+    }
+
+    fun syncPanelRect(panelRect: Rect?) {
+        if (panelRect == null) {
+            panelState.hide()
+            frame = null
+            return
+        }
+        panelState.updateFromRect(panelRect)
+        rebuildFrameFromState()
+    }
+
+    fun panelRect(): Rect? = frame?.panelRect
+
+    fun headerRect(): Rect? = frame?.headerRect
+
+    fun closeRect(): Rect? = frame?.closeRect
+
+    fun bodyRect(): Rect? = frame?.bodyRect
+
+    fun isDragging(): Boolean = dragSession.active
+
+    fun beginHeaderDrag(mouseX: Int, mouseY: Int): Boolean {
+        val localFrame = frame ?: return false
+        if (!draggable) return false
+        if (!localFrame.headerRect.contains(mouseX, mouseY)) return false
+        if (localFrame.closeRect.contains(mouseX, mouseY)) return false
+        beginMoveDrag(mouseX, mouseY)
+        return true
+    }
+
+    fun handleMouseDown(
+        mouseX: Int,
+        mouseY: Int,
+        button: MouseButton,
+        includeCloseButton: Boolean = true,
+    ): Boolean {
+        val localFrame = frame ?: return false
+        if (button != MouseButton.LEFT) return false
+        if (includeCloseButton && localFrame.closeRect.contains(mouseX, mouseY)) {
+            onClose?.invoke()
+            return true
+        }
+        if (resizable && !localFrame.bodyRect.contains(mouseX, mouseY)) {
+            val resizeHandle = resolveResizeHandle(localFrame.panelRect, mouseX, mouseY)
+            if (resizeHandle != null) {
+                dragSession.begin(
+                    ownerId = ownerId,
+                    type = FloatingPanelDragType.PanelResize,
+                    pointerX = mouseX,
+                    pointerY = mouseY,
+                    panelState = panelState,
+                    resizeHandle = resizeHandle,
+                )
+                return true
+            }
+        }
+        if (!draggable) return false
+        if (!localFrame.headerRect.contains(mouseX, mouseY)) return false
+        beginMoveDrag(mouseX, mouseY)
+        return true
+    }
+
+    fun handleMouseMove(
+        mouseX: Int,
+        mouseY: Int,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        onDragRectChanged: (Rect) -> Unit,
+    ): Boolean {
+        if (!dragSession.active) return false
+        dragSession.update(mouseX, mouseY)
+        val rect = buildDraggedRect(viewportWidth, viewportHeight)
+        panelState.updateFromRect(rect)
+        rebuildFrameFromState()
+        onDragRectChanged(rect)
+        return true
+    }
+
+    fun handleMouseUp(
+        mouseX: Int,
+        mouseY: Int,
+        button: MouseButton,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        onDragRectChanged: (Rect) -> Unit,
+    ): Boolean {
+        if (button != MouseButton.LEFT || !dragSession.active) return false
+        dragSession.update(mouseX, mouseY)
+        val rect = buildDraggedRect(viewportWidth, viewportHeight)
+        panelState.updateFromRect(rect)
+        rebuildFrameFromState()
+        onDragRectChanged(rect)
+        dragSession.end()
+        return true
+    }
+
+    private fun buildDraggedRect(viewportWidth: Int, viewportHeight: Int): Rect =
+        when (dragSession.type) {
+            FloatingPanelDragType.PanelResize -> buildResizedRect(viewportWidth, viewportHeight)
+            else -> buildMovedRect(viewportWidth, viewportHeight)
+        }
+
+    private fun beginMoveDrag(mouseX: Int, mouseY: Int) {
+        dragSession.begin(
+            ownerId = ownerId,
+            type = FloatingPanelDragType.PanelMove,
+            pointerX = mouseX,
+            pointerY = mouseY,
+            panelState = panelState,
+            resizeHandle = null,
+        )
+    }
+
+    private fun buildMovedRect(viewportWidth: Int, viewportHeight: Int): Rect {
+        val dx = dragSession.currentPointerX - dragSession.startPointerX
+        val dy = dragSession.currentPointerY - dragSession.startPointerY
+        val raw =
+            Rect(
+                x = dragSession.startPanelX + dx,
+                y = dragSession.startPanelY + dy,
+                width = dragSession.startPanelWidth,
+                height = dragSession.startPanelHeight,
+            )
+        return clampPanel(raw, viewportWidth, viewportHeight)
+    }
+
+    private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect {
+        val handle = dragSession.resizeHandle ?: return buildMovedRect(viewportWidth, viewportHeight)
+        val dx = dragSession.currentPointerX - dragSession.startPointerX
+        val dy = dragSession.currentPointerY - dragSession.startPointerY
+
+        var left = dragSession.startPanelX
+        var top = dragSession.startPanelY
+        var right = dragSession.startPanelX + dragSession.startPanelWidth
+        var bottom = dragSession.startPanelY + dragSession.startPanelHeight
+
+        when (handle) {
+            FloatingPanelResizeHandle.Left,
+            FloatingPanelResizeHandle.TopLeft,
+            FloatingPanelResizeHandle.BottomLeft,
+            -> left += dx
+
+            FloatingPanelResizeHandle.Right,
+            FloatingPanelResizeHandle.TopRight,
+            FloatingPanelResizeHandle.BottomRight,
+            -> right += dx
+
+            else -> Unit
+        }
+        when (handle) {
+            FloatingPanelResizeHandle.Top,
+            FloatingPanelResizeHandle.TopLeft,
+            FloatingPanelResizeHandle.TopRight,
+            -> top += dy
+
+            FloatingPanelResizeHandle.Bottom,
+            FloatingPanelResizeHandle.BottomLeft,
+            FloatingPanelResizeHandle.BottomRight,
+            -> bottom += dy
+
+            else -> Unit
+        }
+
+        if (right - left < minWidth) {
+            when (handle) {
+                FloatingPanelResizeHandle.Left,
+                FloatingPanelResizeHandle.TopLeft,
+                FloatingPanelResizeHandle.BottomLeft,
+                -> left = right - minWidth
+
+                FloatingPanelResizeHandle.Right,
+                FloatingPanelResizeHandle.TopRight,
+                FloatingPanelResizeHandle.BottomRight,
+                -> right = left + minWidth
+
+                else -> right = left + minWidth
+            }
+        }
+        if (bottom - top < minHeight) {
+            when (handle) {
+                FloatingPanelResizeHandle.Top,
+                FloatingPanelResizeHandle.TopLeft,
+                FloatingPanelResizeHandle.TopRight,
+                -> top = bottom - minHeight
+
+                FloatingPanelResizeHandle.Bottom,
+                FloatingPanelResizeHandle.BottomLeft,
+                FloatingPanelResizeHandle.BottomRight,
+                -> bottom = top + minHeight
+
+                else -> bottom = top + minHeight
+            }
+        }
+
+        val minX = 2
+        val minY = 2
+        val maxRight = (viewportWidth - 2).coerceAtLeast(minX + minWidth)
+        val maxBottom = (viewportHeight - 2).coerceAtLeast(minY + minHeight)
+
+        when (handle) {
+            FloatingPanelResizeHandle.Left,
+            FloatingPanelResizeHandle.TopLeft,
+            FloatingPanelResizeHandle.BottomLeft,
+            -> left = left.coerceIn(minX, right - minWidth)
+
+            FloatingPanelResizeHandle.Right,
+            FloatingPanelResizeHandle.TopRight,
+            FloatingPanelResizeHandle.BottomRight,
+            -> right = right.coerceIn(left + minWidth, maxRight)
+
+            else -> Unit
+        }
+        when (handle) {
+            FloatingPanelResizeHandle.Top,
+            FloatingPanelResizeHandle.TopLeft,
+            FloatingPanelResizeHandle.TopRight,
+            -> top = top.coerceIn(minY, bottom - minHeight)
+
+            FloatingPanelResizeHandle.Bottom,
+            FloatingPanelResizeHandle.BottomLeft,
+            FloatingPanelResizeHandle.BottomRight,
+            -> bottom = bottom.coerceIn(top + minHeight, maxBottom)
+
+            else -> Unit
+        }
+
+        val width = (right - left).coerceAtLeast(minWidth)
+        val height = (bottom - top).coerceAtLeast(minHeight)
+        val clamped =
+            clampPanel(
+                Rect(left, top, width, height),
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+            )
+        return Rect(
+            x = clamped.x,
+            y = clamped.y,
+            width = clamped.width.coerceAtLeast(minWidth),
+            height = clamped.height.coerceAtLeast(minHeight),
+        )
+    }
+
+    private fun rebuildFrameFromState() {
+        val panelRect = panelState.currentRectOrNull()
+        frame =
+            if (panelRect == null) {
+                null
+            } else {
+                buildFrame(panelRect)
+            }
+    }
+
+    private fun buildFrame(panelRect: Rect): FloatingPanelFrame {
+        val headerRect = Rect(panelRect.x, panelRect.y, panelRect.width, style.headerHeight)
+        val bodyRect =
+            Rect(
+                x = panelRect.x + style.panelPadding,
+                y = panelRect.y + style.headerHeight + style.panelPadding,
+                width = (panelRect.width - style.panelPadding * 2).coerceAtLeast(1),
+                height = (panelRect.height - style.headerHeight - style.panelPadding * 2).coerceAtLeast(1),
+            )
+        val closeRect =
+            Rect(
+                x = panelRect.x + panelRect.width - style.closeButtonMarginRight - style.closeButtonWidth,
+                y = panelRect.y + style.closeButtonMarginTop,
+                width = style.closeButtonWidth,
+                height = style.closeButtonHeight,
+            )
+        return FloatingPanelFrame(
+            panelRect = panelRect,
+            headerRect = headerRect,
+            bodyRect = bodyRect,
+            closeRect = closeRect,
+        )
+    }
+
+    private fun clampPanel(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
+        val minX = 2
+        val minY = 2
+        val maxX = (viewportWidth - rect.width - 2).coerceAtLeast(2)
+        val maxY = (viewportHeight - rect.height - 2).coerceAtLeast(2)
+        return Rect(
+            x = rect.x.coerceIn(minX, maxX),
+            y = rect.y.coerceIn(minY, maxY),
+            width = rect.width,
+            height = rect.height,
+        )
+    }
+
+    private fun resolveResizeHandle(panelRect: Rect, mouseX: Int, mouseY: Int): FloatingPanelResizeHandle? {
+        if (!panelRect.contains(mouseX, mouseY)) return null
+        val edge = style.resizeHandleSize.coerceAtLeast(2)
+        val leftZone = mouseX <= panelRect.x + edge
+        val rightZone = mouseX >= panelRect.x + panelRect.width - edge
+        val topZone = mouseY <= panelRect.y + edge
+        val bottomZone = mouseY >= panelRect.y + panelRect.height - edge
+
+        if (leftZone && topZone) return FloatingPanelResizeHandle.TopLeft
+        if (rightZone && topZone) return FloatingPanelResizeHandle.TopRight
+        if (leftZone && bottomZone) return FloatingPanelResizeHandle.BottomLeft
+        if (rightZone && bottomZone) return FloatingPanelResizeHandle.BottomRight
+        if (leftZone) return FloatingPanelResizeHandle.Left
+        if (rightZone) return FloatingPanelResizeHandle.Right
+        if (topZone) return FloatingPanelResizeHandle.Top
+        if (bottomZone) return FloatingPanelResizeHandle.Bottom
+        return null
+    }
+
+    private fun applyStyleToNodes(style: FloatingPanelStyle) {
+        shadowNode.applyStyle {
+            backgroundColor = style.panelShadowColor
+            border { width = 0.px }
+        }
+        panelNode.applyStyle {
+            backgroundColor = style.panelBackgroundColor
+            border {
+                width = 1.px
+                color = style.panelBorderColor
+            }
+        }
+        headerNode.applyStyle {
+            backgroundColor = style.headerBackgroundColor
+            border {
+                width = 1.px
+                color = style.headerBorderColor
+            }
+        }
+        titleNode.applyStyle {
+            color = style.textColor
+            fontSize = style.fontSize.px
+            textWrap = TextWrap.NoWrap
+        }
+        closeButtonNode.applyStyle {
+            backgroundColor = style.closeButtonBackgroundColor
+            border {
+                width = 1.px
+                color = style.closeButtonBorderColor
+            }
+            color = style.textColor
+            fontSize = style.fontSize.px
+            width = style.closeButtonWidth.px
+            height = style.closeButtonHeight.px
+            padding = 0.px
+        }
+    }
+
+    private fun replaceTitleNode() {
+        val oldNode = titleNode
+        val oldIndex = rootNode.children.indexOf(oldNode)
+        detachNode(oldNode)
+        val newNode =
+            TextNode(
+                textSource = TextSource.Static(title),
+                key = "dsgl-floating-panel-title-$ownerId",
+            )
+        newNode.applyStyle {
+            textWrap = TextWrap.NoWrap
+        }
+        titleNode = newNode
+        if (oldIndex >= 0 && oldIndex <= rootNode.children.size) {
+            rootNode.children.add(oldIndex, newNode)
+            newNode.parent = rootNode
+        } else {
+            newNode.applyParent(rootNode)
+        }
+        applyStyleToNodes(style)
+    }
+
+    private fun detachNode(node: DOMNode?) {
+        val local = node ?: return
+        val parent = local.parent
+        if (parent != null) {
+            parent.children.remove(local)
+            local.parent = null
+        }
+    }
+
+    private fun attachNodeBeforeFloatingContent(node: DOMNode?) {
+        val local = node ?: return
+        detachNode(local)
+        val floatingContent = floatingContentNode
+        if (floatingContent != null && floatingContent.parent === rootNode) {
+            val floatingContentIndex = rootNode.children.indexOf(floatingContent)
+            if (floatingContentIndex >= 0) {
+                rootNode.children.add(floatingContentIndex, local)
+                local.parent = rootNode
+                return
+            }
+        }
+        local.applyParent(rootNode)
+    }
+
+    private fun attachNodeAtTop(node: DOMNode?) {
+        val local = node ?: return
+        detachNode(local)
+        local.applyParent(rootNode)
+    }
+
+    private fun renderInto(ctx: UiMeasureContext, viewportRect: Rect) {
+        val localFrame = frame
+        if (localFrame == null) {
+            shadowNode.render(ctx, 0, 0, 0, 0)
+            panelNode.render(ctx, 0, 0, 0, 0)
+            headerNode.render(ctx, 0, 0, 0, 0)
+            titleNode.render(ctx, 0, 0, 0, 0)
+            closeButtonNode.render(ctx, 0, 0, 0, 0)
+            bodyContentNode?.render(ctx, 0, 0, 0, 0)
+            floatingContentNode?.render(ctx, 0, 0, 0, 0)
+            return
+        }
+
+        val panelRect = localFrame.panelRect
+        val headerRect = localFrame.headerRect
+        val closeRect = localFrame.closeRect
+        val bodyRect = localFrame.bodyRect
+        val titleX = headerRect.x + 6
+        val titleY = headerRect.y + 3
+        val titleWidth = (closeRect.x - titleX - 4).coerceAtLeast(1)
+        val titleHeight = (headerRect.height - 6).coerceAtLeast(1)
+
+        shadowNode.render(
+            ctx,
+            panelRect.x + 2,
+            panelRect.y + 2,
+            panelRect.width,
+            panelRect.height,
+        )
+        panelNode.render(
+            ctx,
+            panelRect.x,
+            panelRect.y,
+            panelRect.width,
+            panelRect.height,
+        )
+        headerNode.render(
+            ctx,
+            headerRect.x,
+            headerRect.y,
+            headerRect.width,
+            headerRect.height,
+        )
+        titleNode.render(
+            ctx,
+            titleX,
+            titleY,
+            titleWidth,
+            titleHeight,
+        )
+        closeButtonNode.render(
+            ctx,
+            closeRect.x,
+            closeRect.y,
+            closeRect.width,
+            closeRect.height,
+        )
+        bodyContentNode?.render(
+            ctx,
+            bodyRect.x,
+            bodyRect.y,
+            bodyRect.width,
+            bodyRect.height,
+        )
+        floatingContentNode?.render(
+            ctx,
+            viewportRect.x,
+            viewportRect.y,
+            viewportRect.width,
+            viewportRect.height,
+        )
+    }
+
+    private class FloatingPanelRootNode(
+        private val owner: FloatingPanel,
+        key: Any?,
+    ) : DOMNode(key) {
+        override val styleType: String = "dsgl-floating-panel"
+
+        override fun measure(ctx: UiMeasureContext): Size =
+            Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+
+        override fun render(
+            ctx: UiMeasureContext,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
+            bounds = Rect(x, y, width, height)
+            owner.renderInto(ctx, bounds)
+        }
+    }
+}

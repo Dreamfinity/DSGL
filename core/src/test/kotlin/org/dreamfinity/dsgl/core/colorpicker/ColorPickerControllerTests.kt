@@ -138,7 +138,7 @@ class ColorPickerControllerTests {
     }
 
     @Test
-    fun `eyedropper overlay shows mode and formatted value tooltip`() {
+    fun `eyedropper preview shows mode and formatted value tooltip`() {
         val sampled = 0xFF336699.toInt()
         val sampler =
             object : ScreenColorSampler {
@@ -160,7 +160,7 @@ class ColorPickerControllerTests {
         controller.handleMouseMove(120, 160, layout)
         controller.sampleEyedropperAtHover()
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(800, 600, out)
+        controller.appendEyedropperPreview(800, 600, out)
 
         val textCommands = out.filterIsInstance<RenderCommand.DrawText>()
         assertTrue(textCommands.any { it.text.contains("Mode: RGB (ARGB)") })
@@ -175,7 +175,7 @@ class ColorPickerControllerTests {
     }
 
     @Test
-    fun `eyedropper overlay preview path does not use area sampling`() {
+    fun `eyedropper preview preview path does not use area sampling`() {
         val sampler = RecordingSampler()
         val controller =
             ColorPickerController(
@@ -192,7 +192,7 @@ class ColorPickerControllerTests {
         controller.handleMouseMove(80, 90, layout)
         controller.sampleEyedropperAtHover()
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperPreview(640, 480, out)
 
         assertEquals(0, sampler.areaCalls)
         assertTrue(sampler.colorCalls > 0)
@@ -201,7 +201,7 @@ class ColorPickerControllerTests {
     }
 
     @Test
-    fun `eyedropper overlay emits capture and textured magnifier commands instead of per-cell rectangles`() {
+    fun `eyedropper preview emits capture and textured magnifier commands instead of per-cell rectangles`() {
         val controller =
             ColorPickerController(
                 initial =
@@ -215,7 +215,7 @@ class ColorPickerControllerTests {
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperPreview(640, 480, out)
 
         assertTrue(out.any { it is RenderCommand.CaptureScreenRegion })
         assertTrue(out.any { it is RenderCommand.DrawCapturedScreenRegion })
@@ -227,7 +227,7 @@ class ColorPickerControllerTests {
     }
 
     @Test
-    fun `eyedropper overlay draws aligned light grid over captured magnifier`() {
+    fun `eyedropper preview draws aligned light grid over captured magnifier`() {
         val gridColor = 0x7F57C2FF
         val controller =
             ColorPickerController(
@@ -241,15 +241,15 @@ class ColorPickerControllerTests {
                     ColorPickerStyle(
                         eyedropperGridSize = 5,
                         eyedropperCellSize = 4,
-                        eyedropperGridOverlayEnabled = true,
-                        eyedropperGridOverlayColor = gridColor,
+                        eyedropperGridEnabled = true,
+                        eyedropperGridColor = gridColor,
                     ),
             )
         controller.beginEyedropper()
         val layout = controller.buildLayout(Rect(0, 0, 360, controller.preferredHeight(true)))
         controller.handleMouseMove(80, 90, layout)
         val out = ArrayList<RenderCommand>()
-        controller.appendEyedropperOverlay(640, 480, out)
+        controller.appendEyedropperPreview(640, 480, out)
 
         val magnifier = out.filterIsInstance<RenderCommand.DrawCapturedScreenRegion>().single()
         val gridLines = out.filterIsInstance<RenderCommand.DrawRect>().filter { it.color == gridColor }

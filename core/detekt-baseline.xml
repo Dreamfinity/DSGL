@@ -6,7 +6,7 @@
     <ID>ComplexCondition:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$previous.anchorRect != request.anchorRect || previous.width != request.width || previous.style != request.style || previous.state.alphaEnabled != request.state.alphaEnabled</ID>
     <ID>ComplexCondition:DOMNode.kt$DOMNode$border.top &lt;= 0 &amp;&amp; border.right &lt;= 0 &amp;&amp; border.bottom &lt;= 0 &amp;&amp; border.left &lt;= 0</ID>
     <ID>ComplexCondition:DOMNode.kt$DOMNode$relativeOffsetX == 0 &amp;&amp; relativeOffsetY == 0 &amp;&amp; stickyOffsetX == 0 &amp;&amp; stickyOffsetY == 0</ID>
-    <ID>ComplexCondition:DomTree.kt$DomTree$( !laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresSystemOverlayScrollLayoutFallback ) &amp;&amp; lastWidth > 0 &amp;&amp; lastHeight > 0</ID>
+    <ID>ComplexCondition:DomTree.kt$DomTree$( !laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresIsolatedScopeScrollLayoutFallback ) &amp;&amp; lastWidth > 0 &amp;&amp; lastHeight > 0</ID>
     <ID>ComplexCondition:FontRegistry.kt$FontRegistry$end > start &amp;&amp; end &lt; text.length &amp;&amp; Character.isLowSurrogate(text[end]) &amp;&amp; Character.isHighSurrogate(text[end - 1])</ID>
     <ID>ComplexCondition:FontRegistry.kt$FontRegistry$start > 0 &amp;&amp; start &lt; text.length &amp;&amp; Character.isLowSurrogate(text[start]) &amp;&amp; Character.isHighSurrogate(text[start - 1])</ID>
     <ID>ComplexCondition:InspectorController.kt$InspectorController$!dragMoved &amp;&amp; ( kotlin.math.abs(resized.width - dragStartRect.width) >= 2 || kotlin.math.abs(resized.height - dragStartRect.height) >= 2 || kotlin.math.abs(resized.x - dragStartRect.x) >= 2 || kotlin.math.abs(resized.y - dragStartRect.y) >= 2 )</ID>
@@ -15,7 +15,7 @@
     <ID>ComplexCondition:InspectorController.kt$InspectorController$cached != null &amp;&amp; cached.key == key &amp;&amp; cached.nodeClass == klass &amp;&amp; cached.layoutVersion == layoutVersion</ID>
     <ID>ComplexCondition:InspectorController.kt$InspectorController$endedMode == DragMode.MinimizedMove &amp;&amp; clickLike &amp;&amp; panelState == InspectorPanelState.Minimized &amp;&amp; minimizedBounds.contains(mouseX, mouseY)</ID>
     <ID>ComplexCondition:InspectorController.kt$InspectorController$numberText.isEmpty() || numberText == "-" || numberText == "." || numberText == "-."</ID>
-    <ID>ComplexCondition:LayerDomInputRouter.kt$LayerDomInputRouter$node.onMouseDown != null || node.onMouseUp != null || node.onMouseClick != null || node.onMouseDrag != null || node.onMouseWheel != null || node.onMouseMove != null || node.onKeyDown != null || node.onKeyUp != null</ID>
+    <ID>ComplexCondition:SurfaceDomInputRouter.kt$SurfaceDomInputRouter$node.onMouseDown != null || node.onMouseUp != null || node.onMouseClick != null || node.onMouseDrag != null || node.onMouseWheel != null || node.onMouseMove != null || node.onKeyDown != null || node.onKeyUp != null</ID>
     <ID>ComplexCondition:ModalPortalSessionStore.kt$ModalPortalSessionStore$(needsFocusOnTop || (topMost.trapFocus &amp;&amp; focusOutsideTop)) &amp;&amp; !FocusManager.requestFocusFirstInSubtree(topDialogKey)</ID>
     <ID>ComplexCondition:SelectNode.kt$SelectNode$!controlled &amp;&amp; uncontrolledValue == null &amp;&amp; value != null &amp;&amp; optionExists(value)</ID>
     <ID>ComplexCondition:SingleLineInputNode.kt$SingleLineInputNode$!showPlaceholder &amp;&amp; focused &amp;&amp; !styleDisabled &amp;&amp; editState.isCaretVisible(caretBlinkPeriodMs)</ID>
@@ -37,7 +37,7 @@
     <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun renderFlex(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
     <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun renderGrid(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
     <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$@Suppress("LoopWithTooManyJumpStatements") private fun ensureLayout()</ID>
-    <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$fun handleKeyDown(keyCode: Int): Boolean</ID>
     <ID>CyclomaticComplexMethod:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$fun measure( menuToken: Long, entries: List&lt;MenuEntry>, style: ContextMenuStyle, fontId: String?, fontSize: Int?, ctx: UiMeasureContext, dpiScale: Float, ): Measurement</ID>
     <ID>CyclomaticComplexMethod:CssLength.kt$fun parseCssLength(raw: String, allowUnitlessZero: Boolean = true): CssLength</ID>
@@ -62,8 +62,8 @@
     <ID>CyclomaticComplexMethod:MinecraftFormattingParser.kt$MinecraftFormattingParser$@Suppress("LoopWithTooManyJumpStatements") private fun parseMinecraft(text: String): ParsedText</ID>
     <ID>CyclomaticComplexMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
     <ID>CyclomaticComplexMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
-    <ID>CyclomaticComplexMethod:OverlayPanel.kt$OverlayPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
-    <ID>CyclomaticComplexMethod:SelectEngine.kt$SelectEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>CyclomaticComplexMethod:FloatingPanel.kt$FloatingPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
+    <ID>CyclomaticComplexMethod:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>CyclomaticComplexMethod:SingleLineInputNode.kt$SingleLineInputNode$override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList&lt;RenderCommand>)</ID>
     <ID>CyclomaticComplexMethod:StyleEngine.kt$StyleEngine$private fun applyProperty( current: ComputedStyle, parentComputed: ComputedStyle?, property: StyleProperty, expression: StyleExpression, variables: Map&lt;String, String>, rootFontSizePx: Int, ): ComputedStyle</ID>
     <ID>CyclomaticComplexMethod:StyleEngine.kt$StyleEngine$private fun selectorLabel(selector: StyleSelector): String</ID>
@@ -72,8 +72,8 @@
     <ID>CyclomaticComplexMethod:StyleSelector.kt$StyleSelector.Companion$private fun parsePartToken(token: String, rawSelector: String): StyleSelectorPart</ID>
     <ID>CyclomaticComplexMethod:StyleValueParsing.kt$fun validateLiteralForProperty( property: StyleProperty, literal: String, warningReporter: StyleWarningReporter? = null, deprecatedLengthWarningKey: String = "deprecated.unitless-length", )</ID>
     <ID>CyclomaticComplexMethod:StylesheetManager.kt$StylesheetManager$@Synchronized fun pollForChanges(force: Boolean = false)</ID>
-    <ID>CyclomaticComplexMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
-    <ID>CyclomaticComplexMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector native body content remains clipped in narrow viewport`()</ID>
+    <ID>CyclomaticComplexMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
+    <ID>CyclomaticComplexMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector native body content remains clipped in narrow viewport`()</ID>
     <ID>CyclomaticComplexMethod:TextAreaNode.kt$TextAreaNode$override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList&lt;RenderCommand>)</ID>
     <ID>CyclomaticComplexMethod:TextAreaNode.kt$TextAreaNode$private fun handleKey(event: KeyboardKeyDownEvent)</ID>
     <ID>CyclomaticComplexMethod:TextEditShortcutDispatcher.kt$TextEditShortcutDispatcher$fun dispatch(event: KeyboardKeyDownEvent, callbacks: TextShortcutCallbacks): Boolean</ID>
@@ -91,19 +91,19 @@
     <ID>LargeClass:StyleEngine.kt$StyleEngine</ID>
     <ID>LargeClass:StyleScope.kt$StyleScope : CssLengthUnitsDsl</ID>
     <ID>LargeClass:SystemColorPickerPopupBodyNode.kt$SystemColorPickerPopupBodyNode : DOMNode</ID>
-    <ID>LargeClass:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode : DOMNode</ID>
-    <ID>LargeClass:SystemOverlayColorPickerEntryTests.kt$SystemOverlayColorPickerEntryTests</ID>
-    <ID>LargeClass:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests</ID>
+    <ID>LargeClass:SystemInspectorPortalNode.kt$SystemInspectorPortalNode : DOMNode</ID>
+    <ID>LargeClass:SystemPortalColorPickerEntryTests.kt$SystemPortalColorPickerEntryTests</ID>
+    <ID>LargeClass:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests</ID>
     <ID>LargeClass:TextAreaNode.kt$TextAreaNode : DOMNode</ID>
     <ID>LargeClass:TextPerformanceHotPathCharacterizationTests.kt$TextPerformanceHotPathCharacterizationTests</ID>
     <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun appendCommands( layout: ColorPickerLayout, out: MutableList&lt;RenderCommand>, nowMs: Long = System.currentTimeMillis(), )</ID>
-    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun appendEyedropperOverlay(viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>)</ID>
+    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun appendEyedropperPreview(viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>)</ID>
     <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun buildLayout(bounds: Rect): ColorPickerLayout</ID>
     <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun handleMouseDown( globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout, ): Boolean</ID>
     <ID>LongMethod:ComponentHookRuntime.kt$ComponentHookRuntime$private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch)</ID>
     <ID>LongMethod:ContainerNode.kt$ContainerNode$private fun renderFlex(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
     <ID>LongMethod:ContainerNode.kt$ContainerNode$private fun renderGrid(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
-    <ID>LongMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>LongMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>LongMethod:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$fun measure( menuToken: Long, entries: List&lt;MenuEntry>, style: ContextMenuStyle, fontId: String?, fontSize: Int?, ctx: UiMeasureContext, dpiScale: Float, ): Measurement</ID>
     <ID>LongMethod:DOMNode.kt$DOMNode$@Suppress("UnusedParameter") internal fun resolveLayoutStyleValues(ctx: UiMeasureContext, parentContentWidth: Int?, parentContentHeight: Int?)</ID>
     <ID>LongMethod:DOMNode.kt$DOMNode$fun scrollContainerState(): ScrollContainerState</ID>
@@ -118,25 +118,25 @@
     <ID>LongMethod:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$fun build(context: InspectorStyleEditorSnapshotBuildContext): InspectorStyleEditorSnapshotBuildResult</ID>
     <ID>LongMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
     <ID>LongMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
-    <ID>LongMethod:OverlayPanel.kt$OverlayPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
+    <ID>LongMethod:FloatingPanel.kt$FloatingPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
     <ID>LongMethod:PositionedLayoutStickyBehaviorTests.kt$PositionedLayoutStickyBehaviorTests$@Test fun `non-sticky positioned modes remain unchanged with sticky enabled`()</ID>
-    <ID>LongMethod:SelectEngine.kt$SelectEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>LongMethod:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>LongMethod:StyleEngine.kt$StyleEngine$private fun applyProperty( current: ComputedStyle, parentComputed: ComputedStyle?, property: StyleProperty, expression: StyleExpression, variables: Map&lt;String, String>, rootFontSizePx: Int, ): ComputedStyle</ID>
     <ID>LongMethod:StyleValueParsing.kt$fun validateLiteralForProperty( property: StyleProperty, literal: String, warningReporter: StyleWarningReporter? = null, deprecatedLengthWarningKey: String = "deprecated.unitless-length", )</ID>
-    <ID>LongMethod:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect)</ID>
-    <ID>LongMethod:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext)</ID>
-    <ID>LongMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
-    <ID>LongMethod:SystemOverlayInspectorNativeEntryTests.kt$SystemOverlayInspectorNativeEntryTests$@Test fun `inspector wheel scrolling remains symmetric across rebuilds`()</ID>
+    <ID>LongMethod:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect)</ID>
+    <ID>LongMethod:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext)</ID>
+    <ID>LongMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
+    <ID>LongMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector wheel scrolling remains symmetric across rebuilds`()</ID>
     <ID>LongMethod:TextPerformanceHotPathCharacterizationTests.kt$TextPerformanceHotPathCharacterizationTests$@Test fun `cache boundaries are explicit for wrapped layout paths`()</ID>
     <ID>LongParameterList:ColorPickerInlineNode.kt$ColorPickerInlineNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
     <ID>LongParameterList:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
-    <ID>LongParameterList:ColorPickerPopupEngine.kt$ColorPickerPopupManager$( ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application, anchorRect: Rect, title: String, state: ColorPickerState, style: ColorPickerStyle = ColorPickerStyle(), width: Int = 320, draggable: Boolean = true, closeOnOutsideClick: Boolean = false, onPreview: ((RgbaColor) -> Unit)? = null, onChange: ((RgbaColor) -> Unit)? = null, onCommit: ((RgbaColor) -> Unit)? = null, onClose: (() -> Unit)? = null, )</ID>
-    <ID>LongParameterList:ComponentProps.kt$ComponentProps$( var style: StyleScope.() -> Unit = {}, var key: Any? = null, var id: String? = null, var className: String = "", var classes: Set&lt;String> = emptySet(), var disabled: Boolean = false, var draggable: Boolean = false, var droppable: Boolean = false, var dragPreviewMode: DragPreviewMode = DragPreviewMode.GHOST, var hideSourceWhileDragging: Boolean = false, var dragPreview: (DragPreviewScope.() -> Unit)? = null, var dragPlaceholder: (PlaceholderScope.() -> Unit)? = null, var ref: RefTarget&lt;ElementHandle>? = null, var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null, var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null, var onMouseOver: ((MouseOverEvent) -> Unit)? = null, var onMouseMove: ((MouseMoveEvent) -> Unit)? = null, var onMouseDown: ((MouseDownEvent) -> Unit)? = null, var onMouseUp: ((MouseUpEvent) -> Unit)? = null, var onMouseClick: ((MouseClickEvent) -> Unit)? = null, var onMouseDrag: ((MouseDragEvent) -> Unit)? = null, var onMouseWheel: ((MouseWheelEvent) -> Unit)? = null, var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)? = null, var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null, var onFocusGain: ((FocusGainEvent) -> Unit)? = null, var onFocusLose: ((FocusLoseEvent) -> Unit)? = null, var onInput: ((InputEvent) -> Unit)? = null, var onValueChange: ((ValueChangedEvent) -> Unit)? = null, var onDragStart: ((DragStartEvent) -> Unit)? = null, var onDrag: ((DragEvent) -> Unit)? = null, var onDragEnd: ((DragEndEvent) -> Unit)? = null, var onDragEnter: ((DragEnterEvent) -> Unit)? = null, var onDragOver: ((DragOverEvent) -> Unit)? = null, var onDragLeave: ((DragLeaveEvent) -> Unit)? = null, var onDrop: ((DropEvent) -> Unit)? = null, )</ID>
+    <ID>LongParameterList:ColorPickerPopupEngine.kt$ColorPickerPopupManager$( ownerDomain: ScreenDomainId = ScreenDomainId.Application, anchorRect: Rect, title: String, state: ColorPickerState, style: ColorPickerStyle = ColorPickerStyle(), width: Int = 320, draggable: Boolean = true, closeOnOutsideClick: Boolean = false, onPreview: ((RgbaColor) -> Unit)? = null, onChange: ((RgbaColor) -> Unit)? = null, onCommit: ((RgbaColor) -> Unit)? = null, onClose: (() -> Unit)? = null, )</ID>
+    <ID>LongParameterList:ComponentProps.kt$ComponentProps$( var style: StyleScope.() -> Unit = {}, var key: Any? = null, var id: String? = null, var className: String = "", var classes: Set&lt;String> = emptySet(), var overlapChildren: Boolean = false, var disabled: Boolean = false, var draggable: Boolean = false, var droppable: Boolean = false, var dragPreviewMode: DragPreviewMode = DragPreviewMode.GHOST, var hideSourceWhileDragging: Boolean = false, var dragPreview: (DragPreviewScope.() -> Unit)? = null, var dragPlaceholder: (PlaceholderScope.() -> Unit)? = null, var ref: RefTarget&lt;ElementHandle>? = null, var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null, var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null, var onMouseOver: ((MouseOverEvent) -> Unit)? = null, var onMouseMove: ((MouseMoveEvent) -> Unit)? = null, var onMouseDown: ((MouseDownEvent) -> Unit)? = null, var onMouseUp: ((MouseUpEvent) -> Unit)? = null, var onMouseClick: ((MouseClickEvent) -> Unit)? = null, var onMouseDrag: ((MouseDragEvent) -> Unit)? = null, var onMouseWheel: ((MouseWheelEvent) -> Unit)? = null, var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)? = null, var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null, var onFocusGain: ((FocusGainEvent) -> Unit)? = null, var onFocusLose: ((FocusLoseEvent) -> Unit)? = null, var onInput: ((InputEvent) -> Unit)? = null, var onValueChange: ((ValueChangedEvent) -> Unit)? = null, var onDragStart: ((DragStartEvent) -> Unit)? = null, var onDrag: ((DragEvent) -> Unit)? = null, var onDragEnd: ((DragEndEvent) -> Unit)? = null, var onDragEnter: ((DragEnterEvent) -> Unit)? = null, var onDragOver: ((DragOverEvent) -> Unit)? = null, var onDragLeave: ((DragLeaveEvent) -> Unit)? = null, var onDrop: ((DropEvent) -> Unit)? = null, )</ID>
     <ID>LongParameterList:ContainerNode.kt$ContainerNode$( ctx: UiMeasureContext, child: DOMNode, parentContentX: Int, parentContentY: Int, parentContentWidth: Int, parentContentHeight: Int, desiredX: Int, desiredY: Int, desiredWidth: Int, desiredHeight: Int, )</ID>
     <ID>LongParameterList:DndHooks.kt$( id: String, nodeKey: Any = id, type: String = "default", data: Any? = null, previewMode: DragPreviewMode = DragPreviewMode.GHOST, hideSourceWhileDragging: Boolean = false, renderPreview: (DragPreviewScope.() -> Unit)? = null, renderPlaceholder: (PlaceholderScope.() -> Unit)? = null, onDragStart: ((DragStartEvent) -> Unit)? = null, onDrag: ((DragEvent) -> Unit)? = null, onDragEnd: ((DragEndEvent) -> Unit)? = null, )</ID>
     <ID>LongParameterList:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$( x: Int, y: Int, width: Int, options: List&lt;String>, property: StyleProperty, unitSelect: Boolean, pointerProjectionScrollY: Int, rowHeightPx: Int, viewportWidth: Int, viewportHeight: Int, mouseX: Int, mouseY: Int, currentScrollIndex: Int, )</ID>
     <ID>LongParameterList:InspectorStyleEditorSnapshotBuilderTests.kt$InspectorStyleEditorSnapshotBuilderTests$( selected: ContainerNode, inspection: org.dreamfinity.dsgl.core.style.StyleInspection, panelRect: Rect = Rect(20, 20, 360, 260), editableProperties: List&lt;StyleProperty>, pointerProjectionScrollY: Int = 0, mouseX: Int = 180, mouseY: Int = 120, openValueSelectProperty: StyleProperty? = null, openUnitSelectProperty: StyleProperty? = null, openValueSelectScrollIndex: Int = 0, openUnitSelectScrollIndex: Int = 0, )</ID>
-    <ID>LongParameterList:SelectNode.kt$SelectNode$( model: SelectModel, controlled: Boolean = false, value: String? = null, defaultValue: String? = null, closeOnSelect: Boolean = true, ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application, key: Any? = null, )</ID>
+    <ID>LongParameterList:SelectNode.kt$SelectNode$( model: SelectModel, controlled: Boolean = false, value: String? = null, defaultValue: String? = null, closeOnSelect: Boolean = true, ownerDomain: ScreenDomainId = ScreenDomainId.Application, key: Any? = null, )</ID>
     <ID>LongParameterList:SystemColorPickerPanelManager.kt$SystemColorPickerPortalService$( anchorRect: Rect, title: String, state: ColorPickerState, style: ColorPickerStyle = ColorPickerStyle(), width: Int = 320, draggable: Boolean = true, closeOnOutsideClick: Boolean = false, onPreview: ((RgbaColor) -> Unit)? = null, onChange: ((RgbaColor) -> Unit)? = null, onCommit: ((RgbaColor) -> Unit)? = null, onClose: (() -> Unit)? = null, )</ID>
     <ID>MagicNumber:AnimationModel.kt$ColorAnimatable$0xFF</ID>
     <ID>MagicNumber:AnimationModel.kt$ColorAnimatable$24</ID>
@@ -283,20 +283,20 @@
     <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$0x7FFF_FFFFL</ID>
     <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$17</ID>
     <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$31</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$120</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$176</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$18</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$24</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$300</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$34</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$56</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlHost$96</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlRootNode$0x5F000000</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlRootNode$14</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlRootNode$18</ID>
-    <ID>MagicNumber:OverlayDebugControlHost.kt$OverlayDebugControlRootNode$20</ID>
-    <ID>MagicNumber:OverlayLayerDebugState.kt$OverlayLayerDebugState$1000.0</ID>
-    <ID>MagicNumber:OverlayPanel.kt$OverlayPanel$6</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$120</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$176</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$18</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$24</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$300</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$34</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$56</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$96</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$0x5F000000</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$14</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$18</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$20</ID>
+    <ID>MagicNumber:DomainSurfaceDebugState.kt$DomainSurfaceDebugState$1000.0</ID>
+    <ID>MagicNumber:FloatingPanel.kt$FloatingPanel$6</ID>
     <ID>MagicNumber:RadioGroupNode.kt$RadioGroupNode$6</ID>
     <ID>MagicNumber:RangeInputNode.kt$RangeInputNode$12</ID>
     <ID>MagicNumber:RangeInputNode.kt$RangeInputNode$120</ID>
@@ -325,45 +325,45 @@
     <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$ColorFieldSurfaceNode$7</ID>
     <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$ColorSwatchSurfaceNode$0x33222A34</ID>
     <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$HueSurfaceNode$360f</ID>
-    <ID>MagicNumber:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperOverlayNode$6</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x18212C39</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x1B293746</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x1E263241</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x22313D4B</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x2A425164</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x2A465968</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x2A4E3F56</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x3346596E</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x334D5D70</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x3A47A0FF</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x4426A69A</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x444285F4</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x44F3B33D</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x55394654</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x553F4A57</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x663F4A57</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x66FF5252</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x775E738C</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x77607084</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$0x777A5C84</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$12</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$14</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$160</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$18</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$20</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$22</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$24</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$264</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$32</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$34</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$36</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$40</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$5</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$58</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$6</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$64</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$86</ID>
-    <ID>MagicNumber:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode$96</ID>
+    <ID>MagicNumber:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperPreviewNode$6</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x18212C39</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x1B293746</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x1E263241</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x22313D4B</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A425164</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A465968</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A4E3F56</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x3346596E</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x334D5D70</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x3A47A0FF</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x4426A69A</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x444285F4</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x44F3B33D</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x55394654</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x553F4A57</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x663F4A57</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x66FF5252</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x775E738C</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x77607084</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x777A5C84</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$12</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$14</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$160</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$18</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$20</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$22</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$24</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$264</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$32</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$34</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$36</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$40</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$5</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$58</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$6</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$64</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$86</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$96</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$17L</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$31L</ID>
     <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$6</ID>
@@ -378,11 +378,11 @@
     <ID>MagicNumber:TextStyleMetrics.kt$TextStyleMetrics$0x00A0</ID>
     <ID>NestedBlockDepth:ComponentHookRuntime.kt$ComponentHookRuntime$private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch)</ID>
     <ID>NestedBlockDepth:ContainerNode.kt$ContainerNode$private fun computeGridPlacements(children: List&lt;DOMNode>, columns: Int): List&lt;GridPlacement></ID>
-    <ID>NestedBlockDepth:ContextMenuEngine.kt$ContextMenuEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>NestedBlockDepth:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>NestedBlockDepth:DssParser.kt$DssParser$@Suppress("ThrowsCount") private fun parseDeclarations( sourceName: String, text: String, fromIndex: Int, declarations: StyleDeclarations, rootVars: MutableMap&lt;String, String>, allowVariables: Boolean, warnings: ParseWarnings, ): Int</ID>
     <ID>NestedBlockDepth:EventBus.kt$EventBus$fun post(event: Event)</ID>
     <ID>NestedBlockDepth:FontRegistry.kt$AtlasPayload$private fun decodeDeflatedRgba(bytes: ByteArray): AtlasBitmap?</ID>
-    <ID>NestedBlockDepth:SelectEngine.kt$SelectEngine$fun appendOverlayCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>NestedBlockDepth:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
     <ID>NestedBlockDepth:StylesheetManager.kt$StylesheetManager$@Synchronized fun pollForChanges(force: Boolean = false)</ID>
     <ID>ReturnCount:ColorPickerController.kt$ColorPickerController$fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean</ID>
     <ID>ReturnCount:ColorPickerController.kt$ColorPickerController$fun handleMouseDown( globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout, ): Boolean</ID>
@@ -400,9 +400,9 @@
     <ID>ReturnCount:InspectorController.kt$InspectorController$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
     <ID>ReturnCount:InspectorController.kt$InspectorController$fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean</ID>
     <ID>ReturnCount:InspectorController.kt$InspectorController$private fun resolveResizeDragMode(mouseX: Int, mouseY: Int): DragMode</ID>
-    <ID>ReturnCount:LayerDomInputRouter.kt$LayerDomInputRouter$private fun collectHoverChainLocal( root: DOMNode, mouseX: Int, mouseY: Int, parentTransform: AffineTransform2D, parentInputClipRect: Rect?, out: MutableList&lt;DOMNode>, ): Boolean</ID>
-    <ID>ReturnCount:OverlayPanel.kt$OverlayPanel$fun handleMouseDown( mouseX: Int, mouseY: Int, button: MouseButton, includeCloseButton: Boolean = true, ): Boolean</ID>
-    <ID>ReturnCount:OverlayPanel.kt$OverlayPanel$private fun resolveResizeHandle(panelRect: Rect, mouseX: Int, mouseY: Int): OverlayPanelResizeHandle?</ID>
+    <ID>ReturnCount:SurfaceDomInputRouter.kt$SurfaceDomInputRouter$private fun collectHoverChainLocal( root: DOMNode, mouseX: Int, mouseY: Int, parentTransform: AffineTransform2D, parentInputClipRect: Rect?, out: MutableList&lt;DOMNode>, ): Boolean</ID>
+    <ID>ReturnCount:FloatingPanel.kt$FloatingPanel$fun handleMouseDown( mouseX: Int, mouseY: Int, button: MouseButton, includeCloseButton: Boolean = true, ): Boolean</ID>
+    <ID>ReturnCount:FloatingPanel.kt$FloatingPanel$private fun resolveResizeHandle(panelRect: Rect, mouseX: Int, mouseY: Int): FloatingPanelResizeHandle?</ID>
     <ID>ReturnCount:SelectEngine.kt$SelectEngine$fun handleKeyDown(keyCode: Int, keyChar: Char = 0.toChar()): Boolean</ID>
     <ID>ReturnCount:SelectEngine.kt$SelectEngine$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
     <ID>ReturnCount:SelectEngine.kt$SelectEngine$private fun entryAt(current: PopupState, mouseX: Int, mouseY: Int): Int</ID>
@@ -427,11 +427,11 @@
     <ID>TooManyFunctions:FontRegistry.kt$FontRegistry</ID>
     <ID>TooManyFunctions:InspectorController.kt$InspectorController</ID>
     <ID>TooManyFunctions:InspectorEditorRegistry.kt$InspectorEditorRegistry</ID>
-    <ID>TooManyFunctions:LayerDomInputRouter.kt$LayerDomInputRouter</ID>
+    <ID>TooManyFunctions:SurfaceDomInputRouter.kt$SurfaceDomInputRouter</ID>
     <ID>TooManyFunctions:LayoutValidator.kt$LayoutValidator</ID>
     <ID>TooManyFunctions:MsdfFontMeta.kt$MsdfFontMeta</ID>
-    <ID>TooManyFunctions:OverlayDebugControlHost.kt$OverlayDebugControlHost</ID>
-    <ID>TooManyFunctions:OverlayPanel.kt$OverlayPanel</ID>
+    <ID>TooManyFunctions:DebugDomainHosts.kt$DebugDomainControlHost</ID>
+    <ID>TooManyFunctions:FloatingPanel.kt$FloatingPanel</ID>
     <ID>TooManyFunctions:PositionedLayoutModel.kt$PositionedLayoutModel</ID>
     <ID>TooManyFunctions:RadioGroupNode.kt$RadioGroupNode : DOMNode</ID>
     <ID>TooManyFunctions:RangeInputNode.kt$RangeInputNode : DOMNode</ID>
@@ -443,11 +443,11 @@
     <ID>TooManyFunctions:StyleEngine.kt$StyleEngine</ID>
     <ID>TooManyFunctions:StyleScope.kt$StyleScope : CssLengthUnitsDsl</ID>
     <ID>TooManyFunctions:StyleValueParsing.kt$org.dreamfinity.dsgl.core.style.StyleValueParsing.kt</ID>
-    <ID>TooManyFunctions:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperOverlayNode : DOMNode</ID>
+    <ID>TooManyFunctions:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperPreviewNode : DOMNode</ID>
     <ID>TooManyFunctions:SystemColorPickerPopupBodyNode.kt$SystemColorPickerPopupBodyNode : DOMNode</ID>
-    <ID>TooManyFunctions:SystemInspectorOverlayNode.kt$SystemInspectorOverlayNode : DOMNode</ID>
-    <ID>TooManyFunctions:SystemOverlayHost.kt$SystemOverlayHost : OverlayLayerHost</ID>
-    <ID>TooManyFunctions:SystemOverlayHost.kt$SystemOverlayHost$ColorPickerOverlayEntry : SystemOverlayEntrySystemColorPickerPortalService</ID>
+    <ID>TooManyFunctions:SystemInspectorPortalNode.kt$SystemInspectorPortalNode : DOMNode</ID>
+    <ID>TooManyFunctions:SystemPortalHost.kt$SystemPortalHost : DomainSurfaceHost</ID>
+    <ID>TooManyFunctions:SystemPortalHost.kt$SystemPortalHost$ColorPickerPortalEntry : SystemPortalEntrySystemColorPickerPortalService</ID>
     <ID>TooManyFunctions:TextAreaNode.kt$TextAreaNode : DOMNode</ID>
     <ID>TooManyFunctions:ToggleNode.kt$ToggleNode : DOMNode</ID>
   </CurrentIssues>

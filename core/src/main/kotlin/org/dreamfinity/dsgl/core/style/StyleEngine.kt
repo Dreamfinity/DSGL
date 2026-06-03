@@ -756,7 +756,7 @@ object StyleEngine {
     private fun snapshotForScope(scope: StyleApplicationScope): StylesheetSnapshot =
         when (scope) {
             StyleApplicationScope.Application -> StylesheetManager.snapshot()
-            StyleApplicationScope.SystemOverlay,
+            StyleApplicationScope.System,
             StyleApplicationScope.Debug,
             ->
                 StylesheetSnapshot(

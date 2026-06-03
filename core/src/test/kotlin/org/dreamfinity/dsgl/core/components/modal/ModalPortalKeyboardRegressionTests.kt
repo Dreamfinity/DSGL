@@ -21,12 +21,12 @@ import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownBeforeDom
-import org.dreamfinity.dsgl.core.overlay.isFloatingWindowDemoOpen
-import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
+import org.dreamfinity.dsgl.core.portal.PortalPointerRegion
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyDownBeforeDom
+import org.dreamfinity.dsgl.core.portal.isFloatingWindowDemoOpen
+import org.dreamfinity.dsgl.core.portal.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
 
 class ModalPortalKeyboardRegressionTests {
     private val trees: MutableList<DomTree> = ArrayList()
-    private val overlays: MutableList<ApplicationOverlayHost> = ArrayList()
+    private val portalHosts: MutableList<ApplicationPortalHost> = ArrayList()
     private val hostKeys: MutableSet<String> = LinkedHashSet()
     private val measureContext =
         object : UiMeasureContext {
@@ -61,10 +61,10 @@ class ModalPortalKeyboardRegressionTests {
                 tree.root.clearListenersDeep()
             }
         }
-        overlays.forEach { overlay -> overlay.clearRefs() }
+        portalHosts.forEach { portalHost -> portalHost.clearRefs() }
         hostKeys.forEach(ModalPortalSessionStore::forgetPortal)
         trees.clear()
-        overlays.clear()
+        portalHosts.clear()
         hostKeys.clear()
     }
 
@@ -112,7 +112,7 @@ class ModalPortalKeyboardRegressionTests {
     }
 
     @Test
-    fun `modal layers mount through application overlay portal`() {
+    fun `modal layers mount through application portalHost portal`() {
         val hostKey = "tests.modal.portal.portal"
         val tree = buildTree(hostKey, listOf(basicModal()))
         trees += tree
@@ -124,33 +124,33 @@ class ModalPortalKeyboardRegressionTests {
         assertNotNull(modalPortal)
         assertEquals(listOf("$hostKey.content"), modalPortal.children.map { it.key })
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        assertEquals(listOf("application.modal.$hostKey"), overlay.modalPortal.debugActivePortalEntryIds())
+        assertEquals(listOf("application.modal.$hostKey"), portalHost.modalPortal.debugActivePortalEntryIds())
     }
 
     @Test
     fun `modal activation detaches stale application floating window before paint`() {
         val hostKey = "tests.modal.portal.floating.stale"
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
 
-        overlay.onInputFrame(320, 180)
-        overlay.toggleFloatingWindowDemo(anchorX = 24, anchorY = 24)
-        overlay.render(measureContext, 320, 180)
-        val floatingNode = overlay.floatingWindowPortal.debugNode()
-        assertTrue(floatingNode.parent === overlay.rootNode)
+        portalHost.onInputFrame(320, 180)
+        portalHost.toggleFloatingWindowDemo(anchorX = 24, anchorY = 24)
+        portalHost.render(measureContext, 320, 180)
+        val floatingNode = portalHost.floatingWindowPortal.debugNode()
+        assertTrue(floatingNode.parent === portalHost.rootNode)
 
         val tree = buildTree(hostKey, listOf(basicModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
+        portalHost.render(measureContext, 320, 180)
 
-        assertFalse(overlay.isFloatingWindowDemoOpen())
+        assertFalse(portalHost.isFloatingWindowDemoOpen())
         assertTrue(floatingNode.parent == null)
-        assertEquals(listOf("application.modal.$hostKey"), overlay.modalPortal.debugActivePortalEntryIds())
+        assertEquals(listOf("application.modal.$hostKey"), portalHost.modalPortal.debugActivePortalEntryIds())
     }
 
     @Test
@@ -160,11 +160,11 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        assertTrue(overlay.handleMouseDown(4, 4, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(4, 4, MouseButton.LEFT))
     }
 
     @Test
@@ -177,11 +177,11 @@ class ModalPortalKeyboardRegressionTests {
         val focusedContentInput = requireNodeByKey(tree.root, "$hostKey.content.input")
         FocusManager.requestFocus(focusedContentInput)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        assertTrue(overlay.handlePortalKeyDownBeforeDom(KeyCodes.ESCAPE, 0.toChar()))
+        assertTrue(portalHost.handlePortalKeyDownBeforeDom(KeyCodes.ESCAPE, 0.toChar()))
         assertEquals(1, hideCount)
     }
 
@@ -192,18 +192,18 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
         assertNotNull(dialog)
         val inside =
-            overlay.modalPortal.debugEvaluatePointerDownPolicy(
+            portalHost.modalPortal.debugEvaluatePointerDownPolicy(
                 mouseX = dialog.bounds.x + dialog.bounds.width / 2,
                 mouseY = dialog.bounds.y + dialog.bounds.height / 2,
             )
-        val outside = overlay.modalPortal.debugEvaluatePointerDownPolicy(mouseX = 2, mouseY = 2)
+        val outside = portalHost.modalPortal.debugEvaluatePointerDownPolicy(mouseX = 2, mouseY = 2)
 
         assertNotNull(inside)
         assertEquals(PortalPointerRegion.InsideEntry, inside.region)
@@ -222,16 +222,16 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
         assertNotNull(dialog)
         var applicationRootReceived = false
         val consumedBy =
             dispatchApplicationPortalPointer(
-                overlay = overlay,
+                portalHost = portalHost,
                 mouseX = dialog.bounds.x + dialog.bounds.width / 2,
                 mouseY = dialog.bounds.y + dialog.bounds.height / 2,
                 pressed = true,
@@ -262,14 +262,14 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
         var applicationRootReceived = false
         val consumedBy =
             dispatchApplicationPortalPointer(
-                overlay = overlay,
+                portalHost = portalHost,
                 mouseX = 2,
                 mouseY = 2,
                 pressed = true,
@@ -290,14 +290,14 @@ class ModalPortalKeyboardRegressionTests {
         modals = listOf(dismissibleBodyModal { modals = emptyList() })
         var tree = buildTree(hostKey, modals)
         trees += tree
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        renderTreeAndOverlay(tree, overlay)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        renderTreeAndPortal(tree, portalHost)
 
         var applicationRootReceivedDown = false
         val consumedDown =
             dispatchApplicationPortalPointer(
-                overlay = overlay,
+                portalHost = portalHost,
                 mouseX = 2,
                 mouseY = 2,
                 pressed = true,
@@ -313,7 +313,7 @@ class ModalPortalKeyboardRegressionTests {
         var applicationRootReceivedUp = false
         val consumedUp =
             dispatchApplicationPortalPointer(
-                overlay = overlay,
+                portalHost = portalHost,
                 mouseX = 2,
                 mouseY = 2,
                 pressed = false,
@@ -327,7 +327,7 @@ class ModalPortalKeyboardRegressionTests {
         assertEquals(emptyList(), modals)
 
         tree = reconcileTree(tree, buildTree(hostKey, modals))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
     }
 
     @Test
@@ -338,17 +338,17 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.dismissible"))
         assertNotNull(dialog)
         val clickX = dialog.bounds.x + dialog.bounds.width / 2
         val clickY = dialog.bounds.y + dialog.bounds.height / 2
 
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
         assertEquals(0, hideCount)
     }
 
@@ -360,17 +360,17 @@ class ModalPortalKeyboardRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        assertTrue(overlay.handleMouseDown(2, 2, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(2, 2, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(2, 2, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(2, 2, MouseButton.LEFT))
         assertEquals(1, hideCount)
     }
 
     @Test
-    fun `modal portal keeps topmost focus request on overlay commit`() {
+    fun `modal portal keeps topmost focus request on portalHost commit`() {
         val hostKey = "tests.modal.portal.portal.focus"
         val current = buildTreeWithContentInput(hostKey, emptyList())
         trees += current
@@ -382,9 +382,9 @@ class ModalPortalKeyboardRegressionTests {
         current.reconcileWith(withModal)
         current.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
         assertEquals("modal.input", FocusManager.focusedNode()?.key)
     }
@@ -399,29 +399,29 @@ class ModalPortalKeyboardRegressionTests {
         trees += current
         current.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
         val stacked = buildTree(hostKey, listOf(stepOne, stepTwo))
         trees += stacked
         current.reconcileWith(stacked)
         current.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
+        portalHost.render(measureContext, 320, 180)
 
         val popped = buildTree(hostKey, listOf(stepOne))
         trees += popped
         current.reconcileWith(popped)
         current.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
+        portalHost.render(measureContext, 320, 180)
 
-        val stepOneButton = overlay.modalPortal.debugFindNodeByKey("step.one.button")
+        val stepOneButton = portalHost.modalPortal.debugFindNodeByKey("step.one.button")
         assertNotNull(stepOneButton)
         val clickX = stepOneButton.bounds.x + stepOneButton.bounds.width / 2
         val clickY = stepOneButton.bounds.y + stepOneButton.bounds.height / 2
 
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
         assertEquals(1, stepOneClicks)
     }
 
@@ -441,21 +441,21 @@ class ModalPortalKeyboardRegressionTests {
 
         var tree = buildTree(hostKey, modals)
         trees += tree
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        renderTreeAndOverlay(tree, overlay)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         assertEquals(listOf("modal.flow.1", "modal.flow.2"), modals.map { it.key })
         tree = reconcileTree(tree, buildTree(hostKey, modals))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Back to Step 1")
+        clickPortalButton(portalHost, "Back to Step 1")
         assertEquals(listOf("modal.flow.1"), modals.map { it.key })
         tree = reconcileTree(tree, buildTree(hostKey, modals))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         assertEquals(listOf("modal.flow.1", "modal.flow.2"), modals.map { it.key })
     }
 
@@ -475,24 +475,24 @@ class ModalPortalKeyboardRegressionTests {
 
         var tree = buildTree(hostKey, modals)
         trees += tree
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        renderTreeAndOverlay(tree, overlay)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         tree = reconcileTree(tree, buildTree(hostKey, modals))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButtonInDialog(
-            overlay = overlay,
+        clickPortalButtonInDialog(
+            portalHost = portalHost,
             text = "x",
             dialogKey = ModalPortalSessionStore.dialogKey(hostKey, "modal.flow.2"),
         )
         assertEquals(listOf("modal.flow.1"), modals.map { it.key })
         tree = reconcileTree(tree, buildTree(hostKey, modals))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         assertEquals(listOf("modal.flow.1", "modal.flow.2"), modals.map { it.key })
     }
 
@@ -503,26 +503,26 @@ class ModalPortalKeyboardRegressionTests {
         window.attachHost(host)
         var tree = renderWithHookSession(window)
         trees += tree
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        renderTreeAndOverlay(tree, overlay)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        renderTreeAndPortal(tree, portalHost)
 
         clickTreeNode(tree, "open.flow")
         assertTrue(host.rebuildRequests > 0)
         tree = reconcileTree(tree, renderWithHookSession(window))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         tree = reconcileTree(tree, renderWithHookSession(window))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Back to Step 1")
+        clickPortalButton(portalHost, "Back to Step 1")
         tree = reconcileTree(tree, renderWithHookSession(window))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
-        clickOverlayButton(overlay, "Next")
+        clickPortalButton(portalHost, "Next")
         tree = reconcileTree(tree, renderWithHookSession(window))
-        renderTreeAndOverlay(tree, overlay)
+        renderTreeAndPortal(tree, portalHost)
 
         assertEquals(listOf("modal.flow.1", "modal.flow.2"), window.lastRenderedModalKeys)
     }
@@ -631,9 +631,9 @@ class ModalPortalKeyboardRegressionTests {
             }
         }
 
-    private fun renderTreeAndOverlay(tree: DomTree, overlay: ApplicationOverlayHost) {
+    private fun renderTreeAndPortal(tree: DomTree, portalHost: ApplicationPortalHost) {
         tree.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
+        portalHost.render(measureContext, 320, 180)
     }
 
     private fun reconcileTree(current: DomTree, next: DomTree): DomTree {
@@ -642,28 +642,28 @@ class ModalPortalKeyboardRegressionTests {
         return current
     }
 
-    private fun clickOverlayButton(overlay: ApplicationOverlayHost, text: String) {
+    private fun clickPortalButton(portalHost: ApplicationPortalHost, text: String) {
         val button =
-            overlay.modalPortal.debugFindNode { node ->
+            portalHost.modalPortal.debugFindNode { node ->
                 node is ButtonNode && node.text == text
             }
         assertNotNull(button)
         val clickX = button.bounds.x + button.bounds.width / 2
         val clickY = button.bounds.y + button.bounds.height / 2
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
     }
 
-    private fun clickOverlayButtonInDialog(overlay: ApplicationOverlayHost, text: String, dialogKey: String) {
+    private fun clickPortalButtonInDialog(portalHost: ApplicationPortalHost, text: String, dialogKey: String) {
         val button =
-            overlay.modalPortal.debugFindNode { node ->
+            portalHost.modalPortal.debugFindNode { node ->
                 node is ButtonNode && node.text == text && hasAncestorWithKey(node, dialogKey)
             }
         assertNotNull(button)
         val clickX = button.bounds.x + button.bounds.width / 2
         val clickY = button.bounds.y + button.bounds.height / 2
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
     }
 
     private fun hasAncestorWithKey(node: DOMNode, key: Any?): Boolean {
@@ -735,7 +735,7 @@ class ModalPortalKeyboardRegressionTests {
     }
 
     private fun dispatchApplicationPortalPointer(
-        overlay: ApplicationOverlayHost,
+        portalHost: ApplicationPortalHost,
         mouseX: Int,
         mouseY: Int,
         pressed: Boolean,
@@ -745,9 +745,9 @@ class ModalPortalKeyboardRegressionTests {
             when (surface) {
                 ScreenDomainSurfaces.ApplicationPortal ->
                     if (pressed) {
-                        overlay.handleMouseDown(mouseX, mouseY, MouseButton.LEFT)
+                        portalHost.handleMouseDown(mouseX, mouseY, MouseButton.LEFT)
                     } else {
-                        overlay.handleMouseUp(mouseX, mouseY, MouseButton.LEFT)
+                        portalHost.handleMouseUp(mouseX, mouseY, MouseButton.LEFT)
                     }
 
                 ScreenDomainSurfaces.ApplicationRoot -> applicationRootHandler()

@@ -3,14 +3,14 @@ package org.dreamfinity.dsgl.core.debug
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.PortalEntry
-import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
-import org.dreamfinity.dsgl.core.overlay.PortalEntryId
-import org.dreamfinity.dsgl.core.overlay.PortalEntryOrder
-import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
-import org.dreamfinity.dsgl.core.overlay.PortalEntryState
-import org.dreamfinity.dsgl.core.overlay.PortalFrameContext
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.PortalEntry
+import org.dreamfinity.dsgl.core.portal.PortalEntryBounds
+import org.dreamfinity.dsgl.core.portal.PortalEntryId
+import org.dreamfinity.dsgl.core.portal.PortalEntryOrder
+import org.dreamfinity.dsgl.core.portal.PortalEntryPlacement
+import org.dreamfinity.dsgl.core.portal.PortalEntryState
+import org.dreamfinity.dsgl.core.portal.PortalFrameContext
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
 import java.util.Locale
@@ -33,17 +33,17 @@ class DebugDomainHostsTests {
 
     @AfterTest
     fun cleanup() {
-        OverlayLayerDebugState.resetAll()
-        OverlayLayerDebugState.setControlsEnabledTestOverride(null)
+        DomainSurfaceDebugState.resetAll()
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(null)
     }
 
     @Test
-    fun `debug panel remains available when app and system overlays are disabled`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        OverlayLayerDebugState.applicationOverlayRenderEnabled = false
-        OverlayLayerDebugState.applicationOverlayInputEnabled = false
-        OverlayLayerDebugState.systemOverlayRenderEnabled = false
-        OverlayLayerDebugState.systemOverlayInputEnabled = false
+    fun `debug panel remains available when app and system portal surfaces are disabled`() {
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.applicationPortalRenderEnabled = false
+        DomainSurfaceDebugState.applicationPortalInputEnabled = false
+        DomainSurfaceDebugState.systemPortalRenderEnabled = false
+        DomainSurfaceDebugState.systemPortalInputEnabled = false
         val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
@@ -64,12 +64,12 @@ class DebugDomainHostsTests {
     }
 
     @Test
-    fun `reset all restores overlay render and input toggles`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        OverlayLayerDebugState.applicationOverlayRenderEnabled = false
-        OverlayLayerDebugState.applicationOverlayInputEnabled = false
-        OverlayLayerDebugState.systemOverlayRenderEnabled = false
-        OverlayLayerDebugState.systemOverlayInputEnabled = false
+    fun `reset all restores domain-surface render and input toggles`() {
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.applicationPortalRenderEnabled = false
+        DomainSurfaceDebugState.applicationPortalInputEnabled = false
+        DomainSurfaceDebugState.systemPortalRenderEnabled = false
+        DomainSurfaceDebugState.systemPortalInputEnabled = false
         val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
@@ -77,16 +77,16 @@ class DebugDomainHostsTests {
         host.paint(ctx)
         assertTrue(host.handleMouseDown(layout.resetRect.x + 2, layout.resetRect.y + 2, MouseButton.LEFT))
 
-        assertTrue(OverlayLayerDebugState.applicationOverlayRenderEnabled)
-        assertTrue(OverlayLayerDebugState.applicationOverlayInputEnabled)
-        assertTrue(OverlayLayerDebugState.systemOverlayRenderEnabled)
-        assertTrue(OverlayLayerDebugState.systemOverlayInputEnabled)
+        assertTrue(DomainSurfaceDebugState.applicationPortalRenderEnabled)
+        assertTrue(DomainSurfaceDebugState.applicationPortalInputEnabled)
+        assertTrue(DomainSurfaceDebugState.systemPortalRenderEnabled)
+        assertTrue(DomainSurfaceDebugState.systemPortalInputEnabled)
     }
 
     @Test
-    fun `debug panel toggles mutate independent app and system overlay state`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        OverlayLayerDebugState.resetAll()
+    fun `debug panel toggles mutate independent app and system portal state`() {
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.resetAll()
         val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
@@ -95,31 +95,31 @@ class DebugDomainHostsTests {
 
         assertTrue(
             host.handleMouseDown(
-                layout.appOverlayRenderRect.x + 2,
-                layout.appOverlayRenderRect.y + 2,
+                layout.appPortalRenderRect.x + 2,
+                layout.appPortalRenderRect.y + 2,
                 MouseButton.LEFT,
             ),
         )
-        assertFalse(OverlayLayerDebugState.applicationOverlayRenderEnabled)
-        assertTrue(OverlayLayerDebugState.applicationOverlayInputEnabled)
-        assertTrue(OverlayLayerDebugState.systemOverlayRenderEnabled)
-        assertTrue(OverlayLayerDebugState.systemOverlayInputEnabled)
+        assertFalse(DomainSurfaceDebugState.applicationPortalRenderEnabled)
+        assertTrue(DomainSurfaceDebugState.applicationPortalInputEnabled)
+        assertTrue(DomainSurfaceDebugState.systemPortalRenderEnabled)
+        assertTrue(DomainSurfaceDebugState.systemPortalInputEnabled)
 
         assertTrue(
             host.handleMouseDown(
-                layout.systemOverlayInputRect.x + 2,
-                layout.systemOverlayInputRect.y + 2,
+                layout.systemPortalInputRect.x + 2,
+                layout.systemPortalInputRect.y + 2,
                 MouseButton.LEFT,
             ),
         )
-        assertFalse(OverlayLayerDebugState.systemOverlayInputEnabled)
-        assertFalse(OverlayLayerDebugState.applicationOverlayRenderEnabled)
+        assertFalse(DomainSurfaceDebugState.systemPortalInputEnabled)
+        assertFalse(DomainSurfaceDebugState.applicationPortalRenderEnabled)
     }
 
     @Test
     fun `debug panel status shows fps and frame time`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        OverlayLayerDebugState.updateFrameTiming(0.025)
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.updateFrameTiming(0.025)
         val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
@@ -137,10 +137,10 @@ class DebugDomainHostsTests {
                 statusTexts.lastOrNull { it.isNotBlank() } ?: statusTexts.lastOrNull(),
                 "draw texts: ${drawTexts.joinToString { "${it.sourceKey}:${it.text}" }}",
             )
-        val expectedFps = OverlayLayerDebugState.frameFps
-        val expectedFrameMs = String.format(Locale.US, "%.1f", OverlayLayerDebugState.frameTimeMs)
-        val expectedWindowFps = OverlayLayerDebugState.frameFpsWindow
-        val expectedWindowFrameMs = String.format(Locale.US, "%.1f", OverlayLayerDebugState.frameTimeWindowMs)
+        val expectedFps = DomainSurfaceDebugState.frameFps
+        val expectedFrameMs = String.format(Locale.US, "%.1f", DomainSurfaceDebugState.frameTimeMs)
+        val expectedWindowFps = DomainSurfaceDebugState.frameFpsWindow
+        val expectedWindowFrameMs = String.format(Locale.US, "%.1f", DomainSurfaceDebugState.frameTimeWindowMs)
         assertTrue(statusTextValue.contains("FPS:$expectedFps"), "statusText='$statusTextValue'")
         assertTrue(statusTextValue.contains("(${expectedFrameMs}ms)"), "statusText='$statusTextValue'")
         assertTrue(statusTextValue.contains("AvgFPS:$expectedWindowFps"), "statusText='$statusTextValue'")
@@ -149,8 +149,8 @@ class DebugDomainHostsTests {
 
     @Test
     fun `toggle button label updates immediately after state change`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
-        OverlayLayerDebugState.resetAll()
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.resetAll()
         val host = DebugDomainRootHost()
 
         host.render(ctx, 960, 540)
@@ -165,8 +165,8 @@ class DebugDomainHostsTests {
 
         assertTrue(
             host.handleMouseDown(
-                layout.appOverlayRenderRect.x + 2,
-                layout.appOverlayRenderRect.y + 2,
+                layout.appPortalRenderRect.x + 2,
+                layout.appPortalRenderRect.y + 2,
                 MouseButton.LEFT,
             ),
         )
@@ -183,9 +183,9 @@ class DebugDomainHostsTests {
 
     @Test
     fun `sliding window fps smooths immediate fps`() {
-        OverlayLayerDebugState.updateFrameTiming(0.010)
-        OverlayLayerDebugState.updateFrameTiming(0.030)
-        val snapshot = OverlayLayerDebugState.snapshot()
+        DomainSurfaceDebugState.updateFrameTiming(0.010)
+        DomainSurfaceDebugState.updateFrameTiming(0.030)
+        val snapshot = DomainSurfaceDebugState.snapshot()
 
         assertEquals(33, snapshot.frameFps)
         assertEquals(30.0f, snapshot.frameTimeMs)
@@ -195,12 +195,12 @@ class DebugDomainHostsTests {
 
     @Test
     fun `controls visibility obeys debug-only toggle`() {
-        OverlayLayerDebugState.setControlsEnabledTestOverride(false)
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(false)
         val host = DebugDomainRootHost()
         host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isEmpty())
 
-        OverlayLayerDebugState.setControlsEnabledTestOverride(true)
+        DomainSurfaceDebugState.setControlsEnabledTestOverride(true)
         host.render(ctx, 960, 540)
         assertTrue(host.paint(ctx).isNotEmpty())
     }
@@ -240,31 +240,31 @@ class DebugDomainHostsTests {
 
     @Test
     fun `debug domain surfaces remain enabled in state even when app and system portals are disabled`() {
-        OverlayLayerDebugState.applicationOverlayTintEnabled = false
-        OverlayLayerDebugState.applicationOverlayRenderEnabled = false
-        OverlayLayerDebugState.applicationOverlayInputEnabled = false
-        OverlayLayerDebugState.systemOverlayRenderEnabled = false
-        OverlayLayerDebugState.systemOverlayTintEnabled = false
-        OverlayLayerDebugState.systemOverlayInputEnabled = false
+        DomainSurfaceDebugState.applicationPortalTintEnabled = false
+        DomainSurfaceDebugState.applicationPortalRenderEnabled = false
+        DomainSurfaceDebugState.applicationPortalInputEnabled = false
+        DomainSurfaceDebugState.systemPortalRenderEnabled = false
+        DomainSurfaceDebugState.systemPortalTintEnabled = false
+        DomainSurfaceDebugState.systemPortalInputEnabled = false
 
-        assertTrue(OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugRoot))
-        assertTrue(OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.DebugRoot))
-        assertTrue(OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugPortal))
-        assertTrue(OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.DebugPortal))
+        assertTrue(DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugRoot))
+        assertTrue(DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.DebugRoot))
+        assertTrue(DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.DebugPortal))
+        assertTrue(DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.DebugPortal))
         assertEquals(
-            OverlayLayerDebugSnapshot(
-                applicationOverlayRenderEnabled = false,
-                applicationOverlayTintEnabled = false,
-                applicationOverlayInputEnabled = false,
-                systemOverlayRenderEnabled = false,
-                systemOverlayTintEnabled = false,
-                systemOverlayInputEnabled = false,
+            DomainSurfaceDebugSnapshot(
+                applicationPortalRenderEnabled = false,
+                applicationPortalTintEnabled = false,
+                applicationPortalInputEnabled = false,
+                systemPortalRenderEnabled = false,
+                systemPortalTintEnabled = false,
+                systemPortalInputEnabled = false,
                 frameFps = 0,
                 frameTimeMs = 0f,
                 frameFpsWindow = 0,
                 frameTimeWindowMs = 0f,
             ),
-            OverlayLayerDebugState.snapshot(),
+            DomainSurfaceDebugState.snapshot(),
         )
     }
 

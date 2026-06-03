@@ -529,7 +529,7 @@ fun UiScope.dragNDropSection(
             flexDirection = FlexDirection.Column
         }
     }) {
-        text("Drag preview modes: ORIGINAL (detached source) and GHOST (overlay preview).")
+        text("Drag preview modes: ORIGINAL (detached source) and GHOST (portal preview).")
         text(
             "active=${state.activeItem} mode=${monitor.mode?.name ?: "none"} " +
                 "effect=${state.dropEffect} hover=${state.hoverZone}",

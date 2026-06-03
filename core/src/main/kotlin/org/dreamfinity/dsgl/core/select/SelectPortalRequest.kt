@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.select
 
 import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 
 data class SelectOpenRequest(
     val owner: Any,
@@ -14,7 +14,7 @@ data class SelectOpenRequest(
     val onClose: (() -> Unit)? = null,
     val fontId: String? = null,
     val fontSize: Int? = null,
-    val ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
+    val ownerDomain: ScreenDomainId = ScreenDomainId.Application,
 )
 
 fun interface SelectClock {

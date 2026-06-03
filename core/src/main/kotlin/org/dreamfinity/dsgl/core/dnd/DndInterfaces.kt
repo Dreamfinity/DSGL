@@ -25,10 +25,10 @@ interface DndMonitorRegistry {
 
 interface DndHitTester
 
-interface DndOverlayRenderer {
+interface DndPortalRenderer {
     fun appendPlaceholderCommands(out: MutableList<RenderCommand>)
 
-    fun appendOverlayCommands(
+    fun appendPortalCommands(
         root: DOMNode,
         ctx: UiMeasureContext,
         viewportWidth: Int,
@@ -43,7 +43,7 @@ interface DndClock {
 
 interface DndEngine :
     DndMonitorRegistry,
-    DndOverlayRenderer,
+    DndPortalRenderer,
     DndClock {
     val isDragging: Boolean
     val isPointerCaptured: Boolean

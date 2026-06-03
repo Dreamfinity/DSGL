@@ -4,7 +4,7 @@ import org.dreamfinity.dsgl.core.contextmenu.ContextMenuModel
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuPortalService
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuTriggerScope
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
 
 fun DOMNode.onContextMenu(
     portalService: ContextMenuPortalService = DomainPortalServices.applicationContextMenuEngine,

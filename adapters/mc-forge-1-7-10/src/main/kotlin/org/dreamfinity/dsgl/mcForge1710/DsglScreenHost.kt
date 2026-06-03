@@ -11,7 +11,7 @@ import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.debug.DebugDomainPortalHost
 import org.dreamfinity.dsgl.core.debug.DebugDomainRootHost
-import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
+import org.dreamfinity.dsgl.core.debug.DomainSurfaceDebugState
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.elements.*
@@ -26,31 +26,31 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
 import org.dreamfinity.dsgl.core.inspector.*
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.appendDndGhostPortalCommands
-import org.dreamfinity.dsgl.core.overlay.appendPortalOverlayCommands
-import org.dreamfinity.dsgl.core.overlay.captureColorPickerEyedropperSample
-import org.dreamfinity.dsgl.core.overlay.closeFloatingPortals
-import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownAfterDom
-import org.dreamfinity.dsgl.core.overlay.handlePortalKeyDownBeforeDom
-import org.dreamfinity.dsgl.core.overlay.handlePortalKeyUpAfterDom
-import org.dreamfinity.dsgl.core.overlay.handlePortalKeyUpBeforeDom
-import org.dreamfinity.dsgl.core.overlay.handlePortalPointerAfterDom
-import org.dreamfinity.dsgl.core.overlay.handlePortalPointerBeforeDom
-import org.dreamfinity.dsgl.core.overlay.hasActiveColorPickerEyedropper
-import org.dreamfinity.dsgl.core.overlay.hasActiveModalPortal
-import org.dreamfinity.dsgl.core.overlay.hasDomPointerTargetAt
-import org.dreamfinity.dsgl.core.overlay.hasOpenColorPickerPortal
-import org.dreamfinity.dsgl.core.overlay.hasOpenContextMenuPortal
-import org.dreamfinity.dsgl.core.overlay.hasOpenSelectPortal
-import org.dreamfinity.dsgl.core.overlay.input.PointerCaptureSession
-import org.dreamfinity.dsgl.core.overlay.syncPortalFrame
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
-import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
+import org.dreamfinity.dsgl.core.portal.DomainSurfaceHost
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.appendDndGhostPortalCommands
+import org.dreamfinity.dsgl.core.portal.appendFloatingPortalCommands
+import org.dreamfinity.dsgl.core.portal.captureColorPickerEyedropperSample
+import org.dreamfinity.dsgl.core.portal.closeFloatingPortals
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyDownAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyDownBeforeDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyUpAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyUpBeforeDom
+import org.dreamfinity.dsgl.core.portal.handlePortalPointerAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalPointerBeforeDom
+import org.dreamfinity.dsgl.core.portal.hasActiveColorPickerEyedropper
+import org.dreamfinity.dsgl.core.portal.hasActiveModalPortal
+import org.dreamfinity.dsgl.core.portal.hasDomPointerTargetAt
+import org.dreamfinity.dsgl.core.portal.hasOpenColorPickerPortal
+import org.dreamfinity.dsgl.core.portal.hasOpenContextMenuPortal
+import org.dreamfinity.dsgl.core.portal.hasOpenSelectPortal
+import org.dreamfinity.dsgl.core.portal.input.PointerCaptureSession
+import org.dreamfinity.dsgl.core.portal.syncPortalFrame
+import org.dreamfinity.dsgl.core.portal.system.SystemPortalHost
+import org.dreamfinity.dsgl.core.portal.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
 import org.lwjgl.input.Keyboard
@@ -105,13 +105,13 @@ abstract class DsglScreenHost(
         Collections.newSetFromMap(IdentityHashMap<DOMNode, Boolean>())
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val stagingCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
-    private val applicationOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
-    private val systemOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val applicationPortalCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val systemPortalCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
-    private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
-    private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
+    private val applicationPortalHost: ApplicationPortalHost = ApplicationPortalHost()
+    private val systemPortalHost: SystemPortalHost = SystemPortalHost(inspector)
     private val debugDomainRootHost: DebugDomainRootHost = DebugDomainRootHost()
     private val debugDomainPortalHost: DebugDomainPortalHost = DebugDomainPortalHost()
     private val domainOrchestrator: ScreenDomainSurfaceOrchestrator = ScreenDomainSurfaceOrchestrator()
@@ -201,8 +201,8 @@ abstract class DsglScreenHost(
                 mouseY = mouseY,
                 partialTicks = partialTicks,
             ) ?: return
-        val overlayState =
-            syncInspectorAndResolveOverlayState(
+        val domainDebugState =
+            syncInspectorAndResolveSurfaceState(
                 tree = tree,
                 dsglMouseX = frameCursor.mouseX,
                 dsglMouseY = frameCursor.mouseY,
@@ -212,19 +212,19 @@ abstract class DsglScreenHost(
             dsglMouseX = frameCursor.mouseX,
             dsglMouseY = frameCursor.mouseY,
         )
-        syncApplicationOverlaySurface(
-            appOverlayEnabled = overlayState.appOverlayRenderEnabled || overlayState.appOverlayInputEnabled,
+        syncApplicationPortalSurface(
+            appPortalEnabled = domainDebugState.appPortalRenderEnabled || domainDebugState.appPortalInputEnabled,
         )
-        val systemOverlayCommands =
-            syncSystemOverlayAndCollectCommands(
+        val systemPortalCommands =
+            syncSystemPortalAndCollectCommands(
                 tree = tree,
                 dsglMouseX = frameCursor.mouseX,
                 dsglMouseY = frameCursor.mouseY,
-                systemOverlayRenderEnabled = overlayState.systemOverlayRenderEnabled,
+                systemPortalRenderEnabled = domainDebugState.systemPortalRenderEnabled,
             )
-        stageSystemOverlayCommands(
-            systemOverlayCommands = systemOverlayCommands,
-            systemOverlayRenderEnabled = overlayState.systemOverlayRenderEnabled,
+        stageSystemPortalCommands(
+            systemPortalCommands = systemPortalCommands,
+            systemPortalRenderEnabled = domainDebugState.systemPortalRenderEnabled,
         )
         val debugDomainCommands = collectDebugDomainCommands()
         updateFrameInteractionState(
@@ -232,9 +232,9 @@ abstract class DsglScreenHost(
             dtSeconds = dtSeconds,
             dsglMouseX = frameCursor.mouseX,
             dsglMouseY = frameCursor.mouseY,
-            appOverlayInputEnabled = overlayState.appOverlayInputEnabled,
-            systemOverlayInputEnabled = overlayState.systemOverlayInputEnabled,
-            inspectorBlocks = overlayState.inspectorBlocks,
+            appPortalInputEnabled = domainDebugState.appPortalInputEnabled,
+            systemPortalInputEnabled = domainDebugState.systemPortalInputEnabled,
+            inspectorBlocks = domainDebugState.inspectorBlocks,
         )
         val commands =
             paintApplicationRootOrFallback(
@@ -244,10 +244,10 @@ abstract class DsglScreenHost(
                 mouseY = mouseY,
                 partialTicks = partialTicks,
             ) ?: return
-        syncCollectAndStageApplicationOverlayAfterRootPaint(
+        syncCollectAndStageApplicationPortalAfterRootPaint(
             tree = tree,
-            appOverlayRenderEnabled = overlayState.appOverlayRenderEnabled,
-            appOverlayInputEnabled = overlayState.appOverlayInputEnabled,
+            appPortalRenderEnabled = domainDebugState.appPortalRenderEnabled,
+            appPortalInputEnabled = domainDebugState.appPortalInputEnabled,
         )
         composeAndPresentFrame(
             tree = tree,
@@ -274,11 +274,11 @@ abstract class DsglScreenHost(
         val layoutCommittedThisFrame: Boolean,
     )
 
-    private data class OverlayLayerFrameState(
-        val appOverlayRenderEnabled: Boolean,
-        val systemOverlayRenderEnabled: Boolean,
-        val appOverlayInputEnabled: Boolean,
-        val systemOverlayInputEnabled: Boolean,
+    private data class DomainSurfaceFrameState(
+        val appPortalRenderEnabled: Boolean,
+        val systemPortalRenderEnabled: Boolean,
+        val appPortalInputEnabled: Boolean,
+        val systemPortalInputEnabled: Boolean,
         val inspectorBlocks: Boolean,
     )
 
@@ -307,7 +307,7 @@ abstract class DsglScreenHost(
                 ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
             }
         lastFrameNanos = nowNanos
-        OverlayLayerDebugState.updateFrameTiming(dtSeconds)
+        DomainSurfaceDebugState.updateFrameTiming(dtSeconds)
         window.tick(dtSeconds.toFloat(), partialTicks)
         val animationVisualsChanged = StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
         if (animationVisualsChanged) {
@@ -346,31 +346,31 @@ abstract class DsglScreenHost(
         )
     }
 
-    private fun syncInspectorAndResolveOverlayState(
+    private fun syncInspectorAndResolveSurfaceState(
         tree: DomTree,
         dsglMouseX: Int,
         dsglMouseY: Int,
-    ): OverlayLayerFrameState {
+    ): DomainSurfaceFrameState {
         inspector.onLayoutCommitted(tree.root, layoutRevision)
         inspector.onCursorMoved(dsglMouseX, dsglMouseY)
         inspectorPointerCaptured = inspector.isPointerCaptured
         if (inspectorPointerCaptured) {
             inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
-        val appOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.ApplicationPortal)
-        val systemOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(ScreenDomainSurfaces.SystemPortal)
-        val appOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.ApplicationPortal)
-        val systemOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(ScreenDomainSurfaces.SystemPortal)
+        val appPortalRenderEnabled = DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemPortalRenderEnabled = DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.SystemPortal)
+        val appPortalInputEnabled = DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemPortalInputEnabled = DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.SystemPortal)
         val inspectorBlocks =
-            systemOverlayInputEnabled &&
+            systemPortalInputEnabled &&
                 (
                     inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
                 )
-        return OverlayLayerFrameState(
-            appOverlayRenderEnabled = appOverlayRenderEnabled,
-            systemOverlayRenderEnabled = systemOverlayRenderEnabled,
-            appOverlayInputEnabled = appOverlayInputEnabled,
-            systemOverlayInputEnabled = systemOverlayInputEnabled,
+        return DomainSurfaceFrameState(
+            appPortalRenderEnabled = appPortalRenderEnabled,
+            systemPortalRenderEnabled = systemPortalRenderEnabled,
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
             inspectorBlocks = inspectorBlocks,
         )
     }
@@ -409,7 +409,7 @@ abstract class DsglScreenHost(
     }
 
     private fun syncFeatureRuntimeFrame(tree: DomTree, dsglMouseX: Int, dsglMouseY: Int) {
-        applicationOverlayHost.syncPortalFrame(
+        applicationPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -417,99 +417,101 @@ abstract class DsglScreenHost(
             mouseX = dsglMouseX,
             mouseY = dsglMouseY,
         )
-        systemOverlayHost.syncPortalFrame(adapter, lastWidth, lastHeight, 1f)
+        systemPortalHost.syncPortalFrame(adapter, lastWidth, lastHeight, 1f)
         refreshActiveColorSamplerOwner(tree.root)
     }
 
-    private fun syncApplicationOverlaySurface(appOverlayEnabled: Boolean) {
-        if (!appOverlayEnabled) return
+    private fun syncApplicationPortalSurface(appPortalEnabled: Boolean) {
+        if (!appPortalEnabled) return
         try {
-            applicationOverlayHost.render(adapter, lastWidth, lastHeight)
+            applicationPortalHost.render(adapter, lastWidth, lastHeight)
         } catch (
             @Suppress("TooGenericExceptionCaught") error: Throwable,
         ) {
             logPipelineError(
-                key = "draw.applicationOverlay.sync",
-                message = "[DSGL] Application overlay sync failed; skipping app overlay sync frame: ${error.message}",
+                key = "draw.applicationPortal.sync",
+                message =
+                    "[DSGL] Application portal sync failed; " +
+                        "skipping application portal sync frame: ${error.message}",
             )
         }
     }
 
-    private fun syncCollectAndStageApplicationOverlayAfterRootPaint(
+    private fun syncCollectAndStageApplicationPortalAfterRootPaint(
         tree: DomTree,
-        appOverlayRenderEnabled: Boolean,
-        appOverlayInputEnabled: Boolean,
+        appPortalRenderEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
     ) {
-        syncApplicationOverlaySurface(
-            appOverlayEnabled = appOverlayRenderEnabled || appOverlayInputEnabled,
+        syncApplicationPortalSurface(
+            appPortalEnabled = appPortalRenderEnabled || appPortalInputEnabled,
         )
-        val applicationOverlayCommands = collectApplicationOverlayCommands(appOverlayRenderEnabled)
-        stageApplicationOverlayCommands(
+        val applicationPortalCommands = collectApplicationPortalCommands(appPortalRenderEnabled)
+        stageApplicationPortalCommands(
             tree = tree,
-            applicationOverlayCommands = applicationOverlayCommands,
-            appOverlayRenderEnabled = appOverlayRenderEnabled,
+            applicationPortalCommands = applicationPortalCommands,
+            appPortalRenderEnabled = appPortalRenderEnabled,
         )
     }
 
-    private fun collectApplicationOverlayCommands(appOverlayRenderEnabled: Boolean): List<RenderCommand> {
-        if (!appOverlayRenderEnabled) {
+    private fun collectApplicationPortalCommands(appPortalRenderEnabled: Boolean): List<RenderCommand> {
+        if (!appPortalRenderEnabled) {
             return emptyList()
         }
         return try {
-            applicationOverlayHost.paint(adapter)
+            applicationPortalHost.paint(adapter)
         } catch (
             @Suppress("TooGenericExceptionCaught") error: Throwable,
         ) {
             logPipelineError(
-                key = "draw.applicationOverlay",
-                message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}",
+                key = "draw.applicationPortal",
+                message = "[DSGL] Application portal paint failed; skipping application portal frame: ${error.message}",
             )
             emptyList()
         }
     }
 
-    private fun syncSystemOverlayAndCollectCommands(
+    private fun syncSystemPortalAndCollectCommands(
         tree: DomTree,
         dsglMouseX: Int,
         dsglMouseY: Int,
-        systemOverlayRenderEnabled: Boolean,
+        systemPortalRenderEnabled: Boolean,
     ): List<RenderCommand> {
-        systemOverlayHost.syncFrame(
+        systemPortalHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
             cursorX = dsglMouseX,
             cursorY = dsglMouseY,
             inspectorPointerCaptured = inspectorPointerCaptured,
         )
-        if (!systemOverlayRenderEnabled) {
+        if (!systemPortalRenderEnabled) {
             return emptyList()
         }
         return try {
-            systemOverlayHost.render(adapter, lastWidth, lastHeight)
-            systemOverlayHost.paint(adapter)
+            systemPortalHost.render(adapter, lastWidth, lastHeight)
+            systemPortalHost.paint(adapter)
         } catch (
             @Suppress("TooGenericExceptionCaught") error: Throwable,
         ) {
             logPipelineError(
-                key = "draw.systemOverlay",
-                message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}",
+                key = "draw.systemPortal",
+                message = "[DSGL] System portal paint failed; skipping system portal frame: ${error.message}",
             )
             emptyList()
         }
     }
 
-    private fun stageSystemOverlayCommands(
-        systemOverlayCommands: List<RenderCommand>,
-        systemOverlayRenderEnabled: Boolean,
+    private fun stageSystemPortalCommands(
+        systemPortalCommands: List<RenderCommand>,
+        systemPortalRenderEnabled: Boolean,
     ) {
-        systemOverlayCommandsBuffer.clear()
-        systemOverlayCommandsBuffer.addAll(systemOverlayCommands)
-        if (systemOverlayRenderEnabled) {
-            systemOverlayHost.appendPortalOverlayCommands(
+        systemPortalCommandsBuffer.clear()
+        systemPortalCommandsBuffer.addAll(systemPortalCommands)
+        if (systemPortalRenderEnabled) {
+            systemPortalHost.appendFloatingPortalCommands(
                 measureContext = adapter,
                 viewportWidth = lastWidth,
                 viewportHeight = lastHeight,
-                out = systemOverlayCommandsBuffer,
+                out = systemPortalCommandsBuffer,
             )
         }
     }
@@ -537,35 +539,35 @@ abstract class DsglScreenHost(
         dtSeconds: Double,
         dsglMouseX: Int,
         dsglMouseY: Int,
-        appOverlayInputEnabled: Boolean,
-        systemOverlayInputEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
         inspectorBlocks: Boolean,
     ) {
         val applicationRootFrameBlocked =
             isApplicationRootFrameBlocked(
                 dsglMouseX = dsglMouseX,
                 dsglMouseY = dsglMouseY,
-                appOverlayInputEnabled = appOverlayInputEnabled,
-                systemOverlayInputEnabled = systemOverlayInputEnabled,
+                appPortalInputEnabled = appPortalInputEnabled,
+                systemPortalInputEnabled = systemPortalInputEnabled,
                 inspectorBlocks = inspectorBlocks,
             )
         val prevX = if (lastMoveX == Int.MIN_VALUE) dsglMouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) dsglMouseY else lastMoveY
         val dx = dsglMouseX - prevX
         val dy = dsglMouseY - prevY
-        val applicationModalBlocks = applicationOverlayHost.hasActiveModalPortal()
+        val applicationModalBlocks = applicationPortalHost.hasActiveModalPortal()
         val applicationPortalBlocks =
             isApplicationPortalFrameBlocking(
                 dsglMouseX = dsglMouseX,
                 dsglMouseY = dsglMouseY,
-                appOverlayInputEnabled = appOverlayInputEnabled,
+                appPortalInputEnabled = appPortalInputEnabled,
             )
         if (applicationRootFrameBlocked) {
             if (applicationModalBlocks) {
                 DndRuntime.engine.cancelActiveDrag()
             }
             if (applicationModalBlocks || applicationPortalBlocks) {
-                applicationOverlayHost.handleMouseMove(dsglMouseX, dsglMouseY)
+                applicationPortalHost.handleMouseMove(dsglMouseX, dsglMouseY)
             }
             clearHoverChainStates(postLeaveEvents = true, mouseX = dsglMouseX, mouseY = dsglMouseY)
             hoverTarget = null
@@ -582,41 +584,41 @@ abstract class DsglScreenHost(
     private fun isApplicationRootFrameBlocked(
         dsglMouseX: Int,
         dsglMouseY: Int,
-        appOverlayInputEnabled: Boolean,
-        systemOverlayInputEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
         inspectorBlocks: Boolean,
     ): Boolean {
-        if (appOverlayInputEnabled && applicationOverlayHost.hasActiveModalPortal()) return true
+        if (appPortalInputEnabled && applicationPortalHost.hasActiveModalPortal()) return true
         if (isApplicationRootPointerDragActive() && pointerCapture.target != null) return false
         if (inspectorBlocks || higherSurfacePointerButton != -1) return true
-        if (isApplicationPortalFrameBlocking(dsglMouseX, dsglMouseY, appOverlayInputEnabled)) return true
-        if (systemOverlayInputEnabled && systemOverlayHost.hasOpenPortal()) return true
+        if (isApplicationPortalFrameBlocking(dsglMouseX, dsglMouseY, appPortalInputEnabled)) return true
+        if (systemPortalInputEnabled && systemPortalHost.hasOpenPortal()) return true
         return isColorPickerFrameBlocking(
-            appOverlayInputEnabled = appOverlayInputEnabled,
-            systemOverlayInputEnabled = systemOverlayInputEnabled,
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
         )
     }
 
     private fun isApplicationPortalFrameBlocking(
         dsglMouseX: Int,
         dsglMouseY: Int,
-        appOverlayInputEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
     ): Boolean {
-        if (!appOverlayInputEnabled) return false
-        return applicationOverlayHost.hasOpenContextMenuPortal() ||
-            applicationOverlayHost.hasOpenSelectPortal() ||
-            applicationOverlayHost.hasDomPointerTargetAt(dsglMouseX, dsglMouseY)
+        if (!appPortalInputEnabled) return false
+        return applicationPortalHost.hasOpenContextMenuPortal() ||
+            applicationPortalHost.hasOpenSelectPortal() ||
+            applicationPortalHost.hasDomPointerTargetAt(dsglMouseX, dsglMouseY)
     }
 
     private fun isColorPickerFrameBlocking(
-        appOverlayInputEnabled: Boolean,
-        systemOverlayInputEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
     ): Boolean {
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
-        val systemPickerBlocks = systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()
+        val systemPickerBlocks = systemPortalInputEnabled && systemPortalHost.isSystemColorPickerOpen()
         val applicationPickerBlocks =
-            appOverlayInputEnabled &&
-                applicationOverlayHost.hasOpenColorPickerPortal() &&
+            appPortalInputEnabled &&
+                applicationPortalHost.hasOpenColorPickerPortal() &&
                 !inlineSamplerOwnsSession
         return systemPickerBlocks || applicationPickerBlocks
     }
@@ -657,31 +659,31 @@ abstract class DsglScreenHost(
         }
     }
 
-    private fun stageApplicationOverlayCommands(
+    private fun stageApplicationPortalCommands(
         tree: DomTree,
-        applicationOverlayCommands: List<RenderCommand>,
-        appOverlayRenderEnabled: Boolean,
+        applicationPortalCommands: List<RenderCommand>,
+        appPortalRenderEnabled: Boolean,
         measureContext: UiMeasureContext = adapter,
     ) {
-        applicationOverlayCommandsBuffer.clear()
-        if (appOverlayRenderEnabled) {
-            applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
-            if (!applicationOverlayHost.hasActiveModalPortal()) {
-                applicationOverlayHost.appendDndGhostPortalCommands(
+        applicationPortalCommandsBuffer.clear()
+        if (appPortalRenderEnabled) {
+            applicationPortalCommandsBuffer.addAll(applicationPortalCommands)
+            if (!applicationPortalHost.hasActiveModalPortal()) {
+                applicationPortalHost.appendDndGhostPortalCommands(
                     root = tree.root,
                     measureContext = measureContext,
                     viewportWidth = lastWidth,
                     viewportHeight = lastHeight,
-                    out = applicationOverlayCommandsBuffer,
+                    out = applicationPortalCommandsBuffer,
                 )
             }
-            applicationOverlayHost.appendPortalOverlayCommands(
+            applicationPortalHost.appendFloatingPortalCommands(
                 measureContext = measureContext,
                 viewportWidth = lastWidth,
                 viewportHeight = lastHeight,
-                out = applicationOverlayCommandsBuffer,
+                out = applicationPortalCommandsBuffer,
             )
-            appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
+            appendInlineColorPickerPortalCommands(applicationPortalCommandsBuffer)
         }
     }
 
@@ -694,12 +696,12 @@ abstract class DsglScreenHost(
     ) {
         domainOrchestrator.composePaintCommands(
             applicationRoot = commands,
-            applicationPortal = applicationOverlayCommandsBuffer,
-            systemPortal = systemOverlayCommandsBuffer,
+            applicationPortal = applicationPortalCommandsBuffer,
+            systemPortal = systemPortalCommandsBuffer,
             debugRoot = debugDomainCommands.root,
             debugPortal = debugDomainCommands.portal,
             out = stagingCommandsBuffer,
-            shouldRenderSurface = OverlayLayerDebugState::isRenderEnabled,
+            shouldRenderSurface = DomainSurfaceDebugState::isRenderEnabled,
         )
         val keepPrevious =
             shouldKeepPreviousFrameCommands(
@@ -741,8 +743,8 @@ abstract class DsglScreenHost(
         ScreenColorSamplerBridge.install(null)
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
-        applicationOverlayHost.closeFloatingPortals()
-        systemOverlayHost.clearRefs()
+        applicationPortalHost.closeFloatingPortals()
+        systemPortalHost.clearRefs()
         clearActiveTarget()
         flushPendingCleanup()
         clearHoverChainStates()
@@ -755,8 +757,8 @@ abstract class DsglScreenHost(
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
         domTree?.clearRefs()
-        applicationOverlayHost.clearRefs()
-        systemOverlayHost.clearRefs()
+        applicationPortalHost.clearRefs()
+        systemPortalHost.clearRefs()
         debugDomainRootHost.clearRefs()
         debugDomainPortalHost.clearRefs()
         domTree?.root?.let { root ->
@@ -789,7 +791,7 @@ abstract class DsglScreenHost(
         val height = viewport.height
         lastViewport = viewport
         if (force || width != lastWidth || height != lastHeight) {
-            applicationOverlayHost.closeFloatingPortals()
+            applicationPortalHost.closeFloatingPortals()
             lastWidth = width
             lastHeight = height
             needsLayout = true
@@ -887,9 +889,9 @@ abstract class DsglScreenHost(
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
             meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA),
         )
-        runOverlayInputFrame(applicationOverlayHost)
-        runOverlayInputFrame(systemOverlayHost)
-        applicationOverlayHost.syncPortalFrame(
+        runSurfaceInputFrame(applicationPortalHost)
+        runSurfaceInputFrame(systemPortalHost)
+        applicationPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -944,7 +946,7 @@ abstract class DsglScreenHost(
         if (keyCode == Keyboard.KEY_F10) {
             val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
             val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
-            applicationOverlayHost.toggleFloatingWindowDemo(demoAnchorX, demoAnchorY)
+            applicationPortalHost.toggleFloatingWindowDemo(demoAnchorX, demoAnchorY)
             mc.dispatchKeypresses()
             return true
         }
@@ -1066,7 +1068,7 @@ abstract class DsglScreenHost(
 
     private fun syncMouseInputFrame(tree: DomTree, inputEvent: MouseInputEvent) {
         inspector.onCursorMoved(inputEvent.mouseX, inputEvent.mouseY)
-        applicationOverlayHost.syncPortalFrame(
+        applicationPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
@@ -1074,18 +1076,18 @@ abstract class DsglScreenHost(
             mouseX = inputEvent.mouseX,
             mouseY = inputEvent.mouseY,
         )
-        systemOverlayHost.syncPortalFrame(
+        systemPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
             viewportScale = 1f,
         )
-        runOverlayInputFrame(applicationOverlayHost)
-        runOverlayInputFrame(systemOverlayHost)
-        runOverlayInputFrame(debugDomainRootHost)
-        runOverlayInputFrame(debugDomainPortalHost)
+        runSurfaceInputFrame(applicationPortalHost)
+        runSurfaceInputFrame(systemPortalHost)
+        runSurfaceInputFrame(debugDomainRootHost)
+        runSurfaceInputFrame(debugDomainPortalHost)
         inspectorPointerCaptured = inspector.isPointerCaptured
-        systemOverlayHost.syncFrame(
+        systemPortalHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
             cursorX = inputEvent.mouseX,
@@ -1095,7 +1097,7 @@ abstract class DsglScreenHost(
         refreshActiveColorSamplerOwner(tree.root)
     }
 
-    private fun runOverlayInputFrame(host: DomainSurfaceHost) {
+    private fun runSurfaceInputFrame(host: DomainSurfaceHost) {
         host.onInputFrame(lastWidth, lastHeight)
     }
 
@@ -1112,13 +1114,13 @@ abstract class DsglScreenHost(
                 canConsume = { surface ->
                     consumeDomainPointerSurface(surface = surface, tree = tree, context = context)
                 },
-                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
             )
         return when (consumedBy) {
             null ->
                 if (isHigherSurfaceOwnedPointerRelease(context)) {
                     higherSurfacePointerButton = -1
-                    consumeOverlayPointerState(
+                    consumePortalPointerState(
                         mouseX = inputEvent.mouseX,
                         mouseY = inputEvent.mouseY,
                         cancelRootDnd = context.inputEvent.mouseButton != -1,
@@ -1130,7 +1132,7 @@ abstract class DsglScreenHost(
             ScreenDomainSurfaces.ApplicationRoot -> DomainPointerDispatchResult.ApplicationRootHandled
             else -> {
                 updateHigherSurfacePointerOwnership(context)
-                consumeOverlayPointerState(
+                consumePortalPointerState(
                     mouseX = inputEvent.mouseX,
                     mouseY = inputEvent.mouseY,
                     cancelRootDnd = context.inputEvent.mouseButton != -1,
@@ -1212,7 +1214,7 @@ abstract class DsglScreenHost(
         if (context.applicationRootPressMove) {
             return false
         }
-        return consumeSystemOverlayPointerEvent(
+        return consumeSystemPortalPointerEvent(
             mouseX = context.inputEvent.mouseX,
             mouseY = context.inputEvent.mouseY,
             dWheel = context.inputEvent.dWheel,
@@ -1226,7 +1228,7 @@ abstract class DsglScreenHost(
         if (context.applicationRootPressMove) {
             return false
         }
-        return consumeApplicationOverlayPointerEvent(
+        return consumeApplicationPortalPointerEvent(
             mouseX = context.inputEvent.mouseX,
             mouseY = context.inputEvent.mouseY,
             dWheel = context.inputEvent.dWheel,
@@ -1400,14 +1402,14 @@ abstract class DsglScreenHost(
                         ScreenDomainSurfaces.DebugRoot -> debugDomainRootHost.handleKeyDown(keyCode, keyChar)
 
                         ScreenDomainSurfaces.SystemPortal ->
-                            consumeSystemOverlayKeyDown(
+                            consumeSystemPortalKeyDown(
                                 keyCode = keyCode,
                                 keyChar = keyChar,
                                 inspectorMouseX = inspectorMouseX,
                                 inspectorMouseY = inspectorMouseY,
                             )
 
-                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalKeyDown(keyCode, keyChar)
                         ScreenDomainSurfaces.ApplicationRoot -> {
                             dispatchApplicationRootKeyDown(keyCode, keyChar)
                             true
@@ -1416,7 +1418,7 @@ abstract class DsglScreenHost(
                         else -> false
                     }
                 },
-                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
             )
         return when (consumedBy) {
             null -> DomainKeyDispatchResult.None
@@ -1439,20 +1441,20 @@ abstract class DsglScreenHost(
                         ScreenDomainSurfaces.DebugRoot -> debugDomainRootHost.handleKeyUp(keyCode, keyChar)
 
                         ScreenDomainSurfaces.SystemPortal ->
-                            consumeSystemOverlayKeyUp(
+                            consumeSystemPortalKeyUp(
                                 keyCode = keyCode,
                                 keyChar = keyChar,
                                 inspectorMouseX = inspectorMouseX,
                                 inspectorMouseY = inspectorMouseY,
                             )
 
-                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationOverlayKeyUp(keyCode, keyChar)
+                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalKeyUp(keyCode, keyChar)
                         ScreenDomainSurfaces.ApplicationRoot -> dispatchApplicationRootKeyUp(keyCode, keyChar)
                         ScreenDomainSurfaces.SystemRoot -> false
                         else -> false
                     }
                 },
-                isSurfaceInputEnabled = OverlayLayerDebugState::isInputEnabled,
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
             )
         return when (consumedBy) {
             null -> DomainKeyDispatchResult.None
@@ -1510,16 +1512,16 @@ abstract class DsglScreenHost(
         EventBus.post(upEvent)
     }
 
-    private fun consumeSystemOverlayKeyDown(
+    private fun consumeSystemPortalKeyDown(
         keyCode: Int,
         keyChar: Char,
         inspectorMouseX: Int,
         inspectorMouseY: Int,
     ): Boolean {
-        if (systemOverlayHost.handlePortalKeyDown(keyCode, keyChar)) {
+        if (systemPortalHost.handlePortalKeyDown(keyCode, keyChar)) {
             return true
         }
-        if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
+        if (systemPortalHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
         val keyboardBlocked =
@@ -1535,16 +1537,16 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun consumeSystemOverlayKeyUp(
+    private fun consumeSystemPortalKeyUp(
         keyCode: Int,
         keyChar: Char,
         inspectorMouseX: Int,
         inspectorMouseY: Int,
     ): Boolean {
-        if (systemOverlayHost.handlePortalKeyUp(keyCode, keyChar)) {
+        if (systemPortalHost.handlePortalKeyUp(keyCode, keyChar)) {
             return true
         }
-        if (systemOverlayHost.handleKeyUp(keyCode, keyChar)) {
+        if (systemPortalHost.handleKeyUp(keyCode, keyChar)) {
             return true
         }
         val keyboardBlocked =
@@ -1560,27 +1562,27 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun consumeApplicationOverlayKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        if (applicationOverlayHost.handlePortalKeyDownBeforeDom(keyCode, keyChar)) {
+    private fun consumeApplicationPortalKeyDown(keyCode: Int, keyChar: Char): Boolean {
+        if (applicationPortalHost.handlePortalKeyDownBeforeDom(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
+        if (applicationPortalHost.handleKeyDown(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handlePortalKeyDownAfterDom(keyCode, keyChar)) {
+        if (applicationPortalHost.handlePortalKeyDownAfterDom(keyCode, keyChar)) {
             return true
         }
         return false
     }
 
-    private fun consumeApplicationOverlayKeyUp(keyCode: Int, keyChar: Char): Boolean {
-        if (applicationOverlayHost.handlePortalKeyUpBeforeDom(keyCode, keyChar)) {
+    private fun consumeApplicationPortalKeyUp(keyCode: Int, keyChar: Char): Boolean {
+        if (applicationPortalHost.handlePortalKeyUpBeforeDom(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handleKeyUp(keyCode, keyChar)) {
+        if (applicationPortalHost.handleKeyUp(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handlePortalKeyUpAfterDom(keyCode, keyChar)) {
+        if (applicationPortalHost.handlePortalKeyUpAfterDom(keyCode, keyChar)) {
             return true
         }
         return false
@@ -1611,7 +1613,7 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun consumeSystemOverlayPointerEvent(
+    private fun consumeSystemPortalPointerEvent(
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
@@ -1619,34 +1621,34 @@ abstract class DsglScreenHost(
         mappedButton: MouseButton?,
         buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && systemOverlayHost.handlePortalMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && systemPortalHost.handlePortalMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
-        if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && systemPortalHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
             val consumedBySystemSelect =
                 if (buttonPressed) {
-                    systemOverlayHost.handlePortalMouseDown(mouseX, mouseY, mappedButton)
+                    systemPortalHost.handlePortalMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    systemOverlayHost.handlePortalMouseUp(mouseX, mouseY, mappedButton)
+                    systemPortalHost.handlePortalMouseUp(mouseX, mouseY, mappedButton)
                 }
             if (consumedBySystemSelect) {
                 return true
             }
-            val consumedBySystemOverlay =
+            val consumedBySystemPortal =
                 if (buttonPressed) {
-                    systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                    systemPortalHost.handleMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                    systemPortalHost.handleMouseUp(mouseX, mouseY, mappedButton)
                 }
-            if (consumedBySystemOverlay) {
+            if (consumedBySystemPortal) {
                 return true
             }
-        } else if (mouseButton == -1 && systemOverlayHost.handlePortalMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && systemPortalHost.handlePortalMouseMove(mouseX, mouseY)) {
             return true
-        } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && systemPortalHost.handleMouseMove(mouseX, mouseY)) {
             return true
         }
 
@@ -1659,7 +1661,7 @@ abstract class DsglScreenHost(
         return true
     }
 
-    private fun consumeApplicationOverlayPointerEvent(
+    private fun consumeApplicationPortalPointerEvent(
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
@@ -1670,7 +1672,7 @@ abstract class DsglScreenHost(
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         if (!inlineSamplerOwnsSession) {
             if (
-                applicationOverlayHost.handlePortalPointerBeforeDom(
+                applicationPortalHost.handlePortalPointerBeforeDom(
                     mouseX = mouseX,
                     mouseY = mouseY,
                     dWheel = dWheel,
@@ -1682,24 +1684,24 @@ abstract class DsglScreenHost(
             }
         }
 
-        if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && applicationPortalHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
-            val consumedByAppOverlay =
+            val consumedByApplicationPortal =
                 if (buttonPressed) {
-                    applicationOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                    applicationPortalHost.handleMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    applicationOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                    applicationPortalHost.handleMouseUp(mouseX, mouseY, mappedButton)
                 }
-            if (consumedByAppOverlay) {
+            if (consumedByApplicationPortal) {
                 return true
             }
-        } else if (mouseButton == -1 && applicationOverlayHost.handleMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && applicationPortalHost.handleMouseMove(mouseX, mouseY)) {
             return true
         }
 
-        return applicationOverlayHost.handlePortalPointerAfterDom(
+        return applicationPortalHost.handlePortalPointerAfterDom(
             mouseX = mouseX,
             mouseY = mouseY,
             dWheel = dWheel,
@@ -1708,7 +1710,7 @@ abstract class DsglScreenHost(
         )
     }
 
-    private fun consumeOverlayPointerState(mouseX: Int, mouseY: Int, cancelRootDnd: Boolean = false) {
+    private fun consumePortalPointerState(mouseX: Int, mouseY: Int, cancelRootDnd: Boolean = false) {
         if (cancelRootDnd) {
             DndRuntime.engine.cancelActiveDrag()
         }
@@ -1732,7 +1734,7 @@ abstract class DsglScreenHost(
     private fun isApplicationRootPointerDragActive(): Boolean = eventButton != -1 && lastMouseEvent > 0L
 
     init {
-        inspector.installColorPickerPortalService(systemOverlayHost.systemInspectorColorPickerService())
+        inspector.installColorPickerPortalService(systemPortalHost.systemInspectorColorPickerService())
     }
 
     private fun refreshActiveColorSamplerOwner(root: DOMNode?) {
@@ -1746,7 +1748,7 @@ abstract class DsglScreenHost(
         }
         activeColorSamplerOwner =
             colorSamplerOwnershipRouter.update(
-                popupEyedropperActive = applicationOverlayHost.hasActiveColorPickerEyedropper(),
+                popupEyedropperActive = applicationPortalHost.hasActiveColorPickerEyedropper(),
                 inlineActiveTokens = inlineByToken.keys.toSet(),
             )
         activeInlineColorSamplerNode =
@@ -1777,13 +1779,13 @@ abstract class DsglScreenHost(
         return null
     }
 
-    private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
-        val surface = ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.Application)
+    private fun appendInlineColorPickerPortalCommands(out: MutableList<RenderCommand>) {
+        val surface = ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.Application)
         if (surface != ScreenDomainSurfaces.ApplicationPortal) return
         if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
             val inline = activeInlineColorSamplerNode ?: return
             if (!inline.wantsGlobalPointerInput()) return
-            inline.appendEyedropperOverlayCommands(
+            inline.appendEyedropperPortalCommands(
                 viewportWidth = lastWidth.coerceAtLeast(1),
                 viewportHeight = lastHeight.coerceAtLeast(1),
                 out = out,
@@ -1793,16 +1795,16 @@ abstract class DsglScreenHost(
 
     private fun captureColorPickerEyedropperSamples() {
         refreshActiveColorSamplerOwner(domTree?.root)
-        if (ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.System) == ScreenDomainSurfaces.SystemPortal) {
-            systemOverlayHost.captureSystemColorPickerEyedropperSample()
+        if (ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.System) == ScreenDomainSurfaces.SystemPortal) {
+            systemPortalHost.captureSystemColorPickerEyedropperSample()
         }
-        if (ScreenDomainSurfaces.portalSurfaceForOwner(OverlayOwnerScope.Application) !=
+        if (ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.Application) !=
             ScreenDomainSurfaces.ApplicationPortal
         ) {
             return
         }
         when (activeColorSamplerOwner) {
-            ActiveColorSamplerOwner.Popup -> applicationOverlayHost.captureColorPickerEyedropperSample()
+            ActiveColorSamplerOwner.Popup -> applicationPortalHost.captureColorPickerEyedropperSample()
             is ActiveColorSamplerOwner.Inline -> {
                 val inline = activeInlineColorSamplerNode
                 if (inline != null && inline.wantsGlobalPointerInput()) {
@@ -1811,8 +1813,8 @@ abstract class DsglScreenHost(
             }
 
             ActiveColorSamplerOwner.None -> {
-                if (applicationOverlayHost.hasActiveColorPickerEyedropper()) {
-                    applicationOverlayHost.captureColorPickerEyedropperSample()
+                if (applicationPortalHost.hasActiveColorPickerEyedropper()) {
+                    applicationPortalHost.captureColorPickerEyedropperSample()
                 }
             }
         }
@@ -1873,38 +1875,38 @@ abstract class DsglScreenHost(
         return out
     }
 
-    internal fun debugStageApplicationOverlayCommandsForTests(
+    internal fun debugStageApplicationPortalCommandsForTests(
         tree: DomTree,
-        applicationOverlayCommands: List<RenderCommand>,
-        appOverlayRenderEnabled: Boolean = true,
+        applicationPortalCommands: List<RenderCommand>,
+        appPortalRenderEnabled: Boolean = true,
         measureContext: UiMeasureContext,
     ): List<RenderCommand> {
-        stageApplicationOverlayCommands(
+        stageApplicationPortalCommands(
             tree = tree,
-            applicationOverlayCommands = applicationOverlayCommands,
-            appOverlayRenderEnabled = appOverlayRenderEnabled,
+            applicationPortalCommands = applicationPortalCommands,
+            appPortalRenderEnabled = appPortalRenderEnabled,
             measureContext = measureContext,
         )
-        return applicationOverlayCommandsBuffer.toList()
+        return applicationPortalCommandsBuffer.toList()
     }
 
-    internal fun debugSyncApplicationOverlaySurfaceForTests(
+    internal fun debugSyncApplicationPortalSurfaceForTests(
         measureContext: UiMeasureContext,
         width: Int,
         height: Int,
-        appOverlayEnabled: Boolean = true,
+        appPortalEnabled: Boolean = true,
     ) {
-        if (appOverlayEnabled) {
-            applicationOverlayHost.render(measureContext, width, height)
+        if (appPortalEnabled) {
+            applicationPortalHost.render(measureContext, width, height)
         }
     }
 
-    internal fun debugCollectApplicationOverlayCommandsForTests(
+    internal fun debugCollectApplicationPortalCommandsForTests(
         measureContext: UiMeasureContext,
-        appOverlayRenderEnabled: Boolean = true,
+        appPortalRenderEnabled: Boolean = true,
     ): List<RenderCommand> =
-        if (appOverlayRenderEnabled) {
-            applicationOverlayHost.paint(measureContext)
+        if (appPortalRenderEnabled) {
+            applicationPortalHost.paint(measureContext)
         } else {
             emptyList()
         }
@@ -1957,14 +1959,14 @@ abstract class DsglScreenHost(
             )
         if (consumedBy != null && consumedBy != ScreenDomainSurfaces.ApplicationRoot) {
             updateHigherSurfacePointerOwnership(context)
-            consumeOverlayPointerState(
+            consumePortalPointerState(
                 mouseX = mouseX,
                 mouseY = mouseY,
                 cancelRootDnd = context.inputEvent.mouseButton != -1,
             )
         } else if (consumedBy == null && isHigherSurfaceOwnedPointerRelease(context)) {
             higherSurfacePointerButton = -1
-            consumeOverlayPointerState(
+            consumePortalPointerState(
                 mouseX = mouseX,
                 mouseY = mouseY,
                 cancelRootDnd = context.inputEvent.mouseButton != -1,
@@ -1974,14 +1976,14 @@ abstract class DsglScreenHost(
         return consumedBy
     }
 
-    internal fun debugApplicationOverlayHostForTests(): ApplicationOverlayHost = applicationOverlayHost
+    internal fun debugApplicationPortalHostForTests(): ApplicationPortalHost = applicationPortalHost
 
     internal fun debugUpdateFrameInteractionStateForTests(
         tree: DomTree,
         mouseX: Int,
         mouseY: Int,
-        appOverlayInputEnabled: Boolean = true,
-        systemOverlayInputEnabled: Boolean = true,
+        appPortalInputEnabled: Boolean = true,
+        systemPortalInputEnabled: Boolean = true,
         inspectorBlocks: Boolean = false,
     ) {
         updateFrameInteractionState(
@@ -1989,8 +1991,8 @@ abstract class DsglScreenHost(
             dtSeconds = 1.0 / 60.0,
             dsglMouseX = mouseX,
             dsglMouseY = mouseY,
-            appOverlayInputEnabled = appOverlayInputEnabled,
-            systemOverlayInputEnabled = systemOverlayInputEnabled,
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
             inspectorBlocks = inspectorBlocks,
         )
     }

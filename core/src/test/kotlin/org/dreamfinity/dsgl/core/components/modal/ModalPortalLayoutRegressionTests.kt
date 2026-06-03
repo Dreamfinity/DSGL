@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.EventBus
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 class ModalPortalLayoutRegressionTests {
     private val trees: MutableList<DomTree> = ArrayList()
-    private val overlays: MutableList<ApplicationOverlayHost> = ArrayList()
+    private val portalHosts: MutableList<ApplicationPortalHost> = ArrayList()
     private val hostKeys: MutableSet<String> = LinkedHashSet()
     private val measureContext =
         object : UiMeasureContext {
@@ -39,26 +39,26 @@ class ModalPortalLayoutRegressionTests {
                 tree.root.clearListenersDeep()
             }
         }
-        overlays.forEach { overlay -> overlay.clearRefs() }
+        portalHosts.forEach { portalHost -> portalHost.clearRefs() }
         hostKeys.forEach(ModalPortalSessionStore::forgetPortal)
         trees.clear()
-        overlays.clear()
+        portalHosts.clear()
         hostKeys.clear()
     }
 
     @Test
-    fun `modal portal resolves layer style before first overlay layout`() {
+    fun `modal portal resolves layer style before first portalHost layout`() {
         val hostKey = "tests.modal.portal.layout.first.frame"
         val tree = buildTree(hostKey, listOf(basicModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
-        val layer = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.basic.layer")
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.basic"))
+        val layer = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.basic.layer")
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.basic"))
         assertNotNull(layer)
         assertNotNull(dialog)
 
@@ -70,7 +70,7 @@ class ModalPortalLayoutRegressionTests {
     }
 
     @Test
-    fun `centered modal keeps stable bounds across passive overlay frames`() {
+    fun `centered modal keeps stable bounds across passive portalHost frames`() {
         val hostKey = "tests.modal.portal.layout.centered.stable"
         val tree =
             buildTree(
@@ -85,19 +85,19 @@ class ModalPortalLayoutRegressionTests {
         trees += tree
         tree.render(measureContext, 320, 180)
 
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.render(measureContext, 320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.render(measureContext, 320, 180)
 
         val dialogKey = ModalPortalSessionStore.dialogKey(hostKey, "modal.centered")
-        val firstDialog = overlay.modalPortal.debugFindNodeByKey(dialogKey)
+        val firstDialog = portalHost.modalPortal.debugFindNodeByKey(dialogKey)
         assertNotNull(firstDialog)
         val firstBounds = firstDialog.bounds
 
-        assertTrue(overlay.handleMouseMove(firstBounds.x + firstBounds.width / 2, firstBounds.y + firstBounds.height / 2))
-        overlay.render(measureContext, 320, 180)
+        assertTrue(portalHost.handleMouseMove(firstBounds.x + firstBounds.width / 2, firstBounds.y + firstBounds.height / 2))
+        portalHost.render(measureContext, 320, 180)
 
-        val secondDialog = overlay.modalPortal.debugFindNodeByKey(dialogKey)
+        val secondDialog = portalHost.modalPortal.debugFindNodeByKey(dialogKey)
         assertNotNull(secondDialog)
         assertEquals(firstBounds, secondDialog.bounds)
     }

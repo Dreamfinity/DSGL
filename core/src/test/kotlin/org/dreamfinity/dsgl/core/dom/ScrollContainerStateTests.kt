@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
@@ -398,7 +398,7 @@ class ScrollContainerStateTests {
             },
         )
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         assertTrue(router.handleMouseDown(30, 58, MouseButton.LEFT))
         assertTrue(router.handleMouseUp(30, 58, MouseButton.LEFT))
         assertTrue(!router.handleMouseDown(30, 65, MouseButton.LEFT))

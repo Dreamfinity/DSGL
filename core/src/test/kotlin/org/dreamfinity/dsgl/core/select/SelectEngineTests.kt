@@ -279,8 +279,8 @@ class SelectEngineTests {
     }
 
     @Test
-    fun `overlay consumes pointer before base dispatch when select is open`() {
-        val owner = "select.overlay.order"
+    fun `portal popup consumes pointer before base dispatch when select is open`() {
+        val owner = "select.portal.order"
         val engine = SelectEngine()
         val model =
             selectModel {
@@ -368,7 +368,7 @@ class SelectEngineTests {
             ),
         )
         val overflowCommands = mutableListOf<RenderCommand>()
-        overflowEngine.appendOverlayCommands(ctx, 240, 120, overflowCommands)
+        overflowEngine.appendPortalCommands(ctx, 240, 120, overflowCommands)
         assertTrue(overflowCommands.any { it is RenderCommand.DrawRect && it.color == trackColor })
         assertTrue(overflowCommands.any { it is RenderCommand.DrawRect && it.color == thumbColor })
         val pushClips = overflowCommands.count { it is RenderCommand.PushClip }
@@ -402,7 +402,7 @@ class SelectEngineTests {
             ),
         )
         val noOverflowCommands = mutableListOf<RenderCommand>()
-        noOverflowEngine.appendOverlayCommands(ctx, 240, 200, noOverflowCommands)
+        noOverflowEngine.appendPortalCommands(ctx, 240, 200, noOverflowCommands)
         assertFalse(noOverflowCommands.any { it is RenderCommand.DrawRect && it.color == trackColor })
         assertFalse(noOverflowCommands.any { it is RenderCommand.DrawRect && it.color == thumbColor })
         val pushClipsNoOverflow = noOverflowCommands.count { it is RenderCommand.PushClip }

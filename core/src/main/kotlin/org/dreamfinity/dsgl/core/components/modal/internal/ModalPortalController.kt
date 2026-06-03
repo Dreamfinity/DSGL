@@ -9,23 +9,23 @@ import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.PortalBackdropPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalEntry
-import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
-import org.dreamfinity.dsgl.core.overlay.PortalEntryId
-import org.dreamfinity.dsgl.core.overlay.PortalEntryOrder
-import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
-import org.dreamfinity.dsgl.core.overlay.PortalEntryState
-import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalHost
-import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalInsidePointerPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalPointerContainmentPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.evaluateOutsidePointerDown
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.PortalBackdropPolicy
+import org.dreamfinity.dsgl.core.portal.PortalDismissPolicy
+import org.dreamfinity.dsgl.core.portal.PortalEntry
+import org.dreamfinity.dsgl.core.portal.PortalEntryBounds
+import org.dreamfinity.dsgl.core.portal.PortalEntryId
+import org.dreamfinity.dsgl.core.portal.PortalEntryOrder
+import org.dreamfinity.dsgl.core.portal.PortalEntryPlacement
+import org.dreamfinity.dsgl.core.portal.PortalEntryState
+import org.dreamfinity.dsgl.core.portal.PortalFocusPolicy
+import org.dreamfinity.dsgl.core.portal.PortalHost
+import org.dreamfinity.dsgl.core.portal.PortalInputPolicy
+import org.dreamfinity.dsgl.core.portal.PortalInsidePointerPolicy
+import org.dreamfinity.dsgl.core.portal.PortalPointerContainmentPolicy
+import org.dreamfinity.dsgl.core.portal.PortalPointerRegion
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.evaluateOutsidePointerDown
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 
 @Suppress("TooManyFunctions")
 internal class ModalPortalController {
@@ -265,8 +265,8 @@ private class ModalPortalEntry(
     templateRoot: ModalPortalRootNode,
 ) : PortalEntry {
     private var tree: DomTree = DomTree(templateRoot)
-    private val domInputRouter: LayerDomInputRouter =
-        LayerDomInputRouter(
+    private val domInputRouter: SurfaceDomInputRouter =
+        SurfaceDomInputRouter(
             rootProvider = { root },
         )
     private var topMostModal: ModalSpec? = null

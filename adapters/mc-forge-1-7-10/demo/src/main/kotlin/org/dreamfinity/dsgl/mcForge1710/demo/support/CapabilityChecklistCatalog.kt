@@ -15,7 +15,7 @@ enum class CapabilityId(
     val group: CapabilityGroup,
 ) {
     BUILDER_DIV("builder: div", CapabilityGroup.DSL_BUILDERS),
-    BUILDER_OVERLAY("builder: overlay", CapabilityGroup.DSL_BUILDERS),
+    BUILDER_STACK_LAYOUT("builder: stack-layout DSL", CapabilityGroup.DSL_BUILDERS),
     BUILDER_TEXT("builder: text", CapabilityGroup.DSL_BUILDERS),
     BUILDER_TEXT_LAMBDA("builder: text(lambda)", CapabilityGroup.DSL_BUILDERS),
     BUILDER_BUTTON("builder: button", CapabilityGroup.DSL_BUILDERS),
@@ -73,18 +73,18 @@ enum class CapabilityId(
     ANIMATION_TRANSFORM("Transform animation demo", CapabilityGroup.SHOWCASE_FEATURES),
     ANIMATION_OPACITY("Opacity animation demo", CapabilityGroup.SHOWCASE_FEATURES),
     ANIMATION_KEYFRAMES("Keyframes animation demo", CapabilityGroup.SHOWCASE_FEATURES),
-    MODAL_HOST("Modal host overlay", CapabilityGroup.SHOWCASE_FEATURES),
+    MODAL_HOST("Modal portal host", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_STACKING("Modal deterministic stacking", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_BACKDROP("Modal backdrop behaviors", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_ESCAPE("Modal ESC close behavior", CapabilityGroup.SHOWCASE_FEATURES),
     MODAL_FOCUS_TRAP("Modal focus trap + restore", CapabilityGroup.SHOWCASE_FEATURES),
-    CONTEXT_MENU_OVERLAY("Context menu overlay rendering", CapabilityGroup.SHOWCASE_FEATURES),
+    CONTEXT_MENU_PORTAL("Context menu portal rendering", CapabilityGroup.SHOWCASE_FEATURES),
     CONTEXT_MENU_NESTED("Context menu nested submenus", CapabilityGroup.SHOWCASE_FEATURES),
     CONTEXT_MENU_ANCHORED("Context menu anchored + cursor open", CapabilityGroup.SHOWCASE_FEATURES),
     CONTEXT_MENU_SCROLL("Context menu overflow + wheel scroll", CapabilityGroup.SHOWCASE_FEATURES),
     LAYOUT_GAP_FIXED("Gap + fixed-size demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLE_MARGIN_PADDING_BORDER("Style margin/padding/border toggles", CapabilityGroup.SHOWCASE_FEATURES),
-    OVERLAY_BEHAVIOR("Overlay behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
+    PORTAL_BEHAVIOR("Portal behavior demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_SELECTORS("Stylesheet selectors demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_COMBINATORS("Stylesheet descendant/child/sibling combinators demo", CapabilityGroup.SHOWCASE_FEATURES),
     STYLESHEET_CASCADE("Stylesheet cascade/specificity/important/inheritance demo", CapabilityGroup.SHOWCASE_FEATURES),
@@ -135,11 +135,11 @@ object CapabilityChecklistCatalog {
             DemoSection.LAYOUT_STYLE ->
                 setOf(
                     CapabilityId.BUILDER_DIV,
-                    CapabilityId.BUILDER_OVERLAY,
+                    CapabilityId.BUILDER_STACK_LAYOUT,
                     CapabilityId.HOOK_MOUSE_CLICK,
                     CapabilityId.LAYOUT_GAP_FIXED,
                     CapabilityId.STYLE_MARGIN_PADDING_BORDER,
-                    CapabilityId.OVERLAY_BEHAVIOR,
+                    CapabilityId.PORTAL_BEHAVIOR,
                 )
 
             DemoSection.LAYOUT_DEBUG ->
@@ -161,7 +161,7 @@ object CapabilityChecklistCatalog {
                     CapabilityId.HOOK_MOUSE_LEAVE,
                     CapabilityId.HOOK_MOUSE_CLICK,
                     CapabilityId.HOOK_MOUSE_WHEEL,
-                    CapabilityId.OVERLAY_BEHAVIOR,
+                    CapabilityId.PORTAL_BEHAVIOR,
                 )
 
             DemoSection.OVERFLOW_SCROLL ->
@@ -238,7 +238,7 @@ object CapabilityChecklistCatalog {
                     CapabilityId.BUILDER_TEXT,
                     CapabilityId.BUILDER_BUTTON,
                     CapabilityId.HOOK_MOUSE_DOWN,
-                    CapabilityId.CONTEXT_MENU_OVERLAY,
+                    CapabilityId.CONTEXT_MENU_PORTAL,
                     CapabilityId.CONTEXT_MENU_NESTED,
                     CapabilityId.CONTEXT_MENU_ANCHORED,
                     CapabilityId.CONTEXT_MENU_SCROLL,

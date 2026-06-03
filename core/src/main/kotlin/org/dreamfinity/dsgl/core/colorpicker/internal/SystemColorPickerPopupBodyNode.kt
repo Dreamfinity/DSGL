@@ -790,16 +790,16 @@ internal class SystemColorPickerPopupBodyNode(
     }
 }
 
-internal class SystemColorPickerTransientOverlayNode(
+internal class SystemColorPickerTransientPortalNode(
     private val popupEngine: ColorPickerPopupEngine,
     key: Any? = "dsgl-system-color-picker-native-transient",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-native-transient"
 
-    private val modeDropdownOverlayNode: SystemColorPickerModeDropdownOverlayNode =
-        SystemColorPickerModeDropdownOverlayNode(popupEngine).applyParent(this)
-    private val eyedropperOverlayNode: SystemColorPickerEyedropperOverlayNode =
-        SystemColorPickerEyedropperOverlayNode(popupEngine).applyParent(this)
+    private val modeDropdownPortalNode: SystemColorPickerModeDropdownPortalNode =
+        SystemColorPickerModeDropdownPortalNode(popupEngine).applyParent(this)
+    private val eyedropperPreviewNode: SystemColorPickerEyedropperPreviewNode =
+        SystemColorPickerEyedropperPreviewNode(popupEngine).applyParent(this)
 
     override fun measure(ctx: UiMeasureContext): Size =
         Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
@@ -812,8 +812,8 @@ internal class SystemColorPickerTransientOverlayNode(
         height: Int,
     ) {
         bounds = Rect(x, y, width, height)
-        modeDropdownOverlayNode.render(ctx, x, y, width, height)
-        eyedropperOverlayNode.render(ctx, x, y, width, height)
+        modeDropdownPortalNode.render(ctx, x, y, width, height)
+        eyedropperPreviewNode.render(ctx, x, y, width, height)
     }
 
     fun invalidateColorState() {
@@ -821,11 +821,11 @@ internal class SystemColorPickerTransientOverlayNode(
     }
 }
 
-internal class SystemColorPickerModeDropdownOverlayNode(
+internal class SystemColorPickerModeDropdownPortalNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-mode-dropdown-overlay",
+    key: Any? = "dsgl-system-color-picker-native-mode-dropdown-portal",
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-native-mode-dropdown-overlay"
+    override val styleType: String = "dsgl-system-color-picker-native-mode-dropdown-portal"
 
     private val scope = UiScope(this)
     private val popupBackgroundNode: ContainerNode =
@@ -1019,11 +1019,11 @@ internal class SystemColorPickerModeDropdownOverlayNode(
     }
 }
 
-internal class SystemColorPickerEyedropperOverlayNode(
+internal class SystemColorPickerEyedropperPreviewNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-eyedropper-overlay",
+    key: Any? = "dsgl-system-color-picker-native-eyedropper-preview",
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-native-eyedropper-overlay"
+    override val styleType: String = "dsgl-system-color-picker-native-eyedropper-preview"
 
     private val scope = UiScope(this)
     private val captureNode: EyedropperCaptureNode =
@@ -1052,18 +1052,18 @@ internal class SystemColorPickerEyedropperOverlayNode(
             this.key = "dsgl-system-color-picker-eyedropper-swatch"
         })
     private val modeTextNode: TextNode =
-        createOverlayTextNode(
+        createPreviewTextNode(
             key = "dsgl-system-color-picker-eyedropper-mode",
             text = "",
         )
     private val valueTextNode: TextNode =
-        createOverlayTextNode(
+        createPreviewTextNode(
             key = "dsgl-system-color-picker-eyedropper-value",
             text = "",
         )
 
     private data class EyedropperRenderState(
-        val model: ColorPickerEyedropperOverlayModel,
+        val model: ColorPickerEyedropperPreviewModel,
         val style: ColorPickerStyle,
         val color: RgbaColor,
     )
@@ -1092,13 +1092,13 @@ internal class SystemColorPickerEyedropperOverlayNode(
 
         syncVisuals(renderState)
         bindVisualNodes(renderState)
-        renderOverlayNodes(ctx, renderState)
+        renderPreviewNodes(ctx, renderState)
     }
 
     private fun resolveRenderState(): EyedropperRenderState? {
         val controller = popupEngine.debugActiveController() ?: return null
         val model =
-            controller.resolveEyedropperOverlayModel(
+            controller.resolveEyedropperPreviewModel(
                 viewportWidth = bounds.width.coerceAtLeast(1),
                 viewportHeight = bounds.height.coerceAtLeast(1),
             ) ?: return null
@@ -1111,7 +1111,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
     }
 
     private fun syncVisuals(state: EyedropperRenderState) {
-        syncOverlayText(state.model.modeText, state.model.valueText)
+        syncPreviewText(state.model.modeText, state.model.valueText)
         syncContainerVisual(
             node = shadowNode,
             backgroundColor = state.style.panelShadowColor,
@@ -1119,16 +1119,16 @@ internal class SystemColorPickerEyedropperOverlayNode(
         )
         syncContainerVisual(
             node = panelNode,
-            backgroundColor = state.style.eyedropperOverlayBackgroundColor,
-            border = Border.all(1, state.style.eyedropperOverlayBorderColor),
+            backgroundColor = state.style.eyedropperPreviewBackgroundColor,
+            border = Border.all(1, state.style.eyedropperPreviewBorderColor),
         )
         syncContainerVisual(
             node = centerNode,
             backgroundColor = null,
             border = Border.all(1, state.style.eyedropperCenterBorderColor),
         )
-        syncOverlayTextVisual(modeTextNode, state.style.mutedTextColor, state.style.fontSize)
-        syncOverlayTextVisual(valueTextNode, state.style.textColor, state.style.fontSize)
+        syncPreviewTextVisual(modeTextNode, state.style.mutedTextColor, state.style.fontSize)
+        syncPreviewTextVisual(valueTextNode, state.style.textColor, state.style.fontSize)
     }
 
     private fun bindVisualNodes(state: EyedropperRenderState) {
@@ -1146,12 +1146,12 @@ internal class SystemColorPickerEyedropperOverlayNode(
                         state.model.captureSourceRect.width
                             .coerceAtLeast(1)
                 ).coerceAtLeast(1),
-            gridEnabled = state.style.eyedropperGridOverlayEnabled,
-            gridColor = state.style.eyedropperGridOverlayColor,
+            gridEnabled = state.style.eyedropperGridEnabled,
+            gridColor = state.style.eyedropperGridColor,
         )
     }
 
-    private fun renderOverlayNodes(ctx: UiMeasureContext, state: EyedropperRenderState) {
+    private fun renderPreviewNodes(ctx: UiMeasureContext, state: EyedropperRenderState) {
         val shadowRect =
             Rect(
                 x = state.model.panelRect.x + 2,
@@ -1197,7 +1197,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
         )
     }
 
-    private fun syncOverlayText(modeText: String, valueText: String) {
+    private fun syncPreviewText(modeText: String, valueText: String) {
         if (modeTextNode.text != modeText) {
             modeTextNode.setText(modeText)
         }
@@ -1206,7 +1206,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
         }
     }
 
-    private fun syncOverlayTextVisual(node: TextNode, color: Int, fontSize: Int) {
+    private fun syncPreviewTextVisual(node: TextNode, color: Int, fontSize: Int) {
         var changed = false
         if (node.color != color) {
             node.color = color
@@ -1236,7 +1236,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
         }
     }
 
-    private fun createOverlayTextNode(key: Any, text: String): TextNode =
+    private fun createPreviewTextNode(key: Any, text: String): TextNode =
         TextNode(TextSource.Static(text), key = key)
             .apply {
                 textWrap = TextWrap.NoWrap
@@ -1262,7 +1262,7 @@ internal class SystemColorPickerEyedropperOverlayNode(
 
 internal typealias ColorPickerPopupBodyNode = SystemColorPickerPopupBodyNode
 
-internal typealias ColorPickerTransientOverlayNode = SystemColorPickerTransientOverlayNode
+internal typealias ColorPickerTransientPortalNode = SystemColorPickerTransientPortalNode
 
 private fun requestRenderCommandsInvalidationTracked(node: DOMNode) {
     ColorPickerDebugCounters.onRenderInvalidationCall()

@@ -445,11 +445,11 @@ class Mc1710UiAdapter(
         GL11.glTexCoord2f(0f, 0f)
         GL11.glVertex2f(command.x.toFloat(), (command.y + command.height).toFloat())
         GL11.glEnd()
-        drawCapturedRegionGridOverlay(command)
+        drawCapturedRegionGrid(command)
     }
 
-    private fun drawCapturedRegionGridOverlay(command: RenderCommand.DrawCapturedScreenRegion) {
-        val grid = command.gridOverlay ?: return
+    private fun drawCapturedRegionGrid(command: RenderCommand.DrawCapturedScreenRegion) {
+        val grid = command.grid ?: return
         val columns = grid.columns.coerceAtLeast(1)
         val rows = grid.rows.coerceAtLeast(1)
         val magnification = grid.magnification.coerceAtLeast(1)

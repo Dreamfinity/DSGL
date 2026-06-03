@@ -14,10 +14,10 @@ import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.EventBus
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.hasActiveModalPortal
-import org.dreamfinity.dsgl.core.overlay.isFloatingWindowDemoOpen
-import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
+import org.dreamfinity.dsgl.core.portal.hasActiveModalPortal
+import org.dreamfinity.dsgl.core.portal.isFloatingWindowDemoOpen
+import org.dreamfinity.dsgl.core.portal.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
 
 class ModalPortalPointerRegressionTests {
     private val trees: MutableList<DomTree> = ArrayList()
-    private val overlays: MutableList<ApplicationOverlayHost> = ArrayList()
+    private val portalHosts: MutableList<ApplicationPortalHost> = ArrayList()
     private val hostKeys: MutableSet<String> = LinkedHashSet()
     private val measureContext =
         object : UiMeasureContext {
@@ -51,31 +51,31 @@ class ModalPortalPointerRegressionTests {
                 tree.root.clearListenersDeep()
             }
         }
-        overlays.forEach { overlay -> overlay.clearRefs() }
+        portalHosts.forEach { portalHost -> portalHost.clearRefs() }
         hostKeys.forEach(ModalPortalSessionStore::forgetPortal)
         trees.clear()
-        overlays.clear()
+        portalHosts.clear()
         hostKeys.clear()
     }
 
     @Test
     fun `active modal prevents application floating window from opening`() {
         val hostKey = "tests.modal.portal.floating.blocked"
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
         val tree = buildTree(hostKey, listOf(staticModal()))
         trees += tree
 
         tree.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
-        assertTrue(overlay.hasActiveModalPortal())
+        portalHost.render(measureContext, 320, 180)
+        assertTrue(portalHost.hasActiveModalPortal())
 
-        overlay.toggleFloatingWindowDemo(anchorX = 24, anchorY = 24)
-        overlay.render(measureContext, 320, 180)
+        portalHost.toggleFloatingWindowDemo(anchorX = 24, anchorY = 24)
+        portalHost.render(measureContext, 320, 180)
 
-        assertFalse(overlay.isFloatingWindowDemoOpen())
+        assertFalse(portalHost.isFloatingWindowDemoOpen())
         assertTrue(
-            overlay.floatingWindowPortal
+            portalHost.floatingWindowPortal
                 .debugNode()
                 .parent == null,
         )
@@ -84,30 +84,30 @@ class ModalPortalPointerRegressionTests {
     @Test
     fun `static modal backdrop pointer press does not activate modal layer`() {
         val hostKey = "tests.modal.portal.static.backdrop.active"
-        val overlay = renderStaticModalOverlay(hostKey)
-        val layer = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
+        val portalHost = renderStaticModalPortal(hostKey)
+        val layer = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
         assertNotNull(layer)
 
-        assertTrue(overlay.handleMouseDown(4, 4, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(4, 4, MouseButton.LEFT))
         assertFalse(layer.styleActive)
-        assertTrue(overlay.handleMouseUp(4, 4, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(4, 4, MouseButton.LEFT))
         assertFalse(layer.styleActive)
     }
 
     @Test
     fun `static modal dialog pointer press does not activate modal layer`() {
         val hostKey = "tests.modal.portal.static.dialog.active"
-        val overlay = renderStaticModalOverlay(hostKey)
-        val layer = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.static"))
+        val portalHost = renderStaticModalPortal(hostKey)
+        val layer = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.static"))
         assertNotNull(layer)
         assertNotNull(dialog)
         val clickX = dialog.bounds.x + dialog.bounds.width / 2
         val clickY = dialog.bounds.y + dialog.bounds.height / 2
 
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
         assertFalse(layer.styleActive)
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
         assertFalse(layer.styleActive)
     }
 
@@ -130,18 +130,18 @@ class ModalPortalPointerRegressionTests {
             )
         trees += tree
         tree.render(measureContext, 320, 180)
-        val overlay =
-            ApplicationOverlayHost().also { overlay ->
-                overlays += overlay
-                overlay.render(measureContext, 320, 180)
+        val portalHost =
+            ApplicationPortalHost().also { portalHost ->
+                portalHosts += portalHost
+                portalHost.render(measureContext, 320, 180)
             }
-        val button = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
+        val button = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
         assertNotNull(button)
         val clickX = button.bounds.x + button.bounds.width / 2
         val clickY = button.bounds.y + button.bounds.height / 2
 
-        assertTrue(overlay.handleMouseDown(clickX, clickY, MouseButton.LEFT))
-        assertTrue(overlay.handleMouseUp(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseDown(clickX, clickY, MouseButton.LEFT))
+        assertTrue(portalHost.handleMouseUp(clickX, clickY, MouseButton.LEFT))
 
         assertTrue(clicks == 1)
     }
@@ -149,16 +149,16 @@ class ModalPortalPointerRegressionTests {
     @Test
     fun `static modal clears dialog hover when pointer moves to backdrop`() {
         val hostKey = "tests.modal.portal.static.dialog.hover.clear"
-        val overlay = renderStaticModalWithButton(hostKey)
-        val button = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
+        val portalHost = renderStaticModalWithButton(hostKey)
+        val button = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
         assertNotNull(button)
         val hoverX = button.bounds.x + button.bounds.width / 2
         val hoverY = button.bounds.y + button.bounds.height / 2
 
-        assertTrue(overlay.handleMouseMove(hoverX, hoverY))
+        assertTrue(portalHost.handleMouseMove(hoverX, hoverY))
         assertTrue(button.styleHovered)
 
-        assertTrue(overlay.handleMouseMove(4, 4))
+        assertTrue(portalHost.handleMouseMove(4, 4))
         assertFalse(button.styleHovered)
         assertFalse(button.styleActive)
     }
@@ -166,15 +166,15 @@ class ModalPortalPointerRegressionTests {
     @Test
     fun `static modal backdrop move does not activate modal nodes`() {
         val hostKey = "tests.modal.portal.static.backdrop.move"
-        val overlay = renderStaticModalWithButton(hostKey)
-        val layer = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
-        val dialog = overlay.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.static"))
-        val button = overlay.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
+        val portalHost = renderStaticModalWithButton(hostKey)
+        val layer = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.modal.static.layer")
+        val dialog = portalHost.modalPortal.debugFindNodeByKey(ModalPortalSessionStore.dialogKey(hostKey, "modal.static"))
+        val button = portalHost.modalPortal.debugFindNodeByKey("$hostKey.modal.button")
         assertNotNull(layer)
         assertNotNull(dialog)
         assertNotNull(button)
 
-        assertTrue(overlay.handleMouseMove(4, 4))
+        assertTrue(portalHost.handleMouseMove(4, 4))
 
         assertFalse(layer.styleActive)
         assertFalse(dialog.styleActive)
@@ -185,38 +185,38 @@ class ModalPortalPointerRegressionTests {
     @Test
     fun `active modal mouse move clears stale application portal hover`() {
         val hostKey = "tests.modal.portal.static.lower.hover.clear"
-        val overlay = ApplicationOverlayHost()
-        overlays += overlay
-        overlay.rootNode.setViewportBounds(320, 180)
+        val portalHost = ApplicationPortalHost()
+        portalHosts += portalHost
+        portalHost.rootNode.setViewportBounds(320, 180)
         val lowerButton =
             ButtonNode("Lower", key = "$hostKey.lower.button").apply {
                 bounds = Rect(0, 0, 80, 24)
             }
-        lowerButton.applyParent(overlay.rootNode)
+        lowerButton.applyParent(portalHost.rootNode)
 
-        assertTrue(overlay.handleMouseMove(12, 12))
+        assertTrue(portalHost.handleMouseMove(12, 12))
         assertTrue(lowerButton.styleHovered)
 
         val tree = buildTree(hostKey, listOf(staticModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
-        overlay.render(measureContext, 320, 180)
+        portalHost.render(measureContext, 320, 180)
 
-        assertTrue(overlay.handleMouseMove(4, 4))
+        assertTrue(portalHost.handleMouseMove(4, 4))
         assertFalse(lowerButton.styleHovered)
     }
 
-    private fun renderStaticModalOverlay(hostKey: String): ApplicationOverlayHost {
+    private fun renderStaticModalPortal(hostKey: String): ApplicationPortalHost {
         val tree = buildTree(hostKey, listOf(staticModal()))
         trees += tree
         tree.render(measureContext, 320, 180)
-        return ApplicationOverlayHost().also { overlay ->
-            overlays += overlay
-            overlay.render(measureContext, 320, 180)
+        return ApplicationPortalHost().also { portalHost ->
+            portalHosts += portalHost
+            portalHost.render(measureContext, 320, 180)
         }
     }
 
-    private fun renderStaticModalWithButton(hostKey: String): ApplicationOverlayHost {
+    private fun renderStaticModalWithButton(hostKey: String): ApplicationPortalHost {
         val tree =
             buildTree(
                 hostKey = hostKey,
@@ -232,9 +232,9 @@ class ModalPortalPointerRegressionTests {
             )
         trees += tree
         tree.render(measureContext, 320, 180)
-        return ApplicationOverlayHost().also { overlay ->
-            overlays += overlay
-            overlay.render(measureContext, 320, 180)
+        return ApplicationPortalHost().also { portalHost ->
+            portalHosts += portalHost
+            portalHost.render(measureContext, 320, 180)
         }
     }
 

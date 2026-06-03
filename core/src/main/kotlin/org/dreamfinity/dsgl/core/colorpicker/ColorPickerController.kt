@@ -39,7 +39,7 @@ data class ColorPickerLayout(
     val recentRects: List<Rect>,
 )
 
-data class ColorPickerEyedropperOverlayModel(
+data class ColorPickerEyedropperPreviewModel(
     val panelRect: Rect,
     val magnifierRect: Rect,
     val captureSourceRect: Rect,
@@ -94,8 +94,8 @@ class ColorPickerController(
         }
     private var eyedropperActive: Boolean = false
     private var eyedropperBaseColor: RgbaColor = state.color
-    private val eyedropperOverlayDrag: FloatingPaneDragModel = FloatingPaneDragModel()
-    private var eyedropperOverlayRect: Rect? = null
+    private val eyedropperPreviewDrag: FloatingPaneDragModel = FloatingPaneDragModel()
+    private var eyedropperPreviewRect: Rect? = null
     private var domFocusedInputKey: String? = null
     private var domInputFocusResyncRequested: Boolean = false
     private var domLastFocusedInputKey: String? = null
@@ -118,8 +118,8 @@ class ColorPickerController(
         eyedropperActive = false
         interaction.clearDragTarget()
         modeDropdownOpen = false
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
         domFocusedInputKey = null
         domInputFocusResyncRequested = false
         domLastFocusedInputKey = null
@@ -314,8 +314,8 @@ class ColorPickerController(
             eyedropperBaseColor = state.color
         }
         eyedropperActive = true
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
         modeDropdownOpen = false
         clearInputEdit()
     }
@@ -323,8 +323,8 @@ class ColorPickerController(
     fun cancelEyedropper() {
         if (!eyedropperActive) return
         eyedropperActive = false
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
         applyColor(eyedropperBaseColor, notifyPreview = true, commit = false)
     }
 
@@ -631,7 +631,7 @@ class ColorPickerController(
         drawModeOptions(layout, out)
     }
 
-    fun appendEyedropperOverlay(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
+    fun appendEyedropperPreview(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
         if (!eyedropperActive) return
         if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return
 
@@ -648,25 +648,25 @@ class ColorPickerController(
         val preferredX = hoverX + style.eyedropperGapToCursor
         val preferredY = hoverY + style.eyedropperGapToCursor
         val desiredRect =
-            clampOverlayRect(
+            clampPreviewRect(
                 rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
             )
-        val currentRect = eyedropperOverlayRect
+        val currentRect = eyedropperPreviewRect
         if (currentRect == null || currentRect.width != panelWidth || currentRect.height != panelHeight) {
-            eyedropperOverlayRect = desiredRect
-            eyedropperOverlayDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
+            eyedropperPreviewRect = desiredRect
+            eyedropperPreviewDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
         }
         val nextRect =
-            eyedropperOverlayDrag.update(
+            eyedropperPreviewDrag.update(
                 mouseX = hoverX,
                 mouseY = hoverY,
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
-                clamp = ::clampOverlayRect,
+                clamp = ::clampPreviewRect,
             )
-        eyedropperOverlayRect = nextRect
+        eyedropperPreviewRect = nextRect
         val panelX = nextRect.x
         val panelY = nextRect.y
 
@@ -681,8 +681,8 @@ class ColorPickerController(
                 fallbackColor = state.color.toArgbInt(),
             )
         out += RenderCommand.DrawRect(panelX + 2, panelY + 2, panelWidth, panelHeight, style.panelShadowColor)
-        out += RenderCommand.DrawRect(panelX, panelY, panelWidth, panelHeight, style.eyedropperOverlayBackgroundColor)
-        drawBorder(out, Rect(panelX, panelY, panelWidth, panelHeight), style.eyedropperOverlayBorderColor)
+        out += RenderCommand.DrawRect(panelX, panelY, panelWidth, panelHeight, style.eyedropperPreviewBackgroundColor)
+        drawBorder(out, Rect(panelX, panelY, panelWidth, panelHeight), style.eyedropperPreviewBorderColor)
         out +=
             RenderCommand.DrawCapturedScreenRegion(
                 x = magnifierX,
@@ -690,14 +690,14 @@ class ColorPickerController(
                 width = magnifierContentSize,
                 height = magnifierContentSize,
             )
-        if (style.eyedropperGridOverlayEnabled) {
-            drawEyedropperGridOverlay(
+        if (style.eyedropperGridEnabled) {
+            drawEyedropperGrid(
                 out = out,
                 rect = Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize),
                 columns = gridSize,
                 rows = gridSize,
                 cellSize = cell,
-                color = style.eyedropperGridOverlayColor,
+                color = style.eyedropperGridColor,
             )
         }
         drawBorder(
@@ -746,10 +746,10 @@ class ColorPickerController(
             )
     }
 
-    internal fun resolveEyedropperOverlayModel(
+    internal fun resolveEyedropperPreviewModel(
         viewportWidth: Int,
         viewportHeight: Int,
-    ): ColorPickerEyedropperOverlayModel? {
+    ): ColorPickerEyedropperPreviewModel? {
         if (!eyedropperActive) return null
         if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return null
 
@@ -766,25 +766,25 @@ class ColorPickerController(
         val preferredX = hoverX + style.eyedropperGapToCursor
         val preferredY = hoverY + style.eyedropperGapToCursor
         val desiredRect =
-            clampOverlayRect(
+            clampPreviewRect(
                 rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
             )
-        val currentRect = eyedropperOverlayRect
+        val currentRect = eyedropperPreviewRect
         if (currentRect == null || currentRect.width != panelWidth || currentRect.height != panelHeight) {
-            eyedropperOverlayRect = desiredRect
-            eyedropperOverlayDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
+            eyedropperPreviewRect = desiredRect
+            eyedropperPreviewDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
         }
         val nextRect =
-            eyedropperOverlayDrag.update(
+            eyedropperPreviewDrag.update(
                 mouseX = hoverX,
                 mouseY = hoverY,
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
-                clamp = ::clampOverlayRect,
+                clamp = ::clampPreviewRect,
             )
-        eyedropperOverlayRect = nextRect
+        eyedropperPreviewRect = nextRect
 
         val magnifierRect =
             Rect(
@@ -811,7 +811,7 @@ class ColorPickerController(
                 "Mode: ${state.mode.name}"
             }
         val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
-        return ColorPickerEyedropperOverlayModel(
+        return ColorPickerEyedropperPreviewModel(
             panelRect = nextRect,
             magnifierRect = magnifierRect,
             captureSourceRect =
@@ -1312,7 +1312,7 @@ class ColorPickerController(
         return if ((raw and 1) == 0) raw + 1 else raw
     }
 
-    private fun clampOverlayRect(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
+    private fun clampPreviewRect(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
         val safeViewportW = viewportWidth.coerceAtLeast(rect.width + 4)
         val safeViewportH = viewportHeight.coerceAtLeast(rect.height + 4)
         val minX = 2
@@ -1536,7 +1536,7 @@ class ColorPickerController(
         out += RenderCommand.DrawRect(x - 1, rect.y - 1, 3, rect.height + 2, style.thumbOutlineColor)
     }
 
-    private fun drawEyedropperGridOverlay(
+    private fun drawEyedropperGrid(
         out: MutableList<RenderCommand>,
         rect: Rect,
         columns: Int,

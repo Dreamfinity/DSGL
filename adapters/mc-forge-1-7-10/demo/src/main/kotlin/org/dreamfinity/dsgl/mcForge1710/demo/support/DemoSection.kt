@@ -23,7 +23,7 @@ enum class DemoSection(
         "Descendant/child/sibling selectors, specificity, source order, !important, inheritance",
     ),
     MODALS("Modals", "Declarative stacked modal portal (RB-inspired)"),
-    CONTEXT_MENU("Context Menu", "Right-click nested menus with overlay-first hit testing"),
+    CONTEXT_MENU("Context Menu", "Right-click nested menus with portal-first hit testing"),
     INPUTS("Inputs Gallery", "All input factory variants and textarea"),
     INPUT_EVENTS("Input Events", "HTML-like onFocus/onBlur/onInput/onChange"),
     COLOR_PICKER("Color Picker", "Reusable inline + popup pane color picker with eyedropper/history"),

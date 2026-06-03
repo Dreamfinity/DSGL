@@ -145,8 +145,8 @@ class InspectorController(
     private var dragStartOffsetX: Int = 0
     private var dragStartOffsetY: Int = 0
     private var dragMoved: Boolean = false
-    private var overlayPanelPointerCapture: Boolean = false
-    private var overlayPanelAuthorityEnabled: Boolean = false
+    private var floatingPanelPointerCapture: Boolean = false
+    private var floatingPanelAuthorityEnabled: Boolean = false
     private val paneMoveDrag: FloatingPaneDragModel = FloatingPaneDragModel()
     private var viewportW: Int = 0
     private var viewportH: Int = 0
@@ -284,7 +284,7 @@ class InspectorController(
         minimizedPosY = current.y
         panelState = InspectorPanelState.Minimized
         dragMode = DragMode.None
-        overlayPanelPointerCapture = false
+        floatingPanelPointerCapture = false
         dragMoved = false
     }
 
@@ -294,7 +294,7 @@ class InspectorController(
         expandedRect = clampExpandedRect(expandedRect, viewportW, viewportH)
         panelState = InspectorPanelState.Expanded
         dragMode = DragMode.None
-        overlayPanelPointerCapture = false
+        floatingPanelPointerCapture = false
         dragMoved = false
     }
 
@@ -303,12 +303,12 @@ class InspectorController(
             (
                 mode == InspectorMode.Pick ||
                     dragMode != DragMode.None ||
-                    overlayPanelPointerCapture
+                    floatingPanelPointerCapture
             )
 
     fun shouldConsumePointer(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
+        if (dragMode != DragMode.None || floatingPanelPointerCapture) return true
         if (editSession.textSelectionDragActive) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
@@ -316,14 +316,14 @@ class InspectorController(
 
     fun shouldConsumeWheel(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
+        if (dragMode != DragMode.None || floatingPanelPointerCapture) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
 
     fun shouldConsumeKeyboard(mouseX: Int, mouseY: Int): Boolean {
         if (!active) return false
-        if (dragMode != DragMode.None || overlayPanelPointerCapture) return true
+        if (dragMode != DragMode.None || floatingPanelPointerCapture) return true
         if (mode == InspectorMode.Pick) return true
         return hitTestUi(mouseX, mouseY)
     }
@@ -615,7 +615,7 @@ class InspectorController(
         }
         if (panelState == InspectorPanelState.Minimized) {
             if (minimizedBounds.contains(mouseX, mouseY)) {
-                if (overlayPanelAuthorityEnabled) {
+                if (floatingPanelAuthorityEnabled) {
                     return true
                 }
                 startMinimizedMoveDrag(mouseX, mouseY)
@@ -635,7 +635,7 @@ class InspectorController(
         if (shouldCommitActiveEdit(action)) {
             commitActiveTextEdit()
         }
-        if (!overlayPanelAuthorityEnabled && startScrollbarDrag(mouseX, mouseY)) {
+        if (!floatingPanelAuthorityEnabled && startScrollbarDrag(mouseX, mouseY)) {
             return true
         }
         if (action != null) {
@@ -647,7 +647,7 @@ class InspectorController(
             return true
         }
         editSession.closeAllDropdowns()
-        if (!overlayPanelAuthorityEnabled) {
+        if (!floatingPanelAuthorityEnabled) {
             val resizeMode = resolveResizeDragMode(mouseX, mouseY)
             if (resizeMode != DragMode.None) {
                 startExpandedDrag(resizeMode, mouseX, mouseY)
@@ -1146,20 +1146,20 @@ class InspectorController(
         scrollbarThumbRect = Rect(track.x, thumbY, track.width, thumbHeight)
     }
 
-    internal fun overlayPickToggleBounds(): Rect? = panelActions.lastOrNull { it.kind == ActionKind.TogglePick }?.bounds
+    internal fun portalPickToggleBounds(): Rect? = panelActions.lastOrNull { it.kind == ActionKind.TogglePick }?.bounds
 
-    internal fun overlayMinimizeBounds(): Rect? = panelActions.lastOrNull { it.kind == ActionKind.Minimize }?.bounds
+    internal fun portalMinimizeBounds(): Rect? = panelActions.lastOrNull { it.kind == ActionKind.Minimize }?.bounds
 
-    internal fun overlayContentRect(): Rect = contentBounds
+    internal fun portalContentRect(): Rect = contentBounds
 
-    internal fun overlayScrollbarThumbRect(): Rect =
+    internal fun portalScrollbarThumbRect(): Rect =
         if (nativeDomBodyScrollStateActive) {
             nativeDomScrollbarThumbRectOverride ?: Rect(0, 0, 0, 0)
         } else {
             scrollbarThumbRect
         }
 
-    internal fun overlayScrollbarTrackRect(): Rect =
+    internal fun portalScrollbarTrackRect(): Rect =
         if (nativeDomBodyScrollStateActive) {
             nativeDomScrollbarTrackRectOverride ?: Rect(0, 0, 0, 0)
         } else {
@@ -1181,16 +1181,16 @@ class InspectorController(
         minimizedBounds = Rect(0, 0, 0, 0)
     }
 
-    internal fun onOverlayPanelRectChanged(rect: Rect, viewportWidth: Int, viewportHeight: Int) {
+    internal fun onFloatingPanelRectChanged(rect: Rect, viewportWidth: Int, viewportHeight: Int) {
         onNativeDomExpandedPanelRect(rect, viewportWidth, viewportHeight)
     }
 
-    internal fun onOverlayPanelPointerCaptureChanged(captured: Boolean) {
-        overlayPanelPointerCapture = captured
+    internal fun onFloatingPanelPointerCaptureChanged(captured: Boolean) {
+        floatingPanelPointerCapture = captured
     }
 
-    internal fun setOverlayPanelAuthorityEnabled(enabled: Boolean) {
-        overlayPanelAuthorityEnabled = enabled
+    internal fun setFloatingPanelAuthorityEnabled(enabled: Boolean) {
+        floatingPanelAuthorityEnabled = enabled
         if (enabled && dragMode != DragMode.ScrollbarThumb) {
             dragMode = DragMode.None
         }
@@ -1208,21 +1208,21 @@ class InspectorController(
         minimizedBounds = Rect(minimizedPosX, minimizedPosY, minimizedWidth(), minimizedHeight())
     }
 
-    internal fun overlaySelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
+    internal fun portalSelectedHighlight(): InspectorHighlightSnapshot? = nativeSelectedHighlight
 
-    internal fun overlayHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
+    internal fun portalHoveredHighlight(): InspectorHighlightSnapshot? = nativeHoveredHighlight
 
-    internal fun overlayCursorTooltip(): InspectorTooltipSnapshot? = nativeCursorTooltip
+    internal fun portalCursorTooltip(): InspectorTooltipSnapshot? = nativeCursorTooltip
 
-    internal fun overlayVariableTooltip(): InspectorTooltipSnapshot? = nativeVariableTooltip
+    internal fun portalVariableTooltip(): InspectorTooltipSnapshot? = nativeVariableTooltip
 
-    internal fun overlayStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = nativeStyleEditorRows
+    internal fun portalStyleEditorRows(): List<InspectorStyleEditorRowSnapshot> = nativeStyleEditorRows
 
-    internal fun overlayStyleEditorResetRect(): Rect = nativeStyleEditorResetRect
+    internal fun portalStyleEditorResetRect(): Rect = nativeStyleEditorResetRect
 
-    internal fun overlayStyleEditorClearRect(): Rect = nativeStyleEditorClearRect
+    internal fun portalStyleEditorClearRect(): Rect = nativeStyleEditorClearRect
 
-    internal fun overlayStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
+    internal fun portalStyleEditorDropdowns(): List<InspectorDropdownSnapshot> = nativeDropdowns
 
     internal fun onNativeDomDropdownSnapshots(dropdowns: List<InspectorDropdownSnapshot>) {
         nativeDropdowns.clear()
@@ -1463,7 +1463,7 @@ class InspectorController(
         return OpenStyleDropdown(unitSelect = false, optionCount = optionCount)
     }
 
-    internal fun overlayApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
+    internal fun portalApplyLiteralOverride(property: StyleProperty, literal: String): Boolean {
         val selected = selectedNode ?: return false
         val normalized = literal.trim()
         return runCatching {
@@ -1477,7 +1477,7 @@ class InspectorController(
         }
     }
 
-    internal fun overlayApplyNumericOverride(
+    internal fun portalApplyNumericOverride(
         property: StyleProperty,
         numericLiteral: String,
         unitToken: String?,
@@ -1553,8 +1553,8 @@ class InspectorController(
         hoverPickEnabled = true
         styleEditorError = null
         dragMode = DragMode.None
-        overlayPanelPointerCapture = false
-        overlayPanelAuthorityEnabled = false
+        floatingPanelPointerCapture = false
+        floatingPanelAuthorityEnabled = false
         dragMoved = false
         panelScrollY = 0
         panelContentHeight = 0
@@ -1705,7 +1705,7 @@ class InspectorController(
         }
     }
 
-    internal fun overlayColorPickerActionBounds(property: StyleProperty): Rect? =
+    internal fun portalColorPickerActionBounds(property: StyleProperty): Rect? =
         panelActions
             .lastOrNull {
                 it.kind == ActionKind.EditProperty &&
@@ -1719,12 +1719,12 @@ class InspectorController(
         return true
     }
 
-    internal fun overlayPanelRect(): Rect? {
+    internal fun floatingPanelRect(): Rect? {
         if (!active) return null
         return currentInspectorRect()
     }
 
-    internal fun overlayExpandedPanelRect(): Rect? {
+    internal fun floatingExpandedPanelRect(): Rect? {
         if (!active || panelState != InspectorPanelState.Expanded) return null
         return expandedRect
     }

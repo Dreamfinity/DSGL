@@ -192,7 +192,7 @@ class DomTreeCachingTests {
     fun `modal portal does not duplicate child commands in chunk assembly`() {
         val host = ModalPortalAnchorNode(key = "modal-host")
         CountingRectNode(color = 0xFFAA3300.toInt(), key = "content").applyParent(host)
-        CountingRectNode(color = 0xFF0033AA.toInt(), key = "overlay").applyParent(host)
+        CountingRectNode(color = 0xFF0033AA.toInt(), key = "floating-layer").applyParent(host)
         val tree = DomTree(host)
 
         tree.render(ctx, 320, 180)

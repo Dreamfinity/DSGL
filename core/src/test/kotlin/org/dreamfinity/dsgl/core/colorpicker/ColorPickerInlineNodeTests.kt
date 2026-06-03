@@ -188,7 +188,7 @@ class ColorPickerInlineNodeTests {
     }
 
     @Test
-    fun `inline picker draws eyedropper overlay after clicking pipette`() {
+    fun `inline picker draws eyedropper preview after clicking pipette`() {
         val picker =
             ColorPickerInlineNode(
                 controlled = true,
@@ -390,7 +390,7 @@ class ColorPickerInlineNodeTests {
 
     private fun buildGlobalEyedropperCommands(picker: ColorPickerInlineNode): List<RenderCommand> {
         val out = ArrayList<RenderCommand>()
-        picker.appendEyedropperOverlayCommands(
+        picker.appendEyedropperPortalCommands(
             viewportWidth = 1920,
             viewportHeight = 1080,
             out = out,

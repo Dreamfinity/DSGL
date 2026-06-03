@@ -304,7 +304,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         inspector.onCursorMoved(185, 25)
         inspector.buildDomSnapshot(800, 600)
-        val fixedHighlight = inspector.overlayHoveredHighlight()
+        val fixedHighlight = inspector.portalHoveredHighlight()
         assertNotNull(fixedHighlight)
         val fixedUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixed)
         assertEquals(
@@ -314,7 +314,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         inspector.onCursorMoved(145, 95)
         inspector.buildDomSnapshot(800, 600)
-        val clippedHighlight = inspector.overlayHoveredHighlight()
+        val clippedHighlight = inspector.portalHoveredHighlight()
         assertNotNull(clippedHighlight)
         val rootUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(root)
         assertEquals(
@@ -359,7 +359,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(relative.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.overlayHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(
             usedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
@@ -390,7 +390,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
                 ?.toString(),
             inspector.hoveredKey,
         )
-        val highlight = inspector.overlayHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         val fixedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.fixed)
         assertEquals(

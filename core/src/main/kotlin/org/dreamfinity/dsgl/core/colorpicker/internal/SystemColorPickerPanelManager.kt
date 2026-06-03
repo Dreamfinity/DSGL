@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 
 interface SystemColorPickerPortalService {
     fun open(
@@ -44,7 +44,7 @@ internal class SystemColorPickerPanelManager(
         onClose: (() -> Unit)?,
     ) {
         delegate.open(
-            ownerScope = OverlayOwnerScope.System,
+            ownerDomain = ScreenDomainId.System,
             anchorRect = anchorRect,
             title = title,
             state = state,

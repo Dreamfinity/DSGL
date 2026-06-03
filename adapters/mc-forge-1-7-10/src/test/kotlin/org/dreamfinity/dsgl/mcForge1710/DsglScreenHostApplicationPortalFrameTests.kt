@@ -12,7 +12,7 @@ import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.dsl.ui
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.hasActiveModalPortal
+import org.dreamfinity.dsgl.core.portal.hasActiveModalPortal
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.junit.After
@@ -51,26 +51,26 @@ class DsglScreenHostApplicationPortalFrameTests {
         val root = ContainerNode(key = "root").apply { bounds = Rect(0, 0, 300, 120) }
         val tree = DomTree(root)
         val host = createHost(tree)
-        val overlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
         val modalKey = "tests.host.modal.frame.hover.commands"
 
         try {
             renderStaticModalWithButton(modalKey)
-            host.debugSyncApplicationOverlaySurfaceForTests(ctx, width = 300, height = 120)
+            host.debugSyncApplicationPortalSurfaceForTests(ctx, width = 300, height = 120)
 
-            assertTrue(overlay.hasActiveModalPortal())
-            assertTrue(overlay.handleMouseMove(76, 25))
+            assertTrue(applicationPortal.hasActiveModalPortal())
+            assertTrue(applicationPortal.handleMouseMove(76, 25))
             assertRenderColorPresent(
-                host.debugCollectApplicationOverlayCommandsForTests(ctx),
+                host.debugCollectApplicationPortalCommandsForTests(ctx),
                 hoverColor,
             )
 
             host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 4, mouseY = 4)
-            val settledCommands = host.debugCollectApplicationOverlayCommandsForTests(ctx)
+            val settledCommands = host.debugCollectApplicationPortalCommandsForTests(ctx)
             val stagedCommands =
-                host.debugStageApplicationOverlayCommandsForTests(
+                host.debugStageApplicationPortalCommandsForTests(
                     tree = tree,
-                    applicationOverlayCommands = settledCommands,
+                    applicationPortalCommands = settledCommands,
                     measureContext = ctx,
                 )
 
@@ -78,7 +78,7 @@ class DsglScreenHostApplicationPortalFrameTests {
             assertRenderColorAbsent(stagedCommands, hoverColor)
         } finally {
             renderEmptyModal(modalKey)
-            host.debugSyncApplicationOverlaySurfaceForTests(ctx, width = 300, height = 120)
+            host.debugSyncApplicationPortalSurfaceForTests(ctx, width = 300, height = 120)
         }
     }
 
@@ -88,27 +88,27 @@ class DsglScreenHostApplicationPortalFrameTests {
         var clicked = false
         var tree = renderClickStateModal(modalKey = modalKey, clicked = clicked, onClick = { clicked = true })
         val host = createHost(tree)
-        val overlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
 
         try {
-            host.debugSyncApplicationOverlaySurfaceForTests(ctx, width = 300, height = 120)
-            assertTrue(overlay.hasActiveModalPortal())
-            assertRenderTextPresent(host.debugCollectApplicationOverlayCommandsForTests(ctx), "Before")
+            host.debugSyncApplicationPortalSurfaceForTests(ctx, width = 300, height = 120)
+            assertTrue(applicationPortal.hasActiveModalPortal())
+            assertRenderTextPresent(host.debugCollectApplicationPortalCommandsForTests(ctx), "Before")
 
-            assertTrue(overlay.handleMouseDown(76, 25, MouseButton.LEFT))
-            assertTrue(overlay.handleMouseUp(76, 25, MouseButton.LEFT))
+            assertTrue(applicationPortal.handleMouseDown(76, 25, MouseButton.LEFT))
+            assertTrue(applicationPortal.handleMouseUp(76, 25, MouseButton.LEFT))
             assertTrue(clicked)
 
             tree = renderClickStateModal(modalKey = modalKey, clicked = clicked, onClick = { clicked = true })
             host.debugBindTreeForTests(tree, needsLayout = false)
-            host.debugSyncApplicationOverlaySurfaceForTests(ctx, width = 300, height = 120)
+            host.debugSyncApplicationPortalSurfaceForTests(ctx, width = 300, height = 120)
 
-            val finalPortalCommands = host.debugCollectApplicationOverlayCommandsForTests(ctx)
+            val finalPortalCommands = host.debugCollectApplicationPortalCommandsForTests(ctx)
             assertRenderTextAbsent(finalPortalCommands, "Before")
             assertRenderTextPresent(finalPortalCommands, "After")
         } finally {
             renderEmptyModal(modalKey)
-            host.debugSyncApplicationOverlaySurfaceForTests(ctx, width = 300, height = 120)
+            host.debugSyncApplicationPortalSurfaceForTests(ctx, width = 300, height = 120)
         }
     }
 

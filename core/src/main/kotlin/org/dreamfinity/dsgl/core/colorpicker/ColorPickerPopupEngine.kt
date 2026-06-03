@@ -4,9 +4,9 @@ import org.dreamfinity.dsgl.core.colorpicker.internal.ColorPickerDebugCounters
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.popup.FloatingPaneDragModel
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 interface ColorPickerPopupPortalService {
@@ -23,7 +23,7 @@ interface ColorPickerPopupPortalService {
 
 data class ColorPickerPopupRequest(
     val owner: Any,
-    val ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
+    val ownerDomain: ScreenDomainId = ScreenDomainId.Application,
     val anchorRect: Rect,
     val title: String = "Color Picker",
     val state: ColorPickerState,
@@ -95,7 +95,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
         val initialY = rememberedPanel?.y ?: request.anchorRect.y
         val initialRect = Rect(initialX, initialY, request.width.coerceAtLeast(220), 1)
         val initialBody = Rect(initialRect.x + panelPadding, initialRect.y + headerHeight + panelPadding, 1, 1)
-        ColorPickerDebugCounters.onBuildLayoutCall(request.ownerScope == OverlayOwnerScope.System)
+        ColorPickerDebugCounters.onBuildLayoutCall(request.ownerDomain == ScreenDomainId.System)
         val initialLayout = controller.buildLayout(initialBody)
         val state =
             PopupState(
@@ -215,10 +215,10 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
         return current.request.style
     }
 
-    internal fun debugOwnerScope(owner: Any): OverlayOwnerScope? {
+    internal fun debugOwnerDomain(owner: Any): ScreenDomainId? {
         val current = popup ?: return null
         if (current.owner != owner) return null
-        return current.request.ownerScope
+        return current.request.ownerDomain
     }
 
     internal fun debugController(owner: Any): ColorPickerController? {
@@ -235,7 +235,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
 
     internal fun debugActivePanelRect(): Rect? = popup?.panelRect
 
-    internal fun debugActiveOwnerScope(): OverlayOwnerScope? = popup?.request?.ownerScope
+    internal fun debugActiveOwnerDomain(): ScreenDomainId? = popup?.request?.ownerDomain
 
     internal fun debugIsDraggingPopup(): Boolean = popup?.dragModel?.dragging == true
 
@@ -293,7 +293,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
 
     fun hasActiveEyedropper(): Boolean = popup?.controller?.isEyedropperActive() == true
 
-    fun appendOverlayCommands(out: MutableList<RenderCommand>) {
+    fun appendPortalCommands(out: MutableList<RenderCommand>) {
         val current = popup ?: return
         refreshLayout(current)
         val panel = current.panelRect
@@ -358,9 +358,9 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
                 current.bodyRect.width,
                 current.bodyRect.height,
             )
-        appendOverlayBodyCommands(out)
+        appendPortalBodyCommands(out)
         out += RenderCommand.PopClip
-        appendEyedropperOverlayCommands(
+        appendEyedropperPortalCommands(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out,
@@ -368,18 +368,18 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
         out += RenderCommand.PopClip
     }
 
-    internal fun appendOverlayBodyCommands(out: MutableList<RenderCommand>) {
+    internal fun appendPortalBodyCommands(out: MutableList<RenderCommand>) {
         val current = popup ?: return
         current.controller.appendCommands(current.layout, out)
     }
 
-    internal fun appendEyedropperOverlayCommands(
+    internal fun appendEyedropperPortalCommands(
         viewportWidth: Int = this.viewportWidth.coerceAtLeast(1),
         viewportHeight: Int = this.viewportHeight.coerceAtLeast(1),
         out: MutableList<RenderCommand>,
     ) {
         val current = popup ?: return
-        current.controller.appendEyedropperOverlay(
+        current.controller.appendEyedropperPreview(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out,
@@ -427,7 +427,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
 
     fun shouldRouteSystemInputSlotMouseDownToDom(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val current = popup ?: return false
-        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        if (current.request.ownerDomain != ScreenDomainId.System) return false
         if (button != MouseButton.LEFT) return false
         if (current.controller.isEyedropperActive()) return false
         val hit =
@@ -439,7 +439,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
 
     fun shouldRouteSystemBodyIntentMouseDownToDom(mouseX: Int, mouseY: Int, button: MouseButton): Boolean {
         val current = popup ?: return false
-        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        if (current.request.ownerDomain != ScreenDomainId.System) return false
         if (button != MouseButton.LEFT) return false
         if (current.controller.isEyedropperActive()) return false
         refreshLayout(current)
@@ -470,7 +470,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
 
     fun focusSystemInputSlotForDomEditing(mouseX: Int, mouseY: Int, focusInputByIndex: (Int) -> Boolean): Boolean {
         val current = popup ?: return false
-        if (current.request.ownerScope != OverlayOwnerScope.System) return false
+        if (current.request.ownerDomain != ScreenDomainId.System) return false
         val slotIndex =
             current.layout.inputSlots
                 .indexOfFirst { slot -> slot.inputRect.contains(mouseX, mouseY) }
@@ -563,7 +563,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
     }
 
     private fun refreshLayout(state: PopupState) {
-        ColorPickerDebugCounters.onRefreshLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
+        ColorPickerDebugCounters.onRefreshLayoutCall(state.request.ownerDomain == ScreenDomainId.System)
         ensureLayoutUpToDate(state)
     }
 
@@ -576,7 +576,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
     }
 
     private fun rebuildLayout(state: PopupState) {
-        ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerScope == OverlayOwnerScope.System)
+        ColorPickerDebugCounters.onBuildLayoutCall(state.request.ownerDomain == ScreenDomainId.System)
         state.layout = state.controller.buildLayout(state.bodyRect)
         state.layoutDirtyKey = resolveLayoutDirtyKey(state)
     }
@@ -623,7 +623,7 @@ class ColorPickerPopupEngine : ColorPickerPopupPortalService {
         val removeMs = nanosToMsString(snapshot.recentSwatchRemoveNanos)
         println(
             "dsgl.colorPicker.debugCounters " +
-                "ownerScope=${current.request.ownerScope} " +
+                "ownerDomain=${current.request.ownerDomain} " +
                 "recentComposeCalls=${snapshot.recentSwatchGridComposeCalls} " +
                 "recentCreated=${snapshot.recentSwatchNodesCreated} " +
                 "recentRemoved=${snapshot.recentSwatchNodesRemoved} " +
@@ -649,7 +649,7 @@ class ColorPickerPopupManager(
     private val ownerToken: Any = Any(),
 ) {
     fun open(
-        ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application,
+        ownerDomain: ScreenDomainId = ScreenDomainId.Application,
         anchorRect: Rect,
         title: String,
         state: ColorPickerState,
@@ -665,7 +665,7 @@ class ColorPickerPopupManager(
         portalService.open(
             ColorPickerPopupRequest(
                 owner = ownerToken,
-                ownerScope = ownerScope,
+                ownerDomain = ownerDomain,
                 anchorRect = anchorRect,
                 title = title,
                 state = state,

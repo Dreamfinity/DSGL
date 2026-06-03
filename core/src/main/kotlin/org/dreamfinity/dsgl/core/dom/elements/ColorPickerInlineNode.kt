@@ -143,8 +143,8 @@ class ColorPickerInlineNode(
 
     fun wantsGlobalPointerInput(): Boolean = controller.isEyedropperActive()
 
-    fun appendEyedropperOverlayCommands(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
-        controller.appendEyedropperOverlay(
+    fun appendEyedropperPortalCommands(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
+        controller.appendEyedropperPreview(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
             out = out,

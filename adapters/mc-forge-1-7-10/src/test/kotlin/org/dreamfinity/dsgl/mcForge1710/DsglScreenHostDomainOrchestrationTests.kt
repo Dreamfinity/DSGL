@@ -27,11 +27,11 @@ import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseLeaveEvent
 import org.dreamfinity.dsgl.core.event.MouseMoveEvent
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.hasActiveModalPortal
-import org.dreamfinity.dsgl.core.overlay.toggleFloatingWindowDemo
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.hasActiveModalPortal
+import org.dreamfinity.dsgl.core.portal.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -221,15 +221,15 @@ class DsglScreenHostDomainOrchestrationTests {
         }
         val tree = DomTree(root)
         val host = createHost(tree)
-        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
 
         host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 300, mouseY = 230)
         assertSame(rootButton, host.debugHoverTargetForTests())
         assertEquals(0, leaveCount)
 
-        applicationOverlay.onInputFrame(1280, 720)
-        applicationOverlay.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
-        applicationOverlay.render(ctx, 1280, 720)
+        applicationPortal.onInputFrame(1280, 720)
+        applicationPortal.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationPortal.render(ctx, 1280, 720)
         val portalBodyX = 540
         val portalBodyY = 370
 
@@ -285,11 +285,11 @@ class DsglScreenHostDomainOrchestrationTests {
                 .applyParent(root)
         val tree = DomTree(root)
         val host = createHost(tree)
-        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
 
-        applicationOverlay.onInputFrame(1280, 720)
-        applicationOverlay.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
-        applicationOverlay.render(ctx, 1280, 720)
+        applicationPortal.onInputFrame(1280, 720)
+        applicationPortal.toggleFloatingWindowDemo(anchorX = 260, anchorY = 200)
+        applicationPortal.render(ctx, 1280, 720)
 
         host.debugUpdateFrameInteractionStateForTests(tree, mouseX = 630, mouseY = 510)
 
@@ -309,7 +309,7 @@ class DsglScreenHostDomainOrchestrationTests {
             ).applyParent(root)
         val tree = DomTree(root)
         val host = createHost(tree)
-        val applicationOverlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
         val probeLayout = colorPickerLayoutProbe()
         val style = ColorPickerStyle()
         val hoverX = probeLayout.copyRect.x + 2
@@ -320,9 +320,9 @@ class DsglScreenHostDomainOrchestrationTests {
         EventBus.post(MouseMoveEvent(hoverX, hoverY, hoverX - 1, hoverY - 1).also { it.target = picker })
         assertRenderColorPresent(tree.paint(ctx), style.buttonHoverColor)
 
-        applicationOverlay.onInputFrame(1280, 720)
-        applicationOverlay.toggleFloatingWindowDemo(anchorX = hoverX, anchorY = hoverY)
-        applicationOverlay.render(ctx, 1280, 720)
+        applicationPortal.onInputFrame(1280, 720)
+        applicationPortal.toggleFloatingWindowDemo(anchorX = hoverX, anchorY = hoverY)
+        applicationPortal.render(ctx, 1280, 720)
         host.debugUpdateFrameInteractionStateForTests(tree, mouseX = hoverX, mouseY = hoverY)
 
         assertNull(host.debugHoverTargetForTests())
@@ -413,7 +413,7 @@ class DsglScreenHostDomainOrchestrationTests {
                 }.applyParent(root)
         val tree = DomTree(root)
         val host = createHost(tree)
-        val overlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
         val modalKey = "tests.host.modal.frame.blocks.dnd"
         val down =
             MouseDownEvent(24, 44, MouseButton.LEFT)
@@ -423,7 +423,7 @@ class DsglScreenHostDomainOrchestrationTests {
 
         DndRuntime.engine.cancelActiveDrag()
         try {
-            activateStaticModal(overlay, modalKey)
+            activateStaticModal(applicationPortal, modalKey)
             DndRuntime.engine.onMouseDown(root, draggable, down)
             DndRuntime.engine.onMouseMove(root, 120, 60)
             assertTrue(DndRuntime.engine.isDragging)
@@ -433,7 +433,7 @@ class DsglScreenHostDomainOrchestrationTests {
             assertFalse(DndRuntime.engine.isPointerCaptured)
             assertFalse(DndRuntime.engine.isDragging)
         } finally {
-            clearStaticModal(overlay, modalKey)
+            clearStaticModal(applicationPortal, modalKey)
             DndRuntime.engine.cancelActiveDrag()
         }
     }
@@ -462,9 +462,9 @@ class DsglScreenHostDomainOrchestrationTests {
             assertTrue(DndRuntime.engine.isDragging)
 
             val staged =
-                host.debugStageApplicationOverlayCommandsForTests(
+                host.debugStageApplicationPortalCommandsForTests(
                     tree = tree,
-                    applicationOverlayCommands = emptyList(),
+                    applicationPortalCommands = emptyList(),
                     measureContext = ctx,
                 )
 
@@ -489,7 +489,7 @@ class DsglScreenHostDomainOrchestrationTests {
                 }.applyParent(root)
         val tree = DomTree(root)
         val host = createHost(tree)
-        val overlay = host.debugApplicationOverlayHostForTests()
+        val applicationPortal = host.debugApplicationPortalHostForTests()
         val modalKey = "tests.host.modal.suppresses.ghost.commands"
         val down =
             MouseDownEvent(24, 44, MouseButton.LEFT)
@@ -499,16 +499,16 @@ class DsglScreenHostDomainOrchestrationTests {
 
         DndRuntime.engine.cancelActiveDrag()
         try {
-            activateStaticModal(overlay, modalKey)
+            activateStaticModal(applicationPortal, modalKey)
             DndRuntime.engine.onMouseDown(root, draggable, down)
             DndRuntime.engine.onMouseMove(root, 120, 60)
             assertTrue(DndRuntime.engine.isDragging)
-            assertTrue(overlay.hasActiveModalPortal())
+            assertTrue(applicationPortal.hasActiveModalPortal())
 
             val staged =
-                host.debugStageApplicationOverlayCommandsForTests(
+                host.debugStageApplicationPortalCommandsForTests(
                     tree = tree,
-                    applicationOverlayCommands = overlay.paint(ctx),
+                    applicationPortalCommands = applicationPortal.paint(ctx),
                     measureContext = ctx,
                 )
 
@@ -518,7 +518,7 @@ class DsglScreenHostDomainOrchestrationTests {
                 },
             )
         } finally {
-            clearStaticModal(overlay, modalKey)
+            clearStaticModal(applicationPortal, modalKey)
             DndRuntime.engine.cancelActiveDrag()
         }
     }
@@ -601,7 +601,7 @@ class DsglScreenHostDomainOrchestrationTests {
             buildRenderCommands(ctx, out)
         }
 
-    private fun activateStaticModal(overlay: ApplicationOverlayHost, modalKey: String) {
+    private fun activateStaticModal(applicationPortal: ApplicationPortalHost, modalKey: String) {
         val modalTree =
             ui {
                 modalPortal(
@@ -617,11 +617,11 @@ class DsglScreenHostDomainOrchestrationTests {
                 }
             }
         modalTree.render(ctx, 300, 120)
-        overlay.render(ctx, 300, 120)
-        assertTrue(overlay.hasActiveModalPortal())
+        applicationPortal.render(ctx, 300, 120)
+        assertTrue(applicationPortal.hasActiveModalPortal())
     }
 
-    private fun clearStaticModal(overlay: ApplicationOverlayHost, modalKey: String) {
+    private fun clearStaticModal(applicationPortal: ApplicationPortalHost, modalKey: String) {
         val emptyModalTree =
             ui {
                 modalPortal(modals = emptyList(), key = modalKey) {
@@ -629,7 +629,7 @@ class DsglScreenHostDomainOrchestrationTests {
                 }
             }
         emptyModalTree.render(ctx, 300, 120)
-        overlay.render(ctx, 300, 120)
+        applicationPortal.render(ctx, 300, 120)
     }
 
     private fun colorPickerLayoutProbe(): ColorPickerLayout =

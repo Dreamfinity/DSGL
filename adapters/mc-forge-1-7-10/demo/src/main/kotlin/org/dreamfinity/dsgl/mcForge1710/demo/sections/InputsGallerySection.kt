@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
 import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
@@ -289,7 +289,7 @@ fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrol
             }
         })
 
-        text("Select (overlay popup + keyboard + disabled options)")
+        text("Select (portal popup + keyboard + disabled options)")
         text(
             "Use Enter/Space/ArrowDown when focused. Esc closes popup. Wheel scrolls long list.",
             { style = { color = DEMO_MUTED } },

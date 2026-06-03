@@ -1,31 +1,31 @@
 package org.dreamfinity.dsgl.core.colorpicker.internal
 
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
-import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanel
-import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelDragSession
-import org.dreamfinity.dsgl.core.overlay.panel.OverlayPanelState
+import org.dreamfinity.dsgl.core.portal.panel.FloatingPanel
+import org.dreamfinity.dsgl.core.portal.panel.FloatingPanelDragSession
+import org.dreamfinity.dsgl.core.portal.panel.FloatingPanelState
 
 internal class ColorPickerPopupMount(
     ownerId: Any,
-    panelState: OverlayPanelState,
-    dragSession: OverlayPanelDragSession,
+    panelState: FloatingPanelState,
+    dragSession: FloatingPanelDragSession,
     initialOwnerToken: Any = Any(),
 ) {
     val ownerToken: Any = initialOwnerToken
     val popupEngine: ColorPickerPopupEngine = ColorPickerPopupEngine()
-    val overlayPanel: OverlayPanel =
-        OverlayPanel(
+    val floatingPanel: FloatingPanel =
+        FloatingPanel(
             ownerId = ownerId,
             panelState = panelState,
             dragSession = dragSession,
         )
 
-    val node: ColorPickerPopupOverlayNode =
-        ColorPickerPopupOverlayNode(
+    val node: ColorPickerPopupPortalNode =
+        ColorPickerPopupPortalNode(
             popupEngine = popupEngine,
-            overlayPanel = overlayPanel,
+            floatingPanel = floatingPanel,
         )
 
-    val transientNode: ColorPickerTransientOverlayNode =
-        ColorPickerTransientOverlayNode(popupEngine = popupEngine)
+    val transientNode: ColorPickerTransientPortalNode =
+        ColorPickerTransientPortalNode(popupEngine = popupEngine)
 }

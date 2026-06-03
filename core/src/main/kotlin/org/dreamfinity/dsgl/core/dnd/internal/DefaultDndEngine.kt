@@ -242,7 +242,7 @@ object DefaultDndEngine : DndEngine {
         out.addAll(scope.buildCommands(bounds))
     }
 
-    override fun appendOverlayCommands(
+    override fun appendPortalCommands(
         root: DOMNode,
         ctx: UiMeasureContext,
         viewportWidth: Int,

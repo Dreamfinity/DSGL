@@ -15,13 +15,13 @@ import org.dreamfinity.dsgl.core.dsl.button
 import org.dreamfinity.dsgl.core.dsl.div
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
-import org.dreamfinity.dsgl.core.overlay.PortalEntry
-import org.dreamfinity.dsgl.core.overlay.PortalFrameContext
-import org.dreamfinity.dsgl.core.overlay.PortalHost
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.DomainSurfaceHost
+import org.dreamfinity.dsgl.core.portal.PortalEntry
+import org.dreamfinity.dsgl.core.portal.PortalFrameContext
+import org.dreamfinity.dsgl.core.portal.PortalHost
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.StyleApplicationScope
@@ -64,27 +64,27 @@ private const val COLOR_TOGGLE_BORDER = 0xFF9AB3C9.toInt()
 
 internal data class DebugDomainControlLayout(
     val panelRect: Rect,
-    val appOverlayRenderRect: Rect,
-    val appOverlayTintRect: Rect,
-    val appOverlayInputRect: Rect,
-    val systemOverlayTintRect: Rect,
-    val systemOverlayRenderRect: Rect,
-    val systemOverlayInputRect: Rect,
+    val appPortalRenderRect: Rect,
+    val appPortalTintRect: Rect,
+    val appPortalInputRect: Rect,
+    val systemPortalTintRect: Rect,
+    val systemPortalRenderRect: Rect,
+    val systemPortalInputRect: Rect,
     val resetRect: Rect,
 )
 
 private data class DebugDomainToggleSnapshot(
-    val applicationOverlayRenderEnabled: Boolean,
-    val applicationOverlayTintEnabled: Boolean,
-    val applicationOverlayInputEnabled: Boolean,
-    val systemOverlayRenderEnabled: Boolean,
-    val systemOverlayTintEnabled: Boolean,
-    val systemOverlayInputEnabled: Boolean,
+    val applicationPortalRenderEnabled: Boolean,
+    val applicationPortalTintEnabled: Boolean,
+    val applicationPortalInputEnabled: Boolean,
+    val systemPortalRenderEnabled: Boolean,
+    val systemPortalTintEnabled: Boolean,
+    val systemPortalInputEnabled: Boolean,
 )
 
 @Suppress("TooManyFunctions")
 class DebugDomainRootHost(
-    private val state: OverlayLayerDebugState = OverlayLayerDebugState,
+    private val state: DomainSurfaceDebugState = DomainSurfaceDebugState,
 ) : DomainSurfaceHost {
     override val surface: ScreenDomainSurface = ScreenDomainSurfaces.DebugRoot
 
@@ -97,7 +97,7 @@ class DebugDomainRootHost(
             root = rootNode,
             styleScope = StyleApplicationScope.Debug,
         )
-    private val domInputRouter: LayerDomInputRouter = LayerDomInputRouter { rootNode }
+    private val domInputRouter: SurfaceDomInputRouter = SurfaceDomInputRouter { rootNode }
     private var lastToggleSnapshot: DebugDomainToggleSnapshot? = null
 
     @Suppress("UnusedParameter")
@@ -169,12 +169,12 @@ class DebugDomainRootHost(
         var row = 0
         return DebugDomainControlLayout(
             panelRect = panelRect,
-            appOverlayRenderRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
-            appOverlayTintRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
-            appOverlayInputRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
-            systemOverlayRenderRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
-            systemOverlayTintRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
-            systemOverlayInputRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            appPortalRenderRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            appPortalTintRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            appPortalInputRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            systemPortalRenderRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            systemPortalTintRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
+            systemPortalInputRect = Rect(toggleX, firstY + ROW_STEP * row++, TOGGLE_WIDTH, TOGGLE_HEIGHT),
             resetRect =
                 Rect(
                     x = panelRect.x + PANEL_HORIZONTAL_PADDING,
@@ -238,18 +238,18 @@ class DebugDomainPortalHost : DomainSurfaceHost {
         get() = portalHost.entriesInPaintOrder().map { it.state.id.value }
 }
 
-private fun OverlayLayerDebugSnapshot.toDebugToggleSnapshot(): DebugDomainToggleSnapshot =
+private fun DomainSurfaceDebugSnapshot.toDebugToggleSnapshot(): DebugDomainToggleSnapshot =
     DebugDomainToggleSnapshot(
-        applicationOverlayRenderEnabled = applicationOverlayRenderEnabled,
-        applicationOverlayTintEnabled = applicationOverlayTintEnabled,
-        applicationOverlayInputEnabled = applicationOverlayInputEnabled,
-        systemOverlayRenderEnabled = systemOverlayRenderEnabled,
-        systemOverlayTintEnabled = systemOverlayTintEnabled,
-        systemOverlayInputEnabled = systemOverlayInputEnabled,
+        applicationPortalRenderEnabled = applicationPortalRenderEnabled,
+        applicationPortalTintEnabled = applicationPortalTintEnabled,
+        applicationPortalInputEnabled = applicationPortalInputEnabled,
+        systemPortalRenderEnabled = systemPortalRenderEnabled,
+        systemPortalTintEnabled = systemPortalTintEnabled,
+        systemPortalInputEnabled = systemPortalInputEnabled,
     )
 
 private class DebugDomainRootNode(
-    private val state: OverlayLayerDebugState,
+    private val state: DomainSurfaceDebugState,
     key: Any? = "dsgl-debug-domain-root",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-debug-domain-root"
@@ -289,27 +289,27 @@ private class DebugDomainRootNode(
 
     private val appRenderToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-app-render") {
-            state.applicationOverlayRenderEnabled = !state.applicationOverlayRenderEnabled
+            state.applicationPortalRenderEnabled = !state.applicationPortalRenderEnabled
         }
     private val appTintToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-app-tint") {
-            state.applicationOverlayTintEnabled = !state.applicationOverlayTintEnabled
+            state.applicationPortalTintEnabled = !state.applicationPortalTintEnabled
         }
     private val appInputToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-app-input") {
-            state.applicationOverlayInputEnabled = !state.applicationOverlayInputEnabled
+            state.applicationPortalInputEnabled = !state.applicationPortalInputEnabled
         }
     private val systemRenderToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-system-render") {
-            state.systemOverlayRenderEnabled = !state.systemOverlayRenderEnabled
+            state.systemPortalRenderEnabled = !state.systemPortalRenderEnabled
         }
     private val systemTintToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-system-tint") {
-            state.systemOverlayTintEnabled = !state.systemOverlayTintEnabled
+            state.systemPortalTintEnabled = !state.systemPortalTintEnabled
         }
     private val systemInputToggleNode: ButtonNode =
         toggleNode("dsgl-debug-domain-toggle-system-input") {
-            state.systemOverlayInputEnabled = !state.systemOverlayInputEnabled
+            state.systemPortalInputEnabled = !state.systemPortalInputEnabled
         }
 
     private val resetButtonNode: ButtonNode =
@@ -334,21 +334,21 @@ private class DebugDomainRootNode(
         })
 
     private var layout: DebugDomainControlLayout? = null
-    private var snapshot: OverlayLayerDebugSnapshot =
-        OverlayLayerDebugSnapshot(
-            applicationOverlayRenderEnabled = true,
-            applicationOverlayTintEnabled = false,
-            applicationOverlayInputEnabled = true,
-            systemOverlayRenderEnabled = true,
-            systemOverlayTintEnabled = false,
-            systemOverlayInputEnabled = true,
+    private var snapshot: DomainSurfaceDebugSnapshot =
+        DomainSurfaceDebugSnapshot(
+            applicationPortalRenderEnabled = true,
+            applicationPortalTintEnabled = false,
+            applicationPortalInputEnabled = true,
+            systemPortalRenderEnabled = true,
+            systemPortalTintEnabled = false,
+            systemPortalInputEnabled = true,
             frameFps = 0,
             frameTimeMs = 0f,
             frameFpsWindow = 0,
             frameTimeWindowMs = 0f,
         )
 
-    fun bind(layout: DebugDomainControlLayout, snapshot: OverlayLayerDebugSnapshot) {
+    fun bind(layout: DebugDomainControlLayout, snapshot: DomainSurfaceDebugSnapshot) {
         this.layout = layout
         this.snapshot = snapshot
     }
@@ -390,22 +390,22 @@ private class DebugDomainRootNode(
         applyLabelStyle(systemTintLabelNode)
         applyLabelStyle(systemInputLabelNode)
 
-        configureToggle(appRenderToggleNode, snapshot.applicationOverlayRenderEnabled)
-        configureToggle(appTintToggleNode, snapshot.applicationOverlayTintEnabled)
-        configureToggle(appInputToggleNode, snapshot.applicationOverlayInputEnabled)
-        configureToggle(systemRenderToggleNode, snapshot.systemOverlayRenderEnabled)
-        configureToggle(systemTintToggleNode, snapshot.systemOverlayTintEnabled)
-        configureToggle(systemInputToggleNode, snapshot.systemOverlayInputEnabled)
+        configureToggle(appRenderToggleNode, snapshot.applicationPortalRenderEnabled)
+        configureToggle(appTintToggleNode, snapshot.applicationPortalTintEnabled)
+        configureToggle(appInputToggleNode, snapshot.applicationPortalInputEnabled)
+        configureToggle(systemRenderToggleNode, snapshot.systemPortalRenderEnabled)
+        configureToggle(systemTintToggleNode, snapshot.systemPortalTintEnabled)
+        configureToggle(systemInputToggleNode, snapshot.systemPortalInputEnabled)
 
         resetButtonNode.backgroundColor = COLOR_RESET_BACKGROUND
         resetButtonNode.border = Border.all(1, COLOR_RESET_BORDER)
         resetButtonNode.textColor = COLOR_TEXT_PRIMARY
         resetButtonNode.fontSize = BUTTON_FONT_SIZE
 
-        val rApp = if (snapshot.applicationOverlayRenderEnabled) "A1" else "A0"
-        val rSys = if (snapshot.systemOverlayRenderEnabled) "S1" else "S0"
-        val iApp = if (snapshot.applicationOverlayInputEnabled) "A1" else "A0"
-        val iSys = if (snapshot.systemOverlayInputEnabled) "S1" else "S0"
+        val rApp = if (snapshot.applicationPortalRenderEnabled) "A1" else "A0"
+        val rSys = if (snapshot.systemPortalRenderEnabled) "S1" else "S0"
+        val iApp = if (snapshot.applicationPortalInputEnabled) "A1" else "A0"
+        val iSys = if (snapshot.systemPortalInputEnabled) "S1" else "S0"
         val statusTextValue =
             "R:$rApp/$rSys  I:$iApp/$iSys  " +
                 "FPS:${snapshot.frameFps} (${String.format(Locale.US, "%.1f", snapshot.frameTimeMs)}ms)  " +
@@ -427,18 +427,18 @@ private class DebugDomainRootNode(
             ),
         )
 
-        renderToggleRow(ctx, panelRect, localLayout.appOverlayRenderRect, appRenderLabelNode, appRenderToggleNode)
-        renderToggleRow(ctx, panelRect, localLayout.appOverlayTintRect, appTintLabelNode, appTintToggleNode)
-        renderToggleRow(ctx, panelRect, localLayout.appOverlayInputRect, appInputLabelNode, appInputToggleNode)
+        renderToggleRow(ctx, panelRect, localLayout.appPortalRenderRect, appRenderLabelNode, appRenderToggleNode)
+        renderToggleRow(ctx, panelRect, localLayout.appPortalTintRect, appTintLabelNode, appTintToggleNode)
+        renderToggleRow(ctx, panelRect, localLayout.appPortalInputRect, appInputLabelNode, appInputToggleNode)
         renderToggleRow(
             ctx,
             panelRect,
-            localLayout.systemOverlayRenderRect,
+            localLayout.systemPortalRenderRect,
             systemRenderLabelNode,
             systemRenderToggleNode,
         )
-        renderToggleRow(ctx, panelRect, localLayout.systemOverlayTintRect, systemTintLabelNode, systemTintToggleNode)
-        renderToggleRow(ctx, panelRect, localLayout.systemOverlayInputRect, systemInputLabelNode, systemInputToggleNode)
+        renderToggleRow(ctx, panelRect, localLayout.systemPortalTintRect, systemTintLabelNode, systemTintToggleNode)
+        renderToggleRow(ctx, panelRect, localLayout.systemPortalInputRect, systemInputLabelNode, systemInputToggleNode)
 
         renderNode(ctx, resetButtonNode, localLayout.resetRect)
         renderNode(

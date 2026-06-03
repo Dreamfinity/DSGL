@@ -7,10 +7,10 @@
     <ID>ComplexCondition:DsglScreenHost.kt$DsglScreenHost$lastWidth > 0 &amp;&amp; lastHeight > 0 &amp;&amp; (rootBounds.width &lt;= 0 || rootBounds.height &lt;= 0)</ID>
     <ID>ComplexCondition:Mc1710UiAdapter.kt$Mc1710UiAdapter$x &lt; 0 || y &lt; 0 || x >= viewport.width || y >= viewport.height</ID>
     <ID>ComplexCondition:MsdfTextRenderer.kt$MsdfTextRenderer.SegmentBuffer$last >= 0 &amp;&amp; kind[last] == segmentKind &amp;&amp; color[last] == segmentColor &amp;&amp; kotlin.math.abs(endX[last] - segmentStartX) &lt;= 0.51f &amp;&amp; kotlin.math.abs(y[last] - segmentY) &lt;= 0.51f &amp;&amp; kotlin.math.abs(thickness[last] - segmentThickness) &lt;= 0.1f</ID>
-    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationOverlayPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
-    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemOverlayPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
     <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun handleKeyboardKeyDown( keyCode: Int, keyChar: Char, inspectorMouseX: Int, inspectorMouseY: Int, ): Boolean</ID>
-    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun updateFrameInteractionState( tree: DomTree, dtSeconds: Double, dsglMouseX: Int, dsglMouseY: Int, appOverlayInputEnabled: Boolean, systemOverlayInputEnabled: Boolean, inspectorBlocks: Boolean, )</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun updateFrameInteractionState( tree: DomTree, dtSeconds: Double, dsglMouseX: Int, dsglMouseY: Int, applicationPortalInputEnabled: Boolean, systemPortalInputEnabled: Boolean, inspectorBlocks: Boolean, )</ID>
     <ID>CyclomaticComplexMethod:Mc1710UiAdapter.kt$Mc1710UiAdapter$@Suppress("LoopWithTooManyJumpStatements") override fun paint(commands: List&lt;RenderCommand>)</ID>
     <ID>CyclomaticComplexMethod:MsdfTextRenderer.kt$MsdfTextRenderer$fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float)</ID>
     <ID>CyclomaticComplexMethod:MsdfTextRenderer.kt$MsdfTextRenderer$private fun drawDecorationSegments(segments: SegmentBuffer, includeDebug: Boolean)</ID>
@@ -61,8 +61,8 @@
     <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer.SegmentBuffer$0.51f</ID>
     <ID>NestedBlockDepth:Mc1710UiAdapter.kt$Mc1710UiAdapter$@Suppress("LoopWithTooManyJumpStatements") override fun paint(commands: List&lt;RenderCommand>)</ID>
     <ID>NestedBlockDepth:MsdfTextRenderer.kt$MsdfTextRenderer$fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float)</ID>
-    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationOverlayPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
-    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemOverlayPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
     <ID>TooManyFunctions:DsglScreenHost.kt$DsglScreenHost : GuiScreenDsglWindowHost</ID>
     <ID>TooManyFunctions:Mc1710UiAdapter.kt$Mc1710UiAdapter : UiMeasureContext</ID>
     <ID>TooManyFunctions:MsdfTextRenderer.kt$MsdfTextRenderer</ID>

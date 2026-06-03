@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -359,7 +359,7 @@ class ScrollPerformanceCountersTests {
         val tree = DomTree(root)
         tree.render(ctx, 320, 220)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return ScrollStickyFixture(
             tree = tree,
             root = root,
@@ -382,7 +382,7 @@ class ScrollPerformanceCountersTests {
         val root: ContainerNode,
         val viewport: ContainerNode,
         val sticky: ContainerNode,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
         val stickyBaseTopY: Int,
     )
 }

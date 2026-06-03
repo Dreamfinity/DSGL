@@ -10,37 +10,37 @@ import org.dreamfinity.dsgl.core.event.MouseDownEvent
 import org.dreamfinity.dsgl.core.event.MouseMoveEvent
 import org.dreamfinity.dsgl.core.event.MouseUpEvent
 import org.dreamfinity.dsgl.core.event.MouseWheelEvent
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalEntry
-import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
-import org.dreamfinity.dsgl.core.overlay.PortalEntryId
-import org.dreamfinity.dsgl.core.overlay.PortalEntryOrder
-import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
-import org.dreamfinity.dsgl.core.overlay.PortalEntryState
-import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalHost
-import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalInsidePointerPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
-import org.dreamfinity.dsgl.core.overlay.PortalPointerPolicyResult
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
-import org.dreamfinity.dsgl.core.overlay.evaluateOutsidePointerDown
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.PortalDismissPolicy
+import org.dreamfinity.dsgl.core.portal.PortalEntry
+import org.dreamfinity.dsgl.core.portal.PortalEntryBounds
+import org.dreamfinity.dsgl.core.portal.PortalEntryId
+import org.dreamfinity.dsgl.core.portal.PortalEntryOrder
+import org.dreamfinity.dsgl.core.portal.PortalEntryPlacement
+import org.dreamfinity.dsgl.core.portal.PortalEntryState
+import org.dreamfinity.dsgl.core.portal.PortalFocusPolicy
+import org.dreamfinity.dsgl.core.portal.PortalHost
+import org.dreamfinity.dsgl.core.portal.PortalInputPolicy
+import org.dreamfinity.dsgl.core.portal.PortalInsidePointerPolicy
+import org.dreamfinity.dsgl.core.portal.PortalPointerDispatch
+import org.dreamfinity.dsgl.core.portal.PortalPointerPolicyResult
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.evaluateOutsidePointerDown
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 @Suppress("TooManyFunctions")
 internal class SelectPortalController(
     private val engine: SelectEngine,
-    ownerScope: OverlayOwnerScope,
+    ownerDomain: ScreenDomainId,
     entryId: String,
 ) : PortalPointerDispatch {
     private val portalHost: PortalHost =
-        PortalHost(ScreenDomainSurfaces.portalSurfaceForOwner(ownerScope))
+        PortalHost(ScreenDomainSurfaces.portalSurfaceForDomain(ownerDomain))
     private val entry: SelectPortalEntry =
         SelectPortalEntry(
             engine = engine,
-            ownerScope = ownerScope,
+            ownerDomain = ownerDomain,
             entryId = entryId,
         )
 
@@ -118,14 +118,14 @@ internal data class SelectPortalDebugState(
 
 private class SelectPortalEntry(
     private val engine: SelectEngine,
-    ownerScope: OverlayOwnerScope,
+    ownerDomain: ScreenDomainId,
     entryId: String,
 ) : PortalEntry {
     override val state: PortalEntryState =
         PortalEntryState(
             id = PortalEntryId(entryId),
             ownerToken = engine,
-            surface = ScreenDomainSurfaces.portalSurfaceForOwner(ownerScope),
+            surface = ScreenDomainSurfaces.portalSurfaceForDomain(ownerDomain),
             order = PortalEntryOrder(zIndex = 0),
             dismissPolicy = PortalDismissPolicy.EscapeOrOutsidePointerDown,
             inputPolicy = PortalInputPolicy.DomOnly,
@@ -152,7 +152,7 @@ private class SelectPortalEntry(
             },
         )
     override val node: DOMNode = popupNode
-    private val domInputRouter: LayerDomInputRouter = LayerDomInputRouter { node }
+    private val domInputRouter: SurfaceDomInputRouter = SurfaceDomInputRouter { node }
     private var viewportWidth: Int = 1
     private var viewportHeight: Int = 1
     private var measureContext: UiMeasureContext? = null
@@ -284,7 +284,7 @@ private class SelectPortalNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         if (!engine.isOpen()) return
-        engine.appendOverlayCommands(
+        engine.appendPortalCommands(
             measureContext = ctx,
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,

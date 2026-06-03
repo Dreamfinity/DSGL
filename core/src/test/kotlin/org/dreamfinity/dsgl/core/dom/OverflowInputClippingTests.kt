@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import kotlin.test.Test
@@ -25,8 +25,8 @@ class OverflowInputClippingTests {
 
     @Test
     fun `generic clipped container rejects pointer input outside viewport`() {
-        listOf("app-dom", "app-overlay", "system-overlay").forEach { layer ->
-            val (root, router) = createLayerRouter(layer)
+        listOf("app-dom", "app-portal", "system-portal").forEach { layer ->
+            val (root, router) = createSurfaceRouter(layer)
             var clicks = 0
 
             val clippedViewport =
@@ -51,7 +51,7 @@ class OverflowInputClippingTests {
 
     @Test
     fun `generic partial visibility limits pointer interaction to visible area`() {
-        val (root, router) = createLayerRouter("partial-visible")
+        val (root, router) = createSurfaceRouter("partial-visible")
         var clicks = 0
 
         val clippedViewport =
@@ -79,7 +79,7 @@ class OverflowInputClippingTests {
 
     @Test
     fun `nested clipped containers intersect effective input clip`() {
-        val (root, router) = createLayerRouter("nested-clip")
+        val (root, router) = createSurfaceRouter("nested-clip")
         var clicks = 0
 
         val outer =
@@ -114,7 +114,7 @@ class OverflowInputClippingTests {
 
     @Test
     fun `nested clipped containers clamp interaction to parent child intersection`() {
-        val (root, router) = createLayerRouter("nested-intersection")
+        val (root, router) = createSurfaceRouter("nested-intersection")
         var clicks = 0
 
         val outer =
@@ -151,7 +151,7 @@ class OverflowInputClippingTests {
 
     @Test
     fun `paint and pointer clipping stay consistent for clipped containers`() {
-        val (root, router) = createLayerRouter("paint-input-consistency")
+        val (root, router) = createSurfaceRouter("paint-input-consistency")
         var clicks = 0
 
         val clippedViewport =
@@ -190,11 +190,11 @@ class OverflowInputClippingTests {
         assertEquals(1, clicks)
     }
 
-    private fun createLayerRouter(key: String): Pair<ContainerNode, LayerDomInputRouter> {
+    private fun createSurfaceRouter(key: String): Pair<ContainerNode, SurfaceDomInputRouter> {
         val root =
             ContainerNode(key = "$key-root").apply {
                 bounds = Rect(0, 0, 320, 200)
             }
-        return root to LayerDomInputRouter { root }
+        return root to SurfaceDomInputRouter { root }
     }
 }

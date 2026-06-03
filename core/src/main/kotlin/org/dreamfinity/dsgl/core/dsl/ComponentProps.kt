@@ -39,6 +39,7 @@ open class ComponentProps(
     var id: String? = null,
     var className: String = "",
     var classes: Set<String> = emptySet(),
+    var overlapChildren: Boolean = false,
     var disabled: Boolean = false,
     var draggable: Boolean = false,
     var droppable: Boolean = false,

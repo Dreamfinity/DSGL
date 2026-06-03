@@ -22,7 +22,7 @@ fun UiScope.inspectorSection(onInfo: (String) -> Unit) {
         }
     }) {
         text("In-game Inspector is global (works on every DSGL screen).")
-        text("F12: toggle inspector overlay", { style = { color = INSPECTOR_MUTED_TEXT } })
+        text("F12: toggle inspector portal", { style = { color = INSPECTOR_MUTED_TEXT } })
         text("F9: switch mode (Pick/Locked)", { style = { color = INSPECTOR_MUTED_TEXT } })
         text("Expanded panel: click Min to collapse into floating chip.", { style = { color = INSPECTOR_MUTED_TEXT } })
         text("Minimized chip: drag to move, click (no drag) to restore.", { style = { color = INSPECTOR_MUTED_TEXT } })

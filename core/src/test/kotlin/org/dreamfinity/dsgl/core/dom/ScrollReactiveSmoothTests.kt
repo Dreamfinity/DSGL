@@ -7,7 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.event.MouseClickEvent
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleEngine
@@ -493,7 +493,7 @@ class ScrollReactiveSmoothTests {
         val tree = DomTree(root)
         tree.render(ctx, 420, 260)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return Fixture(tree, root, viewport, button, filler, router, clickCount)
     }
 
@@ -503,7 +503,7 @@ class ScrollReactiveSmoothTests {
         val viewport: ContainerNode,
         val button: ButtonNode,
         val filler: ContainerNode,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
         val clickCount: IntBox,
     )
 

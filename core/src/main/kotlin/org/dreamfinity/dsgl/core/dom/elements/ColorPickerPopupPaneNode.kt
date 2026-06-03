@@ -7,7 +7,7 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 class ColorPickerPopupPaneNode(

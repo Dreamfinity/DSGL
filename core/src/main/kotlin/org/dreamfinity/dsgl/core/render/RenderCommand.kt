@@ -133,11 +133,11 @@ sealed class RenderCommand {
         val y: Int,
         val width: Int,
         val height: Int,
-        val gridOverlay: CapturedGridOverlay? = null,
+        val grid: CapturedGrid? = null,
     ) : RenderCommand()
 
-    /** Optional grid overlay rendered by backend as part of captured-region magnifier pass. */
-    data class CapturedGridOverlay(
+    /** Optional grid rendered by backend as part of captured-region magnifier pass. */
+    data class CapturedGrid(
         val columns: Int,
         val rows: Int,
         val magnification: Int,

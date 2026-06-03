@@ -224,7 +224,7 @@ class SelectEngine(
         ensureLayout()
     }
 
-    fun appendOverlayCommands(
+    fun appendPortalCommands(
         measureContext: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,

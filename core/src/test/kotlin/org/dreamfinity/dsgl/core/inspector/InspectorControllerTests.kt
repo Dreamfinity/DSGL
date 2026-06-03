@@ -255,7 +255,7 @@ class InspectorControllerTests {
         controller.handleMouseDown(990, 230, MouseButton.LEFT)
 
         renderFrame(controller, 420, 280)
-        val thumb = controller.overlayScrollbarThumbRect()
+        val thumb = controller.portalScrollbarThumbRect()
         if (thumb.width <= 0 || thumb.height <= 0) {
             fail("Expected inspector scrollbar thumb to be available.")
         }
@@ -432,7 +432,7 @@ class InspectorControllerTests {
         renderFrame(controller, 1200, 700)
 
         val row =
-            controller.overlayStyleEditorRows().firstOrNull {
+            controller.portalStyleEditorRows().firstOrNull {
                 it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
             } ?: error("Expected color string input row.")
         val inputRect = row.inputRect ?: row.controlRect
@@ -462,7 +462,7 @@ class InspectorControllerTests {
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
 
         renderFrame(controller, 260, 240)
-        val rows = controller.overlayStyleEditorRows()
+        val rows = controller.portalStyleEditorRows()
         assertTrue(rows.isNotEmpty())
 
         assertTrue(rows.any { it.rowRect.height > it.controlRect.height + 8 })
@@ -487,7 +487,7 @@ class InspectorControllerTests {
         renderFrame(controller, 1200, 700)
 
         val row =
-            controller.overlayStyleEditorRows().firstOrNull { it.editorKind == InspectorEditorKind.EnumSelect }
+            controller.portalStyleEditorRows().firstOrNull { it.editorKind == InspectorEditorKind.EnumSelect }
                 ?: error("Expected enum select row.")
         val openX = row.controlRect.x + 4
         val openY = row.controlRect.y + row.controlRect.height / 2
@@ -495,7 +495,7 @@ class InspectorControllerTests {
         assertTrue(controller.handleMouseDown(openX, openY, MouseButton.LEFT))
 
         renderFrame(controller, 1200, 700)
-        val dropdown = controller.overlayStyleEditorDropdowns().firstOrNull() ?: error("Expected open dropdown.")
+        val dropdown = controller.portalStyleEditorDropdowns().firstOrNull() ?: error("Expected open dropdown.")
         val option =
             dropdown.options.firstOrNull { !it.text.equals(row.controlValue, ignoreCase = true) }
                 ?: dropdown.options.firstOrNull()
@@ -508,7 +508,7 @@ class InspectorControllerTests {
         assertTrue(controller.handleMouseDown(optionX, optionY, MouseButton.LEFT))
 
         renderFrame(controller, 1200, 700)
-        assertTrue(controller.overlayStyleEditorDropdowns().isEmpty())
+        assertTrue(controller.portalStyleEditorDropdowns().isEmpty())
         val literal = (StyleEngine.inspectorOverrideFor(selected, row.property) as? StyleExpression.Literal)?.value
         assertNotNull(literal)
         assertTrue(literal.equals(option.text, ignoreCase = true))
@@ -528,7 +528,7 @@ class InspectorControllerTests {
         controller.onCursorMoved(988, 126)
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
 
-        assertTrue(controller.overlayApplyNumericOverride(StyleProperty.Z_INDEX, "5", "px"))
+        assertTrue(controller.portalApplyNumericOverride(StyleProperty.Z_INDEX, "5", "px"))
         val zIndexLiteral =
             (
                 StyleEngine.inspectorOverrideFor(
@@ -538,7 +538,7 @@ class InspectorControllerTests {
             )?.value
         assertEquals("5", zIndexLiteral)
 
-        assertTrue(controller.overlayApplyNumericOverride(StyleProperty.WIDTH, "24", "em"))
+        assertTrue(controller.portalApplyNumericOverride(StyleProperty.WIDTH, "24", "em"))
         val widthLiteral =
             (
                 StyleEngine.inspectorOverrideFor(

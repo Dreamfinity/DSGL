@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.mcForge1710
 
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class ScreenDomainSurfaceOrchestrator {

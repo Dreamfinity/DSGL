@@ -93,11 +93,11 @@ class ContextMenuEngineTests {
     }
 
     @Test
-    fun `overlay consumes pointer before base dispatch when menu is open`() {
+    fun `portal consumes pointer before base dispatch when menu is open`() {
         val clock = FakeClock()
         val engine = ContextMenuEngine(clock = clock)
         val model =
-            contextMenu(id = "overlay.order") {
+            contextMenu(id = "portal.order") {
                 item("Run")
                 item("Build")
             }
@@ -190,7 +190,7 @@ class ContextMenuEngineTests {
         engine.openAtCursor(model, 20, 20)
         engine.onFrame(ctx, 320, 180, 1f)
         val commands = mutableListOf<RenderCommand>()
-        engine.appendOverlayCommands(ctx, 320, 180, commands)
+        engine.appendPortalCommands(ctx, 320, 180, commands)
 
         val textCommand = commands.filterIsInstance<RenderCommand.DrawText>().firstOrNull()
         assertNotNull(textCommand)

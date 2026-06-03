@@ -19,23 +19,24 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
     var styleUseBorder by useState(true)
     var styleLargeGap by useState(false)
     var styleFixedSize by useState(false)
-    var stackOverlayEnabled by useState(true)
-    var layoutOverlayX by useState(8)
-    var layoutOverlayY by useState(92)
-    var layoutOverlayDragging by useState(false)
-    var overlayClicks by useState(0)
+    var stackLayerEnabled by useState(true)
+    var stackLayerX by useState(8)
+    var stackLayerY by useState(92)
+    var stackLayerDragging by useState(false)
+    var stackLayerClicks by useState(0)
 
-    val overlayDragAnchorXRef by useRef(0)
-    val overlayDragAnchorYRef by useRef(0)
-    val overlayDragMovedRef by useRef(false)
+    val stackLayerDragAnchorXRef by useRef(0)
+    val stackLayerDragAnchorYRef by useRef(0)
+    val stackLayerDragMovedRef by useRef(false)
 
     val demoGap = if (styleLargeGap) 10 else 3
     val fixedSize = if (styleFixedSize) 24 else null
-    val overlayWidth = 148
-    val overlayHeight = 26
+    val stackLayerWidth = 148
+    val stackLayerHeight = 26
 
-    overlay({
+    div({
         key = "section.layoutStyle.stack"
+        overlapChildren = true
         style = {
             width = 100.percent
             gap = 0.px
@@ -194,89 +195,89 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
                     flexDirection = FlexDirection.Row
                 }
             }) {
-                button(if (stackOverlayEnabled) "Stack Overlay ON" else "Stack Overlay OFF", {
+                button(if (stackLayerEnabled) "Stack Layer ON" else "Stack Layer OFF", {
                     onMouseClick = {
-                        stackOverlayEnabled = !stackOverlayEnabled
-                        onInfo("Layout: stackOverlay=$stackOverlayEnabled")
+                        stackLayerEnabled = !stackLayerEnabled
+                        onInfo("Layout: stackLayer=$stackLayerEnabled")
                     }
                 })
-                button("Reset Overlay", {
+                button("Reset Stack Layer", {
                     onMouseClick = {
-                        layoutOverlayX = 8
-                        layoutOverlayY = 92
-                        layoutOverlayDragging = false
-                        overlayDragMovedRef.current = false
-                        onInfo("Layout: overlay reset")
+                        stackLayerX = 8
+                        stackLayerY = 92
+                        stackLayerDragging = false
+                        stackLayerDragMovedRef.current = false
+                        onInfo("Layout: stack layer reset")
                     }
                 })
                 text(
-                    "Overlay: $layoutOverlayX,$layoutOverlayY clicks=$overlayClicks",
+                    "Stack layer: $stackLayerX,$stackLayerY clicks=$stackLayerClicks",
                     { style = { color = DEMO_MUTED } },
                 )
             }
         }
 
-        if (stackOverlayEnabled) {
+        if (stackLayerEnabled) {
             div({
-                key = "layout.stack.overlay"
+                key = "layout.stack.layer"
                 onMouseDown = onMouseDown@{ event ->
                     if (event.mouseButton != MouseButton.LEFT) return@onMouseDown
-                    val overlayNode = findNodeInPath(event.target, "layout.stack.overlay") ?: return@onMouseDown
-                    layoutOverlayDragging = true
-                    overlayDragAnchorXRef.current =
-                        (event.mouseX - overlayNode.bounds.x).coerceIn(
+                    val stackLayerNode = findNodeInPath(event.target, "layout.stack.layer") ?: return@onMouseDown
+                    stackLayerDragging = true
+                    stackLayerDragAnchorXRef.current =
+                        (event.mouseX - stackLayerNode.bounds.x).coerceIn(
                             0,
-                            overlayNode.bounds.width
+                            stackLayerNode.bounds.width
                                 .coerceAtLeast(1),
                         )
-                    overlayDragAnchorYRef.current =
-                        (event.mouseY - overlayNode.bounds.y).coerceIn(
+                    stackLayerDragAnchorYRef.current =
+                        (event.mouseY - stackLayerNode.bounds.y).coerceIn(
                             0,
-                            overlayNode.bounds.height
+                            stackLayerNode.bounds.height
                                 .coerceAtLeast(1),
                         )
-                    overlayDragMovedRef.current = false
+                    stackLayerDragMovedRef.current = false
                 }
                 onMouseDrag = { event ->
-                    updateOverlayDrag(
+                    updateStackLayerDrag(
                         event = event,
-                        overlayWidth = overlayWidth,
-                        overlayHeight = overlayHeight,
-                        isDragging = layoutOverlayDragging,
-                        currentX = layoutOverlayX,
-                        currentY = layoutOverlayY,
-                        anchorX = overlayDragAnchorXRef.current ?: 0,
-                        anchorY = overlayDragAnchorYRef.current ?: 0,
+                        stackLayerWidth = stackLayerWidth,
+                        stackLayerHeight = stackLayerHeight,
+                        isDragging = stackLayerDragging,
+                        currentX = stackLayerX,
+                        currentY = stackLayerY,
+                        anchorX = stackLayerDragAnchorXRef.current ?: 0,
+                        anchorY = stackLayerDragAnchorYRef.current ?: 0,
                     ) { nextX, nextY, moved ->
                         if (moved) {
-                            overlayDragMovedRef.current = true
+                            stackLayerDragMovedRef.current = true
                         }
-                        if (nextX != layoutOverlayX) {
-                            layoutOverlayX = nextX
+                        if (nextX != stackLayerX) {
+                            stackLayerX = nextX
                         }
-                        if (nextY != layoutOverlayY) {
-                            layoutOverlayY = nextY
+                        if (nextY != stackLayerY) {
+                            stackLayerY = nextY
                         }
                     }
                 }
                 onMouseUp = onMouseUp@{ event ->
-                    if (!layoutOverlayDragging) return@onMouseUp
-                    if (event.mouseButton == MouseButton.LEFT && !(overlayDragMovedRef.current ?: false)) {
-                        overlayClicks += 1
-                        onLogHook("overlay.onMouseClick", event, "overlayClicks=$overlayClicks")
+                    if (!stackLayerDragging) return@onMouseUp
+                    if (event.mouseButton == MouseButton.LEFT && !(stackLayerDragMovedRef.current ?: false)) {
+                        stackLayerClicks += 1
+                        onLogHook("stackLayer.onMouseClick", event, "stackLayerClicks=$stackLayerClicks")
                     }
-                    layoutOverlayDragging = false
-                    overlayDragMovedRef.current = false
+                    stackLayerDragging = false
+                    stackLayerDragMovedRef.current = false
                 }
                 style = {
-                    width = overlayWidth.px
-                    height = overlayHeight.px
+                    width = stackLayerWidth.px
+                    height = stackLayerHeight.px
                     backgroundColor = 0xCC5A3131.toInt()
                     margin {
-                        top = layoutOverlayY.px
+                        top = stackLayerY.px
                         right = 0.px
                         bottom = 0.px
-                        left = layoutOverlayX.px
+                        left = stackLayerX.px
                     }
                     padding { all(4.px) }
                     border {
@@ -286,7 +287,7 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
                 }
             }) {
                 text(
-                    if (layoutOverlayDragging) "Overlay (dragging...)" else "Overlay (drag me)",
+                    if (stackLayerDragging) "Stack layer (dragging...)" else "Stack layer (drag me)",
                     { style = { color = 0xFFF5F7FA.toInt() } },
                 )
             }
@@ -294,10 +295,10 @@ fun UiScope.layoutStyleSection(onInfo: (String) -> Unit, onLogHook: (String, Eve
     }
 }
 
-private fun updateOverlayDrag(
+private fun updateStackLayerDrag(
     event: MouseDragEvent,
-    overlayWidth: Int,
-    overlayHeight: Int,
+    stackLayerWidth: Int,
+    stackLayerHeight: Int,
     isDragging: Boolean,
     currentX: Int,
     currentY: Int,
@@ -309,8 +310,8 @@ private fun updateOverlayDrag(
     val stackNode = findNodeInPath(event.target, "section.layoutStyle.stack") ?: return
     val currentMouseX = event.lastMouseX + event.dx
     val currentMouseY = event.lastMouseY + event.dy
-    val maxX = (stackNode.bounds.width - overlayWidth - 2).coerceAtLeast(0)
-    val maxY = (stackNode.bounds.height - overlayHeight - 2).coerceAtLeast(0)
+    val maxX = (stackNode.bounds.width - stackLayerWidth - 2).coerceAtLeast(0)
+    val maxY = (stackNode.bounds.height - stackLayerHeight - 2).coerceAtLeast(0)
     val nextX = (currentMouseX - stackNode.bounds.x - anchorX).coerceIn(0, maxX)
     val nextY = (currentMouseY - stackNode.bounds.y - anchorY).coerceIn(0, maxY)
     val moved = abs(nextX - currentX) > 0 || abs(nextY - currentY) > 0

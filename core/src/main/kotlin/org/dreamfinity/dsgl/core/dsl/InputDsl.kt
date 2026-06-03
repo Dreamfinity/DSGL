@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.dsl
 import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 import org.dreamfinity.dsgl.core.select.SelectModelBuilder
 import org.dreamfinity.dsgl.core.select.selectModel
 import java.time.Instant
@@ -18,7 +18,7 @@ open class TextAreaProps(
 open class SelectProps : ComponentProps() {
     var closeOnSelect: Boolean = true
     var defaultValue: String? = null
-    var ownerScope: OverlayOwnerScope = OverlayOwnerScope.Application
+    var ownerDomain: ScreenDomainId = ScreenDomainId.Application
 
     var value: String?
         get() = valueInternal
@@ -170,7 +170,7 @@ fun UiScope.select(
         value = if (controlled) props.controlledValue() else null,
         defaultValue = props.defaultValue,
         closeOnSelect = props.closeOnSelect,
-        ownerScope = props.ownerScope,
+        ownerDomain = props.ownerDomain,
         key = props.key,
     ).apply {
         applyStyle(this, props.style)

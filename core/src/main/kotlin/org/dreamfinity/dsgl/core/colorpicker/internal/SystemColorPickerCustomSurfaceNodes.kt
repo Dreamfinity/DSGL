@@ -111,9 +111,9 @@ internal class EyedropperMagnifierDrawNode(
                 y = bounds.y,
                 width = bounds.width,
                 height = bounds.height,
-                gridOverlay =
+                grid =
                     if (gridEnabled) {
-                        RenderCommand.CapturedGridOverlay(
+                        RenderCommand.CapturedGrid(
                             columns = columns,
                             rows = rows,
                             magnification = magnification,

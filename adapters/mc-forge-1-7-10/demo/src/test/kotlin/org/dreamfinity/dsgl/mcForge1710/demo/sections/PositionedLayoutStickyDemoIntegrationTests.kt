@@ -1,4 +1,4 @@
-﻿package org.dreamfinity.dsgl.mcForge1710.demo.sections
+package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.DOMNode
@@ -250,7 +250,7 @@ class PositionedLayoutStickyDemoIntegrationTests {
     }
 
     private fun inspectorHoveredBorderRect(inspector: InspectorController): Rect? {
-        val highlightMethod = findMethodByNameAndArity(inspector.javaClass, "overlayHoveredHighlight", 0)
+        val highlightMethod = findMethodByNameAndArity(inspector.javaClass, "portalHoveredHighlight", 0)
         highlightMethod.isAccessible = true
         val snapshot = highlightMethod.invoke(inspector) ?: return null
         val borderRectField = findField(snapshot.javaClass, "borderRect")

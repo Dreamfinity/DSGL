@@ -3,10 +3,10 @@ package org.dreamfinity.dsgl.core.select
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalPointerRegion
+import org.dreamfinity.dsgl.core.portal.PortalDismissPolicy
+import org.dreamfinity.dsgl.core.portal.PortalInputPolicy
+import org.dreamfinity.dsgl.core.portal.PortalPointerRegion
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -236,7 +236,7 @@ class SelectPortalControllerTests {
         val controller =
             SelectPortalController(
                 engine = engine,
-                ownerScope = OverlayOwnerScope.Application,
+                ownerDomain = ScreenDomainId.Application,
                 entryId = "test.select",
             )
         val model =

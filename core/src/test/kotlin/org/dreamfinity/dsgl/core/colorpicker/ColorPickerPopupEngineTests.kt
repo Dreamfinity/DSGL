@@ -3,8 +3,8 @@ package org.dreamfinity.dsgl.core.colorpicker
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -444,14 +444,14 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
-    fun `app-owned pipette emits transient overlay commands in application layer contract`() {
+    fun `app-owned pipette emits transient portal commands in application portal contract`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner-app"
         engine.onFrame(900, 700)
         engine.open(
             ColorPickerPopupRequest(
                 owner = owner,
-                ownerScope = OverlayOwnerScope.Application,
+                ownerDomain = ScreenDomainId.Application,
                 anchorRect = Rect(120, 80, 18, 18),
                 state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
             ),
@@ -460,26 +460,26 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
         assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
 
-        val overlay = mutableListOf<RenderCommand>()
-        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+        val portalCommands = mutableListOf<RenderCommand>()
+        engine.appendEyedropperPortalCommands(900, 700, portalCommands)
 
-        assertTrue(overlay.isNotEmpty())
-        assertEquals(OverlayOwnerScope.Application, engine.debugActiveOwnerScope())
+        assertTrue(portalCommands.isNotEmpty())
+        assertEquals(ScreenDomainId.Application, engine.debugActiveOwnerDomain())
         assertEquals(
             ScreenDomainSurfaces.ApplicationPortal,
-            ScreenDomainSurfaces.portalSurfaceForOwner(engine.debugActiveOwnerScope()!!),
+            ScreenDomainSurfaces.portalSurfaceForDomain(engine.debugActiveOwnerDomain()!!),
         )
     }
 
     @Test
-    fun `system-owned pipette emits transient overlay commands in system layer contract`() {
+    fun `system-owned pipette emits transient portal commands in system portal contract`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner-system"
         engine.onFrame(900, 700)
         engine.open(
             ColorPickerPopupRequest(
                 owner = owner,
-                ownerScope = OverlayOwnerScope.System,
+                ownerDomain = ScreenDomainId.System,
                 anchorRect = Rect(120, 80, 18, 18),
                 state = ColorPickerState(color = RgbaColor.WHITE, closeOnSelect = false),
             ),
@@ -488,14 +488,14 @@ class ColorPickerPopupEngineTests {
         assertTrue(engine.handleMouseDown(layout.pipetteRect.x + 2, layout.pipetteRect.y + 2, MouseButton.LEFT))
         assertTrue(engine.handleMouseMove(layout.pipetteRect.x + 24, layout.pipetteRect.y + 24))
 
-        val overlay = mutableListOf<RenderCommand>()
-        engine.appendEyedropperOverlayCommands(900, 700, overlay)
+        val portalCommands = mutableListOf<RenderCommand>()
+        engine.appendEyedropperPortalCommands(900, 700, portalCommands)
 
-        assertTrue(overlay.isNotEmpty())
-        assertEquals(OverlayOwnerScope.System, engine.debugActiveOwnerScope())
+        assertTrue(portalCommands.isNotEmpty())
+        assertEquals(ScreenDomainId.System, engine.debugActiveOwnerDomain())
         assertEquals(
             ScreenDomainSurfaces.SystemPortal,
-            ScreenDomainSurfaces.portalSurfaceForOwner(engine.debugActiveOwnerScope()!!),
+            ScreenDomainSurfaces.portalSurfaceForDomain(engine.debugActiveOwnerDomain()!!),
         )
     }
 
@@ -573,7 +573,7 @@ class ColorPickerPopupEngineTests {
     }
 
     @Test
-    fun `opened popup appends overlay commands after frame sync`() {
+    fun `opened popup appends portal commands after frame sync`() {
         val engine = ColorPickerPopupEngine()
         val owner = "owner"
         engine.open(
@@ -587,7 +587,7 @@ class ColorPickerPopupEngineTests {
         engine.onFrame(900, 700)
 
         val out = ArrayList<RenderCommand>()
-        engine.appendOverlayCommands(out)
+        engine.appendPortalCommands(out)
 
         assertTrue(out.isNotEmpty())
         assertTrue(out.any { it is RenderCommand.DrawText && it.text == "Popup Test" })
@@ -723,15 +723,15 @@ class ColorPickerPopupEngineTests {
             state = ColorPickerState(RgbaColor.WHITE),
         )
         manager.open(
-            ownerScope = OverlayOwnerScope.System,
+            ownerDomain = ScreenDomainId.System,
             anchorRect = Rect(20, 20, 10, 10),
             title = "System",
             state = ColorPickerState(RgbaColor.WHITE),
         )
 
         assertEquals(2, fakeService.opened.size)
-        assertEquals(OverlayOwnerScope.Application, fakeService.opened[0].ownerScope)
-        assertEquals(OverlayOwnerScope.System, fakeService.opened[1].ownerScope)
+        assertEquals(ScreenDomainId.Application, fakeService.opened[0].ownerDomain)
+        assertEquals(ScreenDomainId.System, fakeService.opened[1].ownerDomain)
     }
 
     private class FakeColorPickerPortalService : ColorPickerPopupPortalService {

@@ -4,19 +4,19 @@ import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.PortalDismissPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalEntry
-import org.dreamfinity.dsgl.core.overlay.PortalEntryBounds
-import org.dreamfinity.dsgl.core.overlay.PortalEntryId
-import org.dreamfinity.dsgl.core.overlay.PortalEntryOrder
-import org.dreamfinity.dsgl.core.overlay.PortalEntryPlacement
-import org.dreamfinity.dsgl.core.overlay.PortalEntryState
-import org.dreamfinity.dsgl.core.overlay.PortalFocusPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalHost
-import org.dreamfinity.dsgl.core.overlay.PortalInputPolicy
-import org.dreamfinity.dsgl.core.overlay.PortalPointerDispatch
-import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.PortalDismissPolicy
+import org.dreamfinity.dsgl.core.portal.PortalEntry
+import org.dreamfinity.dsgl.core.portal.PortalEntryBounds
+import org.dreamfinity.dsgl.core.portal.PortalEntryId
+import org.dreamfinity.dsgl.core.portal.PortalEntryOrder
+import org.dreamfinity.dsgl.core.portal.PortalEntryPlacement
+import org.dreamfinity.dsgl.core.portal.PortalEntryState
+import org.dreamfinity.dsgl.core.portal.PortalFocusPolicy
+import org.dreamfinity.dsgl.core.portal.PortalHost
+import org.dreamfinity.dsgl.core.portal.PortalInputPolicy
+import org.dreamfinity.dsgl.core.portal.PortalPointerDispatch
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
 import org.dreamfinity.dsgl.core.render.RenderCommand
 
 internal class ColorPickerPortalController(
@@ -129,7 +129,7 @@ private class ColorPickerPortalEntry(
             return emptyList()
         }
         val commands = ArrayList<RenderCommand>()
-        engine.appendOverlayCommands(commands)
+        engine.appendPortalCommands(commands)
         syncActivePlacement()
         return commands
     }
@@ -195,5 +195,5 @@ private class ColorPickerPortalEntry(
     }
 
     val isApplicationPopupOpen: Boolean
-        get() = engine.isOpen() && engine.debugActiveOwnerScope() == OverlayOwnerScope.Application
+        get() = engine.isOpen() && engine.debugActiveOwnerDomain() == ScreenDomainId.Application
 }

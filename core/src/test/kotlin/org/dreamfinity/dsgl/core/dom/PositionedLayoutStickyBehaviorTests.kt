@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
@@ -591,7 +591,7 @@ class PositionedLayoutStickyBehaviorTests {
         tree.render(ctx, 220, 120)
         tree.paint(ctx)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
@@ -649,7 +649,7 @@ class PositionedLayoutStickyBehaviorTests {
         tree.render(ctx, 220, 120)
         tree.paint(ctx)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
@@ -722,7 +722,7 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.overlayHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(rect, highlight.borderRect)
     }
@@ -766,7 +766,7 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.overlayHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(visibleRect, highlight.borderRect)
     }

@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.MouseButton
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
 import org.dreamfinity.dsgl.core.style.AlignItems
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection

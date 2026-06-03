@@ -8,7 +8,7 @@ import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
@@ -261,7 +261,7 @@ class RangeInputScrollFastPathTests {
         val tree = DomTree(root)
         tree.render(ctx, 420, 260)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return Fixture(
             tree = tree,
             root = root,
@@ -320,7 +320,7 @@ class RangeInputScrollFastPathTests {
         val tree = DomTree(root)
         tree.render(ctx, 520, 320)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return NestedFixture(
             tree = tree,
             root = root,
@@ -379,7 +379,7 @@ class RangeInputScrollFastPathTests {
         val viewport: ContainerNode,
         val range: RangeInputNode,
         val sticky: ContainerNode?,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
         val baseRangeY: Int,
         val baseStickyY: Int,
     )
@@ -390,7 +390,7 @@ class RangeInputScrollFastPathTests {
         val outer: ContainerNode,
         val inner: ContainerNode,
         val range: RangeInputNode,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
         val baseRangeY: Int,
     )
 }

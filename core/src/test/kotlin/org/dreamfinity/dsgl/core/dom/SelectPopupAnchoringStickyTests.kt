@@ -7,8 +7,8 @@ import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.DomainPortalServices
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.selectModel
 import org.dreamfinity.dsgl.core.style.Overflow
@@ -203,7 +203,7 @@ class SelectPopupAnchoringStickyTests {
         val tree = DomTree(root)
         tree.render(ctx, viewportWidth, viewportHeight)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return Fixture(
             tree = tree,
             scroller = scroller,
@@ -237,7 +237,7 @@ class SelectPopupAnchoringStickyTests {
         val scroller: ContainerNode,
         val select: SelectNode,
         val ownerKey: String,
-        val router: LayerDomInputRouter,
+        val router: SurfaceDomInputRouter,
     )
 
     private data class PopupGeometry(
