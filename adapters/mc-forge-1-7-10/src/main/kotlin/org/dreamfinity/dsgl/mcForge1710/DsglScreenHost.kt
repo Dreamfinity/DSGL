@@ -31,6 +31,7 @@ import org.dreamfinity.dsgl.core.overlay.DomainSurfaceHost
 import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurface
 import org.dreamfinity.dsgl.core.overlay.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.overlay.appendDndGhostPortalCommands
 import org.dreamfinity.dsgl.core.overlay.appendPortalOverlayCommands
 import org.dreamfinity.dsgl.core.overlay.captureColorPickerEyedropperSample
 import org.dreamfinity.dsgl.core.overlay.closeFloatingPortals
@@ -666,13 +667,12 @@ abstract class DsglScreenHost(
         if (appOverlayRenderEnabled) {
             applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
             if (!applicationOverlayHost.hasActiveModalPortal()) {
-                DndRuntime.engine.appendPlaceholderCommands(applicationOverlayCommandsBuffer)
-                DndRuntime.engine.appendOverlayCommands(
-                    tree.root,
-                    measureContext,
-                    lastWidth,
-                    lastHeight,
-                    applicationOverlayCommandsBuffer,
+                applicationOverlayHost.appendDndGhostPortalCommands(
+                    root = tree.root,
+                    measureContext = measureContext,
+                    viewportWidth = lastWidth,
+                    viewportHeight = lastHeight,
+                    out = applicationOverlayCommandsBuffer,
                 )
             }
             applicationOverlayHost.appendPortalOverlayCommands(

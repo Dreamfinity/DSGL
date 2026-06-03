@@ -5,6 +5,8 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPopupEngine
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerPortalController
 import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalController
 import org.dreamfinity.dsgl.core.contextmenu.ContextMenuEngine
+import org.dreamfinity.dsgl.core.dnd.DndEngine
+import org.dreamfinity.dsgl.core.dnd.DndRuntime
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
@@ -20,6 +22,7 @@ class ApplicationOverlayHost(
     contextMenuEngine: ContextMenuEngine = DomainPortalServices.applicationContextMenuEngine,
     selectEngine: SelectEngine = DomainPortalServices.applicationSelectEngine,
     colorPickerEngine: ColorPickerPopupEngine = DomainPortalServices.applicationColorPickerEngine,
+    dndEngine: DndEngine = DndRuntime.engine,
 ) : DomainSurfaceHost {
     override val surface: ScreenDomainSurface = ScreenDomainSurfaces.ApplicationPortal
 
@@ -46,6 +49,8 @@ class ApplicationOverlayHost(
     internal val modalPortal: ModalPortalController = ModalPortalController()
     internal val floatingWindowPortal: ApplicationFloatingWindowPortalController =
         ApplicationFloatingWindowPortalController()
+    internal val dndGhostPortal: ApplicationDndGhostPortalController =
+        ApplicationDndGhostPortalController(dndEngine)
     private var modalPortalWasActive: Boolean = false
 
     override fun onInputFrame(viewportWidth: Int, viewportHeight: Int) {
@@ -114,6 +119,7 @@ class ApplicationOverlayHost(
         applicationColorPickerPortal.close()
         modalPortal.close()
         floatingWindowPortal.clearRefs()
+        dndGhostPortal.clearRefs()
         modalPortalWasActive = false
     }
 
@@ -153,6 +159,16 @@ fun ApplicationOverlayHost.appendPortalOverlayCommands(
     applicationColorPickerPortal.appendCommands(measureContext, viewportWidth, viewportHeight, out)
 }
 
+fun ApplicationOverlayHost.appendDndGhostPortalCommands(
+    root: DOMNode,
+    measureContext: UiMeasureContext,
+    viewportWidth: Int,
+    viewportHeight: Int,
+    out: MutableList<RenderCommand>,
+) {
+    dndGhostPortal.appendCommands(root, measureContext, viewportWidth, viewportHeight, out)
+}
+
 fun ApplicationOverlayHost.closeFloatingPortals() {
     contextMenuPortal.close()
     applicationSelectPortal.close()
@@ -180,6 +196,8 @@ fun ApplicationOverlayHost.toggleFloatingWindowDemo(anchorX: Int, anchorY: Int) 
 }
 
 fun ApplicationOverlayHost.isFloatingWindowDemoOpen(): Boolean = floatingWindowPortal.open
+
+internal fun ApplicationOverlayHost.debugDndGhostPortalState(): PortalEntryState = dndGhostPortal.debugState()
 
 fun ApplicationOverlayHost.hasDomPointerTargetAt(mouseX: Int, mouseY: Int): Boolean =
     domInputRouter.hasPointerTargetAt(mouseX, mouseY)
@@ -244,6 +262,114 @@ internal interface PortalPointerDispatch {
     fun handleMouseUp(mouseX: Int, mouseY: Int, button: MouseButton): Boolean
 
     fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean
+}
+
+internal class ApplicationDndGhostPortalController(
+    private val engine: DndEngine,
+) {
+    private val portalHost: PortalHost = PortalHost(ScreenDomainSurfaces.ApplicationPortal)
+    private val entry: ApplicationDndGhostPortalEntry = ApplicationDndGhostPortalEntry(engine)
+
+    init {
+        portalHost.register(entry)
+    }
+
+    fun appendCommands(
+        root: DOMNode,
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        out: MutableList<RenderCommand>,
+    ) {
+        entry.updatePaintContext(
+            root = root,
+            measureContext = measureContext,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+        )
+        out += portalHost.paint(measureContext)
+    }
+
+    fun clearRefs() {
+        entry.clearRefs()
+    }
+
+    internal fun debugState(): PortalEntryState = entry.state
+}
+
+private class ApplicationDndGhostPortalEntry(
+    private val engine: DndEngine,
+) : PortalEntry {
+    override val state: PortalEntryState =
+        PortalEntryState(
+            id = PortalEntryId("application.dnd-ghost"),
+            ownerToken = engine,
+            surface = ScreenDomainSurfaces.ApplicationPortal,
+            order = PortalEntryOrder(zIndex = 80),
+            dismissPolicy = PortalDismissPolicy.None,
+            inputPolicy = PortalInputPolicy.None,
+            focusPolicy = PortalFocusPolicy.Preserve,
+        )
+    override val node: DOMNode? = null
+    private var root: DOMNode? = null
+    private var measureContext: UiMeasureContext? = null
+    private var viewportWidth: Int = 1
+    private var viewportHeight: Int = 1
+
+    fun updatePaintContext(
+        root: DOMNode,
+        measureContext: UiMeasureContext,
+        viewportWidth: Int,
+        viewportHeight: Int,
+    ) {
+        this.root = root
+        this.measureContext = measureContext
+        this.viewportWidth = viewportWidth.coerceAtLeast(1)
+        this.viewportHeight = viewportHeight.coerceAtLeast(1)
+        syncActivePlacement()
+    }
+
+    override fun paint(ctx: UiMeasureContext): List<RenderCommand> {
+        val activeRoot = root
+        if (activeRoot == null || !engine.isDragging) {
+            state.deactivate()
+            return emptyList()
+        }
+        syncActivePlacement()
+        val commands = ArrayList<RenderCommand>()
+        engine.appendPlaceholderCommands(commands)
+        engine.appendOverlayCommands(
+            root = activeRoot,
+            ctx = measureContext ?: ctx,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            out = commands,
+        )
+        return commands
+    }
+
+    override fun clearRefs() {
+        root = null
+        measureContext = null
+        state.deactivate()
+    }
+
+    private fun syncActivePlacement() {
+        if (!engine.isDragging) {
+            state.deactivate()
+            return
+        }
+        state.activate(
+            PortalEntryPlacement(
+                anchorBounds = null,
+                bounds =
+                    PortalEntryBounds(
+                        viewportBounds = Rect(0, 0, viewportWidth, viewportHeight),
+                        entryBounds = Rect(0, 0, viewportWidth, viewportHeight),
+                    ),
+            ),
+        )
+    }
 }
 
 internal class ContextMenuPortalController(
