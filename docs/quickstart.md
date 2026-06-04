@@ -144,10 +144,10 @@ object DsglClientHotkeys {
 
 ![img](images/quickstart-basic-screen.png)
 
-!!! note "Small overlay panel"
+!!! note "Debug domain panel"
 
-    You might mention a small overlay panel in the left bottom edge. It has debug-only functions and some 
-    information about the current window (overlays settings and immediate+sliding window FPS counter). 
+    You might notice a small debug panel in the left bottom edge. It has debug-only functions and some
+    information about the current window (domain-surface settings and immediate+sliding window FPS counter).
     It will be removed in the release (or at least hidden by default).
 
 ## 5) Compose reusable components

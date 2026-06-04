@@ -57,9 +57,10 @@ This is intentionally narrower than browser CSS grid.
 
 Node is excluded from layout/render traversal and state like hover/active/focus/open is reset for that node.
 
-### Overlay stack container (DSL helper)
+### Overlapping children
 
-`overlay { ... }` uses a `ContainerNode` with `stackLayout=true`.
+`div({ overlapChildren = true }) { ... }` uses a `ContainerNode` mode where direct children share one content area
+instead of flowing as block/flex/grid/inline items.
 
 - children share the same content area
 - child `align` controls placement inside that area
@@ -68,8 +69,9 @@ Node is excluded from layout/render traversal and state like hover/active/focus/
 Example:
 
 ```kotlin { .kotlin .copy .select }
-overlay({
-    key = "hud.layer"
+div({
+    key = "hud.overlap"
+    overlapChildren = true
     style = {
         width = 100.percent
         height = 100.percent

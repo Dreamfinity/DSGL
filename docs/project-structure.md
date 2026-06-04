@@ -34,14 +34,14 @@
 - `src/main/kotlin/org/dreamfinity/dsgl/core/dom/`
   DOM node implementations, layout models, reconcile helpers, overflow/positioning behaviour.
 
-- `src/main/kotlin/org/dreamfinity/dsgl/core/overlay/`
-  Overlay layering/contracts and host-layer plumbing.
+- `src/main/kotlin/org/dreamfinity/dsgl/core/portal/`
+  Domain-surface and portal runtime contracts, portal hosts, and floating UI helpers.
 
 - `src/main/kotlin/org/dreamfinity/dsgl/core/components/`, `select/`, `contextmenu/`, `colorpicker/`, `dnd/`
   Higher-level public helpers and advanced interaction systems.
 
 - `src/test/kotlin/...`
-  Main regression coverage (hooks, layout, style, overlay/input, helper systems).
+  Main regression coverage (hooks, layout, style, domain/portal input, helper systems).
 
 ## `adapters/mc-forge-1-7-10/` structure
 
@@ -106,5 +106,5 @@
 - DSL/API behaviour: start in `core/.../Dsl.kt` and relevant `core/hooks` or component package.
 - Runtime frame behaviour: start in `adapters/mc-forge-1-7-10/.../DsglScreenHost.kt` and `core/DomTree.kt`.
 - Style parsing/application: start in `core/style/`.
-- Overlay routing/ordering: start in `core/overlay/` plus host integration in `DsglScreenHost`.
+- Domain/portal routing and ordering: start in `core/portal/` plus host integration in `DsglScreenHost`.
 - Demo regressions/examples: `adapters/mc-forge-1-7-10/demo/src/main/kotlin/.../demo/sections`.

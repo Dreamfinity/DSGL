@@ -12,14 +12,17 @@ These areas are used across core + demo and have broad test coverage:
 - stylesheet loading and style application pipeline (`.dss` + inline style)
 - primary layout modes in current model (`block`, `inline`, `flex`, `grid`, `none`) and positioning (`static`,
   `relative`, `absolute`, `fixed`, `sticky`)
-- overlay layer ordering contract used by host/runtime (
-  `application root -> application overlay -> system overlay -> debug`)
+- domain surface ordering contract used by host/runtime (
+  `Application root -> Application portal -> System root -> System portal -> Debug root -> Debug portal`)
 
 ## Experimental
 
-- drag-and-drop/sortable ecosystem (`useDraggable`, `useDroppable`, `useSortable`, monitor callbacks)
-- color picker flows (especially popup/eyedropper interactions across overlay ownership)
+- drag-and-drop/sortable ecosystem (`useDraggable`, `useDroppable`, `useSortable`, monitor callbacks); Application-owned
+  drag ghosts render through Application portal ownership, while System/Debug drag visuals remain future domain-owned
+  cases
+- color picker flows (especially popup/eyedropper interactions across domain portal ownership)
 - hot-reload integration path (stable enough for local development, but dependent on external agent/build workflow)
+- Debug-owned select/dropdown portal support is intentionally unsupported until Debug UI needs select/dropdown components
 
 These areas are public and tested, but still advanced and more likely to evolve than baseline DSL/state/style/layout
 surfaces.
@@ -28,10 +31,10 @@ surfaces.
 
 Do not treat these as extension contracts:
 
-- `org.dreamfinity.dsgl.core.*.internal.*` packages (modal internals, inspector internals, overlay internals,
+- `org.dreamfinity.dsgl.core.*.internal.*` packages (modal internals, inspector internals, portal/runtime internals,
   color-picker internals)
-- runtime plumbing classes such as `HotReloadBridge`, low-level overlay hosts, internal engine state holders
-- system/debug overlay internals and inspector implementation nodes
+- runtime plumbing classes such as `HotReloadBridge`, low-level portal hosts, internal engine state holders
+- system/debug domain internals and inspector implementation nodes
 
 If you rely on these directly, expect breakage across normal development changes.
 
@@ -51,7 +54,7 @@ If you rely on these directly, expect breakage across normal development changes
 
 - direct runtime mounting/reconcile internals as a custom-component authoring mechanism
 - low-level JVMTI/Rust hot-reload internals as a stable contract
-- generalized overlay framework internals behind modal/select/context-menu convenience DSLs
+- generalized portal/runtime internals behind modal/select/context-menu convenience DSLs
 
 Use documented DSL composition patterns as the supported extension model:
 

@@ -75,15 +75,17 @@ div({
 }
 ```
 
-### `overlay(...)`
+### `div({ overlapChildren = true })`
 
-Container for overlapping children (stack-like behaviour).
+Container mode for overlapping direct children. This is still a normal `div`; the flag makes direct children share one
+content area instead of flowing one after another.
 
 Builder shape:
 
 ```kotlin { .kotlin .copy .select }
-overlay({
-    key = "overlay.layer"
+div({
+    key = "overlap.example"
+    overlapChildren = true
     style = { width = 100.percent }
 }) {
     div({ style = { margin(8.px, 0.px, 0.px, 8.px) } }) { text("Floating badge") }
@@ -226,6 +228,7 @@ var currentValue by useState<String?>(null)
 select({
     key = "example.select"
     value = currentValue
+    ownerDomain = ScreenDomainId.Application
     onValueChange = { event -> currentValue = event.value }
 }) {
     placeholder("Choose one")
@@ -241,7 +244,7 @@ select({
 Caveats:
 
 - popup behaviour is provided by domain portal services; this API is the supported convenience entrypoint.
-- use `ownerScope = OverlayOwnerScope.System` when a select is hosted by system-owned UI (for example inspector/system tools).
+- use `ownerDomain = ScreenDomainId.System` when a select is hosted by system-owned UI (for example inspector/system tools).
 - keyboard and wheel behaviour are implemented and covered by `SelectEngineTests`.
 
 ### `colorPicker(...)` and `colorPickerPopup(...)`
@@ -274,7 +277,7 @@ colorPickerPopup({
 
 ## Higher-level helper DSLs
 
-These are exposed conveniences for common UI workflows. They are not documented as a generalized public overlay
+These are exposed conveniences for common UI workflows. They are not documented as a generalized public portal/runtime
 framework contract.
 
 ### Modal helpers

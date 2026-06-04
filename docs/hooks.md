@@ -533,6 +533,6 @@ Persistence across rebuilds:
 - For repeated unkeyed sibling component calls, expect ordinal fallback semantics and position-based rebinding on
   reorder.
 - Use `by` for storage-backed hooks.
-- Treat DnD hooks as advanced descriptor APIs, not as a generic public overlay framework.
+- Treat DnD hooks as advanced descriptor APIs, not as a generic public portal/runtime framework.
 - For runtime behaviour details around rebuild triggers, see [State and reactivity](state-reactivity.md).
 
