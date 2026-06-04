@@ -14,6 +14,9 @@ pluginManagement {
     if (isAdapterEnabled("MinecraftForge1710")) {
         includeBuild("adapters/mc-forge-1-7-10/adapter-build-logic")
     }
+    if (isAdapterEnabled("MinecraftNeoforge1211")) {
+        includeBuild("adapters/mc-neoforge-1-21-1/adapter-build-logic")
+    }
 }
 
 rootProject.name = "dsgl"
@@ -23,4 +26,8 @@ include(":core")
 if (isAdapterEnabled("MinecraftForge1710")) {
     include(":adapters:mc-forge-1-7-10")
     include(":adapters:mc-forge-1-7-10:demo")
+}
+if (isAdapterEnabled("MinecraftNeoforge1211")) {
+    include(":adapters:mc-neoforge-1-21-1")
+    include(":adapters:mc-neoforge-1-21-1:demo")
 }
