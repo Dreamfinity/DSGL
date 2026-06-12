@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.dom.reconcile
 
-import org.dreamfinity.dsgl.core.dsl.TextProps
 import org.dreamfinity.dsgl.core.dom.elements.TextNode
+import org.dreamfinity.dsgl.core.dsl.TextProps
 import org.dreamfinity.dsgl.core.dsl.text
 import org.dreamfinity.dsgl.core.dsl.ui
 import kotlin.test.Test
@@ -25,20 +25,30 @@ class TextSourceReconcileTests {
     @Test
     fun `dynamic text updates on reconcile without replacing text node`() {
         var counter = 0
-        val current = ui {
-            text("Count=$counter")
-        }
-        val retainedBefore = assertIs<TextNode>(current.root.children.single())
+        val current =
+            ui {
+                text("Count=$counter")
+            }
+        val retainedBefore =
+            assertIs<TextNode>(
+                current.root.children
+                    .single(),
+            )
         assertEquals("Count=0", retainedBefore.text)
 
         counter = 7
-        val next = ui {
-            text("Count=$counter")
-        }
+        val next =
+            ui {
+                text("Count=$counter")
+            }
 
         current.reconcileWith(next)
 
-        val retainedAfter = assertIs<TextNode>(current.root.children.single())
+        val retainedAfter =
+            assertIs<TextNode>(
+                current.root.children
+                    .single(),
+            )
         assertSame(retainedBefore, retainedAfter)
         assertEquals("Count=7", retainedAfter.text)
     }

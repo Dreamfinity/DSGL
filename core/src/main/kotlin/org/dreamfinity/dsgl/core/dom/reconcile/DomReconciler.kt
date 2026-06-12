@@ -9,12 +9,12 @@ data class DomReconcileResult(
     val reusedNodes: Int,
     val insertedNodes: Int,
     val removedNodes: Int,
-    val replacedSubtrees: Int
+    val replacedSubtrees: Int,
 )
 
 private data class ChildIdentity(
     val key: Any,
-    val type: Class<out DOMNode>
+    val type: Class<out DOMNode>,
 )
 
 private class Counters {
@@ -28,19 +28,20 @@ object DomReconciler {
     fun reconcile(currentRoot: DOMNode, nextRoot: DOMNode): DomReconcileResult {
         val detached = ArrayList<DOMNode>(8)
         val counters = Counters()
-        val mergedRoot = reconcileNodeOrReplace(
-            current = currentRoot,
-            template = nextRoot,
-            detached = detached,
-            counters = counters
-        )
+        val mergedRoot =
+            reconcileNodeOrReplace(
+                current = currentRoot,
+                template = nextRoot,
+                detached = detached,
+                counters = counters,
+            )
         return DomReconcileResult(
             root = mergedRoot,
             detachedRoots = detached,
             reusedNodes = counters.reused,
             insertedNodes = counters.inserted,
             removedNodes = counters.removed,
-            replacedSubtrees = counters.replaced
+            replacedSubtrees = counters.replaced,
         )
     }
 
@@ -48,7 +49,7 @@ object DomReconciler {
         current: DOMNode,
         template: DOMNode,
         detached: MutableList<DOMNode>,
-        counters: Counters
+        counters: Counters,
     ): DOMNode {
         if (!canReuse(current, template)) {
             counters.replaced += 1
@@ -68,7 +69,7 @@ object DomReconciler {
         current: DOMNode,
         template: DOMNode,
         detached: MutableList<DOMNode>,
-        counters: Counters
+        counters: Counters,
     ) {
         if (current.children.isEmpty() && template.children.isEmpty()) return
 
@@ -92,12 +93,13 @@ object DomReconciler {
                 counters.inserted += countSubtree(templateChild)
             } else {
                 consumed[matchIndex] = true
-                val merged = reconcileNodeOrReplace(
-                    current = oldChildren[matchIndex],
-                    template = templateChild,
-                    detached = detached,
-                    counters = counters
-                )
+                val merged =
+                    reconcileNodeOrReplace(
+                        current = oldChildren[matchIndex],
+                        template = templateChild,
+                        detached = detached,
+                        counters = counters,
+                    )
                 merged.parent = current
                 reconciledChildren.add(merged)
             }
@@ -119,19 +121,13 @@ object DomReconciler {
         template: DOMNode,
         oldChildren: List<DOMNode>,
         consumed: BooleanArray,
-        keyed: Map<ChildIdentity, ArrayDeque<Int>>
+        keyed: Map<ChildIdentity, ArrayDeque<Int>>,
     ): Int? {
         val templateKey = template.key
         if (templateKey != null) {
             val identity = ChildIdentity(templateKey, template.javaClass)
             val queue = keyed[identity] ?: return null
-            while (queue.isNotEmpty()) {
-                val candidate = queue.removeFirst()
-                if (!consumed[candidate]) {
-                    return candidate
-                }
-            }
-            return null
+            return generateSequence { queue.removeFirstOrNull() }.firstOrNull { !consumed[it] }
         }
 
         if (index < oldChildren.size) {
@@ -141,15 +137,11 @@ object DomReconciler {
             }
         }
 
-        for (candidateIndex in oldChildren.indices) {
-            if (consumed[candidateIndex]) continue
-            val candidate = oldChildren[candidateIndex]
-            if (candidate.key != null) continue
-            if (canReuse(candidate, template)) {
-                return candidateIndex
-            }
+        return oldChildren.indices.firstOrNull { candidateIndex ->
+            !consumed[candidateIndex] &&
+                oldChildren[candidateIndex].key == null &&
+                canReuse(oldChildren[candidateIndex], template)
         }
-        return null
     }
 
     private fun canReuse(current: DOMNode, template: DOMNode): Boolean {
@@ -158,12 +150,11 @@ object DomReconciler {
         return !isReplaceOnlyType(current)
     }
 
-    private fun isReplaceOnlyType(node: DOMNode): Boolean {
-        return node is CheckboxGroupNode ||
-                node is NumberInputNode ||
-                node is DateInputNode ||
-                node is RangeInputNode
-    }
+    private fun isReplaceOnlyType(node: DOMNode): Boolean =
+        node is CheckboxGroupNode ||
+            node is NumberInputNode ||
+            node is DateInputNode ||
+            node is RangeInputNode
 
     private fun syncNode(current: DOMNode, template: DOMNode) {
         current.syncBaseFrom(template)
@@ -230,6 +221,7 @@ object DomReconciler {
                 current.syncFrom(template)
             }
         }
+        current.syncCustomFrom(template)
     }
 
     private fun countSubtree(node: DOMNode): Int {

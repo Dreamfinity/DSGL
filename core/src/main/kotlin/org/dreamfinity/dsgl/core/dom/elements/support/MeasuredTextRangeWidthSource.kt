@@ -12,12 +12,12 @@ internal class MeasuredTextRangeWidthSource(
     private val fontSizePx: Int,
     private val baseFlags: TextStyleFlags,
     private val spans: List<ParsedTextSpan>,
-    private val ctx: UiMeasureContext
+    private val ctx: UiMeasureContext,
 ) {
     data class SpanWidthKey(
         val start: Int,
         val end: Int,
-        val flagsMask: Int
+        val flagsMask: Int,
     )
 
     data class CacheKey(
@@ -25,25 +25,27 @@ internal class MeasuredTextRangeWidthSource(
         val fontId: String?,
         val fontSizePx: Int,
         val baseFlagsMask: Int,
-        val spanWidthKey: List<SpanWidthKey>
+        val spanWidthKey: List<SpanWidthKey>,
     )
 
     private val rangeWidthCache: MutableMap<Long, Int> = HashMap()
     private val hasBoldContribution: Boolean = baseFlags.bold || spans.any { it.flags.bold }
 
-    val cacheKey: CacheKey = CacheKey(
-        backendFingerprint = backendFingerprint(ctx, fontId, fontSizePx),
-        fontId = fontId,
-        fontSizePx = fontSizePx,
-        baseFlagsMask = baseFlags.mask(),
-        spanWidthKey = spans.map { span ->
-            SpanWidthKey(
-                start = span.start,
-                end = span.end,
-                flagsMask = span.flags.mask()
-            )
-        }
-    )
+    val cacheKey: CacheKey =
+        CacheKey(
+            backendFingerprint = backendFingerprint(ctx, fontId, fontSizePx),
+            fontId = fontId,
+            fontSizePx = fontSizePx,
+            baseFlagsMask = baseFlags.mask(),
+            spanWidthKey =
+                spans.map { span ->
+                    SpanWidthKey(
+                        start = span.start,
+                        end = span.end,
+                        flagsMask = span.flags.mask(),
+                    )
+                },
+        )
 
     fun measureRange(startIndex: Int, endIndexExclusive: Int): Int {
         val safeStart = startIndex.coerceIn(0, plainText.length)
@@ -51,31 +53,32 @@ internal class MeasuredTextRangeWidthSource(
         if (safeEnd <= safeStart) return 0
         val key = packRange(safeStart, safeEnd)
         return rangeWidthCache.getOrPut(key) {
-            val baseWidth = ctx.measureTextRange(
-                text = plainText,
-                startIndex = safeStart,
-                endIndexExclusive = safeEnd,
-                fontId = fontId,
-                fontSize = fontSizePx
-            )
+            val baseWidth =
+                ctx.measureTextRange(
+                    text = plainText,
+                    startIndex = safeStart,
+                    endIndexExclusive = safeEnd,
+                    fontId = fontId,
+                    fontSize = fontSizePx,
+                )
             if (!hasBoldContribution) {
                 baseWidth
             } else {
-                val boldExtra = TextStyleMetrics.boldExtraPxForRangeInText(
-                    plainText = plainText,
-                    spans = spans,
-                    baseFlags = baseFlags,
-                    rangeStart = safeStart,
-                    rangeEnd = safeEnd
-                )
+                val boldExtra =
+                    TextStyleMetrics.boldExtraPxForRangeInText(
+                        plainText = plainText,
+                        spans = spans,
+                        baseFlags = baseFlags,
+                        rangeStart = safeStart,
+                        rangeEnd = safeEnd,
+                    )
                 baseWidth + boldExtra
             }
         }
     }
 
-    private fun packRange(start: Int, endExclusive: Int): Long {
-        return (start.toLong() shl 32) or (endExclusive.toLong() and 0xFFFF_FFFFL)
-    }
+    private fun packRange(start: Int, endExclusive: Int): Long =
+        (start.toLong() shl 32) or (endExclusive.toLong() and 0xFFFF_FFFFL)
 
     private fun TextStyleFlags.mask(): Int {
         var mask = 0

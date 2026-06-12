@@ -1,18 +1,17 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
+import org.dreamfinity.dsgl.core.dom.elements.*
 import org.dreamfinity.dsgl.core.dsl.*
-import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.style.TextWrap
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 private const val WRAP_SAMPLE_TEXT =
     "This sentence demonstrates style.textWrap on text and button labels inside a fixed-width panel."
 private const val WRAP_SAMPLE_WORD = "long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 private const val WRAP_TEXTAREA_SAMPLE =
-    "Textarea sample: long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ\nSecond line with spaces for normal wrapping."
+    "Textarea sample: long_unbroken_word_to_force_hard_break_1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ\n" +
+        "Second line with spaces for normal wrapping."
 
 fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
     val minWidth = 96
@@ -33,7 +32,7 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
         text("Text Wrap: wrap / nowrap")
         text(
             "Wrap keeps text inside panel width; NoWrap keeps one line and may overflow or clip.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -50,7 +49,7 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
                         textWrapNoWrap = !textWrapNoWrap
                         onInfo("TextWrap mode=${if (textWrapNoWrap) "nowrap" else "wrap"}")
                     }
-                }
+                },
             )
             button("Reset width", {
                 onMouseClick = {
@@ -64,7 +63,7 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
                 value = panelWidth.toLong(),
                 min = minWidth.toLong(),
                 max = maxWidth.toLong(),
-                step = 2
+                step = 2,
             ),
             {
                 key = "textWrap.width"
@@ -73,11 +72,11 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: panelWidth.toLong()
                     textWrapWidth = next.coerceIn(minWidth.toLong(), maxWidth.toLong())
                 }
-            }
+            },
         )
         text(
             "panelWidth=$panelWidth mode=${if (mode == TextWrap.Wrap) "wrap" else "nowrap"}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -89,9 +88,11 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
                 padding = 3.px
                 backgroundColor = 0xFF2B3542.toInt()
                 gap = 2.px
-                border { width = 1.px; color = 0xFF6F8298.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6F8298.toInt()
+                }
             }
-
         }) {
             text("Text node (static)", { style = { textWrap = mode } })
             text(WRAP_SAMPLE_TEXT, { style = { textWrap = mode } })
@@ -116,5 +117,3 @@ fun UiScope.textWrapSection(onInfo: (String) -> Unit) {
         }
     }
 }
-
-

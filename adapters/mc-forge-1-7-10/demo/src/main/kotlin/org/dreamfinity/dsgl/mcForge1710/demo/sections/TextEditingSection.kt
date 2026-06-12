@@ -1,13 +1,13 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.KeyCodes
 import org.dreamfinity.dsgl.core.event.KeyModifiers
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_OK
 
@@ -20,7 +20,7 @@ fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
     var textEditingSingleValue by useState("Edit this line")
     var textEditingPasswordValue by useState("secret42")
     var textEditingAreaValue by useState(
-        "Line 1: drag-select me\nLine 2: use Shift+Arrows\nLine 3: Ctrl/Cmd+C/V/X"
+        "Line 1: drag-select me\nLine 2: use Shift+Arrows\nLine 3: Ctrl/Cmd+C/V/X",
     )
     var textEditingSawSelectionDrag by useState(false)
     var textEditingSawShiftSelection by useState(false)
@@ -44,7 +44,7 @@ fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
         input(
             InputType.Text(
                 value = textEditingSingleValue,
-                placeholder = "Type and select text"
+                placeholder = "Type and select text",
             ),
             {
                 key = SINGLE_KEY
@@ -70,7 +70,7 @@ fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
                         onLogHook("textEditing.clipboard", event, "key=$SINGLE_KEY code=${event.keyCode}")
                     }
                 }
-            }
+            },
         )
         text("Single-line: caret + selection visible in control", {
             style = { color = DEMO_MUTED }
@@ -80,7 +80,7 @@ fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
         input(
             InputType.Password(
                 value = textEditingPasswordValue,
-                placeholder = "password"
+                placeholder = "password",
             ),
             {
                 key = PASSWORD_KEY
@@ -106,7 +106,7 @@ fun UiScope.textEditingSection(onLogHook: (String, Event, String?) -> Unit) {
                         onLogHook("textEditing.clipboard", event, "key=$PASSWORD_KEY code=${event.keyCode}")
                     }
                 }
-            }
+            },
         )
         text("Password: masked selection/caret behavior", {
             style = { color = DEMO_MUTED }
@@ -176,19 +176,17 @@ private fun UiScope.checklistLine(textValue: String, done: Boolean) {
     })
 }
 
-private fun isArrowLike(keyCode: Int): Boolean {
-    return keyCode == KeyCodes.LEFT ||
-            keyCode == KeyCodes.RIGHT ||
-            keyCode == KeyCodes.UP ||
-            keyCode == KeyCodes.DOWN ||
-            keyCode == KeyCodes.HOME ||
-            keyCode == KeyCodes.END
-}
+private fun isArrowLike(keyCode: Int): Boolean =
+    keyCode == KeyCodes.LEFT ||
+        keyCode == KeyCodes.RIGHT ||
+        keyCode == KeyCodes.UP ||
+        keyCode == KeyCodes.DOWN ||
+        keyCode == KeyCodes.HOME ||
+        keyCode == KeyCodes.END
 
-private fun isClipboardShortcut(keyCode: Int): Boolean {
-    return keyCode == KeyCodes.C ||
-            keyCode == KeyCodes.X ||
-            keyCode == KeyCodes.V ||
-            keyCode == KeyCodes.A ||
-            keyCode == KeyCodes.Z
-}
+private fun isClipboardShortcut(keyCode: Int): Boolean =
+    keyCode == KeyCodes.C ||
+        keyCode == KeyCodes.X ||
+        keyCode == KeyCodes.V ||
+        keyCode == KeyCodes.A ||
+        keyCode == KeyCodes.Z

@@ -104,17 +104,20 @@ If rules still do not affect node:
 - remember inline style has higher precedence than stylesheet rules
 - confirm pseudo-state (`:hover`, `:active`, etc.) is actually active at runtime
 
-## Overlay / popup input surprises
+## Portal / popup input surprises
 
-Input routing is layered, not flat:
+Input routing follows domain-surface priority, not a flat DOM tree:
 
-1. system overlay
-2. application overlay
-3. application DOM tree
+1. Debug portal
+2. Debug root
+3. System portal
+4. System root
+5. Application portal
+6. Application root
 
 Practical effect:
 
-- when a select/context menu/modal consumes pointer input, underlying app element will not receive that event
+- when a select/context menu/modal consumes pointer input from its owning portal, lower-priority surfaces will not receive that event
 - this is expected behaviour, not click-through failure
 
 Context menu caveat in current API:

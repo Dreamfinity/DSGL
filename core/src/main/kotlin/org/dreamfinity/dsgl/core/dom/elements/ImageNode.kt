@@ -12,17 +12,14 @@ class ImageNode(
     var url: String,
     var imageWidth: Int = 0,
     var imageHeight: Int = 0,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "img"
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(null)
 
     private fun measureWithConstraint(availableOuterWidth: Int?): Size {
         val contentLimit = resolvedContentLimit(availableOuterWidth)

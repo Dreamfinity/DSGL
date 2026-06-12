@@ -8,7 +8,7 @@ import kotlin.reflect.typeOf
 
 internal class MemoHookCell<T>(
     deps: List<Any?>,
-    value: T
+    value: T,
 ) {
     private var depsSnapshot: List<Any?> = deps
     private var cachedValue: T = value
@@ -24,112 +24,109 @@ internal class MemoHookCell<T>(
     fun read(): T = cachedValue
 }
 
-class MemoHookDelegate<T> @PublishedApi internal constructor(
-    private val window: DsglWindow,
-    private val hookName: String,
-    private val deps: List<Any?>,
-    private val compute: () -> T,
-    private val signature: HookSignature
-) {
-    private val runtime = window.hookRuntime()
-    private val bindingToken = runtime.registerStorageBackedHookCandidate(hookName)
-    private var boundCell: MemoHookCell<T>? = null
+class MemoHookDelegate<T>
+    @PublishedApi
+    internal constructor(
+        private val window: DsglWindow,
+        private val hookName: String,
+        private val deps: List<Any?>,
+        private val compute: () -> T,
+        private val signature: HookSignature,
+    ) {
+        private val runtime = window.hookRuntime()
+        private val bindingToken = runtime.registerStorageBackedHookCandidate(hookName)
+        private var boundCell: MemoHookCell<T>? = null
 
-    operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): MemoHookDelegate<T> {
-        runtime.markStorageBackedHookBound(bindingToken)
-        val resolved = runtime.resolveNamedTypedEntry(
-            kind = HookEntryKind.Memo,
-            delegateName = property.name,
-            signature = signature,
-            expectedRawType = MemoHookCell::class.java
-        ) {
-            MemoHookCell(deps = deps, value = compute())
+        operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): MemoHookDelegate<T> {
+            runtime.markStorageBackedHookBound(bindingToken)
+            val resolved =
+                runtime.resolveNamedTypedEntry(
+                    kind = HookEntryKind.Memo,
+                    delegateName = property.name,
+                    signature = signature,
+                    expectedRawType = MemoHookCell::class.java,
+                ) {
+                    MemoHookCell(deps = deps, value = compute())
+                }
+            resolved.value.sync(nextDeps = deps, compute = compute)
+            boundCell = resolved.value
+            return this
         }
-        resolved.value.sync(nextDeps = deps, compute = compute)
-        boundCell = resolved.value
-        return this
-    }
 
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
-        val resolved = boundCell
-        if (resolved != null) {
-            return resolved.read()
+        operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
+            val resolved = boundCell
+            if (resolved != null) {
+                return resolved.read()
+            }
+            runtime.failStorageBackedHookWithoutDelegate(hookName)
         }
-        runtime.failStorageBackedHookWithoutDelegate(hookName)
     }
-}
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T> UiScope.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> {
-    return createMemoHookDelegate(
+inline fun <reified T> UiScope.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> =
+    createMemoHookDelegate(
         window = requireHookOwnerWindow(),
         hookName = "useMemo",
         deps = deps.toList(),
         compute = compute,
-        signature = HookSignatures.memo(typeOf<T>())
+        signature = HookSignatures.memo(typeOf<T>()),
     )
-}
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T> UiScope.useMemo(noinline compute: () -> T): MemoHookDelegate<T> {
-    return createMemoHookDelegate(
+inline fun <reified T> UiScope.useMemo(noinline compute: () -> T): MemoHookDelegate<T> =
+    createMemoHookDelegate(
         window = requireHookOwnerWindow(),
         hookName = "useMemo",
         deps = emptyList(),
         compute = compute,
-        signature = HookSignatures.memo(typeOf<T>())
+        signature = HookSignatures.memo(typeOf<T>()),
     )
-}
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified F : Any> UiScope.useCallback(vararg deps: Any?, noinline factory: () -> F): MemoHookDelegate<F> {
-    return createMemoHookDelegate(
+inline fun <reified F : Any> UiScope.useCallback(vararg deps: Any?, noinline factory: () -> F): MemoHookDelegate<F> =
+    createMemoHookDelegate(
         window = requireHookOwnerWindow(),
         hookName = "useCallback",
         deps = deps.toList(),
         compute = factory,
-        signature = HookSignatures.memo(typeOf<F>())
+        signature = HookSignatures.memo(typeOf<F>()),
     )
-}
 
 @PublishedApi
 @OptIn(ExperimentalStdlibApi::class)
-internal inline fun <reified T> DsglWindow.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> {
-    return createMemoHookDelegate(
+internal inline fun <reified T> DsglWindow.useMemo(vararg deps: Any?, noinline compute: () -> T): MemoHookDelegate<T> =
+    createMemoHookDelegate(
         window = this,
         hookName = "useMemo",
         deps = deps.toList(),
         compute = compute,
-        signature = HookSignatures.memo(typeOf<T>())
+        signature = HookSignatures.memo(typeOf<T>()),
     )
-}
 
 @PublishedApi
 @OptIn(ExperimentalStdlibApi::class)
-internal inline fun <reified T> DsglWindow.useMemo(noinline compute: () -> T): MemoHookDelegate<T> {
-    return createMemoHookDelegate(
+internal inline fun <reified T> DsglWindow.useMemo(noinline compute: () -> T): MemoHookDelegate<T> =
+    createMemoHookDelegate(
         window = this,
         hookName = "useMemo",
         deps = emptyList(),
         compute = compute,
-        signature = HookSignatures.memo(typeOf<T>())
+        signature = HookSignatures.memo(typeOf<T>()),
     )
-}
 
 @PublishedApi
 @OptIn(ExperimentalStdlibApi::class)
 internal inline fun <reified F : Any> DsglWindow.useCallback(
     vararg deps: Any?,
-    noinline factory: () -> F
-): MemoHookDelegate<F> {
-    return createMemoHookDelegate(
+    noinline factory: () -> F,
+): MemoHookDelegate<F> =
+    createMemoHookDelegate(
         window = this,
         hookName = "useCallback",
         deps = deps.toList(),
         compute = factory,
-        signature = HookSignatures.memo(typeOf<F>())
+        signature = HookSignatures.memo(typeOf<F>()),
     )
-}
 
 @PublishedApi
 internal fun <T> createMemoHookDelegate(
@@ -137,13 +134,12 @@ internal fun <T> createMemoHookDelegate(
     hookName: String,
     deps: List<Any?>,
     compute: () -> T,
-    signature: HookSignature
-): MemoHookDelegate<T> {
-    return MemoHookDelegate(
+    signature: HookSignature,
+): MemoHookDelegate<T> =
+    MemoHookDelegate(
         window = window,
         hookName = hookName,
         deps = deps,
         compute = compute,
-        signature = signature
+        signature = signature,
     )
-}

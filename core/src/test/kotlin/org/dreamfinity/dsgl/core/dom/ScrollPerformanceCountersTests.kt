@@ -1,29 +1,32 @@
 package org.dreamfinity.dsgl.core.dom
 
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.KeyModifiers
 import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
 import org.dreamfinity.dsgl.core.style.StyleDeclarations
 import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.StyleExpression
 import org.dreamfinity.dsgl.core.style.StyleProperty
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ScrollPerformanceCountersTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -128,10 +131,11 @@ class ScrollPerformanceCountersTests {
     fun `guarded scroll visual fast path skips full rerender for visual-only scroll invalidation`() {
         val fixture = createScrollStickyFixture()
         val baseline = fixture.viewport.captureScrollSessionSnapshot()
-        val visualOnlySnapshot = baseline.copy(
-            displayedY = baseline.displayedY + 0.4,
-            resolvedY = baseline.resolvedY
-        )
+        val visualOnlySnapshot =
+            baseline.copy(
+                displayedY = baseline.displayedY + 0.4,
+                resolvedY = baseline.resolvedY,
+            )
         fixture.viewport.restoreScrollSessionSnapshot(visualOnlySnapshot)
 
         ScrollPerformanceCounters.resetForTests()
@@ -156,8 +160,11 @@ class ScrollPerformanceCountersTests {
     @Test
     fun `thumb-drag frame keeps sticky correct and remains visual-path only`() {
         val fixture = createScrollStickyFixture()
-        val visual = fixture.viewport.debugScrollbarVisualState().vertical
-            ?: error("Expected vertical scrollbar")
+        val visual =
+            fixture.viewport
+                .debugScrollbarVisualState()
+                .vertical
+                ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
         val dragY = startY + 26
@@ -179,8 +186,9 @@ class ScrollPerformanceCountersTests {
         assertTrue(counters.chunkTraversalCalls > 0L)
         assertTrue(counters.chunkRebuildCalls > 0L)
 
-        val visibleStickyRect = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
-            ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
+        val visibleStickyRect =
+            UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
+                ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
         assertEquals(0, visibleStickyRect.y)
         assertTrue(fixture.router.handleMouseUp(dragX, dragY, MouseButton.LEFT))
     }
@@ -204,8 +212,9 @@ class ScrollPerformanceCountersTests {
         val state = fixture.viewport.scrollContainerState()
         val expectedBaseY = fixture.stickyBaseTopY - state.scrollY
         val expectedVisibleY = maxOf(expectedBaseY, 0)
-        val visibleStickyRect = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
-            ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
+        val visibleStickyRect =
+            UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).visibleBorderRect
+                ?: UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.sticky).usedBorderRect
 
         assertEquals(1L, counters.guardedScrollVisualFastPathRuns)
         assertEquals(0L, counters.fullRerenderLayoutRuns)
@@ -221,42 +230,52 @@ class ScrollPerformanceCountersTests {
     @Test
     fun `local scroll invalidation refreshes only sticky nodes in affected subtree`() {
         val root = ContainerNode(key = "perf-narrow-root")
-        val leftViewport = ContainerNode(key = "perf-narrow-left").apply {
-            width = 160
-            height = 90
-            overflowY = Overflow.Auto
-        }.applyParent(root)
-        val rightViewport = ContainerNode(key = "perf-narrow-right").apply {
-            width = 160
-            height = 90
-            overflowY = Overflow.Auto
-        }.applyParent(root)
+        val leftViewport =
+            ContainerNode(key = "perf-narrow-left")
+                .apply {
+                    width = 160
+                    height = 90
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
+        val rightViewport =
+            ContainerNode(key = "perf-narrow-right")
+                .apply {
+                    width = 160
+                    height = 90
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
 
-        ContainerNode(key = "perf-narrow-left-sticky").apply {
-            width = 140
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }.applyParent(leftViewport)
-        ContainerNode(key = "perf-narrow-left-filler").apply {
-            width = 140
-            height = 320
-        }.applyParent(leftViewport)
+        ContainerNode(key = "perf-narrow-left-sticky")
+            .apply {
+                width = 140
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }.applyParent(leftViewport)
+        ContainerNode(key = "perf-narrow-left-filler")
+            .apply {
+                width = 140
+                height = 320
+            }.applyParent(leftViewport)
 
-        ContainerNode(key = "perf-narrow-right-sticky").apply {
-            width = 140
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }.applyParent(rightViewport)
-        ContainerNode(key = "perf-narrow-right-filler").apply {
-            width = 140
-            height = 320
-        }.applyParent(rightViewport)
+        ContainerNode(key = "perf-narrow-right-sticky")
+            .apply {
+                width = 140
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }.applyParent(rightViewport)
+        ContainerNode(key = "perf-narrow-right-filler")
+            .apply {
+                width = 140
+                height = 320
+            }.applyParent(rightViewport)
 
         val tree = DomTree(root)
         tree.render(ctx, 420, 220)
@@ -284,11 +303,12 @@ class ScrollPerformanceCountersTests {
     fun `layout-dirty scroll invalidation still falls back to full rerender`() {
         val fixture = createScrollStickyFixture()
         val baseline = fixture.viewport.captureScrollSessionSnapshot()
-        val layoutDirtySnapshot = baseline.copy(
-            targetY = baseline.targetY + 48,
-            displayedY = baseline.displayedY + 48.0,
-            resolvedY = baseline.resolvedY + 48
-        )
+        val layoutDirtySnapshot =
+            baseline.copy(
+                targetY = baseline.targetY + 48,
+                displayedY = baseline.displayedY + 48.0,
+                resolvedY = baseline.resolvedY + 48,
+            )
         fixture.viewport.restoreScrollSessionSnapshot(layoutDirtySnapshot)
 
         ScrollPerformanceCounters.resetForTests()
@@ -304,58 +324,65 @@ class ScrollPerformanceCountersTests {
 
     private fun createScrollStickyFixture(): ScrollStickyFixture {
         val root = ContainerNode(key = "perf-root")
-        val viewport = ContainerNode(key = "perf-scroll-viewport").apply {
-            width = 180
-            height = 100
-            overflowY = Overflow.Auto
-        }.applyParent(root)
-        val topSpacer = ContainerNode(key = "perf-top-spacer").apply {
-            width = 160
-            height = 32
-        }.applyParent(viewport)
+        val viewport =
+            ContainerNode(key = "perf-scroll-viewport")
+                .apply {
+                    width = 180
+                    height = 100
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
+        val topSpacer =
+            ContainerNode(key = "perf-top-spacer")
+                .apply {
+                    width = 160
+                    height = 32
+                }.applyParent(viewport)
 
-        val sticky = ContainerNode(key = "perf-sticky").apply {
-            width = 160
-            height = 24
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }.applyParent(viewport)
+        val sticky =
+            ContainerNode(key = "perf-sticky")
+                .apply {
+                    width = 160
+                    height = 24
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "sticky",
+                            StyleProperty.TOP to "0px",
+                        )
+                }.applyParent(viewport)
 
-        ContainerNode(key = "perf-filler").apply {
-            width = 160
-            height = 420
-        }.applyParent(viewport)
+        ContainerNode(key = "perf-filler")
+            .apply {
+                width = 160
+                height = 420
+            }.applyParent(viewport)
 
         val tree = DomTree(root)
         tree.render(ctx, 320, 220)
         tree.paint(ctx)
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         return ScrollStickyFixture(
             tree = tree,
             root = root,
             viewport = viewport,
             sticky = sticky,
             router = router,
-            stickyBaseTopY = topSpacer.height ?: 0
+            stickyBaseTopY = topSpacer.height ?: 0,
         )
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 
     private data class ScrollStickyFixture(
         val tree: DomTree,
         val root: ContainerNode,
         val viewport: ContainerNode,
         val sticky: ContainerNode,
-        val router: LayerDomInputRouter,
-        val stickyBaseTopY: Int
+        val router: SurfaceDomInputRouter,
+        val stickyBaseTopY: Int,
     )
 }

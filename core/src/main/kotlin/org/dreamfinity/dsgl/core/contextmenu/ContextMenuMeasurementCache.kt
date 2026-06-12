@@ -3,7 +3,7 @@ package org.dreamfinity.dsgl.core.contextmenu
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 
 class ContextMenuMeasurementCache(
-    private val maxEntries: Int = 192
+    private val maxEntries: Int = 192,
 ) {
     data class EntrySnapshot(
         val id: String?,
@@ -12,7 +12,7 @@ class ContextMenuMeasurementCache(
         val icon: String?,
         val hint: String?,
         val enabled: Boolean,
-        val checked: Boolean
+        val checked: Boolean,
     )
 
     data class Measurement(
@@ -25,7 +25,7 @@ class ContextMenuMeasurementCache(
         val maxLabelWidth: Int,
         val maxHintWidth: Int,
         val panelWidth: Int,
-        val indicatorWidth: Int
+        val indicatorWidth: Int,
     )
 
     data class Key(
@@ -33,14 +33,13 @@ class ContextMenuMeasurementCache(
         val styleHash: Int,
         val fontHash: Int,
         val dpiKey: Int,
-        val entriesHash: Int
+        val entriesHash: Int,
     )
 
     private val cache: MutableMap<Key, Measurement> =
         object : LinkedHashMap<Key, Measurement>(64, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, Measurement>?): Boolean {
-                return size > maxEntries
-            }
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, Measurement>?): Boolean =
+                size > maxEntries
         }
 
     var computeCount: Long = 0L
@@ -53,24 +52,26 @@ class ContextMenuMeasurementCache(
         fontId: String?,
         fontSize: Int?,
         ctx: UiMeasureContext,
-        dpiScale: Float
+        dpiScale: Float,
     ): Measurement {
         val snapshots = buildSnapshots(entries)
         val fingerprint = fingerprint(snapshots)
-        val key = Key(
-            menuToken = menuToken,
-            styleHash = style.hashCode(),
-            fontHash = 31 * (fontId?.hashCode() ?: 0) + (fontSize ?: 0),
-            dpiKey = (dpiScale * 1000f).toInt(),
-            entriesHash = fingerprint
-        )
+        val key =
+            Key(
+                menuToken = menuToken,
+                styleHash = style.hashCode(),
+                fontHash = 31 * (fontId?.hashCode() ?: 0) + (fontSize ?: 0),
+                dpiKey = (dpiScale * 1000f).toInt(),
+                entriesHash = fingerprint,
+            )
         synchronized(cache) {
             cache[key]?.let { return it }
         }
 
         computeCount += 1
-        val rowHeight = (ctx.fontHeight(fontId, fontSize) + style.rowPaddingY * 2)
-            .coerceAtLeast(14)
+        val rowHeight =
+            (ctx.fontHeight(fontId, fontSize) + style.rowPaddingY * 2)
+                .coerceAtLeast(14)
         val separatorHeight = style.separatorHeight.coerceAtLeast(2)
 
         val entryHeights = IntArray(snapshots.size)
@@ -94,11 +95,12 @@ class ContextMenuMeasurementCache(
                 maxLabelWidth = labelWidth
             }
 
-            val indicatorText = when {
-                snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
-                !snapshot.icon.isNullOrEmpty() -> snapshot.icon
-                else -> null
-            }
+            val indicatorText =
+                when {
+                    snapshot.checked -> ContextMenuGlyphs.CHECK_MARK
+                    !snapshot.icon.isNullOrEmpty() -> snapshot.icon
+                    else -> null
+                }
             if (!indicatorText.isNullOrEmpty()) {
                 val indicatorWidth = ctx.measureText(indicatorText, fontId, fontSize)
                 if (indicatorWidth > maxIndicatorWidth) {
@@ -106,11 +108,12 @@ class ContextMenuMeasurementCache(
                 }
             }
 
-            val hintText = when {
-                !snapshot.hint.isNullOrEmpty() -> snapshot.hint
-                snapshot.kind == KIND_SUBMENU -> ContextMenuGlyphs.SUBMENU_ARROW
-                else -> null
-            }
+            val hintText =
+                when {
+                    !snapshot.hint.isNullOrEmpty() -> snapshot.hint
+                    snapshot.kind == KIND_SUBMENU -> ContextMenuGlyphs.SUBMENU_ARROW
+                    else -> null
+                }
             if (!hintText.isNullOrEmpty()) {
                 val hintWidth = ctx.measureText(hintText, fontId, fontSize)
                 if (hintWidth > maxHintWidth) {
@@ -133,18 +136,19 @@ class ContextMenuMeasurementCache(
                 style.rowPaddingX
         val panelWidth = measuredWidth.coerceAtLeast(style.minPanelWidth)
 
-        val measured = Measurement(
-            snapshots = snapshots,
-            rowHeight = rowHeight,
-            separatorHeight = separatorHeight,
-            entryHeights = entryHeights,
-            entryOffsets = entryOffsets,
-            totalContentHeight = offset,
-            maxLabelWidth = maxLabelWidth,
-            maxHintWidth = maxHintWidth,
-            panelWidth = panelWidth,
-            indicatorWidth = measuredIndicatorWidth
-        )
+        val measured =
+            Measurement(
+                snapshots = snapshots,
+                rowHeight = rowHeight,
+                separatorHeight = separatorHeight,
+                entryHeights = entryHeights,
+                entryOffsets = entryOffsets,
+                totalContentHeight = offset,
+                maxLabelWidth = maxLabelWidth,
+                maxHintWidth = maxHintWidth,
+                panelWidth = panelWidth,
+                indicatorWidth = measuredIndicatorWidth,
+            )
         synchronized(cache) {
             cache[key] = measured
         }
@@ -157,39 +161,42 @@ class ContextMenuMeasurementCache(
         entries.forEach { entry ->
             when (entry) {
                 is MenuEntry.Item -> {
-                    out += EntrySnapshot(
-                        id = entry.id,
-                        kind = KIND_ITEM,
-                        label = entry.labelProvider.invoke(),
-                        icon = entry.iconProvider?.invoke(),
-                        hint = entry.hintProvider?.invoke(),
-                        enabled = entry.enabledProvider.invoke(),
-                        checked = entry.checkedProvider?.invoke() == true
-                    )
+                    out +=
+                        EntrySnapshot(
+                            id = entry.id,
+                            kind = KIND_ITEM,
+                            label = entry.labelProvider.invoke(),
+                            icon = entry.iconProvider?.invoke(),
+                            hint = entry.hintProvider?.invoke(),
+                            enabled = entry.enabledProvider.invoke(),
+                            checked = entry.checkedProvider?.invoke() == true,
+                        )
                 }
 
                 is MenuEntry.Submenu -> {
-                    out += EntrySnapshot(
-                        id = entry.id,
-                        kind = KIND_SUBMENU,
-                        label = entry.labelProvider.invoke(),
-                        icon = entry.iconProvider?.invoke(),
-                        hint = entry.hintProvider?.invoke(),
-                        enabled = entry.enabledProvider.invoke(),
-                        checked = false
-                    )
+                    out +=
+                        EntrySnapshot(
+                            id = entry.id,
+                            kind = KIND_SUBMENU,
+                            label = entry.labelProvider.invoke(),
+                            icon = entry.iconProvider?.invoke(),
+                            hint = entry.hintProvider?.invoke(),
+                            enabled = entry.enabledProvider.invoke(),
+                            checked = false,
+                        )
                 }
 
                 is MenuEntry.Separator -> {
-                    out += EntrySnapshot(
-                        id = entry.id,
-                        kind = KIND_SEPARATOR,
-                        label = "",
-                        icon = null,
-                        hint = null,
-                        enabled = false,
-                        checked = false
-                    )
+                    out +=
+                        EntrySnapshot(
+                            id = entry.id,
+                            kind = KIND_SEPARATOR,
+                            label = "",
+                            icon = null,
+                            hint = null,
+                            enabled = false,
+                            checked = false,
+                        )
                 }
             }
         }

@@ -1,33 +1,35 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.event.FocusGainEvent
 import org.dreamfinity.dsgl.core.event.FocusLoseEvent
 import org.dreamfinity.dsgl.core.event.InputEvent
 import org.dreamfinity.dsgl.core.event.ValueChangedEvent
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_SURFACE_ALT
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private val inputEventCheckboxOptions = listOf(
-    InputOption("alpha", "Alpha"),
-    InputOption("beta", "Beta"),
-    InputOption("gamma", "Gamma")
-)
+private val inputEventCheckboxOptions =
+    listOf(
+        InputOption("alpha", "Alpha"),
+        InputOption("beta", "Beta"),
+        InputOption("gamma", "Gamma"),
+    )
 
-private val inputEventRadioOptions = listOf(
-    InputOption("north", "North"),
-    InputOption("center", "Center"),
-    InputOption("south", "South")
-)
+private val inputEventRadioOptions =
+    listOf(
+        InputOption("north", "North"),
+        InputOption("center", "Center"),
+        InputOption("south", "South"),
+    )
 
 private val inputEventTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
@@ -39,7 +41,12 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
     var inputEventRangeValue by useState(35L)
     var inputEventLogEntries by useState(emptyList<String>())
 
-    fun appendInputEvent(control: String, phase: String, value: String, event: Event) {
+    fun appendInputEvent(
+        control: String,
+        phase: String,
+        value: String,
+        event: Event,
+    ) {
         val time = LocalTime.now().format(inputEventTimeFormatter)
         val line = "$time $control.$phase value=$value"
         inputEventLogEntries = (listOf(line) + inputEventLogEntries).take(8)
@@ -62,7 +69,11 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
         return emptySet()
     }
 
-    fun checkboxValueString(): String = inputEventCheckboxValue.toList().sorted().joinToString(",")
+    fun checkboxValueString(): String =
+        inputEventCheckboxValue
+            .toList()
+            .sorted()
+            .joinToString(",")
 
     div({
         key = "section.inputEvents"
@@ -75,7 +86,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
         text("HTML-like events demo: onFocus/onBlur/onInput/onChange")
         text(
             "Proof case: type in text field, then click elsewhere -> onInput per key, onChange on blur.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -95,27 +106,24 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                 }
             }) {
                 text("Text input")
-                input(
-                    InputType.Text(value = inputEventTextValue, placeholder = "Type then blur"),
-                    {
-                        key = "inputEvents.text"
-                        style = { width = 100.percent }
-                        onFocusGain = { event: FocusGainEvent ->
-                            appendInputEvent("text", "focus", inputEventTextValue, event)
-                        }
-                        onFocusLose = { event: FocusLoseEvent ->
-                            appendInputEvent("text", "blur", inputEventTextValue, event)
-                        }
-                        onInput = { event: InputEvent ->
-                            inputEventTextValue = event.value
-                            appendInputEvent("text", "input", event.value, event)
-                        }
-                        onValueChange = { event: ValueChangedEvent ->
-                            inputEventTextValue = event.value
-                            appendInputEvent("text", "change", event.value, event)
-                        }
+                input(InputType.Text(value = inputEventTextValue, placeholder = "Type then blur"), {
+                    key = "inputEvents.text"
+                    style = { width = 100.percent }
+                    onFocusGain = { event: FocusGainEvent ->
+                        appendInputEvent("text", "focus", inputEventTextValue, event)
                     }
-                )
+                    onFocusLose = { event: FocusLoseEvent ->
+                        appendInputEvent("text", "blur", inputEventTextValue, event)
+                    }
+                    onInput = { event: InputEvent ->
+                        inputEventTextValue = event.value
+                        appendInputEvent("text", "input", event.value, event)
+                    }
+                    onValueChange = { event: ValueChangedEvent ->
+                        inputEventTextValue = event.value
+                        appendInputEvent("text", "change", event.value, event)
+                    }
+                })
 
                 text("Textarea")
                 textarea({
@@ -158,7 +166,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                         variants = inputEventCheckboxOptions,
                         selected = inputEventCheckboxValue,
                         minSelected = 0,
-                        maxSelected = 3
+                        maxSelected = 3,
                     ),
                     {
                         key = "inputEvents.checkbox"
@@ -177,14 +185,14 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                             inputEventCheckboxValue = parseCheckboxSelection(event.parsedValue)
                             appendInputEvent("checkbox", "change", event.value, event)
                         }
-                    }
+                    },
                 )
 
                 text("Radio")
                 input(
                     InputType.Radio(
                         variants = inputEventRadioOptions,
-                        selected = inputEventRadioValue
+                        selected = inputEventRadioValue,
                     ),
                     {
                         key = "inputEvents.radio"
@@ -203,7 +211,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                             inputEventRadioValue = event.parsedValue as? String
                             appendInputEvent("radio", "change", event.value, event)
                         }
-                    }
+                    },
                 )
 
                 text("Range")
@@ -212,7 +220,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                         value = inputEventRangeValue,
                         min = 0,
                         max = 100,
-                        step = 1
+                        step = 1,
                     ),
                     {
                         key = "inputEvents.range"
@@ -231,11 +239,11 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                             inputEventRangeValue = (event.parsedValue as? Long) ?: inputEventRangeValue
                             appendInputEvent("range", "change", event.value, event)
                         }
-                    }
+                    },
                 )
                 text(
                     "Range value=$inputEventRangeValue",
-                    { style = { color = DEMO_MUTED } }
+                    { style = { color = DEMO_MUTED } },
                 )
             }
         }
@@ -252,7 +260,7 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
             })
             text(
                 "Entries=${inputEventLogEntries.size}",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
 
@@ -266,7 +274,10 @@ fun UiScope.inputEventsSection(onLogHook: (String, Event, String?) -> Unit) {
                 overflowY = Overflow.Auto
                 backgroundColor = DEMO_SURFACE_ALT
                 padding = 3.px
-                border { width = 1.px; color = 0xFF6A7785.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7785.toInt()
+                }
             }
         }) {
             if (inputEventLogEntries.isEmpty()) {

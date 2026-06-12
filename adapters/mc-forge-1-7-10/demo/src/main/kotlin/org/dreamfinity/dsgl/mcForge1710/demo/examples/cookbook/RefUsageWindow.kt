@@ -10,11 +10,12 @@ import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWrapper
 
 class RefUsageWindow : DsglWindow() {
-    override fun render() = ui {
-        centeredFlexWrapper {
-            focusRecipe()
+    override fun render() =
+        ui {
+            centeredFlexWrapper {
+                focusRecipe()
+            }
         }
-    }
 }
 
 fun UiScope.focusRecipe() {

@@ -1,11 +1,11 @@
 # Cookbook
 
 A set of practical DSGL patterns that are already used in this repository (mostly in `adapters/mc-forge-1-7-10/demo`).
-It is not a generic UI cookbook; every recipe here maps to existing runtime / demo behaviour.
+It is not a generic UI cookbook; every recipe here maps to existing portal/runtime and demo behaviour.
 
 ## Recipe 1: State-driven modal stack
 
-Use a window/component state list of `ModalSpec`, and render it through `modalHost`.
+Use a window/component state list of `ModalSpec`, and render it through `modalPortal`.
 Topmost modal is the last item in the list.
 
 ```kotlin { .kotlin .copy .select }
@@ -29,7 +29,7 @@ private fun UiScope.modalStackRecipe() {
         modals = modals.filterNot { it.key == key }
     }
 
-    modalHost(modals = modals, modalKey = "recipe.modal.host") {
+    modalPortal(modals = modals, key = "recipe.modal.portal") {
         button("Open modal", {
             onMouseClick = {
                 modals = modals + ModalSpec(
@@ -63,7 +63,7 @@ Why this pattern:
 ## Recipe 2: Attach a context menu to a node
 
 Use `DOMNode.onContextMenu { ... }` and build a model with `contextMenu { ... }`.
-The current runtime opens it from the right mouse down and consumes that event path.
+The application portal service opens it from the right mouse down and consumes that event path.
 
 ```kotlin { .kotlin .copy .select }
 import org.dreamfinity.dsgl.core.DsglWindow

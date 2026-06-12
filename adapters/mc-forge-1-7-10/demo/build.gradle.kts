@@ -1,6 +1,8 @@
 plugins {
     id("dsgl-mc-adapter.conventions")
     id("dsgl-mc-forge-1-7-10.conventions")
+    id("dsgl-linter.conventions")
+    id("dsgl-static-analysis.conventions")
 }
 
 val modId: String by project
@@ -19,20 +21,22 @@ val msdfDebugDecorations: String by project
 val msdfDebugPerformance: String by project
 val rebuildTrace: String by project
 val perfDebug: String by project
-val dsglOverlayDebug: String by project
-val dsglOverlayControls: String by project
+val dsglDomainDebug: String by project
+val dsglDomainControls: String by project
+val dsglColorPickerDebugCounters: String by project
 val hotReloadAgentLibraryName: String? by project
 
-val baseModMetadataTokens = mapOf(
-    "modId" to modId,
-    "modGroup" to modGroup,
-    "modName" to modName,
-    "modAuthor" to modAuthor,
-    "modDescription" to modDescription,
-    "modCredits" to modCredits,
-    "modIcon" to modIcon,
-    "gameVersion" to gameVersion
-)
+val baseModMetadataTokens =
+    mapOf(
+        "modId" to modId,
+        "modGroup" to modGroup,
+        "modName" to modName,
+        "modAuthor" to modAuthor,
+        "modDescription" to modDescription,
+        "modCredits" to modCredits,
+        "modIcon" to modIcon,
+        "gameVersion" to gameVersion,
+    )
 
 fun currentModVersion(): String {
     val dynamic = (findProperty("modVersion") as? String)?.trim()
@@ -41,25 +45,24 @@ fun currentModVersion(): String {
     throw GradleException("Missing required property 'modVersion' for mc-forge-1-7-10-demo module.")
 }
 
-fun currentModMetadataTokens(): Map<String, String> {
-    return baseModMetadataTokens + ("modVersion" to currentModVersion())
-}
+fun currentModMetadataTokens(): Map<String, String> = baseModMetadataTokens + ("modVersion" to currentModVersion())
 
 fun hotReloadAgentLibraryFile(): File {
     val explicitLibraryName = hotReloadAgentLibraryName?.trim()?.takeIf { it.isNotEmpty() }
     val osName = System.getProperty("os.name")?.lowercase()
-    val libraryName = explicitLibraryName ?: when {
-        osName == null -> throw GradleException(
-            "Unable to determine current operating system for DSGL hot-reload agent, and 'hotReloadAgentLibraryName' is not set."
-        )
+    val libraryName =
+        explicitLibraryName ?: when {
+            osName == null -> throw GradleException(
+                "Unable to determine current operating system for DSGL hot-reload agent, and 'hotReloadAgentLibraryName' is not set.",
+            )
 
-        osName.startsWith("windows") -> "dsgl_hot_reload_agent.dll"
-        osName.startsWith("linux") -> "libdsgl_hot_reload_agent.so"
-        osName.startsWith("mac") || osName.startsWith("darwin") -> "libdsgl_hot_reload_agent.dylib"
-        else -> throw GradleException(
-            "Unsupported operating system for DSGL hot-reload agent: $osName, and 'hotReloadAgentLibraryName' is not set."
-        )
-    }
+            osName.startsWith("windows") -> "dsgl_hot_reload_agent.dll"
+            osName.startsWith("linux") -> "libdsgl_hot_reload_agent.so"
+            osName.startsWith("mac") || osName.startsWith("darwin") -> "libdsgl_hot_reload_agent.dylib"
+            else -> throw GradleException(
+                "Unsupported operating system for DSGL hot-reload agent: $osName, and 'hotReloadAgentLibraryName' is not set.",
+            )
+        }
 
     return project.rootDir.resolve("dsgl-hot-reload-agent/target/release/$libraryName")
 }
@@ -93,22 +96,24 @@ val generateModMetadata by tasks.registering {
                 const val MOD_CREDITS: String = "${tokens["modCredits"]}"
                 const val MOD_ICON: String = "${tokens["modIcon"]}"
             }
-            """.trimIndent()
+            """.trimIndent() + System.lineSeparator(),
         )
     }
 }
 
 tasks {
     runClient {
-        var jvmArgs = listOf(
-            "-Ddsgl.msdf.debug=$msdfDebug",
-            "-Ddsgl.msdf.debug.decorations=$msdfDebugDecorations",
-            "-Ddsgl.msdf.debug.performance=$msdfDebugPerformance",
-            "-Ddsgl.rebuild.trace=$rebuildTrace",
-            "-Ddsgl.perf.debug=$perfDebug",
-            "-Ddsgl.overlay.debug=$dsglOverlayDebug",
-            "-Ddsgl.overlay.controls=$dsglOverlayControls",
-        )
+        var jvmArgs =
+            listOf(
+                "-Ddsgl.msdf.debug=$msdfDebug",
+                "-Ddsgl.msdf.debug.decorations=$msdfDebugDecorations",
+                "-Ddsgl.msdf.debug.performance=$msdfDebugPerformance",
+                "-Ddsgl.rebuild.trace=$rebuildTrace",
+                "-Ddsgl.perf.debug=$perfDebug",
+                "-Ddsgl.domain.debug=$dsglDomainDebug",
+                "-Ddsgl.domain.controls=$dsglDomainControls",
+                "-Ddsgl.colorPicker.debugCounters=$dsglColorPickerDebugCounters",
+            )
 
         if (hotReload.toBoolean()) {
             jvmArgs = jvmArgs + listOf("-agentpath:${hotReloadAgentLibraryFile().absolutePath}")
@@ -131,7 +136,10 @@ tasks {
 }
 
 kotlin {
-    sourceSets.getByName("main").kotlin.srcDir(generatedModMetadataDir)
+    sourceSets
+        .getByName("main")
+        .kotlin
+        .srcDir(generatedModMetadataDir)
 }
 
 tasks.named("compileKotlin") {
@@ -147,6 +155,10 @@ tasks.named("devSourcesJar") {
 }
 
 tasks.named("dokkaGeneratePublicationHtml") {
+    dependsOn(generateModMetadata)
+}
+
+tasks.matching { it.name.startsWith("runKtlintCheckOver") || it.name.startsWith("runKtlintFormatOver") }.configureEach {
     dependsOn(generateModMetadata)
 }
 
@@ -182,6 +194,10 @@ listOf(
     }
 }
 
+tasks.named<Test>("test") {
+    mustRunAfter(":adapters:mc-forge-1-7-10:reobf")
+}
+
 tasks.withType<PublishToMavenLocal>().configureEach {
     enabled = false
 }
@@ -203,8 +219,10 @@ repositories {
 }
 
 dependencies {
-    implementation("org.dreamfinity:dsgl-core:0.0.1")
-    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1:dev")
+    implementation(project(":core"))
+    implementation(project(":adapters:mc-forge-1-7-10"))
+//    implementation("org.dreamfinity:dsgl-core:0.0.1")
+//    implementation("org.dreamfinity:dsgl-mc-forge-1-7-10:0.0.1:dev")
     testImplementation(kotlin("test-junit"))
     testImplementation(kotlin("test"))
 }

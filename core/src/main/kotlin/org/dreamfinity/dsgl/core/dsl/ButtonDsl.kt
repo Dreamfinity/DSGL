@@ -6,13 +6,17 @@ import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 
 /** Button node props. */
-open class ButtonProps(var text: String) : TextProps()
+open class ButtonProps(
+    var text: String,
+) : TextProps()
 
 /**
  * Button-specific DSL scope.
  */
 @DsglDsl
-class ButtonScope internal constructor(private val node: ButtonNode) {
+class ButtonScope internal constructor(
+    private val node: ButtonNode,
+) {
     fun onClick(handler: (MouseClickEvent) -> Unit) {
         node.onClick(handler)
     }
@@ -24,11 +28,11 @@ fun UiScope.button(
     text: String,
     props: ButtonProps.() -> Unit = {},
     ref: RefTarget<ElementHandle>? = null,
-    block: ButtonScope.() -> Unit = {}
+    block: ButtonScope.() -> Unit = {},
 ) = withProps(ButtonProps(text).apply(props)) { props ->
     ButtonNode(
         props.text,
-        key = props.key
+        key = props.key,
     ).apply {
         applyStyle(this, props.style)
         applyHandlers(this, props)

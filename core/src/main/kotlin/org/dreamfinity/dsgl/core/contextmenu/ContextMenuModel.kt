@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 private object ContextMenuIds {
     private val nextToken = AtomicLong(1L)
+
     fun next(): Long = nextToken.getAndIncrement()
 }
 
@@ -12,11 +13,11 @@ data class ContextMenuModel(
     val entries: List<MenuEntry>,
     val fontId: String? = null,
     val fontSize: Int? = null,
-    internal val token: Long = ContextMenuIds.next()
+    internal val token: Long = ContextMenuIds.next(),
 )
 
 sealed class MenuEntry(
-    open val id: String?
+    open val id: String?,
 ) {
     data class Item(
         override val id: String? = null,
@@ -26,7 +27,7 @@ sealed class MenuEntry(
         val enabledProvider: () -> Boolean = { true },
         val checkedProvider: (() -> Boolean)? = null,
         val closeOnAction: Boolean = true,
-        val onClick: (() -> Unit)? = null
+        val onClick: (() -> Unit)? = null,
     ) : MenuEntry(id)
 
     data class Submenu(
@@ -36,10 +37,10 @@ sealed class MenuEntry(
         val hintProvider: (() -> String?)? = null,
         val enabledProvider: () -> Boolean = { true },
         val entries: List<MenuEntry>,
-        internal val token: Long = ContextMenuIds.next()
+        internal val token: Long = ContextMenuIds.next(),
     ) : MenuEntry(id)
 
     data class Separator(
-        override val id: String? = null
+        override val id: String? = null,
     ) : MenuEntry(id)
 }

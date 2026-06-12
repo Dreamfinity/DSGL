@@ -23,11 +23,14 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PositionedLayoutStaticBaselineTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -38,10 +41,11 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `default position remains static`() {
         val root = ContainerNode(key = "root")
-        val child = ContainerNode(key = "child").apply {
-            width = 40
-            height = 18
-        }
+        val child =
+            ContainerNode(key = "child").apply {
+                width = 40
+                height = 18
+            }
         child.applyParent(root)
 
         renderTree(root)
@@ -55,20 +59,23 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `explicit static matches default layout behavior`() {
         val defaultRoot = ContainerNode(key = "default-root")
-        val defaultChild = ContainerNode(key = "default-child").apply {
-            width = 40
-            height = 18
-        }
+        val defaultChild =
+            ContainerNode(key = "default-child").apply {
+                width = 40
+                height = 18
+            }
         defaultChild.applyParent(defaultRoot)
 
         val explicitRoot = ContainerNode(key = "explicit-root")
-        val explicitChild = ContainerNode(key = "explicit-child").apply {
-            width = 40
-            height = 18
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "static"
-            )
-        }
+        val explicitChild =
+            ContainerNode(key = "explicit-child").apply {
+                width = 40
+                height = 18
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "static",
+                    )
+            }
         explicitChild.applyParent(explicitRoot)
 
         renderTree(defaultRoot)
@@ -80,24 +87,27 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `static ignores offsets for visible and hit geometry`() {
         val baselineRoot = ContainerNode(key = "baseline-root")
-        val baselineChild = ContainerNode(key = "baseline-child").apply {
-            width = 40
-            height = 18
-        }
+        val baselineChild =
+            ContainerNode(key = "baseline-child").apply {
+                width = 40
+                height = 18
+            }
         baselineChild.applyParent(baselineRoot)
 
         val offsetRoot = ContainerNode(key = "offset-root")
-        val offsetChild = ContainerNode(key = "offset-child").apply {
-            width = 40
-            height = 18
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "static",
-                StyleProperty.LEFT to "40px",
-                StyleProperty.TOP to "30px",
-                StyleProperty.RIGHT to "8px",
-                StyleProperty.BOTTOM to "6px"
-            )
-        }
+        val offsetChild =
+            ContainerNode(key = "offset-child").apply {
+                width = 40
+                height = 18
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "static",
+                        StyleProperty.LEFT to "40px",
+                        StyleProperty.TOP to "30px",
+                        StyleProperty.RIGHT to "8px",
+                        StyleProperty.BOTTOM to "6px",
+                    )
+            }
         offsetChild.applyParent(offsetRoot)
 
         renderTree(baselineRoot)
@@ -119,19 +129,22 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `static node remains in normal flow even with offsets declared`() {
         val root = ContainerNode(key = "flow-root")
-        val first = ContainerNode(key = "first").apply {
-            width = 50
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "static",
-                StyleProperty.LEFT to "60px",
-                StyleProperty.TOP to "40px"
-            )
-        }
-        val second = ContainerNode(key = "second").apply {
-            width = 30
-            height = 12
-        }
+        val first =
+            ContainerNode(key = "first").apply {
+                width = 50
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "static",
+                        StyleProperty.LEFT to "60px",
+                        StyleProperty.TOP to "40px",
+                    )
+            }
+        val second =
+            ContainerNode(key = "second").apply {
+                width = 30
+                height = 12
+            }
         first.applyParent(root)
         second.applyParent(root)
 
@@ -142,24 +155,27 @@ class PositionedLayoutStaticBaselineTests {
 
     @Test
     fun `static z-index does not reorder static paint or hit order`() {
-        val root = ContainerNode(key = "click-root").apply {
-            bounds = Rect(0, 0, 120, 80)
-        }
+        val root =
+            ContainerNode(key = "click-root").apply {
+                bounds = Rect(0, 0, 120, 80)
+            }
         var underClicks = 0
         var overClicks = 0
 
-        val under = ButtonNode("under", key = "under").apply {
-            bounds = Rect(10, 10, 80, 24)
-            zIndex = 100
-            onClick { underClicks += 1 }
-        }
+        val under =
+            ButtonNode("under", key = "under").apply {
+                bounds = Rect(10, 10, 80, 24)
+                zIndex = 100
+                onClick { underClicks += 1 }
+            }
         under.applyParent(root)
 
-        val over = ButtonNode("over", key = "over").apply {
-            bounds = Rect(10, 10, 80, 24)
-            zIndex = -100
-            onClick { overClicks += 1 }
-        }
+        val over =
+            ButtonNode("over", key = "over").apply {
+                bounds = Rect(10, 10, 80, 24)
+                zIndex = -100
+                onClick { overClicks += 1 }
+            }
         over.applyParent(root)
 
         assertEquals(listOf(under, over), root.orderedChildrenForPaintTraversal())
@@ -172,10 +188,11 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `inspector static offset overrides keep static geometry unchanged`() {
         val root = ContainerNode(key = "inspector-root")
-        val child = ContainerNode(key = "inspector-child").apply {
-            width = 44
-            height = 16
-        }
+        val child =
+            ContainerNode(key = "inspector-child").apply {
+                width = 44
+                height = 16
+            }
         child.applyParent(root)
         val tree = DomTree(root)
         tree.render(ctx, 200, 120)
@@ -193,20 +210,23 @@ class PositionedLayoutStaticBaselineTests {
     @Test
     fun `sticky style value remains in-flow but participates in ordering`() {
         val root = ContainerNode(key = "sticky-inactive-root")
-        val sticky = ContainerNode(key = "sticky-inactive-node").apply {
-            width = 50
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "60px",
-                StyleProperty.TOP to "30px"
-            )
-            zIndex = 100
-        }
-        val follower = ContainerNode(key = "sticky-inactive-follower").apply {
-            width = 30
-            height = 12
-        }
+        val sticky =
+            ContainerNode(key = "sticky-inactive-node").apply {
+                width = 50
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "60px",
+                        StyleProperty.TOP to "30px",
+                    )
+                zIndex = 100
+            }
+        val follower =
+            ContainerNode(key = "sticky-inactive-follower").apply {
+                width = 30
+                height = 12
+            }
         sticky.applyParent(root)
         follower.applyParent(root)
 
@@ -223,11 +243,10 @@ class PositionedLayoutStaticBaselineTests {
         DomTree(root).render(ctx, 240, 160)
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 }

@@ -15,7 +15,7 @@ class ColorPickerInlineNode(
     previousValue: RgbaColor? = null,
     mode: ColorFormatMode = ColorFormatMode.HEX,
     alphaEnabled: Boolean = true,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "color-picker"
     override val focusable: Boolean = true
@@ -36,16 +36,18 @@ class ColorPickerInlineNode(
     private var uncontrolledValue: RgbaColor = value ?: defaultValue
     private var uncontrolledPrevious: RgbaColor = previousValue ?: uncontrolledValue
     private val recentHistory: ColorRecentHistory = ColorRecentHistory(64)
-    private val controller: ColorPickerController = ColorPickerController(
-        initial = ColorPickerState(
-            color = effectiveColor(),
-            previous = effectivePreviousColor(),
-            mode = mode,
-            alphaEnabled = alphaEnabled,
-            closeOnSelect = closeOnSelect
-        ),
-        recentHistory = recentHistory
-    )
+    private val controller: ColorPickerController =
+        ColorPickerController(
+            initial =
+                ColorPickerState(
+                    color = effectiveColor(),
+                    previous = effectivePreviousColor(),
+                    mode = mode,
+                    alphaEnabled = alphaEnabled,
+                    closeOnSelect = closeOnSelect,
+                ),
+            recentHistory = recentHistory,
+        )
     private var layout: ColorPickerLayout? = null
     private var dragCaptured: Boolean = false
     private var syncedColorArgb: Int = Int.MIN_VALUE
@@ -85,6 +87,7 @@ class ColorPickerInlineNode(
                 }
             }
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEMOVE) { event: MouseMoveEvent ->
+                if (!shouldAcceptPointerHoverEvent(event.target)) return@addEventListener
                 val currentLayout = layout ?: return@addEventListener
                 val moved = controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)
                 if (moved) {
@@ -104,8 +107,14 @@ class ColorPickerInlineNode(
                 }
             }
             this@ColorPickerInlineNode.addEventListener(Events.MOUSEOVER) { event: MouseOverEvent ->
+                if (!shouldAcceptPointerHoverEvent(event.target)) return@addEventListener
                 val currentLayout = layout ?: return@addEventListener
                 if (controller.handleMouseMove(event.mouseX, event.mouseY, currentLayout)) {
+                    markRenderCommandsDirty()
+                }
+            }
+            this@ColorPickerInlineNode.addEventListener(Events.MOUSELEAVE) { _: MouseLeaveEvent ->
+                if (controller.clearHover()) {
                     markRenderCommandsDirty()
                 }
             }
@@ -120,35 +129,39 @@ class ColorPickerInlineNode(
         }
     }
 
-    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean {
-        return dragCaptured || containsGlobalPoint(mouseX, mouseY)
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        dragCaptured || containsGlobalPoint(mouseX, mouseY)
+
+    private fun shouldAcceptPointerHoverEvent(target: DOMNode?): Boolean {
+        if (dragCaptured || controller.isEyedropperActive()) return true
+        var current = target ?: return false
+        while (true) {
+            if (current === this) return true
+            current = current.parent ?: return false
+        }
     }
 
     fun wantsGlobalPointerInput(): Boolean = controller.isEyedropperActive()
 
-    fun appendEyedropperOverlayCommands(
-        viewportWidth: Int,
-        viewportHeight: Int,
-        out: MutableList<RenderCommand>
-    ) {
-        controller.appendEyedropperOverlay(
+    fun appendEyedropperPortalCommands(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
+        controller.appendEyedropperPreview(
             viewportWidth = viewportWidth.coerceAtLeast(1),
             viewportHeight = viewportHeight.coerceAtLeast(1),
-            out = out
+            out = out,
         )
     }
 
     fun captureEyedropperSample() {
-        controller.sampleEyedropperAtHover()
+        if (controller.sampleEyedropperAtHoverAndReportChange()) {
+            refreshLayout()
+            markRenderCommandsDirty()
+        }
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(null)
 
     private fun measureWithConstraint(availableOuterWidth: Int?): Size {
         val minWidth = controller.style().minWidth
@@ -171,7 +184,13 @@ class ColorPickerInlineNode(
         }
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
         syncControllerStateIfNeeded()
         refreshLayout()
@@ -234,8 +253,8 @@ class ColorPickerInlineNode(
                 previous = previous,
                 mode = mode,
                 alphaEnabled = alphaEnabled,
-                closeOnSelect = closeOnSelect
-            )
+                closeOnSelect = closeOnSelect,
+            ),
         )
         bindController()
     }
@@ -268,31 +287,30 @@ class ColorPickerInlineNode(
         }
     }
 
-    private fun effectiveColor(): RgbaColor {
-        return if (controlled) {
+    private fun effectiveColor(): RgbaColor =
+        if (controlled) {
             (controlledValue ?: defaultValue).normalized()
         } else {
             uncontrolledValue.normalized()
         }
-    }
 
-    private fun effectivePreviousColor(): RgbaColor {
-        return if (controlled) {
+    private fun effectivePreviousColor(): RgbaColor =
+        if (controlled) {
             (previousValue ?: controlledValue ?: defaultValue).normalized()
         } else {
             (previousValue ?: uncontrolledPrevious).normalized()
         }
-    }
 
     private fun refreshLayout() {
         if (bounds.width <= 0 || bounds.height <= 0) return
-        layout = controller.buildLayout(
-            Rect(
-                contentX(),
-                contentY(),
-                contentWidth().coerceAtLeast(1),
-                contentHeight().coerceAtLeast(1)
+        layout =
+            controller.buildLayout(
+                Rect(
+                    contentX(),
+                    contentY(),
+                    contentWidth().coerceAtLeast(1),
+                    contentHeight().coerceAtLeast(1),
+                ),
             )
-        )
     }
 }

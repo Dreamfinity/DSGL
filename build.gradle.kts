@@ -8,8 +8,8 @@ import java.util.zip.DeflaterOutputStream
 
 plugins {
     `java-library`
-    kotlin("jvm") version "2.3.10" apply false
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10" apply false
+    kotlin("jvm") apply false
+    id("org.jetbrains.kotlin.plugin.serialization") apply false
     id("org.jetbrains.dokka") version "2.1.0" apply false
 }
 
@@ -80,7 +80,7 @@ tasks.register("generateMsdfAtlases") {
             val rgbaArgs = commonArgs + listOf(
                 "-format", "rgba",
                 "-imageout", rgbaAtlasOutArg,
-                "-json", jsonOutArg
+                "-json", jsonOutArg,
             )
 
             println("Generating png atlas for $fontArg")
@@ -94,7 +94,7 @@ tasks.register("generateMsdfAtlases") {
             if (genPNGResult.exitValue != 0) {
                 throw GradleException(
                     "msdf-atlas-gen failed for '$fontArg' with exit code ${genPNGResult.exitValue}. " +
-                            "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'"
+                        "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'",
                 )
             }
 
@@ -109,7 +109,7 @@ tasks.register("generateMsdfAtlases") {
             if (genRGBAResult.exitValue != 0) {
                 throw GradleException(
                     "msdf-atlas-gen failed for '$fontArg' with exit code ${genRGBAResult.exitValue}. " +
-                            "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'"
+                        "Expected outputs: '$pngAtlasOutArg', '$jsonOutArg'",
                 )
             }
 
@@ -191,7 +191,7 @@ tasks.register("compressMsdfRgbaAtlases") {
                 tmpOut.toPath(),
                 out.toPath(),
                 StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
+                StandardCopyOption.ATOMIC_MOVE,
             )
 
             logger.lifecycle("Flip+deflate: ${rgba.name} -> ${out.name} (${rgba.length()} -> ${out.length()} bytes)")
@@ -225,7 +225,7 @@ data class BumpConfig(
     val versionFile: File,
     val versionKey: String = "version",
     val syncedKeys: List<String> = emptyList(),
-    val publishTaskPath: String
+    val publishTaskPath: String,
 )
 
 data class BumpSummary(
@@ -235,7 +235,7 @@ data class BumpSummary(
     val newVersion: String,
     val updatedKeys: List<String>,
     val publishedModules: List<String>,
-    val coordinates: List<String>
+    val coordinates: List<String>,
 )
 
 val semVerRegex = Regex("""^(\d+)\.(\d+)\.(\d+)$""")
@@ -244,7 +244,7 @@ val coreBumpConfig = BumpConfig(
     projectPath = ":core",
     versionFile = rootProject.file("core/gradle.properties"),
     versionKey = "moduleVersion",
-    publishTaskPath = ":core:publishToMavenLocal"
+    publishTaskPath = ":core:publishToMavenLocal",
 )
 val mc1710BumpConfig = BumpConfig(
     target = BumpTarget.MC1710,
@@ -252,13 +252,13 @@ val mc1710BumpConfig = BumpConfig(
     versionFile = rootProject.file("adapters/mc-forge-1-7-10/gradle.properties"),
     versionKey = "moduleVersion",
     syncedKeys = listOf("modVersion"),
-    publishTaskPath = ":adapters:mc-forge-1-7-10:publishToMavenLocal"
+    publishTaskPath = ":adapters:mc-forge-1-7-10:publishToMavenLocal",
 )
 
 fun parseVersion(version: String): Triple<Int, Int, Int> {
     val match = semVerRegex.matchEntire(version)
         ?: throw GradleException(
-            "Version '$version' is not strict SemVer (MAJOR.MINOR.PATCH integers only)."
+            "Version '$version' is not strict SemVer (MAJOR.MINOR.PATCH integers only).",
         )
     val major = match.groupValues[1].toInt()
     val minor = match.groupValues[2].toInt()
@@ -315,7 +315,7 @@ fun ensurePublishTaskConfigured(config: BumpConfig) {
     if (project == null || project.tasks.findByName(taskName) == null) {
         throw GradleException(
             "Publishing is not configured for '${config.publishTaskPath}'. " +
-                    "Ensure maven-publish and publishToMavenLocal are configured for ${config.projectPath}."
+                "Ensure maven-publish and publishToMavenLocal are configured for ${config.projectPath}.",
         )
     }
 }
@@ -330,7 +330,7 @@ fun applyRuntimeVersion(config: BumpConfig, newVersion: String): Pair<List<Strin
 
     val publishing = project.extensions.findByType(PublishingExtension::class.java)
         ?: throw GradleException(
-            "Publishing is not configured for '${config.projectPath}'. Missing PublishingExtension."
+            "Publishing is not configured for '${config.projectPath}'. Missing PublishingExtension.",
         )
 
     val coordinates = linkedSetOf<String>()
@@ -342,7 +342,7 @@ fun applyRuntimeVersion(config: BumpConfig, newVersion: String): Pair<List<Strin
     }
     if (coordinates.isEmpty()) {
         throw GradleException(
-            "Publishing is not configured for '${config.projectPath}'. No MavenPublication found."
+            "Publishing is not configured for '${config.projectPath}'. No MavenPublication found.",
         )
     }
     return modules.toList() to coordinates.toList()
@@ -377,7 +377,7 @@ fun registerBumpTask(taskName: String, part: VersionPart, config: BumpConfig) {
             }
             val hadTrailingNewline = originalText.endsWith("\n") || originalText.endsWith("\r\n")
             val updatedText = lines.joinToString(System.lineSeparator()) +
-                    if (hadTrailingNewline) System.lineSeparator() else ""
+                if (hadTrailingNewline) System.lineSeparator() else ""
             config.versionFile.writeText(updatedText)
 
             val (modules, coords) = applyRuntimeVersion(config, newVersion)
@@ -388,7 +388,7 @@ fun registerBumpTask(taskName: String, part: VersionPart, config: BumpConfig) {
                 newVersion = newVersion,
                 updatedKeys = keysToUpdate,
                 publishedModules = modules,
-                coordinates = coords
+                coordinates = coords,
             )
 
             logger.lifecycle("${config.target.name.lowercase()} version updated: $oldVersion -> $newVersion")
@@ -448,4 +448,52 @@ tasks.register("runDemoClient") {
     group = "application"
     description = "Run Minecraft client with DSGL showcase demo module."
     dependsOn(":adapters:mc-forge-1-7-10:demo:runClient")
+}
+
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run detekt across all modules that have detekt applied"
+
+    doLast {
+        val violatingModules = project.subprojects
+            .filter { it.plugins.hasPlugin("io.gitlab.arturbosch.detekt") }
+            .filter { subproject ->
+                val sarifFile = subproject.file("build/reports/detekt/detekt.sarif")
+                sarifFile.exists() && sarifFile.readText().contains("\"ruleId\"")
+            }
+            .map { it.path }
+
+        if (violatingModules.isNotEmpty()) {
+            throw GradleException(
+                "detekt found violations in: ${violatingModules.joinToString(", ")}. " +
+                    "See each module's build/reports/detekt/ for details.",
+            )
+        }
+    }
+}
+
+subprojects {
+    plugins.withId("io.gitlab.arturbosch.detekt") {
+        val detektTask = tasks.named("detekt")
+        rootProject.tasks.named("detektAll").configure {
+            dependsOn(detektTask)
+        }
+        gradle.taskGraph.whenReady {
+            if (hasTask(":detektAll")) {
+                detektTask.configure {
+                    (this as? VerificationTask)?.ignoreFailures = true
+                }
+            }
+        }
+    }
+}
+
+tasks.register<Exec>("installGitHooks") {
+    group = "setup"
+    description = "Configure git to use hooks from .githooks/. Run once after cloning."
+    commandLine("git", "config", "core.hooksPath", ".githooks")
+    doLast {
+        fileTree(".githooks").forEach { it.setExecutable(true) }
+        logger.lifecycle("Git hooks installed. Hook path set to .githooks/")
+    }
 }

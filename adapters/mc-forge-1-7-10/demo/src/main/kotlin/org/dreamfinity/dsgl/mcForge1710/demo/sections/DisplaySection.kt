@@ -1,32 +1,31 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
-import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
-private val JUSTIFY_OPTIONS = listOf(
-    "start" to JustifyContent.Start,
-    "center" to JustifyContent.Center,
-    "end" to JustifyContent.End,
-    "space-between" to JustifyContent.SpaceBetween,
-    "space-around" to JustifyContent.SpaceAround,
-    "space-evenly" to JustifyContent.SpaceEvenly
-)
+private val JUSTIFY_OPTIONS =
+    listOf(
+        "start" to JustifyContent.Start,
+        "center" to JustifyContent.Center,
+        "end" to JustifyContent.End,
+        "space-between" to JustifyContent.SpaceBetween,
+        "space-around" to JustifyContent.SpaceAround,
+        "space-evenly" to JustifyContent.SpaceEvenly,
+    )
 
-private val ALIGN_OPTIONS = listOf(
-    "start" to AlignItems.Start,
-    "center" to AlignItems.Center,
-    "end" to AlignItems.End,
-    "stretch" to AlignItems.Stretch
-)
+private val ALIGN_OPTIONS =
+    listOf(
+        "start" to AlignItems.Start,
+        "center" to AlignItems.Center,
+        "end" to AlignItems.End,
+        "stretch" to AlignItems.Stretch,
+    )
 
-fun UiScope.displaySection(
-    onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
-) {
+fun UiScope.displaySection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit) {
     var displayBlockLargeGap by useState(false)
     var displayInlineWidth by useState(132L)
     var displayShowHidden by useState(true)
@@ -73,7 +72,10 @@ fun UiScope.displaySection(
                 backgroundColor = 0xFF2B3542.toInt()
                 display = Display.Block
                 gap = (if (displayBlockLargeGap) 6 else 2).px
-                border { width = 1.px; color = 0xFF657688.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF657688.toInt()
+                }
             }
         }) {
             repeat(3) { index ->
@@ -82,7 +84,10 @@ fun UiScope.displaySection(
                     style = {
                         padding = 2.px
                         backgroundColor = (0xFF3A4B60 + index * 0x000A0A00).toInt()
-                        border { width = 1.px; color = 0xFF8095AA.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF8095AA.toInt()
+                        }
                     }
                 }) {
                     text("Block item ${index + 1}")
@@ -96,7 +101,7 @@ fun UiScope.displaySection(
                 value = inlineWidth.toLong(),
                 min = inlineMinWidth.toLong(),
                 max = inlineMaxWidth.toLong(),
-                step = 4
+                step = 4,
             ),
             {
                 key = "display.inline.width"
@@ -105,11 +110,12 @@ fun UiScope.displaySection(
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: inlineWidth.toLong()
                     displayInlineWidth = next.coerceIn(inlineMinWidth.toLong(), inlineMaxWidth.toLong())
                 }
-            }
+            },
         )
         dynamicText(
             { "inline container width=$inlineWidth (drag slider to force wrapping)" },
-            { style = { color = DEMO_MUTED } })
+            { style = { color = DEMO_MUTED } },
+        )
         div({
             key = "display.inline.container"
             style = {
@@ -117,7 +123,10 @@ fun UiScope.displaySection(
                 padding = 3.px
                 backgroundColor = 0xFF2E3946.toInt()
                 display = Display.Inline
-                border { width = 1.px; color = 0xFF607181.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF607181.toInt()
+                }
                 gap = 2.px
             }
         }) {
@@ -128,8 +137,16 @@ fun UiScope.displaySection(
                         padding = 2.px
                         backgroundColor = 0xFF40556B.toInt()
                         display = Display.Inline
-                        margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
-                        border { width = 1.px; color = 0xFF90A7BE.toInt() }
+                        margin {
+                            top = 1.px
+                            right = 2.px
+                            bottom = 1.px
+                            left = 1.px
+                        }
+                        border {
+                            width = 1.px
+                            color = 0xFF90A7BE.toInt()
+                        }
                     }
                 }) {
                     text(label)
@@ -141,8 +158,16 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF3C5D4A.toInt()
                     display = Display.Inline
-                    margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
-                    border { width = 1.px; color = 0xFF86B197.toInt() }
+                    margin {
+                        top = 1.px
+                        right = 2.px
+                        bottom = 1.px
+                        left = 1.px
+                    }
+                    border {
+                        width = 1.px
+                        color = 0xFF86B197.toInt()
+                    }
                 }
             }) {
                 text("flex")
@@ -153,7 +178,10 @@ fun UiScope.displaySection(
                         backgroundColor = 0xFF2E4739.toInt()
                         display = Display.Flex
                         flexDirection = FlexDirection.Row
-                        border { width = 1.px; color = 0xFF5B8D73.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF5B8D73.toInt()
+                        }
                     }
                 }) {
                     div({
@@ -178,8 +206,16 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF5E4B3C.toInt()
                     display = Display.Inline
-                    margin { top = 1.px; right = 2.px; bottom = 1.px; left = 1.px }
-                    border { width = 1.px; color = 0xFFB58E6A.toInt() }
+                    margin {
+                        top = 1.px
+                        right = 2.px
+                        bottom = 1.px
+                        left = 1.px
+                    }
+                    border {
+                        width = 1.px
+                        color = 0xFFB58E6A.toInt()
+                    }
                 }
             }) {
                 div({
@@ -187,7 +223,10 @@ fun UiScope.displaySection(
                         padding = 1.px
                         backgroundColor = 0xFF4B3B30.toInt()
                         display = Display.Block
-                        border { width = 1.px; color = 0xFF8B6A51.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF8B6A51.toInt()
+                        }
                         gap = 1.px
                     }
                 }) {
@@ -206,18 +245,15 @@ fun UiScope.displaySection(
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (displayShowHidden) "Target visible" else "Target hidden",
-                {
-                    onMouseClick = {
-                        displayShowHidden = !displayShowHidden
-                        onInfo("Display.none visible=$displayShowHidden")
-                    }
+            button(if (displayShowHidden) "Target visible" else "Target hidden", {
+                onMouseClick = {
+                    displayShowHidden = !displayShowHidden
+                    onInfo("Display.none visible=$displayShowHidden")
                 }
-            )
+            })
             text(
                 "targetClicks=$displayNoneClicks (should not change while hidden)",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
         div({
@@ -229,7 +265,10 @@ fun UiScope.displaySection(
                 padding = 3.px
                 backgroundColor = 0xFF303A46.toInt()
                 gap = 2.px
-                border { width = 1.px; color = 0xFF64788B.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF64788B.toInt()
+                }
             }
         }) {
             div({
@@ -242,7 +281,10 @@ fun UiScope.displaySection(
                     padding = 2.px
                     backgroundColor = 0xFF5A3E3E.toInt()
                     display = if (displayShowHidden) Display.Block else Display.None
-                    border { width = 1.px; color = 0xFFB07B7B.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFFB07B7B.toInt()
+                    }
                 }
             }) {
                 text("Toggle target (click me)")
@@ -268,12 +310,9 @@ fun UiScope.displaySection(
                     displayFlexAlignIndex = (alignIndex + 1) % ALIGN_OPTIONS.size
                 }
             })
-            button(
-                if (displayGridLargeGap) "gap: large" else "gap: compact",
-                {
-                    onMouseClick = { displayGridLargeGap = !displayGridLargeGap }
-                }
-            )
+            button(if (displayGridLargeGap) "gap: large" else "gap: compact", {
+                onMouseClick = { displayGridLargeGap = !displayGridLargeGap }
+            })
         }
         text("Row uses fixed-size items so justify spacing is easier to compare.", {
             style = { color = DEMO_MUTED }
@@ -289,7 +328,10 @@ fun UiScope.displaySection(
                 justifyContent = justify.second
                 alignItems = AlignItems.Center
                 gap = 0.px
-                border { width = 1.px; color = 0xFF7E93A8.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF7E93A8.toInt()
+                }
             }
         }) {
             dot("left", "A", 0xFFB3D6FF.toInt(), 0xFFDEEFFF.toInt())
@@ -310,7 +352,10 @@ fun UiScope.displaySection(
                 justifyContent = justify.second
                 alignItems = align.second
                 gap = (if (displayGridLargeGap) 8 else 2).px
-                border { width = 1.px; color = 0xFF6C7E90.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6C7E90.toInt()
+                }
             }
         }) {
             flexRowCell("0", "1", 14, 1, 0xFF46627C.toInt())
@@ -325,7 +370,10 @@ fun UiScope.displaySection(
                 padding = 2.px
                 backgroundColor = 0xFF2A3340.toInt()
                 gap = 2.px
-                border { width = 1.px; color = 0xFF6B7E92.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6B7E92.toInt()
+                }
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
             }
@@ -359,7 +407,7 @@ fun UiScope.displaySection(
                 value = gridColumns.toLong(),
                 min = 2,
                 max = 6,
-                step = 1
+                step = 1,
             ),
             {
                 key = "display.grid.columns"
@@ -368,11 +416,11 @@ fun UiScope.displaySection(
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: gridColumns.toLong()
                     displayGridColumns = next.coerceIn(2, 6)
                 }
-            }
+            },
         )
         text(
             "gridColumns=$displayGridColumns (first tile spans 2 columns)",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
         div({
             key = "display.grid.container"
@@ -385,7 +433,10 @@ fun UiScope.displaySection(
                 gap = (if (displayGridLargeGap) 4 else 2).px
                 alignItems = align.second
                 justifyItems = JustifyItems.Stretch
-                border { width = 1.px; color = 0xFF70849A.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF70849A.toInt()
+                }
             }
         }) {
             repeat(10) { index ->
@@ -397,7 +448,10 @@ fun UiScope.displaySection(
                         if (index == 0) {
                             gridColumnSpan = 2
                         }
-                        border { width = 1.px; color = 0xFF93AACC.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF93AACC.toInt()
+                        }
                     }
                 }) {
                     text("Cell ${index + 1}")
@@ -407,18 +461,32 @@ fun UiScope.displaySection(
     }
 }
 
-private fun UiScope.dot(keyPart: String, label: String, fill: Int, borderColor: Int) {
+private fun UiScope.dot(
+    keyPart: String,
+    label: String,
+    fill: Int,
+    borderColor: Int,
+) {
     div({
         key = "display.flex.justify.dot.$keyPart"
         style = {
             display = Display.Inline
             backgroundColor = fill
-            border { width = 1.px; color = borderColor }
+            border {
+                width = 1.px
+                color = borderColor
+            }
         }
     }) { text(label) }
 }
 
-private fun UiScope.flexRowCell(keyPart: String, label: String, widthPx: Int, paddingPx: Int, color: Int) {
+private fun UiScope.flexRowCell(
+    keyPart: String,
+    label: String,
+    @Suppress("UnusedParameter") widthPx: Int,
+    @Suppress("UnusedParameter") paddingPx: Int,
+    color: Int,
+) {
     div({
         key = "display.flex.row.item.$keyPart"
         style = {

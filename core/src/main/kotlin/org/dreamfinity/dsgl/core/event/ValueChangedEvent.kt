@@ -5,7 +5,7 @@ package org.dreamfinity.dsgl.core.event
  */
 data class ValueChangedEvent(
     val value: String,
-    val parsedValue: Any? = null
+    val parsedValue: Any? = null,
 ) : Event() {
     override val type: Events
         get() = Events.CHANGE

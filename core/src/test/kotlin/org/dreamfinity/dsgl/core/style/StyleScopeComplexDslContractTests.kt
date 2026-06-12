@@ -1,8 +1,8 @@
 package org.dreamfinity.dsgl.core.style
 
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dsl.StyleBorder
 import org.dreamfinity.dsgl.core.dsl.StyleScope
-import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -165,11 +165,7 @@ class StyleScopeComplexDslContractTests {
         assertEquals(null, bottomValue)
     }
 
-    private fun assertLiteral(
-        node: ContainerNode,
-        property: StyleProperty,
-        expected: String
-    ) {
+    private fun assertLiteral(node: ContainerNode, property: StyleProperty, expected: String) {
         val value = (node.inlineStyleDeclarations.get(property) as? StyleExpression.Literal)?.value
         assertEquals(expected, value)
     }

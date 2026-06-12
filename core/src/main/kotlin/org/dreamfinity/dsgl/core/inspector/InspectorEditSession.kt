@@ -23,7 +23,7 @@ internal class InspectorEditSession {
         property: StyleProperty,
         initialBuffer: String,
         initialUnit: CssUnit?,
-        isNumeric: Boolean
+        isNumeric: Boolean,
     ) {
         activeProperty = property
         activeBuffer = initialBuffer

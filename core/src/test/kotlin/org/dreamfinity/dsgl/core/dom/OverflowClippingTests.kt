@@ -1,8 +1,5 @@
 package org.dreamfinity.dsgl.core.dom
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Insets
@@ -11,23 +8,31 @@ import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Overflow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class OverflowClippingTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `overflow hidden container emits clip around child paint`() {
         val childColor = 0xFF0A8A3C.toInt()
         val root = ContainerNode(key = "root")
-        val clip = ContainerNode(backgroundColor = 0xFF1B2330.toInt(), key = "clip").apply {
-            width = 80
-            height = 40
-            overflow = Overflow.Hidden
-        }.applyParent(root)
+        val clip =
+            ContainerNode(backgroundColor = 0xFF1B2330.toInt(), key = "clip")
+                .apply {
+                    width = 80
+                    height = 40
+                    overflow = Overflow.Hidden
+                }.applyParent(root)
         FixedPaintNode(color = childColor, nodeWidth = 120, nodeHeight = 20, key = "child")
             .applyParent(clip)
 
@@ -35,23 +40,26 @@ class OverflowClippingTests {
         tree.render(ctx, 200, 120)
         val commands = tree.paint(ctx, applyStyles = false)
 
-        val clipPushIndex = commands.indexOfFirst { command ->
-            command is RenderCommand.PushClip &&
-                command.x == clip.bounds.x &&
-                command.y == clip.bounds.y &&
-                command.width == clip.bounds.width &&
-                command.height == clip.bounds.height
-        }
+        val clipPushIndex =
+            commands.indexOfFirst { command ->
+                command is RenderCommand.PushClip &&
+                    command.x == clip.bounds.x &&
+                    command.y == clip.bounds.y &&
+                    command.width == clip.bounds.width &&
+                    command.height == clip.bounds.height
+            }
         assertTrue(clipPushIndex >= 0)
 
-        val childDrawIndex = commands.indexOfFirst { command ->
-            command is RenderCommand.DrawRect && command.color == childColor
-        }
+        val childDrawIndex =
+            commands.indexOfFirst { command ->
+                command is RenderCommand.DrawRect && command.color == childColor
+            }
         assertTrue(childDrawIndex > clipPushIndex)
 
-        val clipPopIndex = commands.indices.firstOrNull { index ->
-            index > childDrawIndex && commands[index] is RenderCommand.PopClip
-        } ?: -1
+        val clipPopIndex =
+            commands.indices.firstOrNull { index ->
+                index > childDrawIndex && commands[index] is RenderCommand.PopClip
+            } ?: -1
         assertTrue(clipPopIndex > childDrawIndex)
 
         val pushCount = commands.count { it is RenderCommand.PushClip }
@@ -63,13 +71,16 @@ class OverflowClippingTests {
     fun `overflow clipping preserves child geometry for partial visibility`() {
         val childColor = 0xFFB0522D.toInt()
         val root = ContainerNode(key = "root")
-        val clip = ContainerNode(backgroundColor = 0xFF18212C.toInt(), key = "clip").apply {
-            width = 80
-            height = 40
-            overflow = Overflow.Hidden
-        }.applyParent(root)
-        val child = FixedPaintNode(color = childColor, nodeWidth = 120, nodeHeight = 28, key = "child")
-            .applyParent(clip)
+        val clip =
+            ContainerNode(backgroundColor = 0xFF18212C.toInt(), key = "clip")
+                .apply {
+                    width = 80
+                    height = 40
+                    overflow = Overflow.Hidden
+                }.applyParent(root)
+        val child =
+            FixedPaintNode(color = childColor, nodeWidth = 120, nodeHeight = 28, key = "child")
+                .applyParent(clip)
 
         val tree = DomTree(root)
         tree.render(ctx, 220, 120)
@@ -78,10 +89,11 @@ class OverflowClippingTests {
         assertEquals(120, child.bounds.width)
         assertTrue(child.bounds.x + child.bounds.width > clip.bounds.x + clip.bounds.width)
 
-        val childDraw = commands
-            .filterIsInstance<RenderCommand.DrawRect>()
-            .firstOrNull { it.color == childColor }
-            ?: error("child draw command missing")
+        val childDraw =
+            commands
+                .filterIsInstance<RenderCommand.DrawRect>()
+                .firstOrNull { it.color == childColor }
+                ?: error("child draw command missing")
         assertEquals(120, childDraw.width)
     }
 
@@ -89,17 +101,21 @@ class OverflowClippingTests {
     fun `nested overflow containers emit nested clip commands`() {
         val leafColor = 0xFF3F7FBF.toInt()
         val root = ContainerNode(key = "root")
-        val outer = ContainerNode(backgroundColor = 0xFF101820.toInt(), key = "outer").apply {
-            width = 100
-            height = 80
-            overflow = Overflow.Hidden
-        }.applyParent(root)
-        val inner = ContainerNode(backgroundColor = 0xFF182230.toInt(), key = "inner").apply {
-            width = 60
-            height = 40
-            margin = Insets(top = 10, right = 0, bottom = 0, left = 20)
-            overflow = Overflow.Hidden
-        }.applyParent(outer)
+        val outer =
+            ContainerNode(backgroundColor = 0xFF101820.toInt(), key = "outer")
+                .apply {
+                    width = 100
+                    height = 80
+                    overflow = Overflow.Hidden
+                }.applyParent(root)
+        val inner =
+            ContainerNode(backgroundColor = 0xFF182230.toInt(), key = "inner")
+                .apply {
+                    width = 60
+                    height = 40
+                    margin = Insets(top = 10, right = 0, bottom = 0, left = 20)
+                    overflow = Overflow.Hidden
+                }.applyParent(outer)
         FixedPaintNode(color = leafColor, nodeWidth = 120, nodeHeight = 24, key = "leaf")
             .applyParent(inner)
 
@@ -107,23 +123,26 @@ class OverflowClippingTests {
         tree.render(ctx, 240, 180)
         val commands = tree.paint(ctx, applyStyles = false)
 
-        val outerClipIndex = commands.indexOfFirst { command ->
-            command is RenderCommand.PushClip &&
-                command.x == outer.bounds.x &&
-                command.y == outer.bounds.y &&
-                command.width == outer.bounds.width &&
-                command.height == outer.bounds.height
-        }
-        val innerClipIndex = commands.indexOfFirst { command ->
-            command is RenderCommand.PushClip &&
-                command.x == inner.bounds.x &&
-                command.y == inner.bounds.y &&
-                command.width == inner.bounds.width &&
-                command.height == inner.bounds.height
-        }
-        val leafDrawIndex = commands.indexOfFirst { command ->
-            command is RenderCommand.DrawRect && command.color == leafColor
-        }
+        val outerClipIndex =
+            commands.indexOfFirst { command ->
+                command is RenderCommand.PushClip &&
+                    command.x == outer.bounds.x &&
+                    command.y == outer.bounds.y &&
+                    command.width == outer.bounds.width &&
+                    command.height == outer.bounds.height
+            }
+        val innerClipIndex =
+            commands.indexOfFirst { command ->
+                command is RenderCommand.PushClip &&
+                    command.x == inner.bounds.x &&
+                    command.y == inner.bounds.y &&
+                    command.width == inner.bounds.width &&
+                    command.height == inner.bounds.height
+            }
+        val leafDrawIndex =
+            commands.indexOfFirst { command ->
+                command is RenderCommand.DrawRect && command.color == leafColor
+            }
 
         assertTrue(outerClipIndex >= 0)
         assertTrue(innerClipIndex > outerClipIndex)
@@ -133,21 +152,26 @@ class OverflowClippingTests {
         val popCount = commands.count { it is RenderCommand.PopClip }
         assertEquals(pushCount, popCount)
     }
+
     @Test
     fun `nested overflow still emits child clip when child extends beyond parent`() {
         val leafColor = 0xFF46A0D8.toInt()
         val root = ContainerNode(key = "root")
-        val outer = ContainerNode(backgroundColor = 0xFF111820.toInt(), key = "outer").apply {
-            width = 100
-            height = 50
-            overflow = Overflow.Hidden
-        }.applyParent(root)
-        val inner = ContainerNode(backgroundColor = 0xFF182536.toInt(), key = "inner").apply {
-            width = 80
-            height = 40
-            margin = Insets(top = 8, right = 0, bottom = 0, left = 72)
-            overflow = Overflow.Hidden
-        }.applyParent(outer)
+        val outer =
+            ContainerNode(backgroundColor = 0xFF111820.toInt(), key = "outer")
+                .apply {
+                    width = 100
+                    height = 50
+                    overflow = Overflow.Hidden
+                }.applyParent(root)
+        val inner =
+            ContainerNode(backgroundColor = 0xFF182536.toInt(), key = "inner")
+                .apply {
+                    width = 80
+                    height = 40
+                    margin = Insets(top = 8, right = 0, bottom = 0, left = 72)
+                    overflow = Overflow.Hidden
+                }.applyParent(outer)
         FixedPaintNode(color = leafColor, nodeWidth = 120, nodeHeight = 24, key = "leaf")
             .applyParent(inner)
 
@@ -155,26 +179,29 @@ class OverflowClippingTests {
         tree.render(ctx, 240, 180)
         val commands = tree.paint(ctx, applyStyles = false)
 
-        val outerClip = commands
-            .filterIsInstance<RenderCommand.PushClip>()
-            .firstOrNull { push ->
-                push.x == outer.bounds.x &&
-                    push.y == outer.bounds.y &&
-                    push.width == outer.bounds.width &&
-                    push.height == outer.bounds.height
-            }
-            ?: error("outer clip command missing")
+        val outerClip =
+            commands
+                .filterIsInstance<RenderCommand.PushClip>()
+                .firstOrNull { push ->
+                    push.x == outer.bounds.x &&
+                        push.y == outer.bounds.y &&
+                        push.width == outer.bounds.width &&
+                        push.height == outer.bounds.height
+                }
+                ?: error("outer clip command missing")
 
-        val expectedInner = Rect(inner.bounds.x, inner.bounds.y, inner.bounds.width, inner.bounds.height)
-            .intersection(Rect(outerClip.x, outerClip.y, outerClip.width, outerClip.height))
-            ?: error("inner should intersect outer")
+        val expectedInner =
+            Rect(inner.bounds.x, inner.bounds.y, inner.bounds.width, inner.bounds.height)
+                .intersection(Rect(outerClip.x, outerClip.y, outerClip.width, outerClip.height))
+                ?: error("inner should intersect outer")
         val pushClips = commands.filterIsInstance<RenderCommand.PushClip>()
-        val outerClipIndex = pushClips.indexOfFirst { push ->
-            push.x == outerClip.x &&
-                push.y == outerClip.y &&
-                push.width == outerClip.width &&
-                push.height == outerClip.height
-        }
+        val outerClipIndex =
+            pushClips.indexOfFirst { push ->
+                push.x == outerClip.x &&
+                    push.y == outerClip.y &&
+                    push.width == outerClip.width &&
+                    push.height == outerClip.height
+            }
         assertTrue(outerClipIndex >= 0)
         val innerClip = pushClips.getOrNull(outerClipIndex + 1) ?: error("inner clip command missing")
         assertEquals(inner.bounds.x, innerClip.x)
@@ -183,11 +210,12 @@ class OverflowClippingTests {
         assertEquals(inner.bounds.height, innerClip.height)
         assertTrue(innerClip.x < expectedInner.x + expectedInner.width)
     }
+
     private class FixedPaintNode(
         private val color: Int,
         private val nodeWidth: Int,
         private val nodeHeight: Int,
-        key: Any? = null
+        key: Any? = null,
     ) : DOMNode(key) {
         init {
             width = nodeWidth
@@ -202,6 +230,3 @@ class OverflowClippingTests {
         }
     }
 }
-
-
-

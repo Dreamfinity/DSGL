@@ -1,8 +1,7 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dsl.UiScope
-import org.dreamfinity.dsgl.core.dsl.ui
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.hooks.ComponentHookRuntime
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
@@ -29,6 +28,7 @@ abstract class DsglWindow {
     }
 
     /** Records the open time for date/time controls. */
+    @Suppress("UnusedParameter", "EmptyFunctionBlock")
     fun markOpened(instant: Instant, zoneId: ZoneId) {
     }
 
@@ -42,9 +42,7 @@ abstract class DsglWindow {
      *
      * This is intentionally separate from component-local hook state.
      */
-    fun <T> state(initial: T): MutableState<T> {
-        return mutableStateOf(initial) { invalidate() }
-    }
+    fun <T> state(initial: T): MutableState<T> = mutableStateOf(initial) { invalidate() }
 
     /** Build the current UI tree. Called by the host on rebuild. */
     abstract fun render(): DomTree
@@ -52,16 +50,12 @@ abstract class DsglWindow {
     /**
      * Builds a tree bound to this window so UiScope hook APIs can resolve the owning runtime.
      */
-    protected fun ui(block: UiScope.() -> Unit): DomTree {
-        return ui(this, block)
-    }
+    protected fun ui(block: UiScope.() -> Unit): DomTree = ui(this, block)
 
     /**
      * Builds a tree from a custom root bound to this window.
      */
-    protected fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree {
-        return ui(this, root, block)
-    }
+    protected fun ui(root: DOMNode, block: UiScope.() -> Unit): DomTree = ui(this, root, block)
 
     /** Lifecycle callback when the UI is opened by the host. */
     open fun onOpen() {}
@@ -134,4 +128,3 @@ abstract class DsglWindow {
 
     internal fun hookRuntime(): ComponentHookRuntime = componentHookRuntime
 }
-

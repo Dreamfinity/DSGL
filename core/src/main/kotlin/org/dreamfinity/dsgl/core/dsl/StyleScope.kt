@@ -7,19 +7,19 @@ import org.dreamfinity.dsgl.core.style.*
 
 data class StyleBorder(
     val width: CssLength,
-    val color: Int = DsglColors.BORDER
+    val color: Int = DsglColors.BORDER,
 )
 
 data class StyleSpacing(
     val top: CssLength,
     val right: CssLength,
     val bottom: CssLength,
-    val left: CssLength
+    val left: CssLength,
 )
 
 data class StyleOverflowAxes(
     val x: Overflow,
-    val y: Overflow
+    val y: Overflow,
 )
 
 interface CssLengthUnitsDsl {
@@ -62,12 +62,11 @@ class StyleTransformOriginBuilder : CssLengthUnitsDsl {
             y = value
         }
 
-    internal fun build(): TransformOrigin {
-        return TransformOrigin(
+    internal fun build(): TransformOrigin =
+        TransformOrigin(
             originX = x.coerceIn(0f, 1f),
-            originY = y.coerceIn(0f, 1f)
+            originY = y.coerceIn(0f, 1f),
         )
-    }
 }
 
 @DsglDsl
@@ -94,14 +93,13 @@ class StyleSpacingBuilder : CssLengthUnitsDsl {
         bottom = value
     }
 
-    internal fun build(): StyleSpacing {
-        return StyleSpacing(
+    internal fun build(): StyleSpacing =
+        StyleSpacing(
             top = top,
             right = right,
             bottom = bottom,
-            left = left
+            left = left,
         )
-    }
 }
 
 @DsglDsl
@@ -184,17 +182,21 @@ class StyleInsetBuilder : CssLengthUnitsDsl {
         }
 
     internal fun hasLeft(): Boolean = leftAssigned
+
     internal fun hasTop(): Boolean = topAssigned
+
     internal fun hasRight(): Boolean = rightAssigned
+
     internal fun hasBottom(): Boolean = bottomAssigned
 }
 
-@DsglDsl
 /**
  * Styling DSL attached to a [DOMNode].
  */
-class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnitsDsl {
-
+@DsglDsl
+class StyleScope internal constructor(
+    private val node: DOMNode,
+) : CssLengthUnitsDsl {
     var display: Display
         get() = Display.Block
         set(value) {
@@ -593,10 +595,11 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
     }
 
     fun transformOrigin(originX: Float, originY: Float) {
-        transformOrigin = TransformOrigin(
-            originX = originX.coerceIn(0f, 1f),
-            originY = originY.coerceIn(0f, 1f)
-        )
+        transformOrigin =
+            TransformOrigin(
+                originX = originX.coerceIn(0f, 1f),
+                originY = originY.coerceIn(0f, 1f),
+            )
     }
 
     fun transformOrigin(block: StyleTransformOriginBuilder.() -> Unit) {
@@ -619,7 +622,12 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         setSpacing(StyleProperty.MARGIN, vertical, horizontal, vertical, horizontal)
     }
 
-    fun margin(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength) {
+    fun margin(
+        top: CssLength,
+        right: CssLength,
+        bottom: CssLength,
+        left: CssLength,
+    ) {
         setSpacing(StyleProperty.MARGIN, top, right, bottom, left)
     }
 
@@ -639,7 +647,12 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         setSpacing(StyleProperty.PADDING, vertical, horizontal, vertical, horizontal)
     }
 
-    fun padding(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength) {
+    fun padding(
+        top: CssLength,
+        right: CssLength,
+        bottom: CssLength,
+        left: CssLength,
+    ) {
         requireNonNegative(top, "padding")
         requireNonNegative(right, "padding")
         requireNonNegative(bottom, "padding")
@@ -676,7 +689,13 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         border(maxLength(horizontal, vertical), color)
     }
 
-    fun border(top: CssLength, right: CssLength, bottom: CssLength, left: CssLength, color: Int = DsglColors.BORDER) {
+    fun border(
+        top: CssLength,
+        right: CssLength,
+        bottom: CssLength,
+        left: CssLength,
+        color: Int = DsglColors.BORDER,
+    ) {
         border(maxLength(top, right, bottom, left), color)
     }
 
@@ -754,6 +773,7 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         setExpression(StyleProperty.ALIGN, variable)
     }
 
+    @Suppress("FunctionNaming")
     fun `var`(name: String): StyleExpression.VariableRef {
         val normalized = if (name.startsWith("--")) name else "--$name"
         return StyleExpression.VariableRef(normalized)
@@ -764,11 +784,11 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         top: CssLength,
         right: CssLength,
         bottom: CssLength,
-        left: CssLength
+        left: CssLength,
     ) {
         setLiteral(
             property,
-            "${top.toCssLiteral()} ${right.toCssLiteral()} ${bottom.toCssLiteral()} ${left.toCssLiteral()}"
+            "${top.toCssLiteral()} ${right.toCssLiteral()} ${bottom.toCssLiteral()} ${left.toCssLiteral()}",
         )
     }
 
@@ -783,7 +803,12 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
         return if (first.value >= second.value) first else second
     }
 
-    private fun maxLength(first: CssLength, second: CssLength, third: CssLength, fourth: CssLength): CssLength {
+    private fun maxLength(
+        first: CssLength,
+        second: CssLength,
+        third: CssLength,
+        fourth: CssLength,
+    ): CssLength {
         val firstMax = maxLength(first, second)
         val secondMax = maxLength(third, fourth)
         return maxLength(firstMax, secondMax)
@@ -799,91 +824,108 @@ class StyleScope internal constructor(private val node: DOMNode) : CssLengthUnit
 
     private fun toColorLiteral(value: Int): String {
         val unsigned = value.toLong() and 0xFFFFFFFFL
-        return "#" + unsigned.toString(16).padStart(8, '0').uppercase()
+        return "#" +
+            unsigned
+                .toString(16)
+                .padStart(8, '0')
+                .uppercase()
     }
 
-    private fun Display.toCssLiteral(): String = when (this) {
-        Display.Block -> "block"
-        Display.Inline -> "inline"
-        Display.None -> "none"
-        Display.Flex -> "flex"
-        Display.Grid -> "grid"
-    }
+    private fun Display.toCssLiteral(): String =
+        when (this) {
+            Display.Block -> "block"
+            Display.Inline -> "inline"
+            Display.None -> "none"
+            Display.Flex -> "flex"
+            Display.Grid -> "grid"
+        }
 
-    private fun PositionMode.toCssLiteral(): String = when (this) {
-        PositionMode.Static -> "static"
-        PositionMode.Relative -> "relative"
-        PositionMode.Absolute -> "absolute"
-        PositionMode.Fixed -> "fixed"
-        PositionMode.Sticky -> "sticky"
-    }
+    private fun PositionMode.toCssLiteral(): String =
+        when (this) {
+            PositionMode.Static -> "static"
+            PositionMode.Relative -> "relative"
+            PositionMode.Absolute -> "absolute"
+            PositionMode.Fixed -> "fixed"
+            PositionMode.Sticky -> "sticky"
+        }
 
-    private fun Overflow.toCssLiteral(): String = when (this) {
-        Overflow.Visible -> "visible"
-        Overflow.Hidden -> "hidden"
-        Overflow.Scroll -> "scroll"
-        Overflow.Auto -> "auto"
-    }
+    private fun Overflow.toCssLiteral(): String =
+        when (this) {
+            Overflow.Visible -> "visible"
+            Overflow.Hidden -> "hidden"
+            Overflow.Scroll -> "scroll"
+            Overflow.Auto -> "auto"
+        }
 
-    private fun FlexDirection.toCssLiteral(): String = when (this) {
-        FlexDirection.Row -> "row"
-        FlexDirection.Column -> "column"
-    }
+    private fun FlexDirection.toCssLiteral(): String =
+        when (this) {
+            FlexDirection.Row -> "row"
+            FlexDirection.Column -> "column"
+        }
 
-    private fun JustifyContent.toCssLiteral(): String = when (this) {
-        JustifyContent.Start -> "start"
-        JustifyContent.Center -> "center"
-        JustifyContent.End -> "end"
-        JustifyContent.SpaceBetween -> "space-between"
-        JustifyContent.SpaceAround -> "space-around"
-        JustifyContent.SpaceEvenly -> "space-evenly"
-    }
+    private fun JustifyContent.toCssLiteral(): String =
+        when (this) {
+            JustifyContent.Start -> "start"
+            JustifyContent.Center -> "center"
+            JustifyContent.End -> "end"
+            JustifyContent.SpaceBetween -> "space-between"
+            JustifyContent.SpaceAround -> "space-around"
+            JustifyContent.SpaceEvenly -> "space-evenly"
+        }
 
-    private fun AlignItems.toCssLiteral(): String = when (this) {
-        AlignItems.Start -> "start"
-        AlignItems.Center -> "center"
-        AlignItems.End -> "end"
-        AlignItems.Stretch -> "stretch"
-    }
+    private fun AlignItems.toCssLiteral(): String =
+        when (this) {
+            AlignItems.Start -> "start"
+            AlignItems.Center -> "center"
+            AlignItems.End -> "end"
+            AlignItems.Stretch -> "stretch"
+        }
 
-    private fun JustifyItems.toCssLiteral(): String = when (this) {
-        JustifyItems.Start -> "start"
-        JustifyItems.Center -> "center"
-        JustifyItems.End -> "end"
-        JustifyItems.Stretch -> "stretch"
-    }
+    private fun JustifyItems.toCssLiteral(): String =
+        when (this) {
+            JustifyItems.Start -> "start"
+            JustifyItems.Center -> "center"
+            JustifyItems.End -> "end"
+            JustifyItems.Stretch -> "stretch"
+        }
 
-    private fun GridAutoFlow.toCssLiteral(): String = when (this) {
-        GridAutoFlow.Row -> "row"
-        GridAutoFlow.Column -> "column"
-    }
+    private fun GridAutoFlow.toCssLiteral(): String =
+        when (this) {
+            GridAutoFlow.Row -> "row"
+            GridAutoFlow.Column -> "column"
+        }
 
-    private fun TextWrap.toCssLiteral(): String = when (this) {
-        TextWrap.Wrap -> "wrap"
-        TextWrap.NoWrap -> "nowrap"
-    }
+    private fun TextWrap.toCssLiteral(): String =
+        when (this) {
+            TextWrap.Wrap -> "wrap"
+            TextWrap.NoWrap -> "nowrap"
+        }
 
-    private fun TextFormatting.toCssLiteral(): String = when (this) {
-        TextFormatting.None -> "none"
-        TextFormatting.Minecraft -> "minecraft"
-    }
+    private fun TextFormatting.toCssLiteral(): String =
+        when (this) {
+            TextFormatting.None -> "none"
+            TextFormatting.Minecraft -> "minecraft"
+        }
 
-    private fun FontWeight.toCssLiteral(): String = when (this) {
-        FontWeight.Normal -> "normal"
-        FontWeight.Bold -> "bold"
-    }
+    private fun FontWeight.toCssLiteral(): String =
+        when (this) {
+            FontWeight.Normal -> "normal"
+            FontWeight.Bold -> "bold"
+        }
 
-    private fun FontStyle.toCssLiteral(): String = when (this) {
-        FontStyle.Normal -> "normal"
-        FontStyle.Italic -> "italic"
-    }
+    private fun FontStyle.toCssLiteral(): String =
+        when (this) {
+            FontStyle.Normal -> "normal"
+            FontStyle.Italic -> "italic"
+        }
 
-    private fun TextDecoration.toCssLiteral(): String = when (this) {
-        TextDecoration.None -> "none"
-        TextDecoration.Underline -> "underline"
-        TextDecoration.Strikethrough -> "strikethrough"
-        TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
-    }
+    private fun TextDecoration.toCssLiteral(): String =
+        when (this) {
+            TextDecoration.None -> "none"
+            TextDecoration.Underline -> "underline"
+            TextDecoration.Strikethrough -> "strikethrough"
+            TextDecoration.UnderlineStrikethrough -> "underline-strikethrough"
+        }
 
     private fun UiTransform.toCssLiteral(): String {
         if (isIdentity()) return "none"

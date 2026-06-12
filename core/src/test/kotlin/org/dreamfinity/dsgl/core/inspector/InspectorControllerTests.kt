@@ -1,5 +1,17 @@
 package org.dreamfinity.dsgl.core.inspector
 
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
+import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
+import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
+import org.dreamfinity.dsgl.core.colorpicker.internal.SystemColorPickerPortalService
+import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dom.layout.Rect
+import org.dreamfinity.dsgl.core.event.KeyCodes
+import org.dreamfinity.dsgl.core.event.MouseButton
+import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.StyleExpression
+import org.dreamfinity.dsgl.core.style.StyleProperty
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,21 +20,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
-import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
-import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
-import org.dreamfinity.dsgl.core.colorpicker.internal.InspectorColorPickerHost
-import org.dreamfinity.dsgl.core.dom.applyParent
-import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
-import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.event.KeyCodes
-import org.dreamfinity.dsgl.core.event.KeyModifiers
-import org.dreamfinity.dsgl.core.event.MouseButton
-import org.dreamfinity.dsgl.core.input.ClipboardAccess
-import org.dreamfinity.dsgl.core.input.ClipboardBridge
-import org.dreamfinity.dsgl.core.style.StyleEngine
-import org.dreamfinity.dsgl.core.style.StyleExpression
-import org.dreamfinity.dsgl.core.style.StyleProperty
 
 class InspectorControllerTests {
     @AfterTest
@@ -258,7 +255,7 @@ class InspectorControllerTests {
         controller.handleMouseDown(990, 230, MouseButton.LEFT)
 
         renderFrame(controller, 420, 280)
-        val thumb = controller.debugScrollbarThumbRect()
+        val thumb = controller.portalScrollbarThumbRect()
         if (thumb.width <= 0 || thumb.height <= 0) {
             fail("Expected inspector scrollbar thumb to be available.")
         }
@@ -303,17 +300,22 @@ class InspectorControllerTests {
         controller.handleMouseDown(1006, 126, MouseButton.LEFT)
 
         val snapshot = renderFrame(controller, 520, 340)
-        val pathLines = snapshot.infoLines
-            .filter {
-                it.startsWith("Path:") || it.startsWith("  >") || it.startsWith("  root") ||
-                        it.startsWith("  middle") || it.startsWith("  leaf")
-            }
+        val pathLines =
+            snapshot.infoLines
+                .filter {
+                    it.startsWith("Path:") ||
+                        it.startsWith("  >") ||
+                        it.startsWith("  root") ||
+                        it.startsWith("  middle") ||
+                        it.startsWith("  leaf")
+                }
 
         assertTrue(pathLines.size >= 2)
         pathLines.forEach { line ->
             assertTrue(line.length <= 45)
         }
     }
+
     @Test
     fun `expanded snapshot includes full computed style property list`() {
         val controller = InspectorController()
@@ -357,10 +359,11 @@ class InspectorControllerTests {
         assertTrue(snapshot.childLabels.isNotEmpty())
         assertTrue(snapshot.childLabels.any { it.endsWith("...") })
     }
+
     @Test
     fun `inspector opens picker for color property and stays interactive after preview commit`() {
-        val pickerHost = RecordingInspectorColorPickerHost()
-        val controller = InspectorController(colorPickerManager = pickerHost)
+        val pickerService = RecordingSystemColorPickerPortalService()
+        val controller = InspectorController(colorPickerManager = pickerService)
         controller.toggle()
 
         val root = container("root", 0, 0, 1200, 800)
@@ -376,30 +379,41 @@ class InspectorControllerTests {
         assertTrue(
             controller.debugOpenColorPickerForSelection(
                 StyleProperty.BACKGROUND_COLOR,
-                Rect(120, 80, 16, 16)
-            )
+                Rect(120, 80, 16, 16),
+            ),
         )
 
-        val opened = pickerHost.lastOpen
+        val opened = pickerService.lastOpen
         assertNotNull(opened)
-        assertTrue(pickerHost.isOpen())
+        assertTrue(pickerService.isOpen())
 
         opened.onPreview?.invoke(RgbaColor(0.25f, 0.5f, 0.75f, 1f))
-        val previewLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.BACKGROUND_COLOR) as? StyleExpression.Literal)?.value
+        val previewLiteral =
+            (
+                StyleEngine.inspectorOverrideFor(
+                    selected,
+                    StyleProperty.BACKGROUND_COLOR,
+                ) as? StyleExpression.Literal
+            )?.value
         assertEquals("#FF4080BF", previewLiteral)
 
         opened.onCommit?.invoke(RgbaColor(1f, 0f, 0f, 1f))
-        val committedLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.BACKGROUND_COLOR) as? StyleExpression.Literal)?.value
+        val committedLiteral =
+            (
+                StyleEngine.inspectorOverrideFor(
+                    selected,
+                    StyleProperty.BACKGROUND_COLOR,
+                ) as? StyleExpression.Literal
+            )?.value
         assertEquals("#FFFF0000", committedLiteral)
 
-        pickerHost.close()
-        assertFalse(pickerHost.isOpen())
+        pickerService.close()
+        assertFalse(pickerService.isOpen())
         assertTrue(controller.handleMouseDown(38, 30, MouseButton.LEFT))
         assertTrue(controller.isDraggingPanel)
         assertTrue(controller.handleMouseUp(38, 30, MouseButton.LEFT))
         assertFalse(controller.isDraggingPanel)
     }
-
 
     @Test
     fun `native inspector rows no longer activate controller text edit session`() {
@@ -417,9 +431,10 @@ class InspectorControllerTests {
         assertTrue(controller.handleMouseDown(988, 126, MouseButton.LEFT))
         renderFrame(controller, 1200, 700)
 
-        val row = controller.debugStyleEditorRows().firstOrNull {
-            it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
-        } ?: error("Expected color string input row.")
+        val row =
+            controller.portalStyleEditorRows().firstOrNull {
+                it.property == StyleProperty.BACKGROUND_COLOR && it.editorKind == InspectorEditorKind.StringInput
+            } ?: error("Expected color string input row.")
         val inputRect = row.inputRect ?: row.controlRect
         val clickX = inputRect.x + 10
         val clickY = inputRect.y + inputRect.height / 2
@@ -447,7 +462,7 @@ class InspectorControllerTests {
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
 
         renderFrame(controller, 260, 240)
-        val rows = controller.debugStyleEditorRows()
+        val rows = controller.portalStyleEditorRows()
         assertTrue(rows.isNotEmpty())
 
         assertTrue(rows.any { it.rowRect.height > it.controlRect.height + 8 })
@@ -455,6 +470,7 @@ class InspectorControllerTests {
             assertTrue(next.rowRect.y >= prev.rowRect.y + prev.rowRect.height + 4)
         }
     }
+
     @Test
     fun `inspector dropdown option click is consumed and applied over underlying controls`() {
         val controller = InspectorController()
@@ -470,18 +486,20 @@ class InspectorControllerTests {
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
         renderFrame(controller, 1200, 700)
 
-        val row = controller.debugStyleEditorRows().firstOrNull { it.editorKind == InspectorEditorKind.EnumSelect }
-            ?: error("Expected enum select row.")
+        val row =
+            controller.portalStyleEditorRows().firstOrNull { it.editorKind == InspectorEditorKind.EnumSelect }
+                ?: error("Expected enum select row.")
         val openX = row.controlRect.x + 4
         val openY = row.controlRect.y + row.controlRect.height / 2
         controller.onCursorMoved(openX, openY)
         assertTrue(controller.handleMouseDown(openX, openY, MouseButton.LEFT))
 
         renderFrame(controller, 1200, 700)
-        val dropdown = controller.debugStyleEditorDropdowns().firstOrNull() ?: error("Expected open dropdown.")
-        val option = dropdown.options.firstOrNull { !it.text.equals(row.controlValue, ignoreCase = true) }
-            ?: dropdown.options.firstOrNull()
-            ?: error("Expected dropdown option.")
+        val dropdown = controller.portalStyleEditorDropdowns().firstOrNull() ?: error("Expected open dropdown.")
+        val option =
+            dropdown.options.firstOrNull { !it.text.equals(row.controlValue, ignoreCase = true) }
+                ?: dropdown.options.firstOrNull()
+                ?: error("Expected dropdown option.")
         val optionX = option.rect.x + 2
         val optionY = option.rect.y + option.rect.height / 2
 
@@ -490,12 +508,11 @@ class InspectorControllerTests {
         assertTrue(controller.handleMouseDown(optionX, optionY, MouseButton.LEFT))
 
         renderFrame(controller, 1200, 700)
-        assertTrue(controller.debugStyleEditorDropdowns().isEmpty())
+        assertTrue(controller.portalStyleEditorDropdowns().isEmpty())
         val literal = (StyleEngine.inspectorOverrideFor(selected, row.property) as? StyleExpression.Literal)?.value
         assertNotNull(literal)
         assertTrue(literal.equals(option.text, ignoreCase = true))
     }
-
 
     @Test
     fun `numeric override commit follows property grammar`() {
@@ -511,36 +528,43 @@ class InspectorControllerTests {
         controller.onCursorMoved(988, 126)
         controller.handleMouseDown(988, 126, MouseButton.LEFT)
 
-        assertTrue(controller.debugApplyNumericOverride(StyleProperty.Z_INDEX, "5", "px"))
-        val zIndexLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.Z_INDEX) as? StyleExpression.Literal)?.value
+        assertTrue(controller.portalApplyNumericOverride(StyleProperty.Z_INDEX, "5", "px"))
+        val zIndexLiteral =
+            (
+                StyleEngine.inspectorOverrideFor(
+                    selected,
+                    StyleProperty.Z_INDEX,
+                ) as? StyleExpression.Literal
+            )?.value
         assertEquals("5", zIndexLiteral)
 
-        assertTrue(controller.debugApplyNumericOverride(StyleProperty.WIDTH, "24", "em"))
-        val widthLiteral = (StyleEngine.inspectorOverrideFor(selected, StyleProperty.WIDTH) as? StyleExpression.Literal)?.value
+        assertTrue(controller.portalApplyNumericOverride(StyleProperty.WIDTH, "24", "em"))
+        val widthLiteral =
+            (
+                StyleEngine.inspectorOverrideFor(
+                    selected,
+                    StyleProperty.WIDTH,
+                ) as? StyleExpression.Literal
+            )?.value
         assertEquals("24em", widthLiteral)
     }
-    private fun renderFrame(controller: InspectorController, viewportWidth: Int, viewportHeight: Int): InspectorDomSnapshot {
-        return controller.buildDomSnapshot(viewportWidth, viewportHeight)
-            ?: error("Inspector snapshot must exist while active.")
-    }
 
-    private fun container(key: Any, x: Int, y: Int, width: Int, height: Int): ContainerNode {
-        return ContainerNode(key = key).apply {
+    private fun renderFrame(controller: InspectorController, viewportWidth: Int, viewportHeight: Int): InspectorDomSnapshot =
+        controller.buildDomSnapshot(viewportWidth, viewportHeight)
+            ?: error("Inspector snapshot must exist while active.")
+
+    private fun container(
+        key: Any,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ): ContainerNode =
+        ContainerNode(key = key).apply {
             bounds = Rect(x, y, width, height)
         }
-    }
 
-
-    private class RecordingClipboardAccess : ClipboardAccess {
-        var contents: String = ""
-
-        override fun readText(): String = contents
-
-        override fun writeText(value: String) {
-            contents = value
-        }
-    }
-    private class RecordingInspectorColorPickerHost : InspectorColorPickerHost {
+    private class RecordingSystemColorPickerPortalService : SystemColorPickerPortalService {
         var lastOpen: OpenCall? = null
         private var open: Boolean = false
 
@@ -555,17 +579,18 @@ class InspectorControllerTests {
             onPreview: ((RgbaColor) -> Unit)?,
             onChange: ((RgbaColor) -> Unit)?,
             onCommit: ((RgbaColor) -> Unit)?,
-            onClose: (() -> Unit)?
+            onClose: (() -> Unit)?,
         ) {
-            lastOpen = OpenCall(
-                anchorRect = anchorRect,
-                title = title,
-                state = state,
-                onPreview = onPreview,
-                onChange = onChange,
-                onCommit = onCommit,
-                onClose = onClose
-            )
+            lastOpen =
+                OpenCall(
+                    anchorRect = anchorRect,
+                    title = title,
+                    state = state,
+                    onPreview = onPreview,
+                    onChange = onChange,
+                    onCommit = onCommit,
+                    onClose = onClose,
+                )
             open = true
         }
 
@@ -585,7 +610,6 @@ class InspectorControllerTests {
         val onPreview: ((RgbaColor) -> Unit)?,
         val onChange: ((RgbaColor) -> Unit)?,
         val onCommit: ((RgbaColor) -> Unit)?,
-        val onClose: (() -> Unit)?
+        val onClose: (() -> Unit)?,
     )
 }
-

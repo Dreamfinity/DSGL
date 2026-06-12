@@ -13,13 +13,14 @@ class FloatingPaneDragModelTests {
         val start = Rect(100, 80, 200, 120)
         drag.begin(mouseX = 130, mouseY = 100, rect = start)
 
-        val next = drag.update(
-            mouseX = 20,
-            mouseY = 10,
-            viewportWidth = 500,
-            viewportHeight = 400,
-            clamp = ::clampRect
-        )
+        val next =
+            drag.update(
+                mouseX = 20,
+                mouseY = 10,
+                viewportWidth = 500,
+                viewportHeight = 400,
+                clamp = ::clampRect,
+            )
 
         assertEquals(2, next.x)
         assertEquals(2, next.y)
@@ -32,13 +33,14 @@ class FloatingPaneDragModelTests {
         val start = Rect(40, 50, 120, 90)
         drag.begin(mouseX = 60, mouseY = 70, rect = start)
 
-        val next = drag.update(
-            mouseX = 61,
-            mouseY = 71,
-            viewportWidth = 400,
-            viewportHeight = 300,
-            clamp = ::clampRect
-        )
+        val next =
+            drag.update(
+                mouseX = 61,
+                mouseY = 71,
+                viewportWidth = 400,
+                viewportHeight = 300,
+                clamp = ::clampRect,
+            )
 
         assertEquals(41, next.x)
         assertEquals(51, next.y)
@@ -54,7 +56,7 @@ class FloatingPaneDragModelTests {
             x = rect.x.coerceIn(minX, maxX),
             y = rect.y.coerceIn(minY, maxY),
             width = rect.width,
-            height = rect.height
+            height = rect.height,
         )
     }
 }

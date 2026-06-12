@@ -11,7 +11,7 @@ object StyleAnimationEngine {
         val activeKeyframes: List<String>,
         val effectiveTransform: UiTransform,
         val effectiveOpacity: Float,
-        val effectiveColor: Int?
+        val effectiveColor: Int?,
     )
 
     private data class TransitionState<T : Any>(
@@ -22,16 +22,22 @@ object StyleAnimationEngine {
         val delaySec: Double,
         val durationSec: Double,
         val easing: Easing,
-        val animatable: Animatable<T>
+        val animatable: Animatable<T>,
     ) {
-        fun valueAt(nowSec: Double): Pair<T, Boolean> {
-            if (durationSec <= 0.0) return to to true
+        fun valueAt(nowSec: Double): T {
+            if (durationSec <= 0.0) return to
             val local = nowSec - startSec
-            if (local <= delaySec) return from to false
+            if (local <= delaySec) return from
             val t = ((local - delaySec) / durationSec).toFloat().coerceIn(0f, 1f)
             val eased = easing.map(t)
-            val value = animatable.interpolate(from, to, eased)
-            return value to (t >= 1f)
+            return animatable.interpolate(from, to, eased)
+        }
+
+        fun isFinishedAt(nowSec: Double): Boolean {
+            if (durationSec <= 0.0) return true
+            val local = nowSec - startSec
+            if (local <= delaySec) return false
+            return ((local - delaySec) / durationSec).toFloat() >= 1f
         }
     }
 
@@ -39,7 +45,7 @@ object StyleAnimationEngine {
         val spec: AnimationSpec,
         var startedAtSec: Double,
         var pausedElapsedSec: Double? = null,
-        var previousPlayState: AnimationPlayState = spec.playState
+        var previousPlayState: AnimationPlayState = spec.playState,
     )
 
     private data class NodeAnimationState(
@@ -52,7 +58,7 @@ object StyleAnimationEngine {
         var effectiveTransform: UiTransform = UiTransform.IDENTITY,
         var effectiveOpacity: Float = 1f,
         var effectiveColor: Int? = null,
-        var lastSeenFrame: Long = 0L
+        var lastSeenFrame: Long = 0L,
     )
 
     private val states: MutableMap<Any, NodeAnimationState> = linkedMapOf()
@@ -75,21 +81,21 @@ object StyleAnimationEngine {
                 transitions = transitions,
                 property = AnimatedStyleProperty.Transform,
                 previousValue = previous.transform,
-                currentValue = current.transform
+                currentValue = current.transform,
             )
             maybeRetargetTransition(
                 state = state,
                 transitions = transitions,
                 property = AnimatedStyleProperty.Opacity,
                 previousValue = previous.opacity,
-                currentValue = current.opacity
+                currentValue = current.opacity,
             )
             maybeRetargetTransition(
                 state = state,
                 transitions = transitions,
                 property = AnimatedStyleProperty.Color,
                 previousValue = previous.foregroundColor,
-                currentValue = current.foregroundColor
+                currentValue = current.foregroundColor,
             )
         }
 
@@ -130,25 +136,38 @@ object StyleAnimationEngine {
     }
 
     private fun debugSnapshot(state: NodeAnimationState): DebugSnapshot {
-        val transitions = state.transitions.values.map { transition ->
-            val local = (nowSec - transition.startSec - transition.delaySec).coerceAtLeast(0.0)
-            val progress = if (transition.durationSec <= 0.0) 1.0 else (local / transition.durationSec).coerceIn(0.0, 1.0)
-            "${transition.property.name.lowercase()}:${(progress * 100.0).toInt()}%"
-        }
-        val keyframes = state.keyframes.map { running ->
-            val elapsedSec = resolveElapsed(running, nowSec)
-            val delaySec = running.spec.delayMs.coerceAtLeast(0) / 1000.0
-            val durationSec = running.spec.durationMs.coerceAtLeast(1) / 1000.0
-            val active = (elapsedSec - delaySec).coerceAtLeast(0.0)
-            val rawProgress = if (durationSec <= 0.0) 1.0 else (active % durationSec) / durationSec
-            "${running.spec.name}:${(rawProgress * 100.0).toInt()}%:${running.spec.playState.name.lowercase()}"
-        }
+        val transitions =
+            state.transitions.values.map { transition ->
+                val local = (nowSec - transition.startSec - transition.delaySec).coerceAtLeast(0.0)
+                val progress =
+                    if (transition.durationSec <=
+                        0.0
+                    ) {
+                        1.0
+                    } else {
+                        (local / transition.durationSec).coerceIn(0.0, 1.0)
+                    }
+                "${transition.property.name.lowercase()}:${(progress * 100.0).toInt()}%"
+            }
+        val keyframes =
+            state.keyframes.map { running ->
+                val elapsedSec = resolveElapsed(running, nowSec)
+                val delaySec =
+                    running.spec.delayMs
+                        .coerceAtLeast(0) / 1000.0
+                val durationSec =
+                    running.spec.durationMs
+                        .coerceAtLeast(1) / 1000.0
+                val active = (elapsedSec - delaySec).coerceAtLeast(0.0)
+                val rawProgress = if (durationSec <= 0.0) 1.0 else (active % durationSec) / durationSec
+                "${running.spec.name}:${(rawProgress * 100.0).toInt()}%:${running.spec.playState.name.lowercase()}"
+            }
         return DebugSnapshot(
             activeTransitions = transitions,
             activeKeyframes = keyframes,
             effectiveTransform = state.effectiveTransform,
             effectiveOpacity = state.effectiveOpacity,
-            effectiveColor = state.effectiveColor
+            effectiveColor = state.effectiveColor,
         )
     }
 
@@ -186,10 +205,11 @@ object StyleAnimationEngine {
                 }
 
                 if (node.applyAnimationVisuals(
-                    transform = resolvedTransform,
-                    opacity = resolvedOpacity,
-                    color = resolvedColor
-                )) {
+                        transform = resolvedTransform,
+                        opacity = resolvedOpacity,
+                        color = resolvedColor,
+                    )
+                ) {
                     changed = true
                 }
                 state.effectiveTransform = node.effectiveTransform()
@@ -204,7 +224,7 @@ object StyleAnimationEngine {
                 state.effectiveColor = node.animationColorOverride()
                 logRateLimited(
                     key = "anim:${node.key ?: node.styleType}",
-                    message = "[DSGL-Anim] ${node.key ?: node.styleType}: ${error.message}"
+                    message = "[DSGL-Anim] ${node.key ?: node.styleType}: ${error.message}",
                 )
             }
         }
@@ -232,24 +252,26 @@ object StyleAnimationEngine {
         transitions: TransitionSpec,
         property: AnimatedStyleProperty,
         previousValue: UiTransform,
-        currentValue: UiTransform
+        currentValue: UiTransform,
     ) {
         if (previousValue == currentValue) return
-        val spec = transitions.forProperty(property) ?: run {
-            state.transitions.remove(property)
-            return
-        }
+        val spec =
+            transitions.forProperty(property) ?: run {
+                state.transitions.remove(property)
+                return
+            }
         val currentVisual = transitionValue<UiTransform>(state, property) ?: previousValue
-        state.transitions[property] = TransitionState(
-            property = property,
-            from = currentVisual,
-            to = currentValue,
-            startSec = nowSec,
-            delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
-            durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
-            easing = spec.easing,
-            animatable = TransformAnimatable
-        )
+        state.transitions[property] =
+            TransitionState(
+                property = property,
+                from = currentVisual,
+                to = currentValue,
+                startSec = nowSec,
+                delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
+                durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
+                easing = spec.easing,
+                animatable = TransformAnimatable,
+            )
     }
 
     private fun maybeRetargetTransition(
@@ -257,24 +279,26 @@ object StyleAnimationEngine {
         transitions: TransitionSpec,
         property: AnimatedStyleProperty,
         previousValue: Float,
-        currentValue: Float
+        currentValue: Float,
     ) {
         if (previousValue == currentValue) return
-        val spec = transitions.forProperty(property) ?: run {
-            state.transitions.remove(property)
-            return
-        }
+        val spec =
+            transitions.forProperty(property) ?: run {
+                state.transitions.remove(property)
+                return
+            }
         val currentVisual = transitionValue<Float>(state, property) ?: previousValue
-        state.transitions[property] = TransitionState(
-            property = property,
-            from = currentVisual,
-            to = currentValue,
-            startSec = nowSec,
-            delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
-            durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
-            easing = spec.easing,
-            animatable = FloatAnimatable
-        )
+        state.transitions[property] =
+            TransitionState(
+                property = property,
+                from = currentVisual,
+                to = currentValue,
+                startSec = nowSec,
+                delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
+                durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
+                easing = spec.easing,
+                animatable = FloatAnimatable,
+            )
     }
 
     private fun maybeRetargetTransition(
@@ -282,40 +306,39 @@ object StyleAnimationEngine {
         transitions: TransitionSpec,
         property: AnimatedStyleProperty,
         previousValue: Int,
-        currentValue: Int
+        currentValue: Int,
     ) {
         if (previousValue == currentValue) return
-        val spec = transitions.forProperty(property) ?: run {
-            state.transitions.remove(property)
-            return
-        }
+        val spec =
+            transitions.forProperty(property) ?: run {
+                state.transitions.remove(property)
+                return
+            }
         val currentVisual = transitionValue<Int>(state, property) ?: previousValue
-        state.transitions[property] = TransitionState(
-            property = property,
-            from = currentVisual,
-            to = currentValue,
-            startSec = nowSec,
-            delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
-            durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
-            easing = spec.easing,
-            animatable = ColorAnimatable
-        )
+        state.transitions[property] =
+            TransitionState(
+                property = property,
+                from = currentVisual,
+                to = currentValue,
+                startSec = nowSec,
+                delaySec = spec.delayMs.coerceAtLeast(0) / 1000.0,
+                durationSec = spec.durationMs.coerceAtLeast(0) / 1000.0,
+                easing = spec.easing,
+                animatable = ColorAnimatable,
+            )
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> transitionValue(state: NodeAnimationState, property: AnimatedStyleProperty): T? {
-        val transition = state.transitions[property] as TransitionState<T>? ?: return null
-        val (value, finished) = transition.valueAt(nowSec)
-        if (finished) {
+        val transition = state.transitions[property] as? TransitionState<T>? ?: return null
+        val value = transition.valueAt(nowSec)
+        if (transition.isFinishedAt(nowSec)) {
             state.transitions.remove(property)
         }
         return value
     }
 
-    private fun sampleKeyframe(
-        definition: KeyframesDefinition,
-        running: RunningKeyframe
-    ): KeyframeValue {
+    private fun sampleKeyframe(definition: KeyframesDefinition, running: RunningKeyframe): KeyframeValue {
         val spec = running.spec
         if (spec.durationMs <= 0) {
             return sampleDefinition(definition, progress = 1f, easing = spec.easing)
@@ -329,12 +352,15 @@ object StyleAnimationEngine {
 
         if (activeSec < 0.0) {
             return if (spec.fillMode == AnimationFillMode.Backwards || spec.fillMode == AnimationFillMode.Both) {
-                val startProgress = when (spec.direction) {
-                    AnimationDirection.Reverse,
-                    AnimationDirection.AlternateReverse -> 1f
-                    AnimationDirection.Normal,
-                    AnimationDirection.Alternate -> 0f
-                }
+                val startProgress =
+                    when (spec.direction) {
+                        AnimationDirection.Reverse,
+                        AnimationDirection.AlternateReverse,
+                        -> 1f
+                        AnimationDirection.Normal,
+                        AnimationDirection.Alternate,
+                        -> 0f
+                    }
                 sampleDefinition(definition, startProgress, spec.easing)
             } else {
                 KeyframeValue()
@@ -377,72 +403,72 @@ object StyleAnimationEngine {
         return nowSec - running.startedAtSec
     }
 
-    private fun sampleDefinition(
-        definition: KeyframesDefinition,
-        progress: Float,
-        easing: Easing
-    ): KeyframeValue {
-        return KeyframeValue(
+    private fun sampleDefinition(definition: KeyframesDefinition, progress: Float, easing: Easing): KeyframeValue =
+        KeyframeValue(
             transform = sampleTransform(definition, progress, easing),
             opacity = sampleOpacity(definition, progress, easing),
-            color = sampleColor(definition, progress, easing)
+            color = sampleColor(definition, progress, easing),
         )
-    }
 
-    private fun sampleTransform(definition: KeyframesDefinition, progress: Float, easing: Easing): UiTransform? {
-        val frames = definition.frames.filter { it.value.transform != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) return frames.first().value.transform
-        if (progress >= frames.last().fraction) return frames.last().value.transform
-        val pair = surrounding(frames, progress) ?: return frames.last().value.transform
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return TransformAnimatable.interpolate(
-            pair.first.value.transform!!,
-            pair.second.value.transform!!,
-            eased
+    private fun sampleTransform(definition: KeyframesDefinition, progress: Float, easing: Easing): UiTransform? =
+        sampleProperty(
+            frames = definition.transformFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.transform },
+            interpolate = { from, to, t -> TransformAnimatable.interpolate(from, to, t) },
         )
-    }
 
-    private fun sampleOpacity(definition: KeyframesDefinition, progress: Float, easing: Easing): Float? {
-        val frames = definition.frames.filter { it.value.opacity != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) return frames.first().value.opacity
-        if (progress >= frames.last().fraction) return frames.last().value.opacity
-        val pair = surrounding(frames, progress) ?: return frames.last().value.opacity
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return FloatAnimatable.interpolate(
-            pair.first.value.opacity!!,
-            pair.second.value.opacity!!,
-            eased
-        ).coerceIn(0f, 1f)
-    }
-
-    private fun sampleColor(definition: KeyframesDefinition, progress: Float, easing: Easing): Int? {
-        val frames = definition.frames.filter { it.value.color != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) return frames.first().value.color
-        if (progress >= frames.last().fraction) return frames.last().value.color
-        val pair = surrounding(frames, progress) ?: return frames.last().value.color
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return ColorAnimatable.interpolate(
-            pair.first.value.color!!,
-            pair.second.value.color!!,
-            eased
+    private fun sampleOpacity(definition: KeyframesDefinition, progress: Float, easing: Easing): Float? =
+        sampleProperty(
+            frames = definition.opacityFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.opacity },
+            interpolate = { from, to, t -> FloatAnimatable.interpolate(from, to, t).coerceIn(0f, 1f) },
         )
+
+    private fun sampleColor(definition: KeyframesDefinition, progress: Float, easing: Easing): Int? =
+        sampleProperty(
+            frames = definition.colorFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.color },
+            interpolate = { from, to, t -> ColorAnimatable.interpolate(from, to, t) },
+        )
+
+    private inline fun <T : Any> sampleProperty(
+        frames: List<Keyframe>,
+        progress: Float,
+        easing: Easing,
+        valueOf: (KeyframeValue) -> T?,
+        interpolate: (T, T, Float) -> T,
+    ): T? {
+        if (frames.isEmpty()) return null
+        if (progress <= frames.first().fraction) {
+            return valueOf(frames.first().value)
+        }
+        if (progress >= frames.last().fraction) {
+            return valueOf(frames.last().value)
+        }
+        val leftIndex = surroundingLeftIndex(frames, progress)
+        if (leftIndex < 0) {
+            return valueOf(frames.last().value)
+        }
+        val left = frames[leftIndex]
+        val right = frames[leftIndex + 1]
+        val t = normalizedProgress(left.fraction, right.fraction, progress)
+        val eased = easing.map(t)
+        return interpolate(valueOf(left.value)!!, valueOf(right.value)!!, eased)
     }
 
-    private fun surrounding(frames: List<Keyframe>, progress: Float): Pair<Keyframe, Keyframe>? {
+    private fun surroundingLeftIndex(frames: List<Keyframe>, progress: Float): Int {
         for (index in 0 until frames.lastIndex) {
-            val left = frames[index]
-            val right = frames[index + 1]
-            if (progress >= left.fraction && progress <= right.fraction) {
-                return left to right
+            if (progress >= frames[index].fraction && progress <= frames[index + 1].fraction) {
+                return index
             }
         }
-        return null
+        return -1
     }
 
     private fun normalizedProgress(left: Float, right: Float, value: Float): Float {
@@ -450,18 +476,15 @@ object StyleAnimationEngine {
         return ((value - left) / span).coerceIn(0f, 1f)
     }
 
-    private fun isIterationReversed(direction: AnimationDirection, iterationIndex: Int): Boolean {
-        return when (direction) {
+    private fun isIterationReversed(direction: AnimationDirection, iterationIndex: Int): Boolean =
+        when (direction) {
             AnimationDirection.Normal -> false
             AnimationDirection.Reverse -> true
             AnimationDirection.Alternate -> iterationIndex % 2 == 1
             AnimationDirection.AlternateReverse -> iterationIndex % 2 == 0
         }
-    }
 
-    private fun animationToken(node: DOMNode): Any {
-        return node.key ?: node
-    }
+    private fun animationToken(node: DOMNode): Any = node.key ?: node
 
     private fun logRateLimited(key: String, message: String) {
         val last = errorRateLimitByKey[key]

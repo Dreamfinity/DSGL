@@ -8,12 +8,12 @@ internal data class InspectorHighlightSnapshot(
     val borderRect: Rect,
     val paddingRect: Rect,
     val contentRect: Rect,
-    val parentContentRect: Rect?
+    val parentContentRect: Rect?,
 )
 
 internal data class InspectorTooltipSnapshot(
     val text: String,
-    val rect: Rect
+    val rect: Rect,
 )
 
 internal data class InspectorStyleEditorRowSnapshot(
@@ -35,14 +35,14 @@ internal data class InspectorStyleEditorRowSnapshot(
     val unitValue: String?,
     val unitOpen: Boolean,
     val colorPreviewRect: Rect?,
-    val colorPreviewColor: Int?
+    val colorPreviewColor: Int?,
 )
 
 internal data class InspectorDropdownOptionSnapshot(
     val rect: Rect,
     val text: String,
     val value: String,
-    val hovered: Boolean
+    val hovered: Boolean,
 )
 
 internal data class InspectorDropdownSnapshot(
@@ -50,5 +50,5 @@ internal data class InspectorDropdownSnapshot(
     val property: StyleProperty,
     val unitSelect: Boolean,
     val options: List<InspectorDropdownOptionSnapshot>,
-    val footerText: String?
+    val footerText: String?,
 )

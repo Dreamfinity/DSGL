@@ -39,6 +39,7 @@ open class ComponentProps(
     var id: String? = null,
     var className: String = "",
     var classes: Set<String> = emptySet(),
+    var overlapChildren: Boolean = false,
     var disabled: Boolean = false,
     var draggable: Boolean = false,
     var droppable: Boolean = false,
@@ -70,7 +71,7 @@ open class ComponentProps(
     var onDragEnter: ((DragEnterEvent) -> Unit)? = null,
     var onDragOver: ((DragOverEvent) -> Unit)? = null,
     var onDragLeave: ((DragLeaveEvent) -> Unit)? = null,
-    var onDrop: ((DropEvent) -> Unit)? = null
+    var onDrop: ((DropEvent) -> Unit)? = null,
 ) {
     fun style(block: StyleScope.() -> Unit) {
         style = block

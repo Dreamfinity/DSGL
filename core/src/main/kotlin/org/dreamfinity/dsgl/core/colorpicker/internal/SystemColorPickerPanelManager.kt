@@ -5,9 +5,9 @@ import org.dreamfinity.dsgl.core.colorpicker.ColorPickerState
 import org.dreamfinity.dsgl.core.colorpicker.ColorPickerStyle
 import org.dreamfinity.dsgl.core.colorpicker.RgbaColor
 import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 
-interface InspectorColorPickerHost {
+interface SystemColorPickerPortalService {
     fun open(
         anchorRect: Rect,
         title: String,
@@ -19,7 +19,7 @@ interface InspectorColorPickerHost {
         onPreview: ((RgbaColor) -> Unit)? = null,
         onChange: ((RgbaColor) -> Unit)? = null,
         onCommit: ((RgbaColor) -> Unit)? = null,
-        onClose: (() -> Unit)? = null
+        onClose: (() -> Unit)? = null,
     )
 
     fun close()
@@ -28,8 +28,8 @@ interface InspectorColorPickerHost {
 }
 
 internal class SystemColorPickerPanelManager(
-    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager()
-) : InspectorColorPickerHost {
+    private val delegate: ColorPickerPopupManager = ColorPickerPopupManager(),
+) : SystemColorPickerPortalService {
     override fun open(
         anchorRect: Rect,
         title: String,
@@ -41,10 +41,10 @@ internal class SystemColorPickerPanelManager(
         onPreview: ((RgbaColor) -> Unit)?,
         onChange: ((RgbaColor) -> Unit)?,
         onCommit: ((RgbaColor) -> Unit)?,
-        onClose: (() -> Unit)?
+        onClose: (() -> Unit)?,
     ) {
         delegate.open(
-            ownerScope = OverlayOwnerScope.System,
+            ownerDomain = ScreenDomainId.System,
             anchorRect = anchorRect,
             title = title,
             state = state,
@@ -55,7 +55,7 @@ internal class SystemColorPickerPanelManager(
             onPreview = onPreview,
             onChange = onChange,
             onCommit = onCommit,
-            onClose = onClose
+            onClose = onClose,
         )
     }
 
@@ -65,4 +65,3 @@ internal class SystemColorPickerPanelManager(
 
     override fun isOpen(): Boolean = delegate.isOpen()
 }
-

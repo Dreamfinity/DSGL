@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package org.dreamfinity.dsgl.core.hooks
 
 import org.dreamfinity.dsgl.core.DsglWindow
@@ -18,11 +20,12 @@ fun UiScope.useEffectEveryCommit(effect: EffectScope.() -> Unit) {
 internal fun DsglWindow.useEffect(vararg deps: Any?, effect: EffectScope.() -> Unit) {
     val runtime = hookRuntime()
     runtime.registerEffectOnDependencyChange(deps.toList()) { registerCleanup ->
-        val scope = object : EffectScope {
-            override fun onDispose(cleanup: () -> Unit) {
-                registerCleanup(cleanup)
+        val scope =
+            object : EffectScope {
+                override fun onDispose(cleanup: () -> Unit) {
+                    registerCleanup(cleanup)
+                }
             }
-        }
         effect(scope)
     }
 }
@@ -30,11 +33,12 @@ internal fun DsglWindow.useEffect(vararg deps: Any?, effect: EffectScope.() -> U
 internal fun DsglWindow.useEffectEveryCommit(effect: EffectScope.() -> Unit) {
     val runtime = hookRuntime()
     runtime.registerEffectEveryCommit { registerCleanup ->
-        val scope = object : EffectScope {
-            override fun onDispose(cleanup: () -> Unit) {
-                registerCleanup(cleanup)
+        val scope =
+            object : EffectScope {
+                override fun onDispose(cleanup: () -> Unit) {
+                    registerCleanup(cleanup)
+                }
             }
-        }
         effect(scope)
     }
 }

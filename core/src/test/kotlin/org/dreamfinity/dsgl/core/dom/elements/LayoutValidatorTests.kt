@@ -1,8 +1,5 @@
 package org.dreamfinity.dsgl.core.dom.elements
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.DOMNode
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.debug.LayoutDebug
@@ -13,6 +10,9 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class LayoutValidatorTests {
     @Test
@@ -22,14 +22,15 @@ class LayoutValidatorTests {
         LayoutDebug.strictBounds = false
 
         val ctx = testMeasureContext()
-        val root = ContainerNode(key = "root").apply {
-            width = 28
-            padding = Insets.all(2)
-            border = Border.all(1, 0xFF000000.toInt())
-        }
+        val root =
+            ContainerNode(key = "root").apply {
+                width = 28
+                padding = Insets.all(2)
+                border = Border.all(1, 0xFF000000.toInt())
+            }
         TextNode(
             textSource = TextSource.Static("this is a long sentence that must wrap"),
-            key = "child.text"
+            key = "child.text",
         ).apply {
             margin = Insets(1, 1, 1, 1)
         }.applyParent(root)
@@ -40,7 +41,7 @@ class LayoutValidatorTests {
         val violations = LayoutValidator.validate(root, ctx)
         assertTrue(
             violations.none { it.code == "CHILD_OUTSIDE_PARENT_CONTENT" },
-            "Expected child to stay inside parent content, got: $violations"
+            "Expected child to stay inside parent content, got: $violations",
         )
     }
 
@@ -51,11 +52,13 @@ class LayoutValidatorTests {
         LayoutDebug.strictBounds = false
 
         val ctx = testMeasureContext()
-        val root = ContainerNode(key = "root.wrap").apply {
-            width = 32
-            gap = 1
-        }
-        val first = TextNode(TextSource.Static("first wrapped text line that should occupy multiple rows"), key = "text.a")
+        val root =
+            ContainerNode(key = "root.wrap").apply {
+                width = 32
+                gap = 1
+            }
+        val first =
+            TextNode(TextSource.Static("first wrapped text line that should occupy multiple rows"), key = "text.a")
         val second = TextNode(TextSource.Static("second wrapped text line must be below the first one"), key = "text.b")
         first.applyParent(root)
         second.applyParent(root)
@@ -65,12 +68,12 @@ class LayoutValidatorTests {
 
         assertTrue(
             second.bounds.y >= first.bounds.y + first.bounds.height,
-            "Second text node should start after first node bottom."
+            "Second text node should start after first node bottom.",
         )
         val violations = LayoutValidator.validate(root, ctx)
         assertTrue(
             violations.none { it.code == "TEXT_HEIGHT_UNDERSIZED" || it.code == "TEXT_LINE_COLLISION" },
-            "Wrapped text must not produce line-stack violations: $violations"
+            "Wrapped text must not produce line-stack violations: $violations",
         )
     }
 
@@ -81,12 +84,13 @@ class LayoutValidatorTests {
         LayoutDebug.strictBounds = false
 
         val ctx = testMeasureContext()
-        val root = ContainerNode(key = "root.rogue").apply {
-            width = 20
-            height = 10
-            padding = Insets.all(1)
-            border = Border.all(1, 0xFF000000.toInt())
-        }
+        val root =
+            ContainerNode(key = "root.rogue").apply {
+                width = 20
+                height = 10
+                padding = Insets.all(1)
+                border = Border.all(1, 0xFF000000.toInt())
+            }
         RogueNode(key = "rogue").applyParent(root)
 
         val measured = root.measure(ctx)
@@ -96,18 +100,27 @@ class LayoutValidatorTests {
         assertEquals(1, violations.count { it.code == "CHILD_OUTSIDE_PARENT_CONTENT" })
     }
 
-    private fun testMeasureContext(): UiMeasureContext {
-        return object : UiMeasureContext {
+    private fun testMeasureContext(): UiMeasureContext =
+        object : UiMeasureContext {
             override val fontHeight: Int = 8
+
             override fun measureText(text: String): Int = text.length * 4
+
             override fun paint(commands: List<RenderCommand>) = Unit
         }
-    }
 
-    private class RogueNode(key: Any?) : DOMNode(key) {
+    private class RogueNode(
+        key: Any?,
+    ) : DOMNode(key) {
         override fun measure(ctx: UiMeasureContext): Size = Size(6, 4)
 
-        override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+        override fun render(
+            ctx: UiMeasureContext,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
             bounds = Rect(x + 100, y, width, height)
         }
     }

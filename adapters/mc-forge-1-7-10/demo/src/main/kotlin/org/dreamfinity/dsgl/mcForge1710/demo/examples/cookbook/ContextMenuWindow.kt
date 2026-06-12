@@ -11,11 +11,12 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWrapper
 
 class ContextMenuWindow : DsglWindow() {
-    override fun render() = ui {
-        centeredFlexWrapper {
-            contextMenuRecipe()
+    override fun render() =
+        ui {
+            centeredFlexWrapper {
+                contextMenuRecipe()
+            }
         }
-    }
 }
 
 fun UiScope.contextMenuRecipe() {
@@ -33,7 +34,7 @@ fun UiScope.contextMenuRecipe() {
                 item("Rename") { onClick { lastAction = "rename" } }
                 separator()
                 item("Delete") { onClick { lastAction = "delete" } }
-            }
+            },
         )
     }
 

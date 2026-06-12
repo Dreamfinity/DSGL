@@ -9,7 +9,7 @@ class TextInputNode(
     allowedChars: String? = null,
     minLength: Int? = null,
     maxLength: Int? = null,
-    key: Any? = null
+    key: Any? = null,
 ) : SingleLineInputNode(text, placeholder, key) {
     init {
         this.allowedChars = allowedChars

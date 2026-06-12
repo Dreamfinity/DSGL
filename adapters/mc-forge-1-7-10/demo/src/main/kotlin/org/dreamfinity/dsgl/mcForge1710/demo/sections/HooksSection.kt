@@ -5,15 +5,15 @@ import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.Event
 import org.dreamfinity.dsgl.core.hooks.createContext
 import org.dreamfinity.dsgl.core.hooks.provideContext
+import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
+import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
+import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import org.dreamfinity.dsgl.core.hooks.useCallback
 import org.dreamfinity.dsgl.core.hooks.useContext
 import org.dreamfinity.dsgl.core.hooks.useEffect
 import org.dreamfinity.dsgl.core.hooks.useMemo
 import org.dreamfinity.dsgl.core.hooks.useReducer
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
-import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
-import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.Overflow
@@ -22,10 +22,7 @@ import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_SURFACE_ALT
 
 private val hooksThemeContext = createContext(defaultValue = "System", name = "HooksTheme")
 
-fun UiScope.hooksSection(
-    onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
-) {
+fun UiScope.hooksSection(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit) {
     div({
         key = "section.hooks"
         style = {
@@ -49,10 +46,7 @@ fun UiScope.hooksSection(
     }
 }
 
-private fun UiScope.overviewUseRef(
-    onInfo: (String) -> Unit,
-    onLogHook: (String, Event, String?) -> Unit
-) {
+private fun UiScope.overviewUseRef(onInfo: (String) -> Unit, onLogHook: (String, Event, String?) -> Unit) {
     var refsInputValue by useState("Ref demo input")
     var refsRebuildCount by useState(0)
     var refsCallbackMounted by useState(true)
@@ -80,7 +74,7 @@ private fun UiScope.overviewUseRef(
         input(
             InputType.Text(
                 value = refsInputValue,
-                placeholder = "Focusable input with stable key"
+                placeholder = "Focusable input with stable key",
             ),
             {
                 key = "refs.input.primary"
@@ -89,7 +83,7 @@ private fun UiScope.overviewUseRef(
                     onLogHook("refs.input.onInput", event, "value=${event.value}")
                 }
             },
-            ref = inputRef
+            ref = inputRef,
         )
 
         div({
@@ -132,18 +126,19 @@ private fun UiScope.overviewUseRef(
                     backgroundColor = 0xFF313844.toInt()
                 }
             },
-            ref = panelRef
+            ref = panelRef,
         ) {
             text("Bounds target panel", { style = { color = 0xFFE2EAFF.toInt() } })
         }
 
         text({
             val bounds = panelRef.current?.bounds
-            value = if (bounds == null) {
-                "panelRef.current: null"
-            } else {
-                "panelRef.bounds: x=${bounds.x} y=${bounds.y} w=${bounds.width} h=${bounds.height}"
-            }
+            value =
+                if (bounds == null) {
+                    "panelRef.current: null"
+                } else {
+                    "panelRef.bounds: x=${bounds.x} y=${bounds.y} w=${bounds.width} h=${bounds.height}"
+                }
             style = { color = DEMO_MUTED }
         })
 
@@ -156,7 +151,7 @@ private fun UiScope.overviewUseRef(
                         padding = 4.px
                     }
                 },
-                ref = refsCallbackRef
+                ref = refsCallbackRef,
             ) {
                 text("Callback ref target", { style = { color = 0xFFC5E8C5.toInt() } })
             }
@@ -164,7 +159,7 @@ private fun UiScope.overviewUseRef(
 
         text(
             "callback attaches=$refsCallbackAttachCount detaches=$refsCallbackDetachCount last=$refsCallbackLast",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }
@@ -193,12 +188,12 @@ private fun UiScope.overviewUseState() {
             input(
                 InputType.Text(
                     value = hooksStateLocalText,
-                    placeholder = "Local useState text"
+                    placeholder = "Local useState text",
                 ),
                 {
                     key = "hooks.useState.localText"
                     onInput = { event -> hooksStateLocalText = event.value }
-                }
+                },
             )
             text("mounted state: count=$hooksStateLocalCount text=$hooksStateLocalText", {
                 style = { color = DEMO_MUTED }
@@ -265,13 +260,14 @@ private fun UiScope.overviewUseCallback() {
     val hooksCallbackIdentityRef by useRef<Int>()
     val hooksCallbackIdentity = System.identityHashCode(hooksCallback as Any)
     val hooksCallbackPreviousIdentity = hooksCallbackIdentityRef.current
-    val hooksCallbackIdentityStatus = if (hooksCallbackPreviousIdentity == null) {
-        "first render"
-    } else if (hooksCallbackIdentity == hooksCallbackPreviousIdentity) {
-        "stable"
-    } else {
-        "changed"
-    }
+    val hooksCallbackIdentityStatus =
+        if (hooksCallbackPreviousIdentity == null) {
+            "first render"
+        } else if (hooksCallbackIdentity == hooksCallbackPreviousIdentity) {
+            "stable"
+        } else {
+            "changed"
+        }
     hooksCallbackIdentityRef.current = hooksCallbackIdentity
     hookCard("useCallback", "Function identity is stable until dependency changes") {
         div({
@@ -323,10 +319,11 @@ private fun UiScope.overviewUseReducer() {
         }
 
         if (hooksReducerMounted) {
-            val (hooksReducerCount, dispatchReducer) = useReducer(
-                initialState = 0,
-                reducer = { old: Int, action: Int -> old + action }
-            )
+            val (hooksReducerCount, dispatchReducer) =
+                useReducer(
+                    initialState = 0,
+                    reducer = { old: Int, action: Int -> old + action },
+                )
             div({
                 style = {
                     gap = 4.px
@@ -412,6 +409,7 @@ private fun UiScope.overviewUseEffect() {
     var hooksEffectNoise by useState(0)
     var hooksEffectLogRevision by useState(0)
     val hooksEffectLogBuffer by useRef(mutableListOf<String>())
+
     fun appendEffectLog(line: String) {
         val buffer = hooksEffectLogBuffer.current ?: return
         buffer += line
@@ -475,11 +473,7 @@ private fun UiScope.overviewUseEffect() {
     }
 }
 
-private fun UiScope.hookCard(
-    title: String,
-    subtitle: String,
-    content: UiScope.() -> Unit
-) {
+private fun UiScope.hookCard(title: String, subtitle: String, content: UiScope.() -> Unit) {
     div({
         key = "hooks.card.$title"
         style = {

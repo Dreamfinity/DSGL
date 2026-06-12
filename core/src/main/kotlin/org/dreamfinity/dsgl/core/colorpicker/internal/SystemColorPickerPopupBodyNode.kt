@@ -8,87 +8,140 @@ import org.dreamfinity.dsgl.core.dom.layout.Border
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.dsl.UiScope
-import org.dreamfinity.dsgl.core.dsl.button
-import org.dreamfinity.dsgl.core.dsl.div
-import org.dreamfinity.dsgl.core.dsl.text
-import org.dreamfinity.dsgl.core.render.RenderCommand
+import org.dreamfinity.dsgl.core.dsl.*
+import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.TextWrap
-import kotlin.math.roundToInt
 
 internal class SystemColorPickerPopupBodyNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-body"
+    key: Any? = "dsgl-system-color-picker-native-body",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-native-body"
 
     private val scope = UiScope(this)
     private val inputLabelValues: MutableList<String> = MutableList(MAX_INPUT_SLOTS) { "" }
+    private val inputSemanticKeys: MutableList<String?> = MutableList(MAX_INPUT_SLOTS) { null }
+    private var focusedSemanticInputKey: String? = null
 
-    private val modeSelectButton: ButtonNode = scope.button("", {
-        this.key = "dsgl-system-color-picker-mode-select"
-    })
-    private val rgbaOrderButton: ButtonNode = scope.button("RGBA", {
-        this.key = "dsgl-system-color-picker-order-rgba"
-    })
-    private val argbOrderButton: ButtonNode = scope.button("ARGB", {
-        this.key = "dsgl-system-color-picker-order-argb"
-    })
-    private val colorFieldNode: ColorFieldSurfaceNode = ColorFieldSurfaceNode(
-        key = "dsgl-system-color-picker-surface-field"
-    ).applyParent(this)
-    private val hueSliderNode: HueSurfaceNode = HueSurfaceNode(
-        key = "dsgl-system-color-picker-surface-hue"
-    ).applyParent(this)
-    private val alphaSliderNode: AlphaSurfaceNode = AlphaSurfaceNode(
-        key = "dsgl-system-color-picker-surface-alpha"
-    ).applyParent(this)
-
-    private val previousSwatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        key = "dsgl-system-color-picker-swatch-previous"
-    ).applyParent(this)
-    private val currentSwatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        key = "dsgl-system-color-picker-swatch-current"
-    ).applyParent(this)
-
-    private val copyButton: ButtonNode = scope.button("Copy", {
-        this.key = "dsgl-system-color-picker-button-copy"
-    })
-    private val pasteButton: ButtonNode = scope.button("Paste", {
-        this.key = "dsgl-system-color-picker-button-paste"
-    })
-    private val pipetteButton: ButtonNode = scope.button("Pipette", {
-        this.key = "dsgl-system-color-picker-button-pipette"
-    })
-
-    private val inputLabelNodes: List<TextNode> = (0 until MAX_INPUT_SLOTS).map { index ->
-        scope.text(props = {
-            this.key = "dsgl-system-color-picker-input-label-$index"
-            source = TextSource.Dynamic { inputLabelValues[index] }
-            style = {
-                textWrap = TextWrap.NoWrap
-            }
+    private val modeSelectButton: ButtonNode =
+        scope.button("", {
+            this.key = "dsgl-system-color-picker-mode-select"
         })
-    }
-    private val inputValueNodes: List<TextInputNode> = (0 until MAX_INPUT_SLOTS).map { index ->
-        TextInputNode(key = "dsgl-system-color-picker-input-value-$index").applyParent(this)
-    }
+    private val rgbaOrderButton: ButtonNode =
+        scope.button("RGBA", {
+            this.key = "dsgl-system-color-picker-order-rgba"
+        })
+    private val argbOrderButton: ButtonNode =
+        scope.button("ARGB", {
+            this.key = "dsgl-system-color-picker-order-argb"
+        })
+    private val colorFieldNode: ColorFieldSurfaceNode =
+        scope.colorField({
+            this.key = "dsgl-system-color-picker-surface-field"
+        })
+    private val hueSliderNode: HueSurfaceNode =
+        scope.hueSlider({
+            this.key = "dsgl-system-color-picker-surface-hue"
+        })
+    private val alphaSliderNode: AlphaSurfaceNode =
+        scope.alphaSlider({
+            this.key = "dsgl-system-color-picker-surface-alpha"
+        })
 
-    private val recentSwatchNodes: List<ColorSwatchSurfaceNode> = (0 until RECENT_SWATCH_COUNT).map { index ->
-        ColorSwatchSurfaceNode(
-            allowEmpty = true,
-            key = "dsgl-system-color-picker-recent-$index"
-        ).applyParent(this)
-    }
+    private val previousSwatchNode: ColorSwatchSurfaceNode =
+        scope.colorSwatch({
+            this.key = "dsgl-system-color-picker-swatch-previous"
+        })
+    private val currentSwatchNode: ColorSwatchSurfaceNode =
+        scope.colorSwatch({
+            this.key = "dsgl-system-color-picker-swatch-current"
+        })
+    private val recentSwatchNodes: List<ColorSwatchSurfaceNode> =
+        (0 until RECENT_SWATCH_COUNT).map { index ->
+            scope.colorSwatch({
+                allowEmpty = true
+                this.key = recentSwatchNodeKey(index)
+                onMouseDown = { event ->
+                    if (event.mouseButton == MouseButton.LEFT) {
+                        val controller = popupEngine.debugActiveController()
+                        controller?.semanticCancelInputEdit()
+                        controller?.semanticPreviewRecentSwatch(index)
+                        event.cancelled = true
+                    }
+                }
+            })
+        }
+
+    private val copyButton: ButtonNode =
+        scope.button("Copy", {
+            this.key = "dsgl-system-color-picker-button-copy"
+        })
+    private val pasteButton: ButtonNode =
+        scope.button("Paste", {
+            this.key = "dsgl-system-color-picker-button-paste"
+        })
+    private val pipetteButton: ButtonNode =
+        scope.button("Pipette", {
+            this.key = "dsgl-system-color-picker-button-pipette"
+        })
+
+    private val inputLabelNodes: List<TextNode> =
+        (0 until MAX_INPUT_SLOTS).map { index ->
+            scope.text(
+                props = {
+                    this.key = "dsgl-system-color-picker-input-label-$index"
+                    source = TextSource.Dynamic { inputLabelValues[index] }
+                    style = {
+                        textWrap = TextWrap.NoWrap
+                    }
+                },
+            )
+        }
+    private val inputValueNodes: List<TextInputNode> =
+        (0 until MAX_INPUT_SLOTS).map { index ->
+            TextInputNode(key = "dsgl-system-color-picker-input-value-$index")
+                .applyParent(this)
+                .also { node -> configureInputValueNode(index, node) }
+        }
 
     private var appliedStyle: ColorPickerStyle? = null
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+    init {
+        bindSemanticBodyClickHandlers()
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    fun focusInputSlot(index: Int, mouseX: Int, mouseY: Int): Boolean {
+        val inputNode = inputValueNodes.getOrNull(index) ?: return false
+        if (inputNode.display == Display.None) return false
+        val key = inputSemanticKeys.getOrNull(index)
+        focusedSemanticInputKey = key
+        if (key != null) {
+            popupEngine.debugActiveController()?.handleDomInputFocused(key)
+        }
+        val down = MouseDownEvent(mouseX = mouseX, mouseY = mouseY, mouseButton = MouseButton.LEFT)
+        down.target = inputNode
+        EventBus.post(down)
+        val focused = FocusManager.isFocused(inputNode)
+        return focused
+    }
+
+    fun syncFocusedInputForModeOrOrderChange() {
+        val controller = popupEngine.debugActiveController() ?: return
+        val layout = popupEngine.debugActiveLayout() ?: return
+        resyncFocusedInputForModeOrOrderChange(controller, layout)
+    }
+
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
         val controller = popupEngine.debugActiveController()
         if (controller == null || popupEngine.debugActivePanelRect() == null) {
@@ -107,38 +160,125 @@ internal class SystemColorPickerPopupBodyNode(
         val hover = controller.viewHoverPosition()
         val hoverX = hover.first
         val hoverY = hover.second
-        val nowMs = System.currentTimeMillis()
 
         val modeDropdownOpen = controller.viewModeDropdownOpen()
-        val activeInputKey = controller.viewActiveInputKey()
-        val activeInputBuffer = controller.viewActiveInputBuffer()
         val inputValues = controller.viewInputValues()
+        ColorPickerDebugCounters.onRecentColorsSnapshotRead()
         val recentColors = controller.viewRecentColors()
+        val definitionsByKey = controller.viewInputDefinitions().associate { it.first to it.second }
 
-        modeSelectButton.text = if (modeDropdownOpen) "${state.mode.name} ^" else "${state.mode.name} v"
-        applyButtonVisual(
-            button = modeSelectButton,
+        renderTopControls(
+            ctx = ctx,
+            controller = controller,
+            layout = layout,
             style = style,
-            hovered = layout.modeSelectRect.contains(hoverX, hoverY),
-            selected = modeDropdownOpen
+            state = state,
+            hueDeg = hueDeg,
+            hoverX = hoverX,
+            hoverY = hoverY,
+            modeDropdownOpen = modeDropdownOpen,
         )
-        renderNode(ctx, modeSelectButton, layout.modeSelectRect)
+        renderInputRows(
+            ctx = ctx,
+            controller = controller,
+            layout = layout,
+            style = style,
+            hoverX = hoverX,
+            hoverY = hoverY,
+            inputValues = inputValues,
+            definitionsByKey = definitionsByKey,
+        )
+        renderRecentSwatchGrid(
+            ctx = ctx,
+            layout = layout,
+            style = style,
+            hoverX = hoverX,
+            hoverY = hoverY,
+            recentColors = recentColors,
+        )
+    }
 
-        val showOrder = layout.rgbaOrderRect != null && layout.argbOrderRect != null
-        if (showOrder) {
-            val rgbaRect = layout.rgbaOrderRect
-            val argbRect = layout.argbOrderRect
-            applyButtonVisual(
-                button = rgbaOrderButton,
+    private data class TopControlsRenderState(
+        val controller: ColorPickerController,
+        val layout: ColorPickerLayout,
+        val style: ColorPickerStyle,
+        val state: ColorPickerState,
+        val hueDeg: Float,
+        val hoverX: Int,
+        val hoverY: Int,
+        val modeDropdownOpen: Boolean,
+    )
+
+    private data class InputRowsRenderState(
+        val controller: ColorPickerController,
+        val layout: ColorPickerLayout,
+        val style: ColorPickerStyle,
+        val hoverX: Int,
+        val hoverY: Int,
+        val inputValues: Map<String, String>,
+        val definitionsByKey: Map<String, String>,
+    )
+
+    private fun renderTopControls(
+        ctx: UiMeasureContext,
+        controller: ColorPickerController,
+        layout: ColorPickerLayout,
+        style: ColorPickerStyle,
+        state: ColorPickerState,
+        hueDeg: Float,
+        hoverX: Int,
+        hoverY: Int,
+        modeDropdownOpen: Boolean,
+    ) {
+        val renderState =
+            TopControlsRenderState(
+                controller = controller,
+                layout = layout,
                 style = style,
-                hovered = rgbaRect.contains(hoverX, hoverY),
-                selected = state.rgbOrder == RgbChannelOrder.RGBA
+                state = state,
+                hueDeg = hueDeg,
+                hoverX = hoverX,
+                hoverY = hoverY,
+                modeDropdownOpen = modeDropdownOpen,
             )
-            applyButtonVisual(
+        renderModeSelectControl(ctx, renderState)
+        renderOrderControls(ctx, renderState)
+        renderColorSurfaceControls(ctx, renderState)
+        renderPrimarySwatches(ctx, renderState)
+        renderActionControls(ctx, renderState)
+    }
+
+    private fun renderModeSelectControl(ctx: UiMeasureContext, state: TopControlsRenderState) {
+        syncPickerButtonVisual(
+            button = modeSelectButton,
+            text = if (state.modeDropdownOpen) "${state.state.mode.name} ^" else "${state.state.mode.name} v",
+            style = state.style,
+            hovered =
+                state.layout.modeSelectRect
+                    .contains(state.hoverX, state.hoverY),
+            selected = state.modeDropdownOpen,
+        )
+        renderNode(ctx, modeSelectButton, state.layout.modeSelectRect)
+    }
+
+    private fun renderOrderControls(ctx: UiMeasureContext, state: TopControlsRenderState) {
+        val showOrder = state.layout.rgbaOrderRect != null && state.layout.argbOrderRect != null
+        if (showOrder) {
+            val rgbaRect = state.layout.rgbaOrderRect
+            val argbRect = state.layout.argbOrderRect
+            syncPickerButtonVisual(
+                button = rgbaOrderButton,
+                text = null,
+                style = state.style,
+                hovered = rgbaRect.contains(state.hoverX, state.hoverY),
+                selected = state.state.rgbOrder == RgbChannelOrder.RGBA,
+            )
+            syncPickerButtonVisual(
                 button = argbOrderButton,
-                style = style,
-                hovered = argbRect.contains(hoverX, hoverY),
-                selected = state.rgbOrder == RgbChannelOrder.ARGB
+                text = null,
+                style = state.style,
+                hovered = argbRect.contains(state.hoverX, state.hoverY),
+                selected = state.state.rgbOrder == RgbChannelOrder.ARGB,
             )
             renderNode(ctx, rgbaOrderButton, rgbaRect)
             renderNode(ctx, argbOrderButton, argbRect)
@@ -146,126 +286,366 @@ internal class SystemColorPickerPopupBodyNode(
             renderNode(ctx, rgbaOrderButton, null)
             renderNode(ctx, argbOrderButton, null)
         }
+    }
 
-        colorFieldNode.bind(style = style, color = state.color, hueDeg = hueDeg)
-        renderNode(ctx, colorFieldNode, layout.colorFieldRect)
+    private fun renderColorSurfaceControls(ctx: UiMeasureContext, state: TopControlsRenderState) {
+        colorFieldNode.bind(style = state.style, color = state.state.color, hueDeg = state.hueDeg)
+        renderNode(ctx, colorFieldNode, state.layout.colorFieldRect)
 
-        hueSliderNode.bind(style = style, hueDeg = hueDeg)
-        renderNode(ctx, hueSliderNode, layout.hueRect)
+        hueSliderNode.bind(style = state.style, hueDeg = state.hueDeg)
+        renderNode(ctx, hueSliderNode, state.layout.hueRect)
 
-        if (state.alphaEnabled && layout.alphaRect != null) {
-            alphaSliderNode.bind(style = style, color = state.color)
-            renderNode(ctx, alphaSliderNode, layout.alphaRect)
+        if (state.state.alphaEnabled && state.layout.alphaRect != null) {
+            alphaSliderNode.bind(style = state.style, color = state.state.color)
+            renderNode(ctx, alphaSliderNode, state.layout.alphaRect)
         } else {
             renderNode(ctx, alphaSliderNode, null)
         }
+    }
 
+    private fun renderPrimarySwatches(ctx: UiMeasureContext, state: TopControlsRenderState) {
         previousSwatchNode.bind(
-            style = style,
-            color = state.previous,
-            highlighted = layout.previousSwatchRect.contains(hoverX, hoverY)
+            style = state.style,
+            color = state.state.previous,
+            highlighted =
+                state.layout.previousSwatchRect
+                    .contains(state.hoverX, state.hoverY),
         )
         currentSwatchNode.bind(
-            style = style,
-            color = state.color,
-            highlighted = layout.currentSwatchRect.contains(hoverX, hoverY)
+            style = state.style,
+            color = state.state.color,
+            highlighted =
+                state.layout.currentSwatchRect
+                    .contains(state.hoverX, state.hoverY),
         )
-        renderNode(ctx, previousSwatchNode, layout.previousSwatchRect)
-        renderNode(ctx, currentSwatchNode, layout.currentSwatchRect)
+        renderNode(ctx, previousSwatchNode, state.layout.previousSwatchRect)
+        renderNode(ctx, currentSwatchNode, state.layout.currentSwatchRect)
+    }
 
-        applyButtonVisual(
+    private fun renderActionControls(ctx: UiMeasureContext, state: TopControlsRenderState) {
+        syncPickerButtonVisual(
             button = copyButton,
-            style = style,
-            hovered = layout.copyRect.contains(hoverX, hoverY),
-            selected = false
+            text = null,
+            style = state.style,
+            hovered =
+                state.layout.copyRect
+                    .contains(state.hoverX, state.hoverY),
+            selected = false,
         )
-        applyButtonVisual(
+        syncPickerButtonVisual(
             button = pasteButton,
-            style = style,
-            hovered = layout.pasteRect.contains(hoverX, hoverY),
-            selected = false
+            text = null,
+            style = state.style,
+            hovered =
+                state.layout.pasteRect
+                    .contains(state.hoverX, state.hoverY),
+            selected = false,
         )
-        applyButtonVisual(
+        syncPickerButtonVisual(
             button = pipetteButton,
-            style = style,
-            hovered = layout.pipetteRect.contains(hoverX, hoverY),
-            selected = controller.isEyedropperActive()
+            text = if (state.controller.isEyedropperActive()) "Pick..." else "Pipette",
+            style = state.style,
+            hovered =
+                state.layout.pipetteRect
+                    .contains(state.hoverX, state.hoverY),
+            selected = state.controller.isEyedropperActive(),
         )
-        pipetteButton.text = if (controller.isEyedropperActive()) "Pick..." else "Pipette"
-        renderNode(ctx, copyButton, layout.copyRect)
-        renderNode(ctx, pasteButton, layout.pasteRect)
-        renderNode(ctx, pipetteButton, layout.pipetteRect)
+        renderNode(ctx, copyButton, state.layout.copyRect)
+        renderNode(ctx, pasteButton, state.layout.pasteRect)
+        renderNode(ctx, pipetteButton, state.layout.pipetteRect)
+    }
 
-        val definitionsByKey = controller.viewInputDefinitions().associate { it.first to it.second }
-        for (index in 0 until MAX_INPUT_SLOTS) {
-            val inputSlot = layout.inputSlots.getOrNull(index)
-            val labelNode = inputLabelNodes[index]
-            val inputNode = inputValueNodes[index]
-            if (inputSlot == null) {
-                inputLabelValues[index] = ""
-                renderNode(ctx, labelNode, null)
-                renderNode(ctx, inputNode, null)
-                continue
-            }
-
-            val key = inputSlot.key
-            val label = definitionsByKey[key] ?: inputSlot.label
-            inputLabelValues[index] = label
-            labelNode.color = style.mutedTextColor
-
-            val borderColor = when {
-                activeInputKey == key -> style.inputActiveBorderColor
-                inputSlot.inputRect.contains(hoverX, hoverY) -> style.buttonHoverColor
-                else -> style.inputBorderColor
-            }
-            val value = if (activeInputKey == key) {
-                activeInputBuffer + if (controller.viewCaretVisible(nowMs)) "|" else ""
-            } else {
-                inputValues[key].orEmpty()
-            }
-            if (inputNode.text != value) {
-                inputNode.text = value
-            }
-            inputNode.border = Border.all(1, borderColor)
-            inputNode.backgroundColor = style.inputBackgroundColor
-            inputNode.focusedBackgroundColor = style.inputBackgroundColor
-            inputNode.textColor = style.textColor
-            inputNode.placeholderColor = style.mutedTextColor
-            inputNode.fontSize = style.fontSize
-
-            renderNode(ctx, labelNode, inputSlot.labelRect)
-            renderNode(ctx, inputNode, inputSlot.inputRect)
-        }
-        val hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) }
-        for (index in 0 until RECENT_SWATCH_COUNT) {
-            val swatchNode = recentSwatchNodes[index]
-            val swatchRect = layout.recentRects.getOrNull(index)
-            if (swatchRect == null) {
-                renderNode(ctx, swatchNode, null)
-                continue
-            }
-            swatchNode.bind(
+    private fun renderInputRows(
+        ctx: UiMeasureContext,
+        controller: ColorPickerController,
+        layout: ColorPickerLayout,
+        style: ColorPickerStyle,
+        hoverX: Int,
+        hoverY: Int,
+        inputValues: Map<String, String>,
+        definitionsByKey: Map<String, String>,
+    ) {
+        resyncFocusedInputForModeOrOrderChange(controller, layout)
+        val renderState =
+            InputRowsRenderState(
+                controller = controller,
+                layout = layout,
                 style = style,
-                color = recentColors.getOrNull(index),
-                highlighted = index == hoveredRecent
+                hoverX = hoverX,
+                hoverY = hoverY,
+                inputValues = inputValues,
+                definitionsByKey = definitionsByKey,
             )
-            renderNode(ctx, swatchNode, swatchRect)
+        for (index in 0 until MAX_INPUT_SLOTS) {
+            renderInputRow(ctx, renderState, index)
         }
     }
 
-    private fun applyStaticStyle(style: ColorPickerStyle) {
-        val buttons = buildList {
-            add(modeSelectButton)
-            add(rgbaOrderButton)
-            add(argbOrderButton)
-            add(copyButton)
-            add(pasteButton)
-            add(pipetteButton)
+    private fun renderInputRow(ctx: UiMeasureContext, state: InputRowsRenderState, index: Int) {
+        val inputSlot =
+            state.layout.inputSlots
+                .getOrNull(index)
+        val labelNode = inputLabelNodes[index]
+        val inputNode = inputValueNodes[index]
+        if (inputSlot == null) {
+            renderMissingInputRow(ctx, state, labelNode, inputNode, index)
+            return
         }
+        renderPresentInputRow(ctx, state, labelNode, inputNode, inputSlot, index)
+    }
+
+    private fun renderMissingInputRow(
+        ctx: UiMeasureContext,
+        state: InputRowsRenderState,
+        labelNode: TextNode,
+        inputNode: TextInputNode,
+        index: Int,
+    ) {
+        inputSemanticKeys[index] = null
+        if (FocusManager.isFocused(inputNode)) {
+            FocusManager.clearFocus()
+            focusedSemanticInputKey = null
+        }
+        inputLabelValues[index] = ""
+        syncTextNodeVisual(
+            node = labelNode,
+            text = "",
+            color = state.style.mutedTextColor,
+        )
+        renderNode(ctx, labelNode, null)
+        renderNode(ctx, inputNode, null)
+    }
+
+    private fun renderPresentInputRow(
+        ctx: UiMeasureContext,
+        state: InputRowsRenderState,
+        labelNode: TextNode,
+        inputNode: TextInputNode,
+        inputSlot: ColorPickerInputSlot,
+        index: Int,
+    ) {
+        val key = inputSlot.key
+        inputSemanticKeys[index] = key
+        val label = state.definitionsByKey[key] ?: inputSlot.label
+        inputLabelValues[index] = label
+        syncTextNodeVisual(
+            node = labelNode,
+            text = label,
+            color = state.style.mutedTextColor,
+        )
+        val focused = FocusManager.isFocused(inputNode)
+
+        val borderColor =
+            when {
+                focused -> state.style.inputActiveBorderColor
+                inputSlot.inputRect.contains(state.hoverX, state.hoverY) -> state.style.buttonHoverColor
+                else -> state.style.inputBorderColor
+            }
+        val value = if (focused) null else state.inputValues[key].orEmpty()
+        syncTextInputVisual(
+            node = inputNode,
+            value = value,
+            border = Border.all(1, borderColor),
+            background = state.style.inputBackgroundColor,
+            focusedBackground = state.style.inputBackgroundColor,
+            textColor = state.style.textColor,
+            placeholderColor = state.style.mutedTextColor,
+            fontSize = state.style.fontSize,
+        )
+
+        renderNode(ctx, labelNode, inputSlot.labelRect)
+        renderNode(ctx, inputNode, inputSlot.inputRect)
+    }
+
+    private fun renderRecentSwatchGrid(
+        ctx: UiMeasureContext,
+        layout: ColorPickerLayout,
+        style: ColorPickerStyle,
+        hoverX: Int,
+        hoverY: Int,
+        recentColors: List<RgbaColor>,
+    ) {
+        val hoveredRecent = layout.recentRects.indexOfFirst { it.contains(hoverX, hoverY) }
+        val recentSwatchNodes =
+            composeRecentSwatchNodes(
+                style = style,
+                recentColors = recentColors,
+                hoveredRecent = hoveredRecent,
+            )
+        for (index in 0 until RECENT_SWATCH_COUNT) {
+            renderRecentSwatch(ctx, layout, recentSwatchNodes, index)
+        }
+    }
+
+    private fun composeRecentSwatchNodes(
+        style: ColorPickerStyle,
+        recentColors: List<RgbaColor>,
+        hoveredRecent: Int,
+    ): List<ColorSwatchSurfaceNode> {
+        val composeStartNanos = System.nanoTime()
+        for (index in 0 until RECENT_SWATCH_COUNT) {
+            val node = recentSwatchNodes[index]
+            node.bind(
+                style = style,
+                color = recentColors.getOrNull(index),
+                highlighted = index == hoveredRecent,
+            )
+        }
+        val composeDurationNanos = System.nanoTime() - composeStartNanos
+        ColorPickerDebugCounters.onRecentSwatchCompose(
+            createdNodes = 0,
+            removedNodes = 0,
+            composeDurationNanos = composeDurationNanos,
+            removeDurationNanos = 0L,
+        )
+        return recentSwatchNodes
+    }
+
+    private fun renderRecentSwatch(
+        ctx: UiMeasureContext,
+        layout: ColorPickerLayout,
+        recentSwatchNodes: List<ColorSwatchSurfaceNode>,
+        index: Int,
+    ) {
+        val swatchNode = recentSwatchNodes[index]
+        val swatchRect = layout.recentRects.getOrNull(index)
+        if (swatchRect == null) {
+            renderNode(ctx, swatchNode, null)
+            return
+        }
+        renderNode(ctx, swatchNode, swatchRect)
+    }
+
+    private fun configureInputValueNode(index: Int, inputNode: TextInputNode) {
+        EventBus.run {
+            inputNode.addEventListener(Events.FOCUS) { _: FocusGainEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                focusedSemanticInputKey = key
+                popupEngine.debugActiveController()?.handleDomInputFocused(key)
+            }
+            inputNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
+                val key = inputSemanticKeys[index]
+                if (focusedSemanticInputKey == key) {
+                    focusedSemanticInputKey = null
+                }
+                if (key != null) {
+                    popupEngine.debugActiveController()?.handleDomInputBlurred(key)
+                }
+            }
+            inputNode.addEventListener(Events.INPUT) { _: InputEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                popupEngine.debugActiveController()?.handleDomInputDraft(key, inputNode.text)
+            }
+            inputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
+                val key = inputSemanticKeys[index] ?: return@addEventListener
+                val controller = popupEngine.debugActiveController() ?: return@addEventListener
+                when (event.keyCode) {
+                    KeyCodes.ENTER -> {
+                        controller.commitDomInputEdit(key, inputNode.text)
+                        event.cancelled = true
+                    }
+
+                    KeyCodes.ESCAPE -> {
+                        controller.cancelDomInputEdit(key)
+                        val restoredValue = controller.resolveDomInputValue(key)
+                        if (inputNode.text != restoredValue) {
+                            inputNode.text = restoredValue
+                            requestRenderCommandsInvalidationTracked(inputNode)
+                        }
+                        event.cancelled = true
+                    }
+                }
+            }
+        }
+    }
+
+    private fun bindSemanticBodyClickHandlers() {
+        val left = MouseButton.LEFT
+        previousSwatchNode.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticPreviewPreviousSwatch()
+                event.cancelled = true
+            }
+        }
+        currentSwatchNode.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticCommitCurrentColor()
+                event.cancelled = true
+            }
+        }
+        copyButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticCopyCurrentColor()
+                event.cancelled = true
+            }
+        }
+        pasteButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticPasteFromClipboard()
+                event.cancelled = true
+            }
+        }
+        pipetteButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticBeginEyedropper()
+                event.cancelled = true
+            }
+        }
+        rgbaOrderButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticSetRgbOrder(RgbChannelOrder.RGBA)
+                event.cancelled = true
+            }
+        }
+        argbOrderButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticSetRgbOrder(RgbChannelOrder.ARGB)
+                event.cancelled = true
+            }
+        }
+        modeSelectButton.onMouseDown = { event ->
+            if (event.mouseButton == left) {
+                popupEngine.debugActiveController()?.semanticToggleModeDropdown()
+                event.cancelled = true
+            }
+        }
+    }
+
+    private fun resyncFocusedInputForModeOrOrderChange(controller: ColorPickerController, layout: ColorPickerLayout) {
+        val focusedIndex = inputValueNodes.indexOf(FocusManager.focusedNode())
+        val focusedSlotKey = if (focusedIndex >= 0) inputSemanticKeys.getOrNull(focusedIndex) else null
+        val resyncKey =
+            controller.consumeDomInputFocusResyncKey()
+                ?: focusedSemanticInputKey
+                ?: focusedSlotKey
+                ?: return
+        val targetIndex = layout.inputSlots.indexOfFirst { it.key == resyncKey }
+        if (targetIndex >= 0) {
+            FocusManager.requestFocus(inputValueNodes[targetIndex])
+            focusedSemanticInputKey = resyncKey
+            return
+        }
+        FocusManager.clearFocus()
+        focusedSemanticInputKey = null
+    }
+
+    private fun applyStaticStyle(style: ColorPickerStyle) {
+        val buttons =
+            buildList {
+                add(modeSelectButton)
+                add(rgbaOrderButton)
+                add(argbOrderButton)
+                add(copyButton)
+                add(pasteButton)
+                add(pipetteButton)
+            }
         buttons.forEach { button ->
             button.textColor = style.textColor
             button.applyStyle {
-                border { width = 1.px; color = style.inputBorderColor }
+                border {
+                    width = 1.px
+                    color = style.inputBorderColor
+                }
                 fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap
@@ -285,17 +665,104 @@ internal class SystemColorPickerPopupBodyNode(
         }
     }
 
-    private fun applyButtonVisual(button: ButtonNode, style: ColorPickerStyle, hovered: Boolean, selected: Boolean) {
-        button.backgroundColor = when {
-            selected -> style.buttonActiveColor
-            hovered -> style.buttonHoverColor
-            else -> style.buttonBackgroundColor
+    private fun syncPickerButtonVisual(
+        button: ButtonNode,
+        text: String?,
+        style: ColorPickerStyle,
+        hovered: Boolean,
+        selected: Boolean,
+    ) {
+        val nextBackground =
+            when {
+                selected -> style.buttonActiveColor
+                hovered -> style.buttonHoverColor
+                else -> style.buttonBackgroundColor
+            }
+        val nextBorder = Border.all(1, if (selected) style.inputActiveBorderColor else style.inputBorderColor)
+        var changed = false
+        if (text != null && button.text != text) {
+            button.text = text
+            changed = true
         }
-        button.border = Border.all(1, if (selected) style.inputActiveBorderColor else style.inputBorderColor)
-        button.textColor = style.textColor
-        button.fontSize = style.fontSize
+        if (button.backgroundColor != nextBackground) {
+            button.backgroundColor = nextBackground
+            changed = true
+        }
+        if (button.border != nextBorder) {
+            button.border = nextBorder
+            changed = true
+        }
+        if (button.textColor != style.textColor) {
+            button.textColor = style.textColor
+            changed = true
+        }
+        if (button.fontSize != style.fontSize) {
+            button.fontSize = style.fontSize
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(button)
+        }
     }
 
+    private fun syncTextNodeVisual(node: TextNode, text: String, color: Int) {
+        var changed = false
+        if (node.text != text) {
+            node.setText(text)
+            changed = false
+        }
+        if (node.color != color) {
+            node.color = color
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(node)
+        }
+    }
+
+    private fun syncTextInputVisual(
+        node: TextInputNode,
+        value: String?,
+        border: Border,
+        background: Int,
+        focusedBackground: Int,
+        textColor: Int,
+        placeholderColor: Int,
+        fontSize: Int,
+    ) {
+        var changed = false
+        if (value != null && node.text != value) {
+            node.text = value
+            changed = true
+        }
+        if (node.border != border) {
+            node.border = border
+            changed = true
+        }
+        if (node.backgroundColor != background) {
+            node.backgroundColor = background
+            changed = true
+        }
+        if (node.focusedBackgroundColor != focusedBackground) {
+            node.focusedBackgroundColor = focusedBackground
+            changed = true
+        }
+        if (node.textColor != textColor) {
+            node.textColor = textColor
+            changed = true
+        }
+        if (node.placeholderColor != placeholderColor) {
+            node.placeholderColor = placeholderColor
+            changed = true
+        }
+        if (node.fontSize != fontSize) {
+            node.fontSize = fontSize
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(node)
+        }
+    }
 
     private fun renderNode(ctx: UiMeasureContext, node: DOMNode, rect: Rect?) {
         if (rect == null || rect.width <= 0 || rect.height <= 0) {
@@ -315,87 +782,144 @@ internal class SystemColorPickerPopupBodyNode(
     }
 
     private companion object {
-        const val MAX_INPUT_SLOTS: Int = 4
-        const val RECENT_SWATCH_COUNT: Int = 64
+        private const val MAX_INPUT_SLOTS: Int = 4
+        private const val RECENT_SWATCH_COUNT: Int = 64
+        private const val RECENT_SWATCH_KEY_PREFIX: String = "dsgl-system-color-picker-recent-"
+
+        private fun recentSwatchNodeKey(index: Int): String = "$RECENT_SWATCH_KEY_PREFIX$index"
     }
 }
 
-internal class SystemColorPickerTransientOverlayNode(
+internal class SystemColorPickerTransientPortalNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-transient"
+    key: Any? = "dsgl-system-color-picker-native-transient",
 ) : DOMNode(key) {
     override val styleType: String = "dsgl-system-color-picker-native-transient"
 
-    private val modeDropdownOverlayNode: SystemColorPickerModeDropdownOverlayNode =
-        SystemColorPickerModeDropdownOverlayNode(popupEngine).applyParent(this)
-    private val eyedropperOverlayNode: SystemColorPickerEyedropperOverlayNode =
-        SystemColorPickerEyedropperOverlayNode(popupEngine).applyParent(this)
+    private val modeDropdownPortalNode: SystemColorPickerModeDropdownPortalNode =
+        SystemColorPickerModeDropdownPortalNode(popupEngine).applyParent(this)
+    private val eyedropperPreviewNode: SystemColorPickerEyedropperPreviewNode =
+        SystemColorPickerEyedropperPreviewNode(popupEngine).applyParent(this)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
+        bounds = Rect(x, y, width, height)
+        modeDropdownPortalNode.render(ctx, x, y, width, height)
+        eyedropperPreviewNode.render(ctx, x, y, width, height)
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-        modeDropdownOverlayNode.render(ctx, x, y, width, height)
-        eyedropperOverlayNode.render(ctx, x, y, width, height)
+    fun invalidateColorState() {
+        markRenderCommandsDirty()
     }
 }
 
-internal class SystemColorPickerModeDropdownOverlayNode(
+internal class SystemColorPickerModeDropdownPortalNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-mode-dropdown-overlay"
+    key: Any? = "dsgl-system-color-picker-native-mode-dropdown-portal",
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-native-mode-dropdown-overlay"
+    override val styleType: String = "dsgl-system-color-picker-native-mode-dropdown-portal"
 
     private val scope = UiScope(this)
-    private val popupBackgroundNode: ContainerNode = ContainerNode(
-        key = "dsgl-system-color-picker-mode-dropdown-background"
-    ).applyParent(this)
-    private val modeOptionButtons: Map<ColorFormatMode, ButtonNode> = ColorFormatMode.entries.associateWith { mode ->
-        scope.button(mode.name, {
-            this.key = "dsgl-system-color-picker-mode-option-${mode.name.lowercase()}"
-        })
-    }
+    private val popupBackgroundNode: ContainerNode =
+        ContainerNode(
+            key = "dsgl-system-color-picker-mode-dropdown-background",
+        ).applyParent(this)
+    private val modeOptionButtons: Map<ColorFormatMode, ButtonNode> =
+        ColorFormatMode.entries.associateWith { mode ->
+            scope.button(
+                mode.name,
+                {
+                    this.key = "dsgl-system-color-picker-mode-option-${mode.name.lowercase()}"
+                    onMouseDown = { event ->
+                        if (event.mouseButton == MouseButton.LEFT) {
+                            popupEngine.debugActiveController()?.semanticSetMode(mode)
+                            event.cancelled = true
+                        }
+                    }
+                },
+            )
+        }
     private var appliedStyle: ColorPickerStyle? = null
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+    private data class ModeDropdownRenderState(
+        val style: ColorPickerStyle,
+        val layout: ColorPickerLayout,
+        val popupRect: Rect,
+        val hoverX: Int,
+        val hoverY: Int,
+        val selectedMode: ColorFormatMode,
+    )
+
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
+        bounds = Rect(x, y, width, height)
+        val renderState =
+            resolveRenderState() ?: run {
+                hideAll(ctx)
+                return
+            }
+        renderPopupBackground(ctx, renderState)
+        renderModeOptions(ctx, renderState)
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-        val controller = popupEngine.debugActiveController()
+    private fun resolveRenderState(): ModeDropdownRenderState? {
+        val controller = popupEngine.debugActiveController() ?: return null
         val panelRect = popupEngine.debugActivePanelRect()
-        if (controller == null || panelRect == null || !controller.viewModeDropdownOpen()) {
-            hideAll(ctx)
-            return
-        }
+        if (panelRect == null || !controller.viewModeDropdownOpen()) return null
         val style = popupEngine.debugActiveStyle() ?: controller.style()
         if (appliedStyle != style) {
             applyStaticStyle(style)
             appliedStyle = style
         }
-
-        val layout = popupEngine.debugActiveLayout() ?: run {
-            hideAll(ctx)
-            return
-        }
-        val popupRect = layout.modeOptionsRect ?: run {
-            hideAll(ctx)
-            return
-        }
+        val layout = popupEngine.debugActiveLayout() ?: return null
+        val popupRect = layout.modeOptionsRect ?: return null
         val hover = controller.viewHoverPosition()
-        val hoverX = hover.first
-        val hoverY = hover.second
+        return ModeDropdownRenderState(
+            style = style,
+            layout = layout,
+            popupRect = popupRect,
+            hoverX = hover.first,
+            hoverY = hover.second,
+            selectedMode = controller.snapshot().mode,
+        )
+    }
 
+    private fun renderPopupBackground(ctx: UiMeasureContext, state: ModeDropdownRenderState) {
         popupBackgroundNode.display = Display.Block
-        popupBackgroundNode.backgroundColor = style.inputBackgroundColor
-        popupBackgroundNode.border = Border.all(1, style.inputBorderColor)
-        popupBackgroundNode.render(ctx, popupRect.x, popupRect.y, popupRect.width, popupRect.height)
+        syncContainerVisual(
+            node = popupBackgroundNode,
+            backgroundColor = state.style.inputBackgroundColor,
+            border = Border.all(1, state.style.inputBorderColor),
+        )
+        popupBackgroundNode.render(
+            ctx,
+            state.popupRect.x,
+            state.popupRect.y,
+            state.popupRect.width,
+            state.popupRect.height,
+        )
+    }
 
-        val state = controller.snapshot()
-        val optionsByMode = layout.modeOptions.associateBy { it.mode }
+    private fun renderModeOptions(ctx: UiMeasureContext, state: ModeDropdownRenderState) {
+        val optionsByMode =
+            state.layout.modeOptions
+                .associateBy { it.mode }
         ColorFormatMode.entries.forEach { mode ->
             val button = modeOptionButtons[mode] ?: return@forEach
             val optionRect = optionsByMode[mode]?.rect
@@ -404,9 +928,13 @@ internal class SystemColorPickerModeDropdownOverlayNode(
                 button.render(ctx, 0, 0, 0, 0)
                 return@forEach
             }
-            val hovered = optionRect.contains(hoverX, hoverY)
-            val selected = state.mode == mode
-            applyButtonVisual(button = button, style = style, hovered = hovered, selected = selected)
+            syncPickerButtonVisual(
+                button = button,
+                text = null,
+                style = state.style,
+                hovered = optionRect.contains(state.hoverX, state.hoverY),
+                selected = state.selectedMode == mode,
+            )
             button.display = Display.Block
             button.render(ctx, optionRect.x, optionRect.y, optionRect.width, optionRect.height)
         }
@@ -415,7 +943,10 @@ internal class SystemColorPickerModeDropdownOverlayNode(
     private fun applyStaticStyle(style: ColorPickerStyle) {
         modeOptionButtons.values.forEach { button ->
             button.applyStyle {
-                border { width = 1.px; color = style.inputBorderColor }
+                border {
+                    width = 1.px
+                    color = style.inputBorderColor
+                }
                 fontSize = style.fontSize.px
                 padding = 0.px
                 textWrap = TextWrap.NoWrap
@@ -423,15 +954,59 @@ internal class SystemColorPickerModeDropdownOverlayNode(
         }
     }
 
-    private fun applyButtonVisual(button: ButtonNode, style: ColorPickerStyle, hovered: Boolean, selected: Boolean) {
-        button.backgroundColor = when {
-            selected -> style.buttonActiveColor
-            hovered -> style.buttonHoverColor
-            else -> style.buttonBackgroundColor
+    private fun syncPickerButtonVisual(
+        button: ButtonNode,
+        text: String?,
+        style: ColorPickerStyle,
+        hovered: Boolean,
+        selected: Boolean,
+    ) {
+        val nextBackground =
+            when {
+                selected -> style.buttonActiveColor
+                hovered -> style.buttonHoverColor
+                else -> style.buttonBackgroundColor
+            }
+        val nextBorder = Border.all(1, if (selected) style.inputActiveBorderColor else style.inputBorderColor)
+        var changed = false
+        if (text != null && button.text != text) {
+            button.text = text
+            changed = true
         }
-        button.border = Border.all(1, if (selected) style.inputActiveBorderColor else style.inputBorderColor)
-        button.textColor = style.textColor
-        button.fontSize = style.fontSize
+        if (button.backgroundColor != nextBackground) {
+            button.backgroundColor = nextBackground
+            changed = true
+        }
+        if (button.border != nextBorder) {
+            button.border = nextBorder
+            changed = true
+        }
+        if (button.textColor != style.textColor) {
+            button.textColor = style.textColor
+            changed = true
+        }
+        if (button.fontSize != style.fontSize) {
+            button.fontSize = style.fontSize
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(button)
+        }
+    }
+
+    private fun syncContainerVisual(node: ContainerNode, backgroundColor: Int?, border: Border) {
+        var changed = false
+        if (node.backgroundColor != backgroundColor) {
+            node.backgroundColor = backgroundColor
+            changed = true
+        }
+        if (node.border != border) {
+            node.border = border
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(node)
+        }
     }
 
     private fun hideAll(ctx: UiMeasureContext) {
@@ -444,134 +1019,228 @@ internal class SystemColorPickerModeDropdownOverlayNode(
     }
 }
 
-internal class SystemColorPickerEyedropperOverlayNode(
+internal class SystemColorPickerEyedropperPreviewNode(
     private val popupEngine: ColorPickerPopupEngine,
-    key: Any? = "dsgl-system-color-picker-native-eyedropper-overlay"
+    key: Any? = "dsgl-system-color-picker-native-eyedropper-preview",
 ) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-native-eyedropper-overlay"
+    override val styleType: String = "dsgl-system-color-picker-native-eyedropper-preview"
 
     private val scope = UiScope(this)
-    private val captureNode: EyedropperCaptureNode = EyedropperCaptureNode(
-        key = "dsgl-system-color-picker-eyedropper-capture"
-    ).applyParent(this)
-    private val shadowNode: ContainerNode = scope.div({
-        this.key = "dsgl-system-color-picker-eyedropper-shadow"
-    })
-    private val panelNode: ContainerNode = scope.div({
-        this.key = "dsgl-system-color-picker-eyedropper-panel"
-    })
-    private val magnifierDrawNode: EyedropperMagnifierDrawNode = EyedropperMagnifierDrawNode(
-        key = "dsgl-system-color-picker-eyedropper-magnifier"
-    ).applyParent(this)
-    private val centerNode: ContainerNode = scope.div({
-        this.key = "dsgl-system-color-picker-eyedropper-center"
-    })
-    private val swatchNode: ColorSwatchSurfaceNode = ColorSwatchSurfaceNode(
-        allowEmpty = false,
-        key = "dsgl-system-color-picker-eyedropper-swatch"
-    ).applyParent(this)
-    private val modeTextNode: TextNode = createOverlayTextNode(
-        key = "dsgl-system-color-picker-eyedropper-mode",
-        text = ""
-    )
-    private val valueTextNode: TextNode = createOverlayTextNode(
-        key = "dsgl-system-color-picker-eyedropper-value",
-        text = ""
+    private val captureNode: EyedropperCaptureNode =
+        EyedropperCaptureNode(
+            key = "dsgl-system-color-picker-eyedropper-capture",
+        ).applyParent(this)
+    private val shadowNode: ContainerNode =
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-shadow"
+        })
+    private val panelNode: ContainerNode =
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-panel"
+        })
+    private val magnifierDrawNode: EyedropperMagnifierDrawNode =
+        scope.eyedropperMagnifier({
+            this.key = "dsgl-system-color-picker-eyedropper-magnifier"
+        })
+    private val centerNode: ContainerNode =
+        scope.div({
+            this.key = "dsgl-system-color-picker-eyedropper-center"
+        })
+    private val swatchNode: ColorSwatchSurfaceNode =
+        scope.colorSwatch({
+            allowEmpty = false
+            this.key = "dsgl-system-color-picker-eyedropper-swatch"
+        })
+    private val modeTextNode: TextNode =
+        createPreviewTextNode(
+            key = "dsgl-system-color-picker-eyedropper-mode",
+            text = "",
+        )
+    private val valueTextNode: TextNode =
+        createPreviewTextNode(
+            key = "dsgl-system-color-picker-eyedropper-value",
+            text = "",
+        )
+
+    private data class EyedropperRenderState(
+        val model: ColorPickerEyedropperPreviewModel,
+        val style: ColorPickerStyle,
+        val color: RgbaColor,
     )
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
+    private data class EyedropperTextRects(
+        val modeRect: Rect,
+        val valueRect: Rect,
+    )
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun measure(ctx: UiMeasureContext): Size =
+        Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
+
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
-        val controller = popupEngine.debugActiveController() ?: run {
-            hideAll(ctx)
-            return
-        }
-        val model = controller.resolveEyedropperOverlayModel(
-            viewportWidth = bounds.width.coerceAtLeast(1),
-            viewportHeight = bounds.height.coerceAtLeast(1)
-        ) ?: run {
-            hideAll(ctx)
-            return
-        }
-        val style = popupEngine.debugActiveStyle() ?: controller.style()
-        val color = controller.snapshot().color
+        val renderState =
+            resolveRenderState() ?: run {
+                hideAll(ctx)
+                return
+            }
 
-        syncOverlayText(model.modeText, model.valueText)
-        shadowNode.backgroundColor = style.panelShadowColor
-        shadowNode.border = Border.NONE
-
-        panelNode.backgroundColor = style.eyedropperOverlayBackgroundColor
-        panelNode.border = Border.all(1, style.eyedropperOverlayBorderColor)
-
-        centerNode.backgroundColor = null
-        centerNode.border = Border.all(1, style.eyedropperCenterBorderColor)
-
-        modeTextNode.color = style.mutedTextColor
-        modeTextNode.fontSize = style.fontSize
-        valueTextNode.color = style.textColor
-        valueTextNode.fontSize = style.fontSize
-
-        captureNode.bind(
-            sourceRect = model.captureSourceRect,
-            fallbackColor = color.toArgbInt()
-        )
-        swatchNode.bind(style = style, color = color, highlighted = false)
-        magnifierDrawNode.bind(
-            columns = model.captureSourceRect.width,
-            rows = model.captureSourceRect.height,
-            cellSize = (model.magnifierRect.width / model.captureSourceRect.width.coerceAtLeast(1)).coerceAtLeast(1),
-            gridEnabled = style.eyedropperGridOverlayEnabled,
-            gridColor = style.eyedropperGridOverlayColor
-        )
-
-        val shadowRect = Rect(
-            x = model.panelRect.x + 2,
-            y = model.panelRect.y + 2,
-            width = model.panelRect.width,
-            height = model.panelRect.height
-        )
-        val textX = model.swatchRect.x + model.swatchRect.width + 8
-        val textWidth = (model.panelRect.x + model.panelRect.width - 6 - textX).coerceAtLeast(1)
-        val modeRect = Rect(
-            x = textX,
-            y = model.swatchRect.y + 1,
-            width = textWidth,
-            height = (style.fontSize + 2).coerceAtLeast(1)
-        )
-        val valueRect = Rect(
-            x = textX,
-            y = modeRect.y + style.fontSize,
-            width = textWidth,
-            height = (style.fontSize + 2).coerceAtLeast(1)
-        )
-
-        renderNode(ctx, captureNode, model.panelRect)
-        renderNode(ctx, shadowNode, shadowRect)
-        renderNode(ctx, panelNode, model.panelRect)
-        renderNode(ctx, magnifierDrawNode, model.magnifierRect)
-        renderNode(ctx, centerNode, model.centerRect)
-        renderNode(ctx, swatchNode, model.swatchRect)
-        renderNode(ctx, modeTextNode, modeRect)
-        renderNode(ctx, valueTextNode, valueRect)
+        syncVisuals(renderState)
+        bindVisualNodes(renderState)
+        renderPreviewNodes(ctx, renderState)
     }
 
-    private fun syncOverlayText(modeText: String, valueText: String) {
+    private fun resolveRenderState(): EyedropperRenderState? {
+        val controller = popupEngine.debugActiveController() ?: return null
+        val model =
+            controller.resolveEyedropperPreviewModel(
+                viewportWidth = bounds.width.coerceAtLeast(1),
+                viewportHeight = bounds.height.coerceAtLeast(1),
+            ) ?: return null
+        val style = popupEngine.debugActiveStyle() ?: controller.style()
+        return EyedropperRenderState(
+            model = model,
+            style = style,
+            color = controller.snapshot().color,
+        )
+    }
+
+    private fun syncVisuals(state: EyedropperRenderState) {
+        syncPreviewText(state.model.modeText, state.model.valueText)
+        syncContainerVisual(
+            node = shadowNode,
+            backgroundColor = state.style.panelShadowColor,
+            border = Border.NONE,
+        )
+        syncContainerVisual(
+            node = panelNode,
+            backgroundColor = state.style.eyedropperPreviewBackgroundColor,
+            border = Border.all(1, state.style.eyedropperPreviewBorderColor),
+        )
+        syncContainerVisual(
+            node = centerNode,
+            backgroundColor = null,
+            border = Border.all(1, state.style.eyedropperCenterBorderColor),
+        )
+        syncPreviewTextVisual(modeTextNode, state.style.mutedTextColor, state.style.fontSize)
+        syncPreviewTextVisual(valueTextNode, state.style.textColor, state.style.fontSize)
+    }
+
+    private fun bindVisualNodes(state: EyedropperRenderState) {
+        captureNode.bind(
+            sourceRect = state.model.captureSourceRect,
+            fallbackColor = state.color.toArgbInt(),
+        )
+        swatchNode.bind(style = state.style, color = state.color, highlighted = false)
+        magnifierDrawNode.bind(
+            columns = state.model.captureSourceRect.width,
+            rows = state.model.captureSourceRect.height,
+            magnification =
+                (
+                    state.model.magnifierRect.width /
+                        state.model.captureSourceRect.width
+                            .coerceAtLeast(1)
+                ).coerceAtLeast(1),
+            gridEnabled = state.style.eyedropperGridEnabled,
+            gridColor = state.style.eyedropperGridColor,
+        )
+    }
+
+    private fun renderPreviewNodes(ctx: UiMeasureContext, state: EyedropperRenderState) {
+        val shadowRect =
+            Rect(
+                x = state.model.panelRect.x + 2,
+                y = state.model.panelRect.y + 2,
+                width = state.model.panelRect.width,
+                height = state.model.panelRect.height,
+            )
+        val textRects = resolveTextRects(state)
+
+        renderNode(ctx, captureNode, state.model.panelRect)
+        renderNode(ctx, shadowNode, shadowRect)
+        renderNode(ctx, panelNode, state.model.panelRect)
+        renderNode(ctx, magnifierDrawNode, state.model.magnifierRect)
+        renderNode(ctx, centerNode, state.model.centerRect)
+        renderNode(ctx, swatchNode, state.model.swatchRect)
+        renderNode(ctx, modeTextNode, textRects.modeRect)
+        renderNode(ctx, valueTextNode, textRects.valueRect)
+    }
+
+    private fun resolveTextRects(state: EyedropperRenderState): EyedropperTextRects {
+        val textX = state.model.swatchRect.x + state.model.swatchRect.width + 8
+        val textWidth =
+            (
+                state.model.panelRect.x + state.model.panelRect.width - 6 - textX
+            ).coerceAtLeast(1)
+        val modeRect =
+            Rect(
+                x = textX,
+                y = state.model.swatchRect.y + 1,
+                width = textWidth,
+                height = (state.style.fontSize + 2).coerceAtLeast(1),
+            )
+        val valueRect =
+            Rect(
+                x = textX,
+                y = modeRect.y + state.style.fontSize,
+                width = textWidth,
+                height = (state.style.fontSize + 2).coerceAtLeast(1),
+            )
+        return EyedropperTextRects(
+            modeRect = modeRect,
+            valueRect = valueRect,
+        )
+    }
+
+    private fun syncPreviewText(modeText: String, valueText: String) {
         if (modeTextNode.text != modeText) {
-            modeTextNode.syncSourceFrom(TextNode(TextSource.Static(modeText)))
+            modeTextNode.setText(modeText)
         }
         if (valueTextNode.text != valueText) {
-            valueTextNode.syncSourceFrom(TextNode(TextSource.Static(valueText)))
+            valueTextNode.setText(valueText)
         }
     }
 
-    private fun createOverlayTextNode(key: Any, text: String): TextNode {
-        return TextNode(TextSource.Static(text), key = key).apply {
-            textWrap = TextWrap.NoWrap
-        }.applyParent(this)
+    private fun syncPreviewTextVisual(node: TextNode, color: Int, fontSize: Int) {
+        var changed = false
+        if (node.color != color) {
+            node.color = color
+            changed = true
+        }
+        if (node.fontSize != fontSize) {
+            node.fontSize = fontSize
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(node)
+        }
     }
+
+    private fun syncContainerVisual(node: ContainerNode, backgroundColor: Int?, border: Border) {
+        var changed = false
+        if (node.backgroundColor != backgroundColor) {
+            node.backgroundColor = backgroundColor
+            changed = true
+        }
+        if (node.border != border) {
+            node.border = border
+            changed = true
+        }
+        if (changed) {
+            requestRenderCommandsInvalidationTracked(node)
+        }
+    }
+
+    private fun createPreviewTextNode(key: Any, text: String): TextNode =
+        TextNode(TextSource.Static(text), key = key)
+            .apply {
+                textWrap = TextWrap.NoWrap
+            }.applyParent(this)
 
     private fun renderNode(ctx: UiMeasureContext, node: DOMNode, rect: Rect?) {
         if (rect == null || rect.width <= 0 || rect.height <= 0) {
@@ -591,269 +1260,11 @@ internal class SystemColorPickerEyedropperOverlayNode(
     }
 }
 
-private class EyedropperCaptureNode(
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-eyedropper-capture"
+internal typealias ColorPickerPopupBodyNode = SystemColorPickerPopupBodyNode
 
-    private var sourceRect: Rect? = null
-    private var fallbackColor: Int = 0
+internal typealias ColorPickerTransientPortalNode = SystemColorPickerTransientPortalNode
 
-    fun bind(sourceRect: Rect, fallbackColor: Int) {
-        this.sourceRect = sourceRect
-        this.fallbackColor = fallbackColor
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (display == Display.None) return
-        val source = sourceRect ?: return
-        if (source.width <= 0 || source.height <= 0) return
-        out += RenderCommand.CaptureScreenRegion(
-            sourceX = source.x,
-            sourceY = source.y,
-            sourceWidth = source.width,
-            sourceHeight = source.height,
-            fallbackColor = fallbackColor
-        )
-    }
+private fun requestRenderCommandsInvalidationTracked(node: DOMNode) {
+    ColorPickerDebugCounters.onRenderInvalidationCall()
+    node.requestRenderCommandsInvalidation()
 }
-
-private class EyedropperMagnifierDrawNode(
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-eyedropper-magnifier"
-
-    private var columns: Int = 1
-    private var rows: Int = 1
-    private var cellSize: Int = 1
-    private var gridEnabled: Boolean = true
-    private var gridColor: Int = 0x66FFFFFF
-
-    fun bind(columns: Int, rows: Int, cellSize: Int, gridEnabled: Boolean, gridColor: Int) {
-        this.columns = columns.coerceAtLeast(1)
-        this.rows = rows.coerceAtLeast(1)
-        this.cellSize = cellSize.coerceAtLeast(1)
-        this.gridEnabled = gridEnabled
-        this.gridColor = gridColor
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (display == Display.None) return
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawCapturedScreenRegion(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height
-        )
-        if (!gridEnabled) return
-        for (column in 1 until columns) {
-            val lineX = bounds.x + column * cellSize
-            if (lineX <= bounds.x || lineX >= bounds.x + bounds.width) continue
-            out += RenderCommand.DrawRect(lineX, bounds.y, 1, bounds.height, gridColor)
-        }
-        for (row in 1 until rows) {
-            val lineY = bounds.y + row * cellSize
-            if (lineY <= bounds.y || lineY >= bounds.y + bounds.height) continue
-            out += RenderCommand.DrawRect(bounds.x, lineY, bounds.width, 1, gridColor)
-        }
-    }
-}
-
-private class ColorFieldSurfaceNode(
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-color-field"
-
-    private var style: ColorPickerStyle = ColorPickerStyle()
-    private var hueDeg: Float = 0f
-    private var saturation: Float = 0f
-    private var brightness: Float = 1f
-
-    fun bind(style: ColorPickerStyle, color: RgbaColor, hueDeg: Float) {
-        this.style = style
-        this.hueDeg = hueDeg
-        val hsv = ColorConversions.rgbToHsv(color, hueDeg)
-        saturation = hsv.saturation
-        brightness = hsv.brightness
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawColorField(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height,
-            hueDeg = hueDeg
-        )
-        drawBorder(out, bounds, style.inputBorderColor)
-        val thumbX = bounds.x + (saturation * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
-        val thumbY =
-            bounds.y + ((1f - brightness) * bounds.height.toFloat()).roundToInt().coerceIn(0, bounds.height - 1)
-        out += RenderCommand.DrawRect(thumbX - 3, thumbY - 3, 7, 7, style.thumbShadowColor)
-        drawBorder(out, Rect(thumbX - 2, thumbY - 2, 5, 5), style.thumbOutlineColor)
-    }
-}
-
-private class HueSurfaceNode(
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-hue-slider"
-
-    private var style: ColorPickerStyle = ColorPickerStyle()
-    private var hueDeg: Float = 0f
-
-    fun bind(style: ColorPickerStyle, hueDeg: Float) {
-        this.style = style
-        this.hueDeg = hueDeg
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        out += RenderCommand.DrawHueBar(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height
-        )
-        drawBorder(out, bounds, style.inputBorderColor)
-        val thumbX = bounds.x + ((hueDeg / 360f) * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
-        out += RenderCommand.DrawRect(thumbX - 1, bounds.y - 1, 3, bounds.height + 2, style.thumbOutlineColor)
-    }
-}
-
-private class AlphaSurfaceNode(
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-alpha-slider"
-
-    private var style: ColorPickerStyle = ColorPickerStyle()
-    private var color: RgbaColor = RgbaColor.WHITE
-
-    fun bind(style: ColorPickerStyle, color: RgbaColor) {
-        this.style = style
-        this.color = color
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        drawChecker(out, bounds, style)
-        out += RenderCommand.DrawAlphaBar(
-            x = bounds.x,
-            y = bounds.y,
-            width = bounds.width,
-            height = bounds.height,
-            rgbColor = color.copy(a = 1f).toArgbInt()
-        )
-        drawBorder(out, bounds, style.inputBorderColor)
-        val thumbX = bounds.x + (color.a * bounds.width.toFloat()).roundToInt().coerceIn(0, bounds.width - 1)
-        out += RenderCommand.DrawRect(thumbX - 1, bounds.y - 1, 3, bounds.height + 2, style.thumbOutlineColor)
-    }
-}
-
-private class ColorSwatchSurfaceNode(
-    private val allowEmpty: Boolean = false,
-    key: Any?
-) : DOMNode(key) {
-    override val styleType: String = "dsgl-system-color-picker-swatch"
-
-    private var style: ColorPickerStyle = ColorPickerStyle()
-    private var color: RgbaColor? = RgbaColor.WHITE
-    private var highlighted: Boolean = false
-
-    fun bind(style: ColorPickerStyle, color: RgbaColor?, highlighted: Boolean) {
-        this.style = style
-        this.color = color
-        this.highlighted = highlighted
-    }
-
-    override fun measure(ctx: UiMeasureContext): Size {
-        return Size(bounds.width.coerceAtLeast(0), bounds.height.coerceAtLeast(0))
-    }
-
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
-        bounds = Rect(x, y, width, height)
-    }
-
-    override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (bounds.width <= 0 || bounds.height <= 0) return
-        val localColor = color
-        if (localColor == null && allowEmpty) {
-            out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, 0x33222A34)
-            drawBorder(out, bounds, if (highlighted) style.inputActiveBorderColor else style.recentGridBorderColor)
-            return
-        }
-        drawChecker(out, bounds, style)
-        out += RenderCommand.DrawRect(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            (localColor ?: RgbaColor.WHITE).toArgbInt()
-        )
-        drawBorder(out, bounds, if (highlighted) style.inputActiveBorderColor else style.inputBorderColor)
-    }
-}
-
-private fun drawChecker(out: MutableList<RenderCommand>, rect: Rect, style: ColorPickerStyle) {
-    if (rect.width <= 0 || rect.height <= 0) return
-    out += RenderCommand.DrawCheckerboard(
-        x = rect.x,
-        y = rect.y,
-        width = rect.width,
-        height = rect.height,
-        cellSize = 4,
-        lightColor = style.checkerLightColor,
-        darkColor = style.checkerDarkColor
-    )
-}
-
-private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {
-    if (rect.width <= 0 || rect.height <= 0) return
-    out += RenderCommand.DrawRect(rect.x, rect.y, rect.width, 1, color)
-    out += RenderCommand.DrawRect(rect.x, rect.y + rect.height - 1, rect.width, 1, color)
-    out += RenderCommand.DrawRect(rect.x, rect.y, 1, rect.height, color)
-    out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
-}
-

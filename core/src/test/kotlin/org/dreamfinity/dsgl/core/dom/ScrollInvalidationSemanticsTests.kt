@@ -1,11 +1,11 @@
 package org.dreamfinity.dsgl.core.dom
 
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.layout.Rect
 import org.dreamfinity.dsgl.core.style.Overflow
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ScrollInvalidationSemanticsTests {
     @Test
@@ -28,11 +28,12 @@ class ScrollInvalidationSemanticsTests {
     fun `restore snapshot with visual-only delta marks visual interaction without layout`() {
         val viewport = createScrollableViewport()
         val baseline = viewport.captureScrollSessionSnapshot()
-        val visualOnly = baseline.copy(
-            targetY = baseline.targetY + 36,
-            displayedY = baseline.displayedY + 36.0,
-            resolvedY = baseline.resolvedY
-        )
+        val visualOnly =
+            baseline.copy(
+                targetY = baseline.targetY + 36,
+                displayedY = baseline.displayedY + 36.0,
+                resolvedY = baseline.resolvedY,
+            )
 
         viewport.restoreScrollSessionSnapshot(visualOnly)
         val invalidation = viewport.consumeScrollInvalidationRecursively()
@@ -45,9 +46,10 @@ class ScrollInvalidationSemanticsTests {
 
     @Test
     fun `root consumption aggregates child scroll invalidation recursively`() {
-        val root = ContainerNode(key = "root").apply {
-            bounds = Rect(0, 0, 400, 280)
-        }
+        val root =
+            ContainerNode(key = "root").apply {
+                bounds = Rect(0, 0, 400, 280)
+            }
         val viewport = createScrollableViewport().applyParent(root)
 
         viewport.setScrollOffsets(0, 32)
@@ -63,11 +65,12 @@ class ScrollInvalidationSemanticsTests {
     fun `layout-dirty snapshot restore keeps legacy layout-dirty consumer compatible`() {
         val viewport = createScrollableViewport()
         val baseline = viewport.captureScrollSessionSnapshot()
-        val layoutDirty = baseline.copy(
-            targetY = baseline.targetY + 28,
-            displayedY = baseline.displayedY + 28.0,
-            resolvedY = baseline.resolvedY + 28
-        )
+        val layoutDirty =
+            baseline.copy(
+                targetY = baseline.targetY + 28,
+                displayedY = baseline.displayedY + 28.0,
+                resolvedY = baseline.resolvedY + 28,
+            )
         viewport.restoreScrollSessionSnapshot(layoutDirty)
 
         assertTrue(viewport.consumeScrollLayoutDirtyRecursively())
@@ -77,14 +80,16 @@ class ScrollInvalidationSemanticsTests {
     }
 
     private fun createScrollableViewport(): ContainerNode {
-        val viewport = ContainerNode(key = "viewport").apply {
-            bounds = Rect(0, 0, 180, 90)
-            overflowX = Overflow.Hidden
-            overflowY = Overflow.Auto
-        }
-        ContainerNode(key = "content").apply {
-            bounds = Rect(0, 0, 180, 420)
-        }.applyParent(viewport)
+        val viewport =
+            ContainerNode(key = "viewport").apply {
+                bounds = Rect(0, 0, 180, 90)
+                overflowX = Overflow.Hidden
+                overflowY = Overflow.Auto
+            }
+        ContainerNode(key = "content")
+            .apply {
+                bounds = Rect(0, 0, 180, 420)
+            }.applyParent(viewport)
         return viewport
     }
 }

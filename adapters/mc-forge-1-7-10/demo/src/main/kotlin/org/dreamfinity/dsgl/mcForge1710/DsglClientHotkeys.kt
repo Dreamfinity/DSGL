@@ -16,26 +16,31 @@ import org.lwjgl.input.Keyboard
  */
 @SideOnly(Side.CLIENT)
 object DsglClientHotkeys {
-    private val openShowcaseKey = KeyBinding(
-        "key.dsgl.open_showcase",
-        Keyboard.KEY_J,
-        "key.categories.dsgl"
-    )
+    private val openShowcaseKey =
+        KeyBinding(
+            "key.dsgl.open_showcase",
+            Keyboard.KEY_J,
+            "key.categories.dsgl",
+        )
     private var registered: Boolean = false
 
     fun register() {
         if (registered) return
         ClientRegistry.registerKeyBinding(openShowcaseKey)
-        FMLCommonHandler.instance().bus().register(this)
+        FMLCommonHandler
+            .instance()
+            .bus()
+            .register(this)
         registered = true
     }
 
     @SubscribeEvent
-    fun onKeyInput(event: InputEvent.KeyInputEvent) {
+    fun onKeyInput(_event: InputEvent.KeyInputEvent) {
         when {
-            openShowcaseKey.isPressed -> Minecraft
-                .getMinecraft()
-                .displayGuiScreen(object : DsglScreenHost({ ShowcaseWindow() }) {})
+            openShowcaseKey.isPressed ->
+                Minecraft
+                    .getMinecraft()
+                    .displayGuiScreen(object : DsglScreenHost({ ShowcaseWindow() }) {})
         }
     }
 }

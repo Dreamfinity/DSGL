@@ -11,9 +11,16 @@ object FocusManager {
     private var focusedKey: Any? = null
     private var focusedPath: IntArray? = null
     private var lastRoot: DOMNode? = null
+    private var preservePointerFocusDepth: Int = 0
 
     /** Current focused node, if any. */
     fun focusedNode(): DOMNode? = focused
+
+    /** Current focused node when it belongs to the given physical DOM root. */
+    fun focusedNodeWithin(root: DOMNode): DOMNode? {
+        val currentFocus = focused ?: return null
+        return if (isSameOrAncestor(root, currentFocus)) currentFocus else null
+    }
 
     /** Returns true if the given node is focused. */
     fun isFocused(node: DOMNode): Boolean = focused === node
@@ -43,6 +50,13 @@ object FocusManager {
         }
     }
 
+    /** Resolves and requests focus from a node reference. */
+    fun requestFocusFrom(start: DOMNode?): Boolean {
+        val focusable = resolveFocusable(start) ?: return false
+        requestFocus(focusable)
+        return true
+    }
+
     /** Clears current focus. */
     fun clearFocus() {
         requestFocus(null)
@@ -60,11 +74,21 @@ object FocusManager {
 
     /** Updates focus from an event target. */
     fun updateFocusFromTarget(target: DOMNode?) {
+        if (preservePointerFocusDepth > 0) return
         val focusable = resolveFocusable(target)
         if (focusable != null) {
             requestFocus(focusable)
         } else {
             clearFocus()
+        }
+    }
+
+    internal inline fun <T> preservePointerFocus(block: () -> T): T {
+        preservePointerFocusDepth += 1
+        return try {
+            block()
+        } finally {
+            preservePointerFocusDepth -= 1
         }
     }
 
@@ -107,6 +131,11 @@ object FocusManager {
     fun requestFocusByKey(key: Any?): Boolean {
         if (key == null) return false
         val root = lastRoot ?: return false
+        return requestFocusByKey(root, key)
+    }
+
+    fun requestFocusByKey(root: DOMNode, key: Any?): Boolean {
+        if (key == null) return false
         val target = findByKey(root, key) ?: return false
         val focusable = findFirstFocusable(target) ?: return false
         requestFocus(focusable)
@@ -116,6 +145,11 @@ object FocusManager {
     fun requestFocusFirstInSubtree(rootKey: Any?): Boolean {
         if (rootKey == null) return false
         val root = lastRoot ?: return false
+        return requestFocusFirstInSubtree(root, rootKey)
+    }
+
+    fun requestFocusFirstInSubtree(root: DOMNode, rootKey: Any?): Boolean {
+        if (rootKey == null) return false
         val subtree = findByKey(root, rootKey) ?: return false
         val focusable = findFirstFocusable(subtree) ?: return false
         requestFocus(focusable)
@@ -172,5 +206,14 @@ object FocusManager {
             if (found != null) return found
         }
         return null
+    }
+
+    private fun isSameOrAncestor(candidate: DOMNode, node: DOMNode?): Boolean {
+        var current = node
+        while (current != null) {
+            if (current === candidate) return true
+            current = current.parent
+        }
+        return false
     }
 }

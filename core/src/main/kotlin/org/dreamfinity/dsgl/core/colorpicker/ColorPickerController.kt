@@ -12,12 +12,12 @@ data class ColorPickerInputSlot(
     val key: String,
     val label: String,
     val labelRect: Rect,
-    val inputRect: Rect
+    val inputRect: Rect,
 )
 
 data class ColorPickerModeOptionSlot(
     val mode: ColorFormatMode,
-    val rect: Rect
+    val rect: Rect,
 )
 
 data class ColorPickerLayout(
@@ -36,27 +36,28 @@ data class ColorPickerLayout(
     val pasteRect: Rect,
     val pipetteRect: Rect,
     val inputSlots: List<ColorPickerInputSlot>,
-    val recentRects: List<Rect>
+    val recentRects: List<Rect>,
 )
 
-data class ColorPickerEyedropperOverlayModel(
+data class ColorPickerEyedropperPreviewModel(
     val panelRect: Rect,
     val magnifierRect: Rect,
     val captureSourceRect: Rect,
     val centerRect: Rect,
     val swatchRect: Rect,
     val modeText: String,
-    val valueText: String
+    val valueText: String,
 )
 
 class ColorPickerController(
     initial: ColorPickerState,
     private val style: ColorPickerStyle = ColorPickerStyle(),
     private val recentHistory: ColorRecentHistory = ColorRecentHistory(),
-    private val screenSampler: ScreenColorSampler? = ScreenColorSampler { x, y ->
-        val sampled = ScreenColorSamplerBridge.sampleColorAt(x, y) ?: return@ScreenColorSampler null
-        sampled.toArgbInt()
-    }
+    private val screenSampler: ScreenColorSampler? =
+        ScreenColorSampler { x, y ->
+            val sampled = ScreenColorSamplerBridge.sampleColorAt(x, y) ?: return@ScreenColorSampler null
+            sampled.toArgbInt()
+        },
 ) {
     private var state: ColorPickerState = initial.withColor(initial.color)
     private var hueDeg: Float = ColorConversions.rgbToHsv(state.color).hueDeg
@@ -93,8 +94,12 @@ class ColorPickerController(
         }
     private var eyedropperActive: Boolean = false
     private var eyedropperBaseColor: RgbaColor = state.color
-    private val eyedropperOverlayDrag: FloatingPaneDragModel = FloatingPaneDragModel()
-    private var eyedropperOverlayRect: Rect? = null
+    private val eyedropperPreviewDrag: FloatingPaneDragModel = FloatingPaneDragModel()
+    private var eyedropperPreviewRect: Rect? = null
+    private var domFocusedInputKey: String? = null
+    private var domInputFocusResyncRequested: Boolean = false
+    private var domLastFocusedInputKey: String? = null
+    private var domPendingFocusResyncKey: String? = null
 
     var onPreview: ((RgbaColor) -> Unit)? = null
     var onChange: ((RgbaColor) -> Unit)? = null
@@ -113,8 +118,12 @@ class ColorPickerController(
         eyedropperActive = false
         interaction.clearDragTarget()
         modeDropdownOpen = false
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
+        domFocusedInputKey = null
+        domInputFocusResyncRequested = false
+        domLastFocusedInputKey = null
+        domPendingFocusResyncKey = null
         clearInputEdit()
     }
 
@@ -132,6 +141,8 @@ class ColorPickerController(
 
     internal fun viewHoverPosition(): Pair<Int, Int> = hoverX to hoverY
 
+    internal fun clearHover(): Boolean = interaction.clearHover()
+
     internal fun viewModeDropdownOpen(): Boolean = modeDropdownOpen
 
     internal fun viewActiveInputKey(): String? = activeInputKey
@@ -140,16 +151,160 @@ class ColorPickerController(
 
     internal fun viewInputValues(): Map<String, String> = inputValues()
 
-    internal fun viewInputDefinitions(): List<Pair<String, String>> {
-        return inputDefinitions().map { it.key to it.label }
-    }
+    internal fun viewInputDefinitions(): List<Pair<String, String>> = inputDefinitions().map { it.key to it.label }
 
     internal fun viewRecentColors(): List<RgbaColor> = recentHistory.snapshot()
 
     internal fun viewCaretVisible(nowMs: Long): Boolean = caretVisible(nowMs)
 
-    internal fun viewFormattedColor(): String {
-        return ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+    internal fun viewFormattedColor(): String =
+        ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+
+    internal fun handleDomInputFocused(key: String) {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        if (activeInputKey == key) {
+            clearInputEdit()
+        }
+    }
+
+    internal fun handleDomInputBlurred(key: String) {
+        if (domFocusedInputKey == key) {
+            domFocusedInputKey = null
+        }
+    }
+
+    internal fun handleDomInputDraft(key: String, value: String): Boolean {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        return semanticApplyInputDraftValue(key, value)
+    }
+
+    internal fun commitDomInputEdit(key: String, value: String): Boolean {
+        domFocusedInputKey = key
+        domLastFocusedInputKey = key
+        return semanticCommitInputEdit(key, value)
+    }
+
+    internal fun cancelDomInputEdit(key: String) {
+        if (domFocusedInputKey == key) {
+            domFocusedInputKey = null
+        }
+        semanticCancelInputEdit()
+    }
+
+    internal fun resolveDomInputValue(key: String): String = inputValues()[key].orEmpty()
+
+    internal fun consumeDomInputFocusResyncKey(): String? {
+        if (!domInputFocusResyncRequested) return null
+        domInputFocusResyncRequested = false
+        val key = domPendingFocusResyncKey
+        domPendingFocusResyncKey = null
+        return key
+    }
+
+    internal fun semanticSetMode(mode: ColorFormatMode) {
+        state = state.copy(mode = mode)
+        modeDropdownOpen = false
+        requestDomInputFocusResync()
+        clearInputEdit()
+    }
+
+    internal fun semanticSetRgbOrder(order: RgbChannelOrder) {
+        state = state.copy(rgbOrder = order)
+        modeDropdownOpen = false
+        requestDomInputFocusResync()
+        clearInputEdit()
+    }
+
+    internal fun semanticToggleModeDropdown() {
+        modeDropdownOpen = !modeDropdownOpen
+        clearInputEdit()
+    }
+
+    internal fun semanticCloseModeDropdown() {
+        modeDropdownOpen = false
+    }
+
+    internal fun semanticUpdateFromField(
+        globalX: Int,
+        globalY: Int,
+        rect: Rect,
+        commit: Boolean,
+    ) {
+        updateFromField(globalX, globalY, rect, commit)
+    }
+
+    internal fun semanticUpdateFromHue(globalX: Int, rect: Rect, commit: Boolean) {
+        updateFromHue(globalX, rect, commit)
+    }
+
+    internal fun semanticUpdateFromAlpha(globalX: Int, rect: Rect, commit: Boolean) {
+        updateFromAlpha(globalX, rect, commit)
+    }
+
+    internal fun semanticPreviewPreviousSwatch() {
+        applyColor(state.previous, notifyPreview = true, commit = false)
+    }
+
+    internal fun semanticCommitCurrentColor() {
+        commitCurrentColor()
+    }
+
+    internal fun semanticCopyCurrentColor() {
+        ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+    }
+
+    internal fun semanticPasteFromClipboard(): Boolean {
+        val parsed = ColorClipboardSupport.paste() ?: return false
+        val next = if (state.alphaEnabled) parsed.color else parsed.color.copy(a = 1f)
+        applyColor(next, notifyPreview = true, commit = false)
+        state =
+            state.copy(
+                mode = parsed.detectedMode,
+                rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder,
+            )
+        return true
+    }
+
+    internal fun semanticBeginEyedropper() {
+        beginEyedropper()
+    }
+
+    internal fun semanticCancelEyedropper() {
+        cancelEyedropper()
+    }
+
+    internal fun semanticAcceptEyedropperSelection() {
+        commitCurrentColor()
+        eyedropperActive = false
+    }
+
+    internal fun semanticBeginInputEdit(key: String) {
+        interaction.textInput.begin(key, inputValues()[key].orEmpty())
+    }
+
+    internal fun semanticPreviewRecentSwatch(index: Int): Boolean {
+        val color = recentHistory.snapshot().getOrNull(index) ?: return false
+        applyColor(color, notifyPreview = true, commit = false)
+        return true
+    }
+
+    internal fun semanticApplyInputDraftValue(key: String, value: String): Boolean = applyInputDraftValue(key, value)
+
+    internal fun semanticCommitInputEdit(key: String, value: String): Boolean {
+        val applied = semanticApplyInputDraftValue(key, value)
+        semanticCommitCurrentColor()
+        semanticCancelInputEdit()
+        return applied
+    }
+
+    internal fun semanticCancelInputEdit() {
+        clearInputEdit()
+    }
+
+    internal fun semanticRequestClose() {
+        onRequestClose?.invoke()
     }
 
     fun beginEyedropper() {
@@ -159,8 +314,8 @@ class ColorPickerController(
             eyedropperBaseColor = state.color
         }
         eyedropperActive = true
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
         modeDropdownOpen = false
         clearInputEdit()
     }
@@ -168,8 +323,8 @@ class ColorPickerController(
     fun cancelEyedropper() {
         if (!eyedropperActive) return
         eyedropperActive = false
-        eyedropperOverlayDrag.end()
-        eyedropperOverlayRect = null
+        eyedropperPreviewDrag.end()
+        eyedropperPreviewRect = null
         applyColor(eyedropperBaseColor, notifyPreview = true, commit = false)
     }
 
@@ -184,21 +339,24 @@ class ColorPickerController(
         val modeRowGap = style.modeRowGap.coerceAtLeast(1)
         val orderLabelWidth = style.rgbOrderLabelWidth.coerceAtLeast(32)
         val modeSelectMinWidth = style.modeSelectMinWidth.coerceAtLeast(84)
-        val showRgbOrderSwitch = state.alphaEnabled &&
-            innerW >= (modeSelectMinWidth + modeRowGap + orderLabelWidth * 2 + orderSlotGap)
-        val modeRowReserved = if (showRgbOrderSwitch) {
-            orderLabelWidth * 2 + orderSlotGap + modeRowGap
-        } else {
-            0
-        }
+        val showRgbOrderSwitch =
+            state.alphaEnabled &&
+                innerW >= (modeSelectMinWidth + modeRowGap + orderLabelWidth * 2 + orderSlotGap)
+        val modeRowReserved =
+            if (showRgbOrderSwitch) {
+                orderLabelWidth * 2 + orderSlotGap + modeRowGap
+            } else {
+                0
+            }
         val modeSelectMax = (innerW - modeRowReserved).coerceAtLeast(1)
         val modeSelectWidth = minOf(style.modeSelectWidth.coerceAtLeast(84), modeSelectMax).coerceAtLeast(1)
-        val modeSelectRect = Rect(
-            x = innerX,
-            y = innerY,
-            width = modeSelectWidth,
-            height = style.modeSelectHeight
-        )
+        val modeSelectRect =
+            Rect(
+                x = innerX,
+                y = innerY,
+                width = modeSelectWidth,
+                height = style.modeSelectHeight,
+            )
         val rgbaOrderRect: Rect?
         val argbOrderRect: Rect?
         if (showRgbOrderSwitch) {
@@ -209,18 +367,20 @@ class ColorPickerController(
                 val firstWidth = ((orderAvailable - gap) / 2).coerceAtLeast(1)
                 val secondX = orderStartX + firstWidth + gap
                 val secondWidth = (innerX + innerW - secondX).coerceAtLeast(1)
-                rgbaOrderRect = Rect(
-                    x = orderStartX,
-                    y = innerY,
-                    width = firstWidth,
-                    height = style.modeSelectHeight
-                )
-                argbOrderRect = Rect(
-                    x = secondX,
-                    y = innerY,
-                    width = secondWidth,
-                    height = style.modeSelectHeight
-                )
+                rgbaOrderRect =
+                    Rect(
+                        x = orderStartX,
+                        y = innerY,
+                        width = firstWidth,
+                        height = style.modeSelectHeight,
+                    )
+                argbOrderRect =
+                    Rect(
+                        x = secondX,
+                        y = innerY,
+                        width = secondWidth,
+                        height = style.modeSelectHeight,
+                    )
             } else {
                 rgbaOrderRect = null
                 argbOrderRect = null
@@ -230,49 +390,54 @@ class ColorPickerController(
             argbOrderRect = null
         }
         val modeOptions = ArrayList<ColorPickerModeOptionSlot>(ColorFormatMode.entries.size)
-        val modeOptionsRect = if (modeDropdownOpen) {
-            val optionHeight = style.modeOptionHeight
-            val popupWidth = maxOf(modeSelectRect.width, style.modeSelectMinWidth)
-            val popupHeight = optionHeight * ColorFormatMode.entries.size + 2
-            val minX = innerX
-            val maxX = (innerX + innerW - popupWidth).coerceAtLeast(innerX)
-            val popupX = if (minX <= maxX) modeSelectRect.x.coerceIn(minX, maxX) else minX
-            val preferredBelowY = modeSelectRect.y + modeSelectRect.height + 2
-            val minY = innerY
-            val maxY = (bounds.y + bounds.height - padding - popupHeight).coerceAtLeast(minY)
-            val popupY = if (preferredBelowY <= maxY) {
-                preferredBelowY
+        val modeOptionsRect =
+            if (modeDropdownOpen) {
+                val optionHeight = style.modeOptionHeight
+                val popupWidth = maxOf(modeSelectRect.width, style.modeSelectMinWidth)
+                val popupHeight = optionHeight * ColorFormatMode.entries.size + 2
+                val minX = innerX
+                val maxX = (innerX + innerW - popupWidth).coerceAtLeast(innerX)
+                val popupX = if (minX <= maxX) modeSelectRect.x.coerceIn(minX, maxX) else minX
+                val preferredBelowY = modeSelectRect.y + modeSelectRect.height + 2
+                val minY = innerY
+                val maxY = (bounds.y + bounds.height - padding - popupHeight).coerceAtLeast(minY)
+                val popupY =
+                    if (preferredBelowY <= maxY) {
+                        preferredBelowY
+                    } else {
+                        if (minY <= maxY) (modeSelectRect.y - popupHeight - 2).coerceIn(minY, maxY) else minY
+                    }
+                ColorFormatMode.entries.forEachIndexed { index, mode ->
+                    modeOptions +=
+                        ColorPickerModeOptionSlot(
+                            mode = mode,
+                            rect =
+                                Rect(
+                                    x = popupX + 1,
+                                    y = popupY + 1 + index * optionHeight,
+                                    width = popupWidth - 2,
+                                    height = optionHeight,
+                                ),
+                        )
+                }
+                Rect(popupX, popupY, popupWidth, popupHeight)
             } else {
-                if (minY <= maxY) (modeSelectRect.y - popupHeight - 2).coerceIn(minY, maxY) else minY
+                null
             }
-            ColorFormatMode.entries.forEachIndexed { index, mode ->
-                modeOptions += ColorPickerModeOptionSlot(
-                    mode = mode,
-                    rect = Rect(
-                        x = popupX + 1,
-                        y = popupY + 1 + index * optionHeight,
-                        width = popupWidth - 2,
-                        height = optionHeight
-                    )
-                )
-            }
-            Rect(popupX, popupY, popupWidth, popupHeight)
-        } else {
-            null
-        }
 
         var y = innerY + style.modeSelectHeight + rowGap
         val fieldRect = Rect(innerX, y, innerW, style.colorFieldHeight)
         y += style.colorFieldHeight + rowGap
         val hueRect = Rect(innerX, y, innerW, style.sliderHeight)
         y += style.sliderHeight + rowGap
-        val alphaRect = if (state.alphaEnabled) {
-            Rect(innerX, y, innerW, style.sliderHeight).also {
-                y += style.sliderHeight + rowGap
+        val alphaRect =
+            if (state.alphaEnabled) {
+                Rect(innerX, y, innerW, style.sliderHeight).also {
+                    y += style.sliderHeight + rowGap
+                }
+            } else {
+                null
             }
-        } else {
-            null
-        }
 
         val swatchWidth = ((innerW - rowGap * 4) / 5).coerceAtLeast(24)
         val previousSwatchRect = Rect(innerX, y, swatchWidth, style.swatchHeight)
@@ -289,31 +454,35 @@ class ColorPickerController(
         val labelWidth = style.inputLabelWidth.coerceAtLeast(12)
         inputDefs.forEachIndexed { index, def ->
             val slotX = innerX + index * (inputWidth + rowGap)
-            val localLabelWidth = if (def.key == "hex") {
-                labelWidth + 8
-            } else {
-                labelWidth
-            }
+            val localLabelWidth =
+                if (def.key == "hex") {
+                    labelWidth + 8
+                } else {
+                    labelWidth
+                }
             val inputX = slotX + localLabelWidth + style.inputLabelGap
             val inputW = (inputWidth - localLabelWidth - style.inputLabelGap).coerceAtLeast(20)
-            val labelRect = Rect(
-                x = slotX,
-                y = y,
-                width = localLabelWidth,
-                height = style.inputHeight
-            )
-            val inputRect = Rect(
-                x = inputX,
-                y = y,
-                width = inputW,
-                height = style.inputHeight
-            )
-            inputs += ColorPickerInputSlot(
-                key = def.key,
-                label = def.label,
-                labelRect = labelRect,
-                inputRect = inputRect
-            )
+            val labelRect =
+                Rect(
+                    x = slotX,
+                    y = y,
+                    width = localLabelWidth,
+                    height = style.inputHeight,
+                )
+            val inputRect =
+                Rect(
+                    x = inputX,
+                    y = y,
+                    width = inputW,
+                    height = style.inputHeight,
+                )
+            inputs +=
+                ColorPickerInputSlot(
+                    key = def.key,
+                    label = def.label,
+                    labelRect = labelRect,
+                    inputRect = inputRect,
+                )
         }
         y += style.inputHeight + rowGap
 
@@ -348,19 +517,20 @@ class ColorPickerController(
             pasteRect = pasteRect,
             pipetteRect = pipetteRect,
             inputSlots = inputs,
-            recentRects = recentRects
+            recentRects = recentRects,
         )
     }
 
     fun preferredHeight(alphaEnabled: Boolean = state.alphaEnabled): Int {
         val rowGap = style.rowGap
-        val core = style.padding * 2 +
-            style.modeSelectHeight + rowGap +
-            style.colorFieldHeight + rowGap +
-            style.sliderHeight + rowGap +
-            (if (alphaEnabled) style.sliderHeight + rowGap else 0) +
-            style.swatchHeight + rowGap +
-            style.inputHeight + rowGap
+        val core =
+            style.padding * 2 +
+                style.modeSelectHeight + rowGap +
+                style.colorFieldHeight + rowGap +
+                style.sliderHeight + rowGap +
+                (if (alphaEnabled) style.sliderHeight + rowGap else 0) +
+                style.swatchHeight + rowGap +
+                style.inputHeight + rowGap
         val recentGrid = style.recentCellSize * 8 + style.recentCellGap * 7
         return core + recentGrid
     }
@@ -368,7 +538,7 @@ class ColorPickerController(
     fun appendCommands(
         layout: ColorPickerLayout,
         out: MutableList<RenderCommand>,
-        nowMs: Long = System.currentTimeMillis()
+        nowMs: Long = System.currentTimeMillis(),
     ) {
         val bounds = layout.bounds
         out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, style.panelBackgroundColor)
@@ -397,34 +567,51 @@ class ColorPickerController(
         layout.inputSlots.forEach { slot ->
             val active = activeInputKey == slot.key
             val hovered = slot.inputRect.contains(hoverX, hoverY)
-            val border = when {
-                active -> style.inputActiveBorderColor
-                hovered -> style.buttonHoverColor
-                else -> style.inputBorderColor
-            }
-            out += RenderCommand.DrawText(
-                text = slot.label,
-                x = slot.labelRect.x + 2,
-                y = slot.labelRect.y + 2,
-                color = style.mutedTextColor,
-                fontSize = style.fontSize
-            )
-            out += RenderCommand.DrawRect(
-                slot.inputRect.x,
-                slot.inputRect.y,
-                slot.inputRect.width,
-                slot.inputRect.height,
-                style.inputBackgroundColor
-            )
+            val border =
+                when {
+                    active -> style.inputActiveBorderColor
+                    hovered -> style.buttonHoverColor
+                    else -> style.inputBorderColor
+                }
+            out +=
+                RenderCommand.DrawText(
+                    text = slot.label,
+                    x = slot.labelRect.x + 2,
+                    y = slot.labelRect.y + 2,
+                    color = style.mutedTextColor,
+                    fontSize = style.fontSize,
+                )
+            out +=
+                RenderCommand.DrawRect(
+                    slot.inputRect.x,
+                    slot.inputRect.y,
+                    slot.inputRect.width,
+                    slot.inputRect.height,
+                    style.inputBackgroundColor,
+                )
             drawBorder(out, slot.inputRect, border)
-            val value = if (active) activeInputBuffer + if (caretVisible(nowMs)) "|" else "" else inputValues[slot.key].orEmpty()
-            out += RenderCommand.DrawText(
-                text = truncate(value, 12),
-                x = slot.inputRect.x + 4,
-                y = slot.inputRect.y + 2,
-                color = style.textColor,
-                fontSize = style.fontSize
-            )
+            val value =
+                if (active) {
+                    activeInputBuffer +
+                        if (caretVisible(
+                                nowMs,
+                            )
+                        ) {
+                            "|"
+                        } else {
+                            ""
+                        }
+                } else {
+                    inputValues[slot.key].orEmpty()
+                }
+            out +=
+                RenderCommand.DrawText(
+                    text = truncate(value, 12),
+                    x = slot.inputRect.x + 4,
+                    y = slot.inputRect.y + 2,
+                    color = style.textColor,
+                    fontSize = style.fontSize,
+                )
         }
 
         val recents = recentHistory.snapshot()
@@ -444,11 +631,7 @@ class ColorPickerController(
         drawModeOptions(layout, out)
     }
 
-    fun appendEyedropperOverlay(
-        viewportWidth: Int,
-        viewportHeight: Int,
-        out: MutableList<RenderCommand>
-    ) {
+    fun appendEyedropperPreview(viewportWidth: Int, viewportHeight: Int, out: MutableList<RenderCommand>) {
         if (!eyedropperActive) return
         if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return
 
@@ -464,64 +647,73 @@ class ColorPickerController(
 
         val preferredX = hoverX + style.eyedropperGapToCursor
         val preferredY = hoverY + style.eyedropperGapToCursor
-        val desiredRect = clampOverlayRect(
-            rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight
-        )
-        val currentRect = eyedropperOverlayRect
+        val desiredRect =
+            clampPreviewRect(
+                rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+            )
+        val currentRect = eyedropperPreviewRect
         if (currentRect == null || currentRect.width != panelWidth || currentRect.height != panelHeight) {
-            eyedropperOverlayRect = desiredRect
-            eyedropperOverlayDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
+            eyedropperPreviewRect = desiredRect
+            eyedropperPreviewDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
         }
-        val nextRect = eyedropperOverlayDrag.update(
-            mouseX = hoverX,
-            mouseY = hoverY,
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight,
-            clamp = ::clampOverlayRect
-        )
-        eyedropperOverlayRect = nextRect
+        val nextRect =
+            eyedropperPreviewDrag.update(
+                mouseX = hoverX,
+                mouseY = hoverY,
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+                clamp = ::clampPreviewRect,
+            )
+        eyedropperPreviewRect = nextRect
         val panelX = nextRect.x
         val panelY = nextRect.y
 
         val magnifierX = panelX + 4
         val magnifierY = panelY + 4
-        out += RenderCommand.CaptureScreenRegion(
-            sourceX = hoverX - gridSize / 2,
-            sourceY = hoverY - gridSize / 2,
-            sourceWidth = gridSize,
-            sourceHeight = gridSize,
-            fallbackColor = state.color.toArgbInt()
-        )
+        out +=
+            RenderCommand.CaptureScreenRegion(
+                sourceX = hoverX - gridSize / 2,
+                sourceY = hoverY - gridSize / 2,
+                sourceWidth = gridSize,
+                sourceHeight = gridSize,
+                fallbackColor = state.color.toArgbInt(),
+            )
         out += RenderCommand.DrawRect(panelX + 2, panelY + 2, panelWidth, panelHeight, style.panelShadowColor)
-        out += RenderCommand.DrawRect(panelX, panelY, panelWidth, panelHeight, style.eyedropperOverlayBackgroundColor)
-        drawBorder(out, Rect(panelX, panelY, panelWidth, panelHeight), style.eyedropperOverlayBorderColor)
-        out += RenderCommand.DrawCapturedScreenRegion(
-            x = magnifierX,
-            y = magnifierY,
-            width = magnifierContentSize,
-            height = magnifierContentSize
-        )
-        if (style.eyedropperGridOverlayEnabled) {
-            drawEyedropperGridOverlay(
+        out += RenderCommand.DrawRect(panelX, panelY, panelWidth, panelHeight, style.eyedropperPreviewBackgroundColor)
+        drawBorder(out, Rect(panelX, panelY, panelWidth, panelHeight), style.eyedropperPreviewBorderColor)
+        out +=
+            RenderCommand.DrawCapturedScreenRegion(
+                x = magnifierX,
+                y = magnifierY,
+                width = magnifierContentSize,
+                height = magnifierContentSize,
+            )
+        if (style.eyedropperGridEnabled) {
+            drawEyedropperGrid(
                 out = out,
                 rect = Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize),
                 columns = gridSize,
                 rows = gridSize,
                 cellSize = cell,
-                color = style.eyedropperGridOverlayColor
+                color = style.eyedropperGridColor,
             )
         }
-        drawBorder(out, Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize), style.inputBorderColor)
+        drawBorder(
+            out,
+            Rect(magnifierX, magnifierY, magnifierContentSize, magnifierContentSize),
+            style.inputBorderColor,
+        )
 
         val center = gridSize / 2
-        val centerRect = Rect(
-            x = magnifierX + center * cell,
-            y = magnifierY + center * cell,
-            width = cell,
-            height = cell
-        )
+        val centerRect =
+            Rect(
+                x = magnifierX + center * cell,
+                y = magnifierY + center * cell,
+                width = cell,
+                height = cell,
+            )
         drawBorder(out, centerRect, style.eyedropperCenterBorderColor)
 
         val tooltipY = magnifierY + magnifierContentSize + 6
@@ -529,32 +721,35 @@ class ColorPickerController(
         val swatchRect = Rect(panelX + 6, tooltipY + 5, swatchSize, swatchSize)
         drawSwatch(swatchRect, state.color, out)
 
-        val modeText = if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
-            "Mode: ${state.mode.name} (${state.rgbOrder.name})"
-        } else {
-            "Mode: ${state.mode.name}"
-        }
+        val modeText =
+            if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
+                "Mode: ${state.mode.name} (${state.rgbOrder.name})"
+            } else {
+                "Mode: ${state.mode.name}"
+            }
         val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
-        out += RenderCommand.DrawText(
-            text = modeText,
-            x = swatchRect.x + swatchRect.width + 8,
-            y = tooltipY + 6,
-            color = style.mutedTextColor,
-            fontSize = style.fontSize
-        )
-        out += RenderCommand.DrawText(
-            text = valueText,
-            x = swatchRect.x + swatchRect.width + 8,
-            y = tooltipY + 6 + style.fontSize,
-            color = style.textColor,
-            fontSize = style.fontSize
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = modeText,
+                x = swatchRect.x + swatchRect.width + 8,
+                y = tooltipY + 6,
+                color = style.mutedTextColor,
+                fontSize = style.fontSize,
+            )
+        out +=
+            RenderCommand.DrawText(
+                text = valueText,
+                x = swatchRect.x + swatchRect.width + 8,
+                y = tooltipY + 6 + style.fontSize,
+                color = style.textColor,
+                fontSize = style.fontSize,
+            )
     }
 
-    internal fun resolveEyedropperOverlayModel(
+    internal fun resolveEyedropperPreviewModel(
         viewportWidth: Int,
-        viewportHeight: Int
-    ): ColorPickerEyedropperOverlayModel? {
+        viewportHeight: Int,
+    ): ColorPickerEyedropperPreviewModel? {
         if (!eyedropperActive) return null
         if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return null
 
@@ -570,60 +765,66 @@ class ColorPickerController(
 
         val preferredX = hoverX + style.eyedropperGapToCursor
         val preferredY = hoverY + style.eyedropperGapToCursor
-        val desiredRect = clampOverlayRect(
-            rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight
-        )
-        val currentRect = eyedropperOverlayRect
+        val desiredRect =
+            clampPreviewRect(
+                rect = Rect(preferredX, preferredY, panelWidth, panelHeight),
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+            )
+        val currentRect = eyedropperPreviewRect
         if (currentRect == null || currentRect.width != panelWidth || currentRect.height != panelHeight) {
-            eyedropperOverlayRect = desiredRect
-            eyedropperOverlayDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
+            eyedropperPreviewRect = desiredRect
+            eyedropperPreviewDrag.begin(mouseX = hoverX, mouseY = hoverY, rect = desiredRect)
         }
-        val nextRect = eyedropperOverlayDrag.update(
-            mouseX = hoverX,
-            mouseY = hoverY,
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight,
-            clamp = ::clampOverlayRect
-        )
-        eyedropperOverlayRect = nextRect
+        val nextRect =
+            eyedropperPreviewDrag.update(
+                mouseX = hoverX,
+                mouseY = hoverY,
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+                clamp = ::clampPreviewRect,
+            )
+        eyedropperPreviewRect = nextRect
 
-        val magnifierRect = Rect(
-            x = nextRect.x + 4,
-            y = nextRect.y + 4,
-            width = magnifierContentSize,
-            height = magnifierContentSize
-        )
+        val magnifierRect =
+            Rect(
+                x = nextRect.x + 4,
+                y = nextRect.y + 4,
+                width = magnifierContentSize,
+                height = magnifierContentSize,
+            )
         val center = gridSize / 2
-        val centerRect = Rect(
-            x = magnifierRect.x + center * cell,
-            y = magnifierRect.y + center * cell,
-            width = cell,
-            height = cell
-        )
+        val centerRect =
+            Rect(
+                x = magnifierRect.x + center * cell,
+                y = magnifierRect.y + center * cell,
+                width = cell,
+                height = cell,
+            )
         val tooltipY = magnifierRect.y + magnifierRect.height + 6
         val swatchSize = tooltipHeight - 10
         val swatchRect = Rect(nextRect.x + 6, tooltipY + 5, swatchSize, swatchSize)
-        val modeText = if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
-            "Mode: ${state.mode.name} (${state.rgbOrder.name})"
-        } else {
-            "Mode: ${state.mode.name}"
-        }
+        val modeText =
+            if (state.mode == ColorFormatMode.RGB && state.alphaEnabled) {
+                "Mode: ${state.mode.name} (${state.rgbOrder.name})"
+            } else {
+                "Mode: ${state.mode.name}"
+            }
         val valueText = ColorTextCodec.format(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
-        return ColorPickerEyedropperOverlayModel(
+        return ColorPickerEyedropperPreviewModel(
             panelRect = nextRect,
             magnifierRect = magnifierRect,
-            captureSourceRect = Rect(
-                x = hoverX - gridSize / 2,
-                y = hoverY - gridSize / 2,
-                width = gridSize,
-                height = gridSize
-            ),
+            captureSourceRect =
+                Rect(
+                    x = hoverX - gridSize / 2,
+                    y = hoverY - gridSize / 2,
+                    width = gridSize,
+                    height = gridSize,
+                ),
             centerRect = centerRect,
             swatchRect = swatchRect,
             modeText = modeText,
-            valueText = valueText
+            valueText = valueText,
         )
     }
 
@@ -634,19 +835,19 @@ class ColorPickerController(
         }
         when (dragTarget) {
             ColorPickerDragTarget.Field -> {
-                updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
+                semanticUpdateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
                 return true
             }
 
             ColorPickerDragTarget.Hue -> {
-                updateFromHue(globalX, layout.hueRect, commit = false)
+                semanticUpdateFromHue(globalX, layout.hueRect, commit = false)
                 return true
             }
 
             ColorPickerDragTarget.Alpha -> {
                 val alphaRect = layout.alphaRect
                 if (alphaRect != null) {
-                    updateFromAlpha(globalX, alphaRect, commit = false)
+                    semanticUpdateFromAlpha(globalX, alphaRect, commit = false)
                 }
                 return true
             }
@@ -658,18 +859,22 @@ class ColorPickerController(
         }
     }
 
-    fun handleMouseDown(globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout): Boolean {
+    fun handleMouseDown(
+        globalX: Int,
+        globalY: Int,
+        button: MouseButton,
+        layout: ColorPickerLayout,
+    ): Boolean {
         interaction.setHover(globalX, globalY)
         if (eyedropperActive) {
             return when (button) {
                 MouseButton.LEFT -> {
-                    commitCurrentColor()
-                    eyedropperActive = false
+                    semanticAcceptEyedropperSelection()
                     true
                 }
 
                 MouseButton.RIGHT -> {
-                    cancelEyedropper()
+                    semanticCancelEyedropper()
                     true
                 }
 
@@ -681,105 +886,89 @@ class ColorPickerController(
                 modeDropdownOpen = false
                 return true
             }
-            return layout.bounds.contains(globalX, globalY) || layout.modeOptionsRect?.contains(globalX, globalY) == true
+            return layout.bounds.contains(globalX, globalY) ||
+                layout.modeOptionsRect?.contains(globalX, globalY) == true
         }
 
-        val modeOptionHit = if (modeDropdownOpen) {
-            layout.modeOptions.firstOrNull { it.rect.contains(globalX, globalY) }
-        } else {
-            null
-        }
+        val modeOptionHit =
+            if (modeDropdownOpen) {
+                layout.modeOptions.firstOrNull { it.rect.contains(globalX, globalY) }
+            } else {
+                null
+            }
         if (modeOptionHit != null) {
-            state = state.copy(mode = modeOptionHit.mode)
-            modeDropdownOpen = false
-            clearInputEdit()
+            semanticSetMode(modeOptionHit.mode)
             return true
         }
         if (layout.rgbaOrderRect?.contains(globalX, globalY) == true) {
-            state = state.copy(rgbOrder = RgbChannelOrder.RGBA)
-            modeDropdownOpen = false
-            clearInputEdit()
+            semanticSetRgbOrder(RgbChannelOrder.RGBA)
             return true
         }
         if (layout.argbOrderRect?.contains(globalX, globalY) == true) {
-            state = state.copy(rgbOrder = RgbChannelOrder.ARGB)
-            modeDropdownOpen = false
-            clearInputEdit()
+            semanticSetRgbOrder(RgbChannelOrder.ARGB)
             return true
         }
         if (layout.modeSelectRect.contains(globalX, globalY)) {
-            modeDropdownOpen = !modeDropdownOpen
-            clearInputEdit()
+            semanticToggleModeDropdown()
             return true
         }
         if (!layout.bounds.contains(globalX, globalY)) {
-            modeDropdownOpen = false
-            clearInputEdit()
+            semanticCloseModeDropdown()
+            semanticCancelInputEdit()
             return false
         }
-        modeDropdownOpen = false
+        semanticCloseModeDropdown()
 
         if (layout.colorFieldRect.contains(globalX, globalY)) {
             dragTarget = ColorPickerDragTarget.Field
-            clearInputEdit()
-            updateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromField(globalX, globalY, layout.colorFieldRect, commit = false)
             return true
         }
         if (layout.hueRect.contains(globalX, globalY)) {
             dragTarget = ColorPickerDragTarget.Hue
-            clearInputEdit()
-            updateFromHue(globalX, layout.hueRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromHue(globalX, layout.hueRect, commit = false)
             return true
         }
         if (layout.alphaRect?.contains(globalX, globalY) == true) {
             dragTarget = ColorPickerDragTarget.Alpha
-            clearInputEdit()
-            updateFromAlpha(globalX, layout.alphaRect, commit = false)
+            semanticCancelInputEdit()
+            semanticUpdateFromAlpha(globalX, layout.alphaRect, commit = false)
             return true
         }
 
         if (layout.previousSwatchRect.contains(globalX, globalY)) {
-            applyColor(state.previous, notifyPreview = true, commit = false)
+            semanticPreviewPreviousSwatch()
             return true
         }
         if (layout.currentSwatchRect.contains(globalX, globalY)) {
-            commitCurrentColor()
+            semanticCommitCurrentColor()
             return true
         }
         if (layout.copyRect.contains(globalX, globalY)) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+            semanticCopyCurrentColor()
             return true
         }
         if (layout.pasteRect.contains(globalX, globalY)) {
-            val parsed = ColorClipboardSupport.paste()
-            if (parsed != null) {
-                val next = if (state.alphaEnabled) parsed.color else parsed.color.copy(a = 1f)
-                applyColor(next, notifyPreview = true, commit = false)
-                state = state.copy(
-                    mode = parsed.detectedMode,
-                    rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder
-                )
-            }
+            semanticPasteFromClipboard()
             return true
         }
         if (layout.pipetteRect.contains(globalX, globalY)) {
-            beginEyedropper()
+            semanticBeginEyedropper()
             return true
         }
 
         val inputHit = layout.inputSlots.firstOrNull { it.inputRect.contains(globalX, globalY) }
         if (inputHit != null) {
-            interaction.textInput.begin(inputHit.key, inputValues()[inputHit.key].orEmpty())
+            semanticBeginInputEdit(inputHit.key)
             return true
         }
-        clearInputEdit()
+        semanticCancelInputEdit()
 
         val recentIndex = layout.recentRects.indexOfFirst { it.contains(globalX, globalY) }
         if (recentIndex >= 0) {
-            val color = recentHistory.snapshot().getOrNull(recentIndex)
-            if (color != null) {
-                applyColor(color, notifyPreview = true, commit = false)
-            }
+            semanticPreviewRecentSwatch(recentIndex)
             return true
         }
 
@@ -792,7 +981,7 @@ class ColorPickerController(
         val dragged = interaction.hasActiveDragTarget()
         interaction.clearDragTarget()
         if (dragged) {
-            commitCurrentColor()
+            semanticCommitCurrentColor()
             return true
         }
         return eyedropperActive
@@ -800,34 +989,30 @@ class ColorPickerController(
 
     fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean {
         if (eyedropperActive && keyCode == KeyCodes.ESCAPE) {
-            cancelEyedropper()
+            semanticCancelEyedropper()
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.C) {
-            ColorClipboardSupport.copy(state.color, state.mode, state.alphaEnabled, state.rgbOrder)
+            semanticCopyCurrentColor()
             return true
         }
         if (KeyModifiers.shortcutDown && keyCode == KeyCodes.V) {
-            val parsed = ColorClipboardSupport.paste() ?: return true
-            applyColor(parsed.color, notifyPreview = true, commit = false)
-            state = state.copy(
-                mode = parsed.detectedMode,
-                rgbOrder = parsed.detectedRgbOrder ?: state.rgbOrder
-            )
+            semanticPasteFromClipboard()
             return true
         }
-        val key = activeInputKey ?: run {
-            if (keyCode == KeyCodes.ESCAPE) {
-                if (modeDropdownOpen) {
-                    modeDropdownOpen = false
-                    return true
+        val key =
+            activeInputKey ?: run {
+                if (keyCode == KeyCodes.ESCAPE) {
+                    if (modeDropdownOpen) {
+                        semanticCloseModeDropdown()
+                        return true
+                    }
                 }
+                return false
             }
-            return false
-        }
         when (keyCode) {
             KeyCodes.ESCAPE -> {
-                clearInputEdit()
+                semanticCancelInputEdit()
                 return true
             }
 
@@ -858,9 +1043,13 @@ class ColorPickerController(
     }
 
     fun sampleEyedropperAtHover() {
-        if (!eyedropperActive) return
-        if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return
-        sampleEyedropper(hoverX, hoverY, commit = false)
+        sampleEyedropperAtHoverAndReportChange()
+    }
+
+    internal fun sampleEyedropperAtHoverAndReportChange(): Boolean {
+        if (!eyedropperActive) return false
+        if (hoverX == Int.MIN_VALUE || hoverY == Int.MIN_VALUE) return false
+        return sampleEyedropper(hoverX, hoverY, commit = false)
     }
 
     private fun commitInputEdit(key: String) {
@@ -875,8 +1064,10 @@ class ColorPickerController(
         interaction.textInput.clear()
     }
 
-    private fun applyInputDraft(key: String): Boolean {
-        val value = activeInputBuffer.trim()
+    private fun applyInputDraft(key: String): Boolean = applyInputDraftValue(key, activeInputBuffer)
+
+    private fun applyInputDraftValue(key: String, rawValue: String): Boolean {
+        val value = rawValue.trim()
         if (value.isEmpty()) return false
         val current = state.color
         when (key) {
@@ -891,12 +1082,13 @@ class ColorPickerController(
                 val g = if (key == "g") value.toFloatOrNull() ?: return false else current.g * 255f
                 val b = if (key == "b") value.toFloatOrNull() ?: return false else current.b * 255f
                 val a = if (key == "a") value.toFloatOrNull() ?: return false else current.a * 100f
-                val next = RgbaColor(
-                    r = (r / 255f).coerceIn(0f, 1f),
-                    g = (g / 255f).coerceIn(0f, 1f),
-                    b = (b / 255f).coerceIn(0f, 1f),
-                    a = (a / 100f).coerceIn(0f, 1f)
-                )
+                val next =
+                    RgbaColor(
+                        r = (r / 255f).coerceIn(0f, 1f),
+                        g = (g / 255f).coerceIn(0f, 1f),
+                        b = (b / 255f).coerceIn(0f, 1f),
+                        a = (a / 100f).coerceIn(0f, 1f),
+                    )
                 applyColor(next, notifyPreview = true, commit = false)
                 return true
             }
@@ -905,33 +1097,46 @@ class ColorPickerController(
                 val hue = if (key == "h") value.toFloatOrNull() ?: return false else hueDeg
                 val currentHsl = ColorConversions.rgbToHsl(current, hueDeg)
                 val currentHsv = ColorConversions.rgbToHsv(current, hueDeg)
-                val sValue = if (key == "s") value.toFloatOrNull() ?: return false else {
-                    if (state.mode == ColorFormatMode.HSL) currentHsl.saturation * 100f else currentHsv.saturation * 100f
-                }
-                val thirdValue = when {
-                    key == "l" || (key == "v" && state.mode == ColorFormatMode.HSB) -> value.toFloatOrNull() ?: return false
-                    state.mode == ColorFormatMode.HSL -> currentHsl.lightness * 100f
-                    else -> currentHsv.brightness * 100f
-                }
-                val next = if (state.mode == ColorFormatMode.HSL) {
-                    ColorConversions.hslToRgb(
-                        HslColor(
-                            hueDeg = normalizeHue(hue),
-                            saturation = (sValue / 100f).coerceIn(0f, 1f),
-                            lightness = (thirdValue / 100f).coerceIn(0f, 1f)
-                        ),
-                        alpha = current.a
-                    )
-                } else {
-                    ColorConversions.hsvToRgb(
-                        HsvColor(
-                            hueDeg = normalizeHue(hue),
-                            saturation = (sValue / 100f).coerceIn(0f, 1f),
-                            brightness = (thirdValue / 100f).coerceIn(0f, 1f)
-                        ),
-                        alpha = current.a
-                    )
-                }
+                val sValue =
+                    if (key == "s") {
+                        value.toFloatOrNull() ?: return false
+                    } else {
+                        if (state.mode ==
+                            ColorFormatMode.HSL
+                        ) {
+                            currentHsl.saturation * 100f
+                        } else {
+                            currentHsv.saturation * 100f
+                        }
+                    }
+                val thirdValue =
+                    when {
+                        key == "l" || (key == "v" && state.mode == ColorFormatMode.HSB) ->
+                            value.toFloatOrNull()
+                                ?: return false
+                        state.mode == ColorFormatMode.HSL -> currentHsl.lightness * 100f
+                        else -> currentHsv.brightness * 100f
+                    }
+                val next =
+                    if (state.mode == ColorFormatMode.HSL) {
+                        ColorConversions.hslToRgb(
+                            HslColor(
+                                hueDeg = normalizeHue(hue),
+                                saturation = (sValue / 100f).coerceIn(0f, 1f),
+                                lightness = (thirdValue / 100f).coerceIn(0f, 1f),
+                            ),
+                            alpha = current.a,
+                        )
+                    } else {
+                        ColorConversions.hsvToRgb(
+                            HsvColor(
+                                hueDeg = normalizeHue(hue),
+                                saturation = (sValue / 100f).coerceIn(0f, 1f),
+                                brightness = (thirdValue / 100f).coerceIn(0f, 1f),
+                            ),
+                            alpha = current.a,
+                        )
+                    }
                 applyColor(next, notifyPreview = true, commit = false)
                 return true
             }
@@ -947,11 +1152,12 @@ class ColorPickerController(
             }
 
             ColorFormatMode.RGB -> {
-                val rgbValues = hashMapOf(
-                    "r" to ((state.color.r * 255f).roundToInt().coerceIn(0, 255)).toString(),
-                    "g" to ((state.color.g * 255f).roundToInt().coerceIn(0, 255)).toString(),
-                    "b" to ((state.color.b * 255f).roundToInt().coerceIn(0, 255)).toString()
-                )
+                val rgbValues =
+                    hashMapOf(
+                        "r" to ((state.color.r * 255f).roundToInt().coerceIn(0, 255)).toString(),
+                        "g" to ((state.color.g * 255f).roundToInt().coerceIn(0, 255)).toString(),
+                        "b" to ((state.color.b * 255f).roundToInt().coerceIn(0, 255)).toString(),
+                    )
                 if (state.alphaEnabled) {
                     rgbValues["a"] = ((state.color.a * 100f).roundToInt().coerceIn(0, 100)).toString()
                 }
@@ -962,7 +1168,10 @@ class ColorPickerController(
 
             ColorFormatMode.HSL -> {
                 val hsl = ColorConversions.rgbToHsl(state.color, hueDeg)
-                values["h"] = hsl.hueDeg.roundToInt().toString()
+                values["h"] =
+                    hsl.hueDeg
+                        .roundToInt()
+                        .toString()
                 values["s"] = (hsl.saturation * 100f).roundToInt().toString()
                 values["l"] = (hsl.lightness * 100f).roundToInt().toString()
                 if (state.alphaEnabled) {
@@ -972,7 +1181,10 @@ class ColorPickerController(
 
             ColorFormatMode.HSB -> {
                 val hsb = ColorConversions.rgbToHsv(state.color, hueDeg)
-                values["h"] = hsb.hueDeg.roundToInt().toString()
+                values["h"] =
+                    hsb.hueDeg
+                        .roundToInt()
+                        .toString()
                 values["s"] = (hsb.saturation * 100f).roundToInt().toString()
                 values["v"] = (hsb.brightness * 100f).roundToInt().toString()
                 if (state.alphaEnabled) {
@@ -989,13 +1201,14 @@ class ColorPickerController(
             ColorFormatMode.RGB -> {
                 val defs = ArrayList<InputDefinition>()
                 rgbInputOrder().forEach { key ->
-                    defs += when (key) {
-                        "r" -> InputDefinition("r", "R")
-                        "g" -> InputDefinition("g", "G")
-                        "b" -> InputDefinition("b", "B")
-                        "a" -> InputDefinition("a", "A%")
-                        else -> return@forEach
-                    }
+                    defs +=
+                        when (key) {
+                            "r" -> InputDefinition("r", "R")
+                            "g" -> InputDefinition("g", "G")
+                            "b" -> InputDefinition("b", "B")
+                            "a" -> InputDefinition("a", "A%")
+                            else -> return@forEach
+                        }
                 }
                 defs
             }
@@ -1020,44 +1233,78 @@ class ColorPickerController(
         }
     }
 
-    private fun updateFromField(globalX: Int, globalY: Int, rect: Rect, commit: Boolean) {
-        val px = ((globalX - rect.x).toFloat() / rect.width.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
-        val py = ((globalY - rect.y).toFloat() / rect.height.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+    private fun updateFromField(
+        globalX: Int,
+        globalY: Int,
+        rect: Rect,
+        commit: Boolean,
+    ) {
+        val px =
+            (
+                (globalX - rect.x).toFloat() /
+                    rect.width
+                        .coerceAtLeast(1)
+                        .toFloat()
+            ).coerceIn(0f, 1f)
+        val py =
+            (
+                (globalY - rect.y).toFloat() /
+                    rect.height
+                        .coerceAtLeast(1)
+                        .toFloat()
+            ).coerceIn(0f, 1f)
         val saturation = px
         val brightness = 1f - py
-        val next = ColorConversions.hsvToRgb(
-            hsv = HsvColor(hueDeg = hueDeg, saturation = saturation, brightness = brightness),
-            alpha = state.color.a
-        )
+        val next =
+            ColorConversions.hsvToRgb(
+                hsv = HsvColor(hueDeg = hueDeg, saturation = saturation, brightness = brightness),
+                alpha = state.color.a,
+            )
         applyColor(next, notifyPreview = true, commit = commit)
     }
 
     private fun updateFromHue(globalX: Int, rect: Rect, commit: Boolean) {
-        val progress = ((globalX - rect.x).toFloat() / rect.width.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+        val progress =
+            (
+                (globalX - rect.x).toFloat() /
+                    rect.width
+                        .coerceAtLeast(1)
+                        .toFloat()
+            ).coerceIn(0f, 1f)
         hueDeg = progress * 360f
         val hsv = ColorConversions.rgbToHsv(state.color, hueDeg)
-        val next = ColorConversions.hsvToRgb(
-            hsv.copy(hueDeg = hueDeg),
-            alpha = state.color.a
-        )
+        val next =
+            ColorConversions.hsvToRgb(
+                hsv.copy(hueDeg = hueDeg),
+                alpha = state.color.a,
+            )
         applyColor(next, notifyPreview = true, commit = commit)
     }
 
     private fun updateFromAlpha(globalX: Int, rect: Rect, commit: Boolean) {
         if (!state.alphaEnabled) return
-        val progress = ((globalX - rect.x).toFloat() / rect.width.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+        val progress =
+            (
+                (globalX - rect.x).toFloat() /
+                    rect.width
+                        .coerceAtLeast(1)
+                        .toFloat()
+            ).coerceIn(0f, 1f)
         applyColor(state.color.copy(a = progress), notifyPreview = true, commit = commit)
     }
 
-    private fun sampleEyedropper(x: Int, y: Int, commit: Boolean) {
-        val argb = screenSampler?.sampleColorAt(x, y) ?: return
+    private fun sampleEyedropper(x: Int, y: Int, commit: Boolean): Boolean {
+        val argb = screenSampler?.sampleColorAt(x, y) ?: return false
         val sampled = RgbaColor.fromArgbInt(argb)
-        val color = if (state.alphaEnabled) {
-            sampled.copy(a = state.color.a)
-        } else {
-            sampled.copy(a = 1f)
-        }
+        val color =
+            if (state.alphaEnabled) {
+                sampled.copy(a = state.color.a)
+            } else {
+                sampled.copy(a = 1f)
+            }
+        val before = state.color.toArgbInt()
         applyColor(color, notifyPreview = true, commit = commit)
+        return state.color.toArgbInt() != before
     }
 
     private fun normalizedEyedropperGridSize(): Int {
@@ -1065,7 +1312,7 @@ class ColorPickerController(
         return if ((raw and 1) == 0) raw + 1 else raw
     }
 
-    private fun clampOverlayRect(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
+    private fun clampPreviewRect(rect: Rect, viewportWidth: Int, viewportHeight: Int): Rect {
         val safeViewportW = viewportWidth.coerceAtLeast(rect.width + 4)
         val safeViewportH = viewportHeight.coerceAtLeast(rect.height + 4)
         val minX = 2
@@ -1076,7 +1323,7 @@ class ColorPickerController(
             x = rect.x.coerceIn(minX, maxX),
             y = rect.y.coerceIn(minY, maxY),
             width = rect.width,
-            height = rect.height
+            height = rect.height,
         )
     }
 
@@ -1106,20 +1353,22 @@ class ColorPickerController(
         val fill = if (hovered || modeDropdownOpen) style.buttonHoverColor else style.buttonBackgroundColor
         out += RenderCommand.DrawRect(rect.x, rect.y, rect.width, rect.height, fill)
         drawBorder(out, rect, if (modeDropdownOpen) style.inputActiveBorderColor else style.inputBorderColor)
-        out += RenderCommand.DrawText(
-            text = state.mode.name,
-            x = rect.x + 6,
-            y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
-        )
-        out += RenderCommand.DrawText(
-            text = if (modeDropdownOpen) "^" else "v",
-            x = rect.x + rect.width - 12,
-            y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = state.mode.name,
+                x = rect.x + 6,
+                y = rect.y + 2,
+                color = style.textColor,
+                fontSize = style.fontSize,
+            )
+        out +=
+            RenderCommand.DrawText(
+                text = if (modeDropdownOpen) "^" else "v",
+                x = rect.x + rect.width - 12,
+                y = rect.y + 2,
+                color = style.textColor,
+                fontSize = style.fontSize,
+            )
     }
 
     private fun drawRgbOrderSwitch(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
@@ -1130,14 +1379,14 @@ class ColorPickerController(
             label = "RGBA",
             active = state.rgbOrder == RgbChannelOrder.RGBA,
             hovered = rgbaRect.contains(hoverX, hoverY),
-            out = out
+            out = out,
         )
         drawOrderLabel(
             rect = argbRect,
             label = "ARGB",
             active = state.rgbOrder == RgbChannelOrder.ARGB,
             hovered = argbRect.contains(hoverX, hoverY),
-            out = out
+            out = out,
         )
     }
 
@@ -1146,66 +1395,84 @@ class ColorPickerController(
         label: String,
         active: Boolean,
         hovered: Boolean,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     ) {
-        val fill = when {
-            active -> style.buttonActiveColor
-            hovered -> style.buttonHoverColor
-            else -> style.buttonBackgroundColor
-        }
+        val fill =
+            when {
+                active -> style.buttonActiveColor
+                hovered -> style.buttonHoverColor
+                else -> style.buttonBackgroundColor
+            }
         out += RenderCommand.DrawRect(rect.x, rect.y, rect.width, rect.height, fill)
         drawBorder(out, rect, if (active) style.inputActiveBorderColor else style.inputBorderColor)
-        out += RenderCommand.DrawText(
-            text = label,
-            x = rect.x + 6,
-            y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = label,
+                x = rect.x + 6,
+                y = rect.y + 2,
+                color = style.textColor,
+                fontSize = style.fontSize,
+            )
     }
 
     private fun drawModeOptions(layout: ColorPickerLayout, out: MutableList<RenderCommand>) {
         val popupRect = layout.modeOptionsRect ?: return
-        out += RenderCommand.DrawRect(popupRect.x, popupRect.y, popupRect.width, popupRect.height, style.inputBackgroundColor)
+        out +=
+            RenderCommand.DrawRect(
+                popupRect.x,
+                popupRect.y,
+                popupRect.width,
+                popupRect.height,
+                style.inputBackgroundColor,
+            )
         drawBorder(out, popupRect, style.inputActiveBorderColor)
         layout.modeOptions.forEach { option ->
             val hovered = option.rect.contains(hoverX, hoverY)
             val selected = option.mode == state.mode
             if (hovered || selected) {
-                out += RenderCommand.DrawRect(
-                    option.rect.x,
-                    option.rect.y,
-                    option.rect.width,
-                    option.rect.height,
-                    if (selected) style.buttonActiveColor else style.buttonHoverColor
-                )
+                out +=
+                    RenderCommand.DrawRect(
+                        option.rect.x,
+                        option.rect.y,
+                        option.rect.width,
+                        option.rect.height,
+                        if (selected) style.buttonActiveColor else style.buttonHoverColor,
+                    )
             }
-            out += RenderCommand.DrawText(
-                text = option.mode.name,
-                x = option.rect.x + 6,
-                y = option.rect.y + 2,
-                color = style.textColor,
-                fontSize = style.fontSize
-            )
+            out +=
+                RenderCommand.DrawText(
+                    text = option.mode.name,
+                    x = option.rect.x + 6,
+                    y = option.rect.y + 2,
+                    color = style.textColor,
+                    fontSize = style.fontSize,
+                )
         }
     }
 
-    private fun drawButton(rect: Rect, label: String, hovered: Boolean, out: MutableList<RenderCommand>) {
-        out += RenderCommand.DrawRect(
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
-            if (hovered) style.buttonHoverColor else style.buttonBackgroundColor
-        )
+    private fun drawButton(
+        rect: Rect,
+        label: String,
+        hovered: Boolean,
+        out: MutableList<RenderCommand>,
+    ) {
+        out +=
+            RenderCommand.DrawRect(
+                rect.x,
+                rect.y,
+                rect.width,
+                rect.height,
+                if (hovered) style.buttonHoverColor else style.buttonBackgroundColor,
+            )
         drawBorder(out, rect, style.inputBorderColor)
-        out += RenderCommand.DrawText(
-            text = label,
-            x = rect.x + 4,
-            y = rect.y + 2,
-            color = style.textColor,
-            fontSize = style.fontSize
-        )
+        out +=
+            RenderCommand.DrawText(
+                text = label,
+                x = rect.x + 4,
+                y = rect.y + 2,
+                color = style.textColor,
+                fontSize = style.fontSize,
+            )
     }
 
     private fun drawSwatch(rect: Rect, color: RgbaColor, out: MutableList<RenderCommand>) {
@@ -1215,13 +1482,14 @@ class ColorPickerController(
     }
 
     private fun drawColorField(rect: Rect, out: MutableList<RenderCommand>) {
-        out += RenderCommand.DrawColorField(
-            x = rect.x,
-            y = rect.y,
-            width = rect.width,
-            height = rect.height,
-            hueDeg = hueDeg
-        )
+        out +=
+            RenderCommand.DrawColorField(
+                x = rect.x,
+                y = rect.y,
+                width = rect.width,
+                height = rect.height,
+                hueDeg = hueDeg,
+            )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
@@ -1234,12 +1502,13 @@ class ColorPickerController(
     }
 
     private fun drawHueSlider(rect: Rect, out: MutableList<RenderCommand>) {
-        out += RenderCommand.DrawHueBar(
-            x = rect.x,
-            y = rect.y,
-            width = rect.width,
-            height = rect.height
-        )
+        out +=
+            RenderCommand.DrawHueBar(
+                x = rect.x,
+                y = rect.y,
+                width = rect.width,
+                height = rect.height,
+            )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
@@ -1251,13 +1520,14 @@ class ColorPickerController(
     private fun drawAlphaSlider(rect: Rect, out: MutableList<RenderCommand>) {
         drawChecker(rect, out)
         val rgb = state.color.copy(a = 1f)
-        out += RenderCommand.DrawAlphaBar(
-            x = rect.x,
-            y = rect.y,
-            width = rect.width,
-            height = rect.height,
-            rgbColor = rgb.toArgbInt()
-        )
+        out +=
+            RenderCommand.DrawAlphaBar(
+                x = rect.x,
+                y = rect.y,
+                width = rect.width,
+                height = rect.height,
+                rgbColor = rgb.toArgbInt(),
+            )
         drawBorder(out, rect, style.inputBorderColor)
     }
 
@@ -1266,13 +1536,13 @@ class ColorPickerController(
         out += RenderCommand.DrawRect(x - 1, rect.y - 1, 3, rect.height + 2, style.thumbOutlineColor)
     }
 
-    private fun drawEyedropperGridOverlay(
+    private fun drawEyedropperGrid(
         out: MutableList<RenderCommand>,
         rect: Rect,
         columns: Int,
         rows: Int,
         cellSize: Int,
-        color: Int
+        color: Int,
     ) {
         if (rect.width <= 1 || rect.height <= 1) return
         if (cellSize <= 0) return
@@ -1289,17 +1559,19 @@ class ColorPickerController(
             out += RenderCommand.DrawRect(rect.x, lineY, rect.width, 1, color)
         }
     }
+
     private fun drawChecker(rect: Rect, out: MutableList<RenderCommand>) {
         if (rect.width <= 0 || rect.height <= 0) return
-        out += RenderCommand.DrawCheckerboard(
-            x = rect.x,
-            y = rect.y,
-            width = rect.width,
-            height = rect.height,
-            cellSize = 4,
-            lightColor = style.checkerLightColor,
-            darkColor = style.checkerDarkColor
-        )
+        out +=
+            RenderCommand.DrawCheckerboard(
+                x = rect.x,
+                y = rect.y,
+                width = rect.width,
+                height = rect.height,
+                cellSize = 4,
+                lightColor = style.checkerLightColor,
+                darkColor = style.checkerDarkColor,
+            )
     }
 
     private fun drawBorder(out: MutableList<RenderCommand>, rect: Rect, color: Int) {
@@ -1310,9 +1582,7 @@ class ColorPickerController(
         out += RenderCommand.DrawRect(rect.x + rect.width - 1, rect.y, 1, rect.height, color)
     }
 
-    private fun caretVisible(nowMs: Long): Boolean {
-        return ((nowMs / 500L) % 2L) == 0L
-    }
+    private fun caretVisible(nowMs: Long): Boolean = ((nowMs / 500L) % 2L) == 0L
 
     private fun truncate(value: String, maxChars: Int): String {
         if (value.length <= maxChars) return value
@@ -1334,9 +1604,14 @@ class ColorPickerController(
         }
     }
 
+    private fun requestDomInputFocusResync() {
+        val key = domFocusedInputKey ?: domLastFocusedInputKey ?: return
+        domPendingFocusResyncKey = key
+        domInputFocusResyncRequested = true
+    }
+
     private data class InputDefinition(
         val key: String,
-        val label: String
+        val label: String,
     )
 }
-

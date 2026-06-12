@@ -10,7 +10,7 @@ import org.dreamfinity.dsgl.core.event.MouseClickEvent
 import org.dreamfinity.dsgl.core.event.collectHoverChain
 import org.dreamfinity.dsgl.core.event.dispatchClick
 import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.overlay.input.LayerDomInputRouter
+import org.dreamfinity.dsgl.core.portal.input.SurfaceDomInputRouter
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.Overflow
@@ -26,11 +26,14 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PositionedLayoutStickyBehaviorTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -40,21 +43,25 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky top sticks visually and keeps normal flow slot`() {
-        val root = ContainerNode(key = "sticky-top-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-top-node").apply {
-            width = 100
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val follower = ContainerNode(key = "sticky-top-follower").apply {
-            width = 100
-            height = 280
-        }
+        val root =
+            ContainerNode(key = "sticky-top-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-top-node").apply {
+                width = 100
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val follower =
+            ContainerNode(key = "sticky-top-follower").apply {
+                width = 100
+                height = 280
+            }
         sticky.applyParent(root)
         follower.applyParent(root)
 
@@ -72,25 +79,30 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky bottom-only mode is deterministic`() {
-        val root = ContainerNode(key = "sticky-bottom-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val topSpacer = ContainerNode(key = "sticky-bottom-spacer-top").apply {
-            width = 100
-            height = 140
-        }
-        val sticky = ContainerNode(key = "sticky-bottom-node").apply {
-            width = 100
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.BOTTOM to "0px"
-            )
-        }
-        val bottomSpacer = ContainerNode(key = "sticky-bottom-spacer-bottom").apply {
-            width = 100
-            height = 180
-        }
+        val root =
+            ContainerNode(key = "sticky-bottom-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val topSpacer =
+            ContainerNode(key = "sticky-bottom-spacer-top").apply {
+                width = 100
+                height = 140
+            }
+        val sticky =
+            ContainerNode(key = "sticky-bottom-node").apply {
+                width = 100
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.BOTTOM to "0px",
+                    )
+            }
+        val bottomSpacer =
+            ContainerNode(key = "sticky-bottom-spacer-bottom").apply {
+                width = 100
+                height = 180
+            }
         topSpacer.applyParent(root)
         sticky.applyParent(root)
         bottomSpacer.applyParent(root)
@@ -106,22 +118,26 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky both top and bottom uses top precedence`() {
-        val root = ContainerNode(key = "sticky-both-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-both-node").apply {
-            width = 80
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "10px",
-                StyleProperty.BOTTOM to "0px"
-            )
-        }
-        val follower = ContainerNode(key = "sticky-both-follower").apply {
-            width = 80
-            height = 220
-        }
+        val root =
+            ContainerNode(key = "sticky-both-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-both-node").apply {
+                width = 80
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "10px",
+                        StyleProperty.BOTTOM to "0px",
+                    )
+            }
+        val follower =
+            ContainerNode(key = "sticky-both-follower").apply {
+                width = 80
+                height = 220
+            }
         sticky.applyParent(root)
         follower.applyParent(root)
 
@@ -133,22 +149,26 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky left sticks visually on horizontal axis and keeps normal flow slot`() {
-        val root = ContainerNode(key = "sticky-left-root").apply {
-            display = Display.Flex
-            overflowX = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-left-node").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-left-filler").apply {
-            width = 260
-            height = 20
-        }
+        val root =
+            ContainerNode(key = "sticky-left-root").apply {
+                display = Display.Flex
+                overflowX = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-left-node").apply {
+                width = 40
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-left-filler").apply {
+                width = 260
+                height = 20
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -166,26 +186,31 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky right-only mode is deterministic on horizontal axis`() {
-        val root = ContainerNode(key = "sticky-right-root").apply {
-            display = Display.Flex
-            overflowX = Overflow.Scroll
-        }
-        val spacer = ContainerNode(key = "sticky-right-spacer").apply {
-            width = 140
-            height = 20
-        }
-        val sticky = ContainerNode(key = "sticky-right-node").apply {
-            width = 20
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.RIGHT to "0px"
-            )
-        }
-        val tail = ContainerNode(key = "sticky-right-tail").apply {
-            width = 120
-            height = 20
-        }
+        val root =
+            ContainerNode(key = "sticky-right-root").apply {
+                display = Display.Flex
+                overflowX = Overflow.Scroll
+            }
+        val spacer =
+            ContainerNode(key = "sticky-right-spacer").apply {
+                width = 140
+                height = 20
+            }
+        val sticky =
+            ContainerNode(key = "sticky-right-node").apply {
+                width = 20
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.RIGHT to "0px",
+                    )
+            }
+        val tail =
+            ContainerNode(key = "sticky-right-tail").apply {
+                width = 120
+                height = 20
+            }
         spacer.applyParent(root)
         sticky.applyParent(root)
         tail.applyParent(root)
@@ -201,23 +226,27 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky both left and right uses left precedence`() {
-        val root = ContainerNode(key = "sticky-horizontal-both-root").apply {
-            display = Display.Flex
-            overflowX = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-horizontal-both-node").apply {
-            width = 20
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "7px",
-                StyleProperty.RIGHT to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-horizontal-both-filler").apply {
-            width = 200
-            height = 20
-        }
+        val root =
+            ContainerNode(key = "sticky-horizontal-both-root").apply {
+                display = Display.Flex
+                overflowX = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-horizontal-both-node").apply {
+                width = 20
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "7px",
+                        StyleProperty.RIGHT to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-horizontal-both-filler").apply {
+                width = 200
+                height = 20
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -229,23 +258,27 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky combines horizontal and vertical offsets from independent axis rules`() {
-        val root = ContainerNode(key = "sticky-xy-root").apply {
-            overflowX = Overflow.Scroll
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-xy-node").apply {
-            width = 80
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "0px",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-xy-filler").apply {
-            width = 400
-            height = 400
-        }
+        val root =
+            ContainerNode(key = "sticky-xy-root").apply {
+                overflowX = Overflow.Scroll
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-xy-node").apply {
+                width = 80
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "0px",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-xy-filler").apply {
+                width = 400
+                height = 400
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -262,21 +295,25 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky with no horizontal inset stays inactive on horizontal axis`() {
-        val root = ContainerNode(key = "sticky-horizontal-inactive-root").apply {
-            display = Display.Flex
-            overflowX = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-horizontal-inactive-node").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-horizontal-inactive-filler").apply {
-            width = 260
-            height = 20
-        }
+        val root =
+            ContainerNode(key = "sticky-horizontal-inactive-root").apply {
+                display = Display.Flex
+                overflowX = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-horizontal-inactive-node").apply {
+                width = 40
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-horizontal-inactive-filler").apply {
+                width = 260
+                height = 20
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -290,20 +327,24 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky with no inset stays inactive on vertical axis`() {
-        val root = ContainerNode(key = "sticky-inactive-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-inactive-node").apply {
-            width = 90
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-inactive-filler").apply {
-            width = 90
-            height = 260
-        }
+        val root =
+            ContainerNode(key = "sticky-inactive-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-inactive-node").apply {
+                width = 90
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-inactive-filler").apply {
+                width = 90
+                height = 260
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -317,21 +358,25 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky used geometry resolves from shared path without render-owned refresh`() {
-        val root = ContainerNode(key = "sticky-refresh-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ContainerNode(key = "sticky-refresh-node").apply {
-            width = 100
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-refresh-filler").apply {
-            width = 100
-            height = 260
-        }
+        val root =
+            ContainerNode(key = "sticky-refresh-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ContainerNode(key = "sticky-refresh-node").apply {
+                width = 100
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-refresh-filler").apply {
+                width = 100
+                height = 260
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -345,23 +390,27 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky render and interaction use same final geometry`() {
-        val root = ContainerNode(key = "sticky-click-root").apply {
-            overflowY = Overflow.Scroll
-        }
+        val root =
+            ContainerNode(key = "sticky-click-root").apply {
+                overflowY = Overflow.Scroll
+            }
         var clicks = 0
-        val sticky = ButtonNode("sticky", key = "sticky-click-node").apply {
-            width = 100
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-            onClick { clicks += 1 }
-        }
-        val filler = ContainerNode(key = "sticky-click-filler").apply {
-            width = 100
-            height = 260
-        }
+        val sticky =
+            ButtonNode("sticky", key = "sticky-click-node").apply {
+                width = 100
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+                onClick { clicks += 1 }
+            }
+        val filler =
+            ContainerNode(key = "sticky-click-filler").apply {
+                width = 100
+                height = 260
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -379,32 +428,38 @@ class PositionedLayoutStickyBehaviorTests {
     fun `sticky with high z-index paints above later normal-flow overlap content`() {
         val stickyColor = 0xFF1B6BA8.toInt()
         val overlapColor = 0xFFE06262.toInt()
-        val root = ContainerNode(key = "sticky-z-paint-root").apply {
-            width = 120
-            height = 80
-            overflowY = Overflow.Auto
-        }
-        val sticky = ContainerNode(key = "sticky-z-paint-sticky", backgroundColor = stickyColor).apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px",
-                StyleProperty.Z_INDEX to "999"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-z-paint-filler").apply {
-            width = 120
-            height = 80
-        }
-        val overlap = ContainerNode(key = "sticky-z-paint-overlap", backgroundColor = overlapColor).apply {
-            width = 120
-            height = 20
-        }
-        val tail = ContainerNode(key = "sticky-z-paint-tail").apply {
-            width = 120
-            height = 120
-        }
+        val root =
+            ContainerNode(key = "sticky-z-paint-root").apply {
+                width = 120
+                height = 80
+                overflowY = Overflow.Auto
+            }
+        val sticky =
+            ContainerNode(key = "sticky-z-paint-sticky", backgroundColor = stickyColor).apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                        StyleProperty.Z_INDEX to "999",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-z-paint-filler").apply {
+                width = 120
+                height = 80
+            }
+        val overlap =
+            ContainerNode(key = "sticky-z-paint-overlap", backgroundColor = overlapColor).apply {
+                width = 120
+                height = 20
+            }
+        val tail =
+            ContainerNode(key = "sticky-z-paint-tail").apply {
+                width = 120
+                height = 120
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
         overlap.applyParent(root)
@@ -420,52 +475,61 @@ class PositionedLayoutStickyBehaviorTests {
         assertNotNull(stickyRect.intersection(overlapRect))
 
         val commands = tree.paint(ctx)
-        val stickyDrawIndex = commands.indexOfFirst {
-            it is RenderCommand.DrawRect && it.color == stickyColor
-        }
-        val overlapDrawIndex = commands.indexOfFirst {
-            it is RenderCommand.DrawRect && it.color == overlapColor
-        }
+        val stickyDrawIndex =
+            commands.indexOfFirst {
+                it is RenderCommand.DrawRect && it.color == stickyColor
+            }
+        val overlapDrawIndex =
+            commands.indexOfFirst {
+                it is RenderCommand.DrawRect && it.color == overlapColor
+            }
         assertTrue(stickyDrawIndex >= 0, "Expected sticky draw command")
         assertTrue(overlapDrawIndex >= 0, "Expected overlap draw command")
         assertTrue(
             stickyDrawIndex > overlapDrawIndex,
-            "Expected sticky draw after overlap draw, but stickyDrawIndex=$stickyDrawIndex overlapDrawIndex=$overlapDrawIndex"
+            "Expected sticky draw after overlap draw, but " +
+                "stickyDrawIndex=$stickyDrawIndex overlapDrawIndex=$overlapDrawIndex",
         )
     }
 
     @Test
     fun `sticky with high z-index wins hover and click over later overlap content`() {
-        val root = ContainerNode(key = "sticky-z-hit-root").apply {
-            width = 120
-            height = 80
-            overflowY = Overflow.Auto
-        }
+        val root =
+            ContainerNode(key = "sticky-z-hit-root").apply {
+                width = 120
+                height = 80
+                overflowY = Overflow.Auto
+            }
         var stickyClicks = 0
         var overlapClicks = 0
-        val sticky = ButtonNode("sticky-top", key = "sticky-z-hit-sticky").apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px",
-                StyleProperty.Z_INDEX to "999"
-            )
-            onClick { stickyClicks += 1 }
-        }
-        val filler = ContainerNode(key = "sticky-z-hit-filler").apply {
-            width = 120
-            height = 80
-        }
-        val overlap = ButtonNode("later-overlap", key = "sticky-z-hit-overlap").apply {
-            width = 120
-            height = 20
-            onClick { overlapClicks += 1 }
-        }
-        val tail = ContainerNode(key = "sticky-z-hit-tail").apply {
-            width = 120
-            height = 120
-        }
+        val sticky =
+            ButtonNode("sticky-top", key = "sticky-z-hit-sticky").apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                        StyleProperty.Z_INDEX to "999",
+                    )
+                onClick { stickyClicks += 1 }
+            }
+        val filler =
+            ContainerNode(key = "sticky-z-hit-filler").apply {
+                width = 120
+                height = 80
+            }
+        val overlap =
+            ButtonNode("later-overlap", key = "sticky-z-hit-overlap").apply {
+                width = 120
+                height = 20
+                onClick { overlapClicks += 1 }
+            }
+        val tail =
+            ContainerNode(key = "sticky-z-hit-tail").apply {
+                width = 120
+                height = 120
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
         overlap.applyParent(root)
@@ -493,27 +557,32 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky top remains correct during scrollbar thumb drag`() {
-        val root = ContainerNode(key = "sticky-drag-root").apply {
-            width = 120
-            height = 90
-            overflowY = Overflow.Auto
-        }
-        val topSpacer = ContainerNode(key = "sticky-drag-spacer").apply {
-            width = 120
-            height = 40
-        }
-        val sticky = ContainerNode(key = "sticky-drag-node").apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-drag-filler").apply {
-            width = 120
-            height = 320
-        }
+        val root =
+            ContainerNode(key = "sticky-drag-root").apply {
+                width = 120
+                height = 90
+                overflowY = Overflow.Auto
+            }
+        val topSpacer =
+            ContainerNode(key = "sticky-drag-spacer").apply {
+                width = 120
+                height = 40
+            }
+        val sticky =
+            ContainerNode(key = "sticky-drag-node").apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-drag-filler").apply {
+                width = 120
+                height = 320
+            }
         topSpacer.applyParent(root)
         sticky.applyParent(root)
         filler.applyParent(root)
@@ -522,7 +591,7 @@ class PositionedLayoutStickyBehaviorTests {
         tree.render(ctx, 220, 120)
         tree.paint(ctx)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
@@ -546,27 +615,32 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky drag stays correct when transform is read before paint`() {
-        val root = ContainerNode(key = "sticky-drag-transform-read-root").apply {
-            width = 120
-            height = 90
-            overflowY = Overflow.Auto
-        }
-        val topSpacer = ContainerNode(key = "sticky-drag-transform-read-spacer").apply {
-            width = 120
-            height = 40
-        }
-        val sticky = ContainerNode(key = "sticky-drag-transform-read-node").apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-drag-transform-read-filler").apply {
-            width = 120
-            height = 320
-        }
+        val root =
+            ContainerNode(key = "sticky-drag-transform-read-root").apply {
+                width = 120
+                height = 90
+                overflowY = Overflow.Auto
+            }
+        val topSpacer =
+            ContainerNode(key = "sticky-drag-transform-read-spacer").apply {
+                width = 120
+                height = 40
+            }
+        val sticky =
+            ContainerNode(key = "sticky-drag-transform-read-node").apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-drag-transform-read-filler").apply {
+                width = 120
+                height = 320
+            }
         topSpacer.applyParent(root)
         sticky.applyParent(root)
         filler.applyParent(root)
@@ -575,7 +649,7 @@ class PositionedLayoutStickyBehaviorTests {
         tree.render(ctx, 220, 120)
         tree.paint(ctx)
 
-        val router = LayerDomInputRouter { root }
+        val router = SurfaceDomInputRouter { root }
         val visual = root.debugScrollbarVisualState().vertical ?: error("Expected vertical scrollbar")
         val dragX = visual.thumbRect.x + visual.thumbRect.width / 2
         val startY = visual.thumbRect.y + visual.thumbRect.height / 2
@@ -600,29 +674,34 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky render interaction and inspector stay aligned for combined axis movement`() {
-        val root = ContainerNode(key = "sticky-xy-consistency-root").apply {
-            overflowX = Overflow.Scroll
-            overflowY = Overflow.Scroll
-        }
+        val root =
+            ContainerNode(key = "sticky-xy-consistency-root").apply {
+                overflowX = Overflow.Scroll
+                overflowY = Overflow.Scroll
+            }
         var clicks = 0
-        val sticky = ButtonNode("sticky", key = "sticky-xy-consistency-node").apply {
-            width = 80
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "0px",
-                StyleProperty.TOP to "0px"
-            )
-            onClick { clicks += 1 }
-        }
-        val spacer = ContainerNode(key = "sticky-xy-consistency-spacer").apply {
-            width = 20
-            height = 120
-        }
-        val filler = ContainerNode(key = "sticky-xy-consistency-filler").apply {
-            width = 420
-            height = 420
-        }
+        val sticky =
+            ButtonNode("sticky", key = "sticky-xy-consistency-node").apply {
+                width = 80
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "0px",
+                        StyleProperty.TOP to "0px",
+                    )
+                onClick { clicks += 1 }
+            }
+        val spacer =
+            ContainerNode(key = "sticky-xy-consistency-spacer").apply {
+                width = 20
+                height = 120
+            }
+        val filler =
+            ContainerNode(key = "sticky-xy-consistency-filler").apply {
+                width = 420
+                height = 420
+            }
         sticky.applyParent(root)
         spacer.applyParent(root)
         filler.applyParent(root)
@@ -643,28 +722,32 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(rect, highlight.borderRect)
     }
 
     @Test
     fun `inspector picks and highlights sticky at final used geometry`() {
-        val root = ContainerNode(key = "sticky-inspector-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val sticky = ButtonNode("sticky", key = "sticky-inspector-node").apply {
-            width = 100
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-inspector-filler").apply {
-            width = 40
-            height = 240
-        }
+        val root =
+            ContainerNode(key = "sticky-inspector-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val sticky =
+            ButtonNode("sticky", key = "sticky-inspector-node").apply {
+                width = 100
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-inspector-filler").apply {
+                width = 40
+                height = 240
+            }
         sticky.applyParent(root)
         filler.applyParent(root)
 
@@ -683,41 +766,48 @@ class PositionedLayoutStickyBehaviorTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(sticky.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(visibleRect, highlight.borderRect)
     }
 
     @Test
     fun `sticky horizontal movement is clamped by direct-parent containing block`() {
-        val root = ContainerNode(key = "sticky-clamp-x-root").apply {
-            display = Display.Flex
-            overflowX = Overflow.Scroll
-        }
-        val leftSpacer = ContainerNode(key = "sticky-clamp-x-left-spacer").apply {
-            width = 200
-            height = 80
-        }
-        val section = ContainerNode(key = "sticky-clamp-x-section").apply {
-            width = 60
-            height = 80
-        }
-        val sticky = ContainerNode(key = "sticky-clamp-x-node").apply {
-            width = 20
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.LEFT to "0px"
-            )
-        }
-        val sectionFiller = ContainerNode(key = "sticky-clamp-x-section-filler").apply {
-            width = 120
-            height = 40
-        }
-        val rightSpacer = ContainerNode(key = "sticky-clamp-x-right-spacer").apply {
-            width = 220
-            height = 80
-        }
+        val root =
+            ContainerNode(key = "sticky-clamp-x-root").apply {
+                display = Display.Flex
+                overflowX = Overflow.Scroll
+            }
+        val leftSpacer =
+            ContainerNode(key = "sticky-clamp-x-left-spacer").apply {
+                width = 200
+                height = 80
+            }
+        val section =
+            ContainerNode(key = "sticky-clamp-x-section").apply {
+                width = 60
+                height = 80
+            }
+        val sticky =
+            ContainerNode(key = "sticky-clamp-x-node").apply {
+                width = 20
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.LEFT to "0px",
+                    )
+            }
+        val sectionFiller =
+            ContainerNode(key = "sticky-clamp-x-section-filler").apply {
+                width = 120
+                height = 40
+            }
+        val rightSpacer =
+            ContainerNode(key = "sticky-clamp-x-right-spacer").apply {
+                width = 220
+                height = 80
+            }
         leftSpacer.applyParent(root)
         section.applyParent(root)
         rightSpacer.applyParent(root)
@@ -735,33 +825,40 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `sticky movement is clamped by direct-parent containing block`() {
-        val root = ContainerNode(key = "sticky-clamp-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val topSpacer = ContainerNode(key = "sticky-clamp-top-spacer").apply {
-            width = 120
-            height = 60
-        }
-        val section = ContainerNode(key = "sticky-clamp-section").apply {
-            width = 120
-            height = 120
-        }
-        val sticky = ContainerNode(key = "sticky-clamp-node").apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val sectionFiller = ContainerNode(key = "sticky-clamp-section-filler").apply {
-            width = 120
-            height = 220
-        }
-        val bottomSpacer = ContainerNode(key = "sticky-clamp-bottom-spacer").apply {
-            width = 120
-            height = 260
-        }
+        val root =
+            ContainerNode(key = "sticky-clamp-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val topSpacer =
+            ContainerNode(key = "sticky-clamp-top-spacer").apply {
+                width = 120
+                height = 60
+            }
+        val section =
+            ContainerNode(key = "sticky-clamp-section").apply {
+                width = 120
+                height = 120
+            }
+        val sticky =
+            ContainerNode(key = "sticky-clamp-node").apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val sectionFiller =
+            ContainerNode(key = "sticky-clamp-section-filler").apply {
+                width = 120
+                height = 220
+            }
+        val bottomSpacer =
+            ContainerNode(key = "sticky-clamp-bottom-spacer").apply {
+                width = 120
+                height = 260
+            }
         topSpacer.applyParent(root)
         section.applyParent(root)
         sticky.applyParent(section)
@@ -780,40 +877,52 @@ class PositionedLayoutStickyBehaviorTests {
     @Test
     fun `nested scroll containers preserve sticky correctness on inner local scroll updates`() {
         val root = ContainerNode(key = "sticky-nested-root")
-        val outer = ContainerNode(key = "sticky-nested-outer").apply {
-            width = 220
-            height = 180
-            overflowY = Overflow.Auto
-        }.applyParent(root)
-        val outerSpacer = ContainerNode(key = "sticky-nested-outer-spacer").apply {
-            width = 200
-            height = 48
-        }.applyParent(outer)
-        val inner = ContainerNode(key = "sticky-nested-inner").apply {
-            width = 200
-            height = 110
-            overflowY = Overflow.Auto
-        }.applyParent(outer)
-        val innerSpacer = ContainerNode(key = "sticky-nested-inner-spacer").apply {
-            width = 200
-            height = 28
-        }.applyParent(inner)
-        val sticky = ContainerNode(key = "sticky-nested-node").apply {
-            width = 200
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }.applyParent(inner)
-        val innerFiller = ContainerNode(key = "sticky-nested-inner-filler").apply {
-            width = 200
-            height = 260
-        }.applyParent(inner)
-        val outerFiller = ContainerNode(key = "sticky-nested-outer-filler").apply {
-            width = 200
-            height = 220
-        }.applyParent(outer)
+        val outer =
+            ContainerNode(key = "sticky-nested-outer")
+                .apply {
+                    width = 220
+                    height = 180
+                    overflowY = Overflow.Auto
+                }.applyParent(root)
+        ContainerNode(key = "sticky-nested-outer-spacer")
+            .apply {
+                width = 200
+                height = 48
+            }.applyParent(outer)
+        val inner =
+            ContainerNode(key = "sticky-nested-inner")
+                .apply {
+                    width = 200
+                    height = 110
+                    overflowY = Overflow.Auto
+                }.applyParent(outer)
+        val innerSpacer =
+            ContainerNode(key = "sticky-nested-inner-spacer")
+                .apply {
+                    width = 200
+                    height = 28
+                }.applyParent(inner)
+        val sticky =
+            ContainerNode(key = "sticky-nested-node")
+                .apply {
+                    width = 200
+                    height = 20
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "sticky",
+                            StyleProperty.TOP to "0px",
+                        )
+                }.applyParent(inner)
+        ContainerNode(key = "sticky-nested-inner-filler")
+            .apply {
+                width = 200
+                height = 260
+            }.applyParent(inner)
+        ContainerNode(key = "sticky-nested-outer-filler")
+            .apply {
+                width = 200
+                height = 220
+            }.applyParent(outer)
 
         val tree = DomTree(root)
         tree.render(ctx, 320, 260)
@@ -835,40 +944,47 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `fixed subtree and sticky remain correct during local scroll updates`() {
-        val root = ContainerNode(key = "sticky-fixed-root").apply {
-            width = 220
-            height = 140
-            overflowY = Overflow.Auto
-        }
+        val root =
+            ContainerNode(key = "sticky-fixed-root").apply {
+                width = 220
+                height = 140
+                overflowY = Overflow.Auto
+            }
         var stickyClicks = 0
         var fixedClicks = 0
-        val spacer = ContainerNode(key = "sticky-fixed-spacer").apply {
-            width = 200
-            height = 36
-        }
-        val sticky = ButtonNode("sticky", key = "sticky-fixed-sticky").apply {
-            width = 120
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-            onClick { stickyClicks += 1 }
-        }
-        val fixed = ButtonNode("fixed", key = "sticky-fixed-fixed").apply {
-            width = 80
-            height = 18
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "fixed",
-                StyleProperty.LEFT to "8px",
-                StyleProperty.TOP to "6px"
-            )
-            onClick { fixedClicks += 1 }
-        }
-        val filler = ContainerNode(key = "sticky-fixed-filler").apply {
-            width = 200
-            height = 300
-        }
+        val spacer =
+            ContainerNode(key = "sticky-fixed-spacer").apply {
+                width = 200
+                height = 36
+            }
+        val sticky =
+            ButtonNode("sticky", key = "sticky-fixed-sticky").apply {
+                width = 120
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+                onClick { stickyClicks += 1 }
+            }
+        val fixed =
+            ButtonNode("fixed", key = "sticky-fixed-fixed").apply {
+                width = 80
+                height = 18
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "fixed",
+                        StyleProperty.LEFT to "8px",
+                        StyleProperty.TOP to "6px",
+                    )
+                onClick { fixedClicks += 1 }
+            }
+        val filler =
+            ContainerNode(key = "sticky-fixed-filler").apply {
+                width = 200
+                height = 300
+            }
         spacer.applyParent(root)
         sticky.applyParent(root)
         fixed.applyParent(root)
@@ -899,57 +1015,69 @@ class PositionedLayoutStickyBehaviorTests {
 
     @Test
     fun `non-sticky positioned modes remain unchanged with sticky enabled`() {
-        val root = ContainerNode(key = "sticky-regression-root").apply {
-            overflowY = Overflow.Scroll
-        }
-        val staticNode = ContainerNode(key = "sticky-regression-static").apply {
-            width = 30
-            height = 12
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "static",
-                StyleProperty.LEFT to "50px",
-                StyleProperty.TOP to "20px"
-            )
-        }
-        val relativeNode = ContainerNode(key = "sticky-regression-relative").apply {
-            width = 30
-            height = 12
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "18px",
-                StyleProperty.TOP to "7px"
-            )
-        }
-        val absoluteNode = ContainerNode(key = "sticky-regression-absolute").apply {
-            width = 20
-            height = 10
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "absolute",
-                StyleProperty.LEFT to "40px",
-                StyleProperty.TOP to "22px"
-            )
-        }
-        val fixedNode = ContainerNode(key = "sticky-regression-fixed").apply {
-            width = 20
-            height = 10
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "fixed",
-                StyleProperty.LEFT to "15px",
-                StyleProperty.TOP to "9px"
-            )
-        }
-        val stickyNode = ContainerNode(key = "sticky-regression-sticky").apply {
-            width = 80
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "sticky",
-                StyleProperty.TOP to "0px"
-            )
-        }
-        val filler = ContainerNode(key = "sticky-regression-filler").apply {
-            width = 120
-            height = 260
-        }
+        val root =
+            ContainerNode(key = "sticky-regression-root").apply {
+                overflowY = Overflow.Scroll
+            }
+        val staticNode =
+            ContainerNode(key = "sticky-regression-static").apply {
+                width = 30
+                height = 12
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "static",
+                        StyleProperty.LEFT to "50px",
+                        StyleProperty.TOP to "20px",
+                    )
+            }
+        val relativeNode =
+            ContainerNode(key = "sticky-regression-relative").apply {
+                width = 30
+                height = 12
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.LEFT to "18px",
+                        StyleProperty.TOP to "7px",
+                    )
+            }
+        val absoluteNode =
+            ContainerNode(key = "sticky-regression-absolute").apply {
+                width = 20
+                height = 10
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "absolute",
+                        StyleProperty.LEFT to "40px",
+                        StyleProperty.TOP to "22px",
+                    )
+            }
+        val fixedNode =
+            ContainerNode(key = "sticky-regression-fixed").apply {
+                width = 20
+                height = 10
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "fixed",
+                        StyleProperty.LEFT to "15px",
+                        StyleProperty.TOP to "9px",
+                    )
+            }
+        val stickyNode =
+            ContainerNode(key = "sticky-regression-sticky").apply {
+                width = 80
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "sticky",
+                        StyleProperty.TOP to "0px",
+                    )
+            }
+        val filler =
+            ContainerNode(key = "sticky-regression-filler").apply {
+                width = 120
+                height = 260
+            }
 
         staticNode.applyParent(root)
         relativeNode.applyParent(root)
@@ -976,13 +1104,9 @@ class PositionedLayoutStickyBehaviorTests {
         assertEquals(fixedBeforeScroll, fixedNode.bounds)
     }
 
-    private fun usedRect(node: ContainerNode): Rect {
-        return UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
-    }
+    private fun usedRect(node: ContainerNode): Rect = UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
 
-    private fun usedRect(node: ButtonNode): Rect {
-        return UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
-    }
+    private fun usedRect(node: ButtonNode): Rect = UsedInteractionGeometryResolver.resolveNodeGeometry(node).usedBorderRect
 
     private fun visibleRect(node: ContainerNode): Rect {
         val geometry = UsedInteractionGeometryResolver.resolveNodeGeometry(node)
@@ -994,11 +1118,10 @@ class PositionedLayoutStickyBehaviorTests {
         return geometry.visibleBorderRect ?: geometry.usedBorderRect
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 }

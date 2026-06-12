@@ -36,67 +36,63 @@ open class ColorPickerProps : ComponentProps() {
         }
 
     internal fun hasControlledValue(): Boolean = valueSpecified
+
     internal fun controlledValue(): RgbaColor? = valueInternal
 
     private var valueSpecified: Boolean = false
     private var valueInternal: RgbaColor? = null
 }
 
+@DsglDsl
+fun UiScope.colorPicker(props: ColorPickerProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(ColorPickerProps().apply(props)) { props ->
+        val controlled = props.hasControlledValue()
+        ColorPickerInlineNode(
+            controlled = controlled,
+            value = if (controlled) props.controlledValue() else null,
+            defaultValue = props.defaultValue,
+            previousValue = props.previousValue,
+            mode = props.mode,
+            alphaEnabled = props.alphaEnabled,
+            key = props.key,
+        ).apply {
+            closeOnSelect = props.closeOnSelect
+            eyedropperEnabled = props.eyedropperEnabled
+            onPreviewColor = props.onPreviewColor
+            onChangeColor = props.onChangeColor
+            onCommitColor = props.onCommitColor
+            onRequestClose = props.onRequestClose
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
+    }
 
 @DsglDsl
-fun UiScope.colorPicker(
-    props: ColorPickerProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(ColorPickerProps().apply(props)) { props ->
-    val controlled = props.hasControlledValue()
-    ColorPickerInlineNode(
-        controlled = controlled,
-        value = if (controlled) props.controlledValue() else null,
-        defaultValue = props.defaultValue,
-        previousValue = props.previousValue,
-        mode = props.mode,
-        alphaEnabled = props.alphaEnabled,
-        key = props.key
-    ).apply {
-        closeOnSelect = props.closeOnSelect
-        eyedropperEnabled = props.eyedropperEnabled
-        onPreviewColor = props.onPreviewColor
-        onChangeColor = props.onChangeColor
-        onCommitColor = props.onCommitColor
-        onRequestClose = props.onRequestClose
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
+fun UiScope.colorPickerPopup(props: ColorPickerPopupProps.() -> Unit = {}, ref: RefTarget<ElementHandle>? = null) =
+    withProps(ColorPickerPopupProps().apply(props)) { props ->
+        val controlled = props.hasControlledValue()
+        ColorPickerPopupPaneNode(
+            controlled = controlled,
+            value = if (controlled) props.controlledValue() else null,
+            defaultValue = props.defaultValue,
+            previousValue = props.previousValue,
+            mode = props.mode,
+            alphaEnabled = props.alphaEnabled,
+            key = props.key,
+        ).apply {
+            closeOnSelect = props.closeOnSelect
+            popupTitle = props.popupTitle
+            popupWidth = props.popupWidth
+            popupDraggable = props.popupDraggable
+            popupCloseOnOutsideClick = props.popupCloseOnOutsideClick
+            onPreviewColor = props.onPreviewColor
+            onChangeColor = props.onChangeColor
+            onCommitColor = props.onCommitColor
+            applyStyle(this, props.style)
+            applyHandlers(this, props)
+            applyRef(this, ref)
+            add(this)
+        }
     }
-}
-
-@DsglDsl
-fun UiScope.colorPickerPopup(
-    props: ColorPickerPopupProps.() -> Unit = {},
-    ref: RefTarget<ElementHandle>? = null
-) = withProps(ColorPickerPopupProps().apply(props)) { props ->
-    val controlled = props.hasControlledValue()
-    ColorPickerPopupPaneNode(
-        controlled = controlled,
-        value = if (controlled) props.controlledValue() else null,
-        defaultValue = props.defaultValue,
-        previousValue = props.previousValue,
-        mode = props.mode,
-        alphaEnabled = props.alphaEnabled,
-        key = props.key
-    ).apply {
-        closeOnSelect = props.closeOnSelect
-        popupTitle = props.popupTitle
-        popupWidth = props.popupWidth
-        popupDraggable = props.popupDraggable
-        popupCloseOnOutsideClick = props.popupCloseOnOutsideClick
-        onPreviewColor = props.onPreviewColor
-        onChangeColor = props.onChangeColor
-        onCommitColor = props.onCommitColor
-        applyStyle(this, props.style)
-        applyHandlers(this, props)
-        applyRef(this, ref)
-        add(this)
-    }
-}

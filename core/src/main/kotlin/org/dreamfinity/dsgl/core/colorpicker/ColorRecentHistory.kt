@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.colorpicker
 
 class ColorRecentHistory(
-    val capacity: Int = 64
+    val capacity: Int = 64,
 ) {
     private val colors: MutableList<RgbaColor> = ArrayList(capacity.coerceAtLeast(1))
 

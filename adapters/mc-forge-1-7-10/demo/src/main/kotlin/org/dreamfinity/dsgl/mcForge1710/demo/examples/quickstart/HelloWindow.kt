@@ -11,11 +11,12 @@ import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWra
 class HelloWindow : DsglWindow() {
     private var clicks by state(0)
 
-    override fun render(): DomTree = ui {
-        centeredFlexWrapper {
-            helloDSGL(clicks, { clicks += 1 })
+    override fun render(): DomTree =
+        ui {
+            centeredFlexWrapper {
+                helloDSGL(clicks, { clicks += 1 })
+            }
         }
-    }
 }
 
 private fun UiScope.helloDSGL(clicks: Int, setClicks: (_: Event) -> Unit) {

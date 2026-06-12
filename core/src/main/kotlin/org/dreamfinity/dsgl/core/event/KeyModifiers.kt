@@ -7,17 +7,20 @@ object KeyModifiers {
     @Volatile
     var shiftDown: Boolean = false
         private set
+
     @Volatile
     var controlDown: Boolean = false
         private set
+
     @Volatile
     var metaDown: Boolean = false
         private set
 
-    private val macOs: Boolean = run {
-        val osName = System.getProperty("os.name") ?: return@run false
-        osName.lowercase().contains("mac")
-    }
+    private val macOs: Boolean =
+        run {
+            val osName = System.getProperty("os.name") ?: return@run false
+            osName.lowercase().contains("mac")
+        }
 
     val shortcutDown: Boolean
         get() = if (macOs) metaDown else controlDown

@@ -5,7 +5,7 @@ fun <T> reorderByDnD(
     activeId: String?,
     overId: String?,
     insertPosition: InsertPosition,
-    idOf: (T) -> String
+    idOf: (T) -> String,
 ): List<T> {
     if (activeId.isNullOrBlank()) return items
     val fromIndex = items.indexOfFirst { idOf(it) == activeId }
@@ -13,19 +13,20 @@ fun <T> reorderByDnD(
 
     val mutable = items.toMutableList()
     val moved = mutable.removeAt(fromIndex)
-    val targetIndex = when {
-        overId.isNullOrBlank() || insertPosition == InsertPosition.APPEND -> mutable.size
-        else -> {
-            val overIndex = mutable.indexOfFirst { idOf(it) == overId }
-            if (overIndex < 0) {
-                mutable.size
-            } else if (insertPosition == InsertPosition.AFTER) {
-                overIndex + 1
-            } else {
-                overIndex
+    val targetIndex =
+        when {
+            overId.isNullOrBlank() || insertPosition == InsertPosition.APPEND -> mutable.size
+            else -> {
+                val overIndex = mutable.indexOfFirst { idOf(it) == overId }
+                if (overIndex < 0) {
+                    mutable.size
+                } else if (insertPosition == InsertPosition.AFTER) {
+                    overIndex + 1
+                } else {
+                    overIndex
+                }
             }
-        }
-    }.coerceIn(0, mutable.size)
+        }.coerceIn(0, mutable.size)
 
     mutable.add(targetIndex, moved)
     return if (items.sameOrderAs(mutable, idOf)) items else mutable

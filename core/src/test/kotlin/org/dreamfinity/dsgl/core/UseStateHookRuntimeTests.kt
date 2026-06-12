@@ -1,18 +1,14 @@
 package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
 import org.dreamfinity.dsgl.core.hooks.HookUsageException
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.dsl.UiScope
 import org.dreamfinity.dsgl.core.host.DsglWindowHost
 import org.dreamfinity.dsgl.core.host.Viewport
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 
 class UseStateHookRuntimeTests {
     @Test
@@ -53,14 +49,14 @@ class UseStateHookRuntimeTests {
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("Left panel" to 1, "Right panel" to 0),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
 
         window.enqueueIncrement("Right panel")
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("Left panel" to 1, "Right panel" to 1),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
     }
 
@@ -73,13 +69,13 @@ class UseStateHookRuntimeTests {
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("A" to 0, "B" to 1, "C" to 0),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
 
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("A" to 0, "B" to 1, "C" to 0),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
     }
 
@@ -92,14 +88,14 @@ class UseStateHookRuntimeTests {
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("A" to 0, "B" to 1, "C" to 0),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
 
         window.order = listOf("B", "A", "C")
         renderWithHookSession(window)
         assertEquals(
             linkedMapOf("B" to 0, "A" to 1, "C" to 0),
-            window.observedCountsSnapshot()
+            window.observedCountsSnapshot(),
         )
     }
 
@@ -133,9 +129,10 @@ class UseStateHookRuntimeTests {
         renderWithHookSession(window)
 
         window.useStringBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            renderWithHookSession(window)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                renderWithHookSession(window)
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("counter") == true)
@@ -163,9 +160,10 @@ class UseStateHookRuntimeTests {
 
         window.beginRenderBuild()
         window.render()
-        val error = assertFailsWith<HookUsageException> {
-            window.endRenderBuild()
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.endRenderBuild()
+            }
 
         assertEquals(error.message?.contains("Storage-backed hook 'useState'"), true)
         assertEquals(error.message?.contains("delegated property syntax"), true)
@@ -175,17 +173,15 @@ class UseStateHookRuntimeTests {
     fun `useState outside active render fails loudly`() {
         val window = StateProbeWindow()
 
-        val error = assertFailsWith<HookUsageException> {
-            window.useState(0)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                window.useState(0)
+            }
 
         assertEquals(error.message?.contains("outside active component render"), true)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal): DomTree {
         window.beginRenderBuild(mode)
         return try {
             window.render()
@@ -213,7 +209,10 @@ class UseStateHookRuntimeTests {
     private class StateProbeWindow : DsglWindow() {
         sealed interface Mutation {
             data object None : Mutation
-            data class Assign(val value: Int) : Mutation
+
+            data class Assign(
+                val value: Int,
+            ) : Mutation
         }
 
         var showState: Boolean = true
@@ -278,9 +277,7 @@ class UseStateHookRuntimeTests {
             pendingIncrements += label
         }
 
-        fun observedCountsSnapshot(): LinkedHashMap<String, Int> {
-            return LinkedHashMap(observedCounts)
-        }
+        fun observedCountsSnapshot(): LinkedHashMap<String, Int> = LinkedHashMap(observedCounts)
 
         override fun render(): DomTree {
             observedCounts.clear()
@@ -301,7 +298,7 @@ class UseStateHookRuntimeTests {
     }
 
     private class RecordingHost(
-        override val window: DsglWindow
+        override val window: DsglWindow,
     ) : DsglWindowHost {
         var rebuildRequests: Int = 0
 
@@ -309,11 +306,10 @@ class UseStateHookRuntimeTests {
             rebuildRequests += 1
         }
 
+        @Suppress("EmptyFunctionBlock")
         override fun requestRedraw() {
         }
 
-        override fun getViewport(): Viewport {
-            return Viewport(width = 0, height = 0)
-        }
+        override fun getViewport(): Viewport = Viewport(width = 0, height = 0)
     }
 }

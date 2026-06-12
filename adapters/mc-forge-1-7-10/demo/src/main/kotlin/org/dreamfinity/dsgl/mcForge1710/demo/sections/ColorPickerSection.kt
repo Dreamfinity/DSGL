@@ -1,13 +1,13 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.colorpicker.*
 import org.dreamfinity.dsgl.core.dom.layout.Rect
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.FlexDirection
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.hooks.useEffect
 import org.dreamfinity.dsgl.core.hooks.useMemo
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 fun UiScope.colorPickerSection() {
@@ -30,13 +30,14 @@ fun UiScope.colorPickerSection() {
         sharedColorPickerManager.open(
             anchorRect = Rect(mouseX, mouseY, 1, 1),
             title = "Shared Picker [$target]",
-            state = ColorPickerState(
-                color = current,
-                previous = current,
-                mode = colorInlineMode,
-                alphaEnabled = colorPickerAlphaEnabled,
-                closeOnSelect = false
-            ),
+            state =
+                ColorPickerState(
+                    color = current,
+                    previous = current,
+                    mode = colorInlineMode,
+                    alphaEnabled = colorPickerAlphaEnabled,
+                    closeOnSelect = false,
+                ),
             closeOnOutsideClick = false,
             onPreview = { color ->
                 if (target == "A") {
@@ -59,7 +60,7 @@ fun UiScope.colorPickerSection() {
                     colorSharedB = color
                 }
                 colorPickerLastCommit = colorLabel(color)
-            }
+            },
         )
     }
 
@@ -74,11 +75,11 @@ fun UiScope.colorPickerSection() {
         text("Reusable color picker: inline + popup pane + shared popup manager")
         text(
             "Pipette samples current rendered game window surface. Copy/paste accepts hex/rgb/hsl/hsb.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
         text(
-            "Inline picker follows app styling. Inspector picker (F8) is rendered in isolated system overlay styles.",
-            { style = { color = DEMO_MUTED } }
+            "Inline picker follows app styling. Inspector picker (F12) is rendered in isolated system portal styles.",
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -197,6 +198,5 @@ fun UiScope.colorPickerSection() {
     }
 }
 
-private fun colorLabel(color: RgbaColor): String {
-    return ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)
-}
+private fun colorLabel(color: RgbaColor): String =
+    ColorTextCodec.format(color, ColorFormatMode.HEX, includeAlpha = true)

@@ -7,9 +7,9 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.ResourceLocation
-import org.dreamfinity.dsgl.core.dom.layout.FontLineMetrics
-import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
-import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.colorpicker.*
+import org.dreamfinity.dsgl.core.dom.layout.*
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.host.Viewport
 import org.dreamfinity.dsgl.core.host.dsglRectToGlScissor
 import org.dreamfinity.dsgl.core.render.RenderCommand
@@ -24,19 +24,22 @@ import javax.imageio.ImageIO
 /**
  * Minecraft 1.7.10 adapter that turns DSGL render commands into Minecraft calls.
  */
-class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : UiMeasureContext {
+class Mc1710UiAdapter(
+    private val mc: Minecraft,
+    var paintsCount: Long = 0L,
+) : UiMeasureContext {
     private enum class ReadbackApi {
         OpenGl30,
         ArbFramebufferObject,
         ExtFramebufferObject,
-        Legacy
+        Legacy,
     }
 
     private data class ReadbackBindingState(
         val readFramebufferBinding: Int,
         val drawFramebufferBinding: Int,
         val framebufferBinding: Int,
-        val currentReadBuffer: Int
+        val currentReadBuffer: Int,
     ) {
         val usingFramebufferObject: Boolean
             get() = readFramebufferBinding != 0
@@ -45,19 +48,19 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private data class ReadbackSetup(
         val previousReadBuffer: Int,
         val appliedReadBuffer: Int,
-        val shouldRestore: Boolean
+        val shouldRestore: Boolean,
     )
 
     private data class FramebufferBindingSnapshot(
         val readFramebufferBinding: Int,
         val drawFramebufferBinding: Int,
-        val framebufferBinding: Int
+        val framebufferBinding: Int,
     )
 
     private data class SceneTextureSource(
         val textureId: Int,
         val textureWidth: Int,
-        val textureHeight: Int
+        val textureHeight: Int,
     )
 
     private data class MagnifierCaptureShader(
@@ -67,21 +70,24 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val sourceSizeUniform: Int,
         val viewportSizeUniform: Int,
         val sourceTextureSizeUniform: Int,
-        val fallbackColorUniform: Int
+        val fallbackColorUniform: Int,
     )
 
     companion object {
         private val imageCache: MutableMap<String, ResourceLocation> = HashMap()
         private val dynamicTexturesCache: MutableMap<String, DynamicTexture> = HashMap()
-        private val MAGNIFIER_CAPTURE_VERTEX_SHADER: String = """
+        private val HUE_STOPS: FloatArray = floatArrayOf(0f, 60f, 120f, 180f, 240f, 300f, 360f)
+        private val MAGNIFIER_CAPTURE_VERTEX_SHADER: String =
+            """
             #version 120
             varying vec2 vUv;
             void main() {
                 gl_Position = gl_Vertex;
                 vUv = gl_MultiTexCoord0.xy;
             }
-        """.trimIndent()
-        private val MAGNIFIER_CAPTURE_FRAGMENT_SHADER: String = """
+            """.trimIndent()
+        private val MAGNIFIER_CAPTURE_FRAGMENT_SHADER: String =
+            """
             #version 120
             uniform sampler2D uSourceTexture;
             uniform vec2 uSourceOriginTopLeft;
@@ -111,15 +117,21 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 vec4 sampled = texture2D(uSourceTexture, sourceUv);
                 gl_FragColor = vec4(sampled.rgb, 1.0);
             }
-        """.trimIndent()
+            """.trimIndent()
     }
 
     private val itemRenderer: RenderItem = RenderItem()
     private val textRenderer: MsdfTextRenderer = MsdfTextRenderer()
-    private val opacityStack: MutableList<Float> = ArrayList(8)
+
+    // Plain float stack: a MutableList<Float> would box on every push/pop in the paint loop.
+    private var opacityStackValues = FloatArray(16)
+    private var opacityStackSize = 0
     private var opacityMultiplier: Float = 1f
+    private val transformStack = RenderCommandTransformStack()
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
-    private val readbackDiagnosticsVerbose: Boolean = java.lang.Boolean.getBoolean("dsgl.readback.diagnostics.verbose")
+    private val readbackDiagnosticsVerbose: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.readback.diagnostics.verbose")
     private val readbackApi: ReadbackApi by lazy(LazyThreadSafetyMode.NONE) { resolveReadbackApi() }
 
     private val samplePixelBuffer = BufferUtils.createByteBuffer(4)
@@ -145,29 +157,25 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private var cachedDisplayHeight: Int = -1
 
     override fun measureText(text: String): Int = textRenderer.measureText(text, null, null)
-    override fun measureText(text: String, fontId: String?, fontSize: Int?): Int {
-        return textRenderer.measureText(text, fontId, fontSize)
-    }
+
+    override fun measureText(text: String, fontId: String?, fontSize: Int?): Int =
+        textRenderer.measureText(text, fontId, fontSize)
+
     override fun measureTextRange(
         text: String,
         startIndex: Int,
         endIndexExclusive: Int,
         fontId: String?,
-        fontSize: Int?
-    ): Int {
-        return textRenderer.measureTextRange(text, startIndex, endIndexExclusive, fontId, fontSize)
-    }
+        fontSize: Int?,
+    ): Int = textRenderer.measureTextRange(text, startIndex, endIndexExclusive, fontId, fontSize)
 
     override val fontHeight: Int
         get() = textRenderer.lineHeight(FontRegistry.DEFAULT_FONT_ID, null)
 
-    override fun fontHeight(fontId: String?, fontSize: Int?): Int {
-        return textRenderer.lineHeight(fontId, fontSize)
-    }
+    override fun fontHeight(fontId: String?, fontSize: Int?): Int = textRenderer.lineHeight(fontId, fontSize)
 
-    override fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? {
-        return textRenderer.fontLineMetrics(fontId, fontSize)
-    }
+    override fun fontLineMetrics(fontId: String?, fontSize: Int?): FontLineMetrics? =
+        textRenderer.fontLineMetrics(fontId, fontSize)
 
     fun viewport(): Viewport {
         val displayWidth = mc.displayWidth.coerceAtLeast(1)
@@ -175,13 +183,14 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         if (displayWidth != cachedDisplayWidth || displayHeight != cachedDisplayHeight) {
             cachedDisplayWidth = displayWidth
             cachedDisplayHeight = displayHeight
-            cachedViewport = Viewport(
-                width = displayWidth,
-                height = displayHeight,
-                scale = 1f,
-                x = 0,
-                y = 0
-            )
+            cachedViewport =
+                Viewport(
+                    width = displayWidth,
+                    height = displayHeight,
+                    scale = 1f,
+                    x = 0,
+                    y = 0,
+                )
         }
         return cachedViewport
     }
@@ -200,7 +209,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     sourceY = y,
                     sourceWidth = 1,
                     sourceHeight = 1,
-                    setup = setup
+                    setup = setup,
                 )
             }
             try {
@@ -218,7 +227,13 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         }
     }
 
-    fun sampleScreenArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
+    fun sampleScreenArea(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        outArgb: IntArray,
+    ): Boolean {
         if (width <= 0 || height <= 0) return false
         val required = width * height
         if (outArgb.size < required) return false
@@ -253,7 +268,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                     sourceY = srcY,
                     sourceWidth = srcW,
                     sourceHeight = srcH,
-                    setup = setup
+                    setup = setup,
                 )
             }
             try {
@@ -302,7 +317,9 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
                     key = "magnifier:capture:fallback",
-                    message = "[DSGL-Magnifier] Falling back to solid fill preview. sourceTexture=${sceneTextureSource?.textureId ?: 0} shaderReady=${shader != null}"
+                    message =
+                        "[DSGL-Magnifier] Falling back to solid fill preview. " +
+                            "sourceTexture=${sceneTextureSource?.textureId ?: 0} shaderReady=${shader != null}",
                 )
             }
             return
@@ -342,18 +359,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             ARBShaderObjects.glUniform2fARB(
                 shader.sourceOriginUniform,
                 command.sourceX.toFloat(),
-                command.sourceY.toFloat()
+                command.sourceY.toFloat(),
             )
             ARBShaderObjects.glUniform2fARB(shader.sourceSizeUniform, sourceWidth.toFloat(), sourceHeight.toFloat())
             ARBShaderObjects.glUniform2fARB(
                 shader.viewportSizeUniform,
                 viewport.width.toFloat(),
-                viewport.height.toFloat()
+                viewport.height.toFloat(),
             )
             ARBShaderObjects.glUniform2fARB(
                 shader.sourceTextureSizeUniform,
                 sceneTextureSource.textureWidth.toFloat(),
-                sceneTextureSource.textureHeight.toFloat()
+                sceneTextureSource.textureHeight.toFloat(),
             )
             val fallbackAlpha = ((command.fallbackColor ushr 24) and 0xFF) / 255f
             val fallbackRed = ((command.fallbackColor ushr 16) and 0xFF) / 255f
@@ -364,7 +381,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 fallbackRed,
                 fallbackGreen,
                 fallbackBlue,
-                fallbackAlpha
+                fallbackAlpha,
             )
             GL11.glColor4f(1f, 1f, 1f, 1f)
             GL11.glBegin(GL11.GL_QUADS)
@@ -378,11 +395,13 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL11.glVertex2f(-1f, 1f)
             GL11.glEnd()
             renderingSucceeded = true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
                     key = "magnifier:capture:error",
-                    message = "[DSGL-Magnifier] GPU capture failed: ${error.message ?: error::class.java.simpleName}"
+                    message = "[DSGL-Magnifier] GPU capture failed: ${error.message ?: error::class.java.simpleName}",
                 )
             }
         } finally {
@@ -395,11 +414,12 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 previousViewportX,
                 previousViewportY,
                 previousViewportWidth,
-                previousViewportHeight
+                previousViewportHeight,
             )
         }
         capturedRegionValid =
-            renderingSucceeded || fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
+            renderingSucceeded ||
+            fillCapturedRegionFallbackTexture(command.fallbackColor, sourceWidth, sourceHeight)
     }
 
     private fun drawCapturedScreenRegion(command: RenderCommand.DrawCapturedScreenRegion) {
@@ -410,7 +430,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 command.y,
                 command.x + command.width,
                 command.y + command.height,
-                applyOpacity(capturedRegionFallbackColor)
+                applyOpacity(capturedRegionFallbackColor),
             )
             return
         }
@@ -430,6 +450,37 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         GL11.glTexCoord2f(0f, 0f)
         GL11.glVertex2f(command.x.toFloat(), (command.y + command.height).toFloat())
         GL11.glEnd()
+        drawCapturedRegionGrid(command)
+    }
+
+    private fun drawCapturedRegionGrid(command: RenderCommand.DrawCapturedScreenRegion) {
+        val grid = command.grid ?: return
+        val columns = grid.columns.coerceAtLeast(1)
+        val rows = grid.rows.coerceAtLeast(1)
+        val magnification = grid.magnification.coerceAtLeast(1)
+
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+        glColor(applyOpacity(grid.color))
+        GL11.glBegin(GL11.GL_LINES)
+        for (column in 1 until columns) {
+            val lineX = command.x + column * magnification
+            if (lineX <= command.x || lineX >= command.x + command.width) continue
+            val x = lineX + 0.5f
+            GL11.glVertex2f(x, command.y.toFloat())
+            GL11.glVertex2f(x, (command.y + command.height).toFloat())
+        }
+        for (row in 1 until rows) {
+            val lineY = command.y + row * magnification
+            if (lineY <= command.y || lineY >= command.y + command.height) continue
+            val y = lineY + 0.5f
+            GL11.glVertex2f(command.x.toFloat(), y)
+            GL11.glVertex2f((command.x + command.width).toFloat(), y)
+        }
+        GL11.glEnd()
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glColor4f(1f, 1f, 1f, 1f)
     }
 
     private fun drawCheckerboard(command: RenderCommand.DrawCheckerboard) {
@@ -442,7 +493,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 command.y,
                 command.x + command.width,
                 command.y + command.height,
-                applyOpacity(command.lightColor)
+                applyOpacity(command.lightColor),
             )
             return
         }
@@ -485,10 +536,26 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val light = argbToRgbaBytes(lightColor)
         val dark = argbToRgbaBytes(darkColor)
         checkerTextureUploadBuffer.clear()
-        checkerTextureUploadBuffer.put(light[0]).put(light[1]).put(light[2]).put(light[3])
-        checkerTextureUploadBuffer.put(dark[0]).put(dark[1]).put(dark[2]).put(dark[3])
-        checkerTextureUploadBuffer.put(dark[0]).put(dark[1]).put(dark[2]).put(dark[3])
-        checkerTextureUploadBuffer.put(light[0]).put(light[1]).put(light[2]).put(light[3])
+        checkerTextureUploadBuffer
+            .put(light[0])
+            .put(light[1])
+            .put(light[2])
+            .put(light[3])
+        checkerTextureUploadBuffer
+            .put(dark[0])
+            .put(dark[1])
+            .put(dark[2])
+            .put(dark[3])
+        checkerTextureUploadBuffer
+            .put(dark[0])
+            .put(dark[1])
+            .put(dark[2])
+            .put(dark[3])
+        checkerTextureUploadBuffer
+            .put(light[0])
+            .put(light[1])
+            .put(light[2])
+            .put(light[3])
         checkerTextureUploadBuffer.flip()
 
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
@@ -501,21 +568,23 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             0,
             GL11.GL_RGBA,
             GL11.GL_UNSIGNED_BYTE,
-            checkerTextureUploadBuffer
+            checkerTextureUploadBuffer,
         )
 
         checkerTextureCache[key] = textureId
         while (checkerTextureCache.size > maxCheckerTextures) {
-            val eldest = checkerTextureCache.entries.iterator().next()
+            val eldest =
+                checkerTextureCache.entries
+                    .iterator()
+                    .next()
             GL11.glDeleteTextures(eldest.value)
             checkerTextureCache.remove(eldest.key)
         }
         return textureId
     }
 
-    private fun checkerTextureKey(lightColor: Int, darkColor: Int): Long {
-        return (lightColor.toLong() shl 32) xor (darkColor.toLong() and 0xFFFF_FFFFL)
-    }
+    private fun checkerTextureKey(lightColor: Int, darkColor: Int): Long =
+        (lightColor.toLong() shl 32) xor (darkColor.toLong() and 0xFFFF_FFFFL)
 
     private fun ensureCapturedRegionTexture(width: Int, height: Int) {
         if (capturedRegionTextureId == 0) {
@@ -543,7 +612,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             0,
             GL11.GL_RGBA,
             GL11.GL_UNSIGNED_BYTE,
-            null as java.nio.ByteBuffer?
+            null as java.nio.ByteBuffer?,
         )
     }
 
@@ -556,11 +625,12 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private fun resolveActiveSceneTextureSource(): SceneTextureSource? {
         val state = detectReadbackBindingState()
         if (!state.usingFramebufferObject) return null
-        val colorAttachment = if (isColorAttachmentReadBuffer(state.currentReadBuffer)) {
-            state.currentReadBuffer
-        } else {
-            defaultColorAttachmentReadBuffer()
-        }
+        val colorAttachment =
+            if (isColorAttachmentReadBuffer(state.currentReadBuffer)) {
+                state.currentReadBuffer
+            } else {
+                defaultColorAttachmentReadBuffer()
+            }
         val objectType = getFramebufferAttachmentObjectType(colorAttachment)
         if (objectType != GL11.GL_TEXTURE) return null
         val textureId = getFramebufferAttachmentObjectName(colorAttachment)
@@ -577,95 +647,107 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         }
     }
 
-    private fun getFramebufferAttachmentObjectType(colorAttachment: Int): Int {
-        return when (readbackApi) {
-            ReadbackApi.OpenGl30 -> GL30.glGetFramebufferAttachmentParameteri(
-                GL30.GL_READ_FRAMEBUFFER,
-                colorAttachment,
-                GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
-            )
+    private fun getFramebufferAttachmentObjectType(colorAttachment: Int): Int =
+        when (readbackApi) {
+            ReadbackApi.OpenGl30 ->
+                GL30.glGetFramebufferAttachmentParameteri(
+                    GL30.GL_READ_FRAMEBUFFER,
+                    colorAttachment,
+                    GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
+                )
 
-            ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glGetFramebufferAttachmentParameteri(
-                ARBFramebufferObject.GL_READ_FRAMEBUFFER,
-                colorAttachment,
-                ARBFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
-            )
+            ReadbackApi.ArbFramebufferObject ->
+                ARBFramebufferObject.glGetFramebufferAttachmentParameteri(
+                    ARBFramebufferObject.GL_READ_FRAMEBUFFER,
+                    colorAttachment,
+                    ARBFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
+                )
 
-            ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glGetFramebufferAttachmentParameteriEXT(
-                EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                colorAttachment,
-                EXTFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_EXT
-            )
+            ReadbackApi.ExtFramebufferObject ->
+                EXTFramebufferObject.glGetFramebufferAttachmentParameteriEXT(
+                    EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
+                    colorAttachment,
+                    EXTFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_EXT,
+                )
 
             ReadbackApi.Legacy -> GL11.GL_NONE
         }
-    }
 
-    private fun getFramebufferAttachmentObjectName(colorAttachment: Int): Int {
-        return when (readbackApi) {
-            ReadbackApi.OpenGl30 -> GL30.glGetFramebufferAttachmentParameteri(
-                GL30.GL_READ_FRAMEBUFFER,
-                colorAttachment,
-                GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
-            )
+    private fun getFramebufferAttachmentObjectName(colorAttachment: Int): Int =
+        when (readbackApi) {
+            ReadbackApi.OpenGl30 ->
+                GL30.glGetFramebufferAttachmentParameteri(
+                    GL30.GL_READ_FRAMEBUFFER,
+                    colorAttachment,
+                    GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME,
+                )
 
-            ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glGetFramebufferAttachmentParameteri(
-                ARBFramebufferObject.GL_READ_FRAMEBUFFER,
-                colorAttachment,
-                ARBFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
-            )
+            ReadbackApi.ArbFramebufferObject ->
+                ARBFramebufferObject.glGetFramebufferAttachmentParameteri(
+                    ARBFramebufferObject.GL_READ_FRAMEBUFFER,
+                    colorAttachment,
+                    ARBFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME,
+                )
 
-            ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glGetFramebufferAttachmentParameteriEXT(
-                EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                colorAttachment,
-                EXTFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT
-            )
+            ReadbackApi.ExtFramebufferObject ->
+                EXTFramebufferObject.glGetFramebufferAttachmentParameteriEXT(
+                    EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
+                    colorAttachment,
+                    EXTFramebufferObject.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT,
+                )
 
             ReadbackApi.Legacy -> 0
         }
-    }
 
     private fun ensureMagnifierCaptureShader(): MagnifierCaptureShader? {
         magnifierCaptureShader?.let { return it }
         if (magnifierCaptureShaderInitFailed) return null
         return try {
-            val vertexShader = compileShaderObject(
-                type = ARBVertexShader.GL_VERTEX_SHADER_ARB,
-                source = MAGNIFIER_CAPTURE_VERTEX_SHADER
-            )
-            val fragmentShader = compileShaderObject(
-                type = ARBFragmentShader.GL_FRAGMENT_SHADER_ARB,
-                source = MAGNIFIER_CAPTURE_FRAGMENT_SHADER
-            )
+            val vertexShader =
+                compileShaderObject(
+                    type = ARBVertexShader.GL_VERTEX_SHADER_ARB,
+                    source = MAGNIFIER_CAPTURE_VERTEX_SHADER,
+                )
+            val fragmentShader =
+                compileShaderObject(
+                    type = ARBFragmentShader.GL_FRAGMENT_SHADER_ARB,
+                    source = MAGNIFIER_CAPTURE_FRAGMENT_SHADER,
+                )
             val program = ARBShaderObjects.glCreateProgramObjectARB()
             ARBShaderObjects.glAttachObjectARB(program, vertexShader)
             ARBShaderObjects.glAttachObjectARB(program, fragmentShader)
             ARBShaderObjects.glLinkProgramARB(program)
-            val linkStatus = ARBShaderObjects.glGetObjectParameteriARB(
-                program,
-                ARBShaderObjects.GL_OBJECT_LINK_STATUS_ARB
-            )
+            val linkStatus =
+                ARBShaderObjects.glGetObjectParameteriARB(
+                    program,
+                    ARBShaderObjects.GL_OBJECT_LINK_STATUS_ARB,
+                )
             if (linkStatus == GL11.GL_FALSE) {
                 val info = ARBShaderObjects.glGetInfoLogARB(program, 4096)
-                throw IllegalStateException("Magnifier shader link failed: $info")
+                error("Magnifier shader link failed: $info")
             }
-            val shader = MagnifierCaptureShader(
-                programId = program,
-                sourceTextureUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTexture"),
-                sourceOriginUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceOriginTopLeft"),
-                sourceSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceSize"),
-                viewportSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uViewportSize"),
-                sourceTextureSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTextureSize"),
-                fallbackColorUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uFallbackColor")
-            )
+            val shader =
+                MagnifierCaptureShader(
+                    programId = program,
+                    sourceTextureUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTexture"),
+                    sourceOriginUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceOriginTopLeft"),
+                    sourceSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceSize"),
+                    viewportSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uViewportSize"),
+                    sourceTextureSizeUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uSourceTextureSize"),
+                    fallbackColorUniform = ARBShaderObjects.glGetUniformLocationARB(program, "uFallbackColor"),
+                )
             magnifierCaptureShader = shader
             shader
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             magnifierCaptureShaderInitFailed = true
             if (readbackDiagnosticsVerbose) {
                 logRateLimited(
                     key = "magnifier:shader:init",
-                    message = "[DSGL-Magnifier] Failed to initialize capture shader: ${error.message ?: error::class.java.simpleName}"
+                    message =
+                        "[DSGL-Magnifier] Failed to initialize capture shader: " +
+                            "${error.message ?: error::class.java.simpleName}",
                 )
             }
             null
@@ -676,33 +758,32 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val shader = ARBShaderObjects.glCreateShaderObjectARB(type)
         ARBShaderObjects.glShaderSourceARB(shader, source)
         ARBShaderObjects.glCompileShaderARB(shader)
-        val compileStatus = ARBShaderObjects.glGetObjectParameteriARB(
-            shader,
-            ARBShaderObjects.GL_OBJECT_COMPILE_STATUS_ARB
-        )
+        val compileStatus =
+            ARBShaderObjects.glGetObjectParameteriARB(
+                shader,
+                ARBShaderObjects.GL_OBJECT_COMPILE_STATUS_ARB,
+            )
         if (compileStatus == GL11.GL_FALSE) {
             val info = ARBShaderObjects.glGetInfoLogARB(shader, 4096)
-            throw IllegalStateException("Magnifier shader compile failed: $info")
+            error("Magnifier shader compile failed: $info")
         }
         return shader
     }
 
-    private fun generateFramebufferObject(): Int {
-        return when (readbackApi) {
+    private fun generateFramebufferObject(): Int =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL30.glGenFramebuffers()
             ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glGenFramebuffers()
             ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glGenFramebuffersEXT()
             ReadbackApi.Legacy -> 0
         }
-    }
 
-    private fun snapshotFramebufferBindings(): FramebufferBindingSnapshot {
-        return FramebufferBindingSnapshot(
+    private fun snapshotFramebufferBindings(): FramebufferBindingSnapshot =
+        FramebufferBindingSnapshot(
             readFramebufferBinding = currentReadFramebufferBinding(),
             drawFramebufferBinding = currentDrawFramebufferBinding(),
-            framebufferBinding = currentFramebufferBinding()
+            framebufferBinding = currentFramebufferBinding(),
         )
-    }
 
     private fun restoreFramebufferBindings(snapshot: FramebufferBindingSnapshot) {
         when (readbackApi) {
@@ -714,18 +795,18 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             ReadbackApi.ArbFramebufferObject -> {
                 ARBFramebufferObject.glBindFramebuffer(
                     ARBFramebufferObject.GL_READ_FRAMEBUFFER,
-                    snapshot.readFramebufferBinding
+                    snapshot.readFramebufferBinding,
                 )
                 ARBFramebufferObject.glBindFramebuffer(
                     ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
-                    snapshot.drawFramebufferBinding
+                    snapshot.drawFramebufferBinding,
                 )
             }
 
             ReadbackApi.ExtFramebufferObject -> {
                 EXTFramebufferObject.glBindFramebufferEXT(
                     EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                    snapshot.framebufferBinding
+                    snapshot.framebufferBinding,
                 )
             }
 
@@ -736,15 +817,17 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     private fun bindDrawFramebuffer(framebufferId: Int) {
         when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, framebufferId)
-            ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glBindFramebuffer(
-                ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
-                framebufferId
-            )
+            ReadbackApi.ArbFramebufferObject ->
+                ARBFramebufferObject.glBindFramebuffer(
+                    ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
+                    framebufferId,
+                )
 
-            ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glBindFramebufferEXT(
-                EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                framebufferId
-            )
+            ReadbackApi.ExtFramebufferObject ->
+                EXTFramebufferObject.glBindFramebufferEXT(
+                    EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
+                    framebufferId,
+                )
 
             ReadbackApi.Legacy -> Unit
         }
@@ -752,54 +835,57 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
     private fun attachCapturedRegionTextureToFramebuffer() {
         when (readbackApi) {
-            ReadbackApi.OpenGl30 -> GL30.glFramebufferTexture2D(
-                GL30.GL_DRAW_FRAMEBUFFER,
-                GL30.GL_COLOR_ATTACHMENT0,
-                GL11.GL_TEXTURE_2D,
-                capturedRegionTextureId,
-                0
-            )
+            ReadbackApi.OpenGl30 ->
+                GL30.glFramebufferTexture2D(
+                    GL30.GL_DRAW_FRAMEBUFFER,
+                    GL30.GL_COLOR_ATTACHMENT0,
+                    GL11.GL_TEXTURE_2D,
+                    capturedRegionTextureId,
+                    0,
+                )
 
-            ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glFramebufferTexture2D(
-                ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
-                ARBFramebufferObject.GL_COLOR_ATTACHMENT0,
-                GL11.GL_TEXTURE_2D,
-                capturedRegionTextureId,
-                0
-            )
+            ReadbackApi.ArbFramebufferObject ->
+                ARBFramebufferObject.glFramebufferTexture2D(
+                    ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
+                    ARBFramebufferObject.GL_COLOR_ATTACHMENT0,
+                    GL11.GL_TEXTURE_2D,
+                    capturedRegionTextureId,
+                    0,
+                )
 
-            ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glFramebufferTexture2DEXT(
-                EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
-                EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
-                GL11.GL_TEXTURE_2D,
-                capturedRegionTextureId,
-                0
-            )
+            ReadbackApi.ExtFramebufferObject ->
+                EXTFramebufferObject.glFramebufferTexture2DEXT(
+                    EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
+                    EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
+                    GL11.GL_TEXTURE_2D,
+                    capturedRegionTextureId,
+                    0,
+                )
 
             ReadbackApi.Legacy -> Unit
         }
     }
 
-    private fun isCurrentFramebufferComplete(): Boolean {
-        return when (readbackApi) {
-            ReadbackApi.OpenGl30 -> GL30.glCheckFramebufferStatus(GL30.GL_DRAW_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE
-            ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.glCheckFramebufferStatus(
-                ARBFramebufferObject.GL_DRAW_FRAMEBUFFER
-            ) == ARBFramebufferObject.GL_FRAMEBUFFER_COMPLETE
+    private fun isCurrentFramebufferComplete(): Boolean =
+        when (readbackApi) {
+            ReadbackApi.OpenGl30 ->
+                GL30.glCheckFramebufferStatus(GL30.GL_DRAW_FRAMEBUFFER) ==
+                    GL30.GL_FRAMEBUFFER_COMPLETE
 
-            ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.glCheckFramebufferStatusEXT(
-                EXTFramebufferObject.GL_FRAMEBUFFER_EXT
-            ) == EXTFramebufferObject.GL_FRAMEBUFFER_COMPLETE_EXT
+            ReadbackApi.ArbFramebufferObject ->
+                ARBFramebufferObject.glCheckFramebufferStatus(
+                    ARBFramebufferObject.GL_DRAW_FRAMEBUFFER,
+                ) == ARBFramebufferObject.GL_FRAMEBUFFER_COMPLETE
+
+            ReadbackApi.ExtFramebufferObject ->
+                EXTFramebufferObject.glCheckFramebufferStatusEXT(
+                    EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
+                ) == EXTFramebufferObject.GL_FRAMEBUFFER_COMPLETE_EXT
 
             ReadbackApi.Legacy -> false
         }
-    }
 
-    private fun fillCapturedRegionFallbackTexture(
-        fallbackColor: Int,
-        width: Int,
-        height: Int
-    ): Boolean {
+    private fun fillCapturedRegionFallbackTexture(fallbackColor: Int, width: Int, height: Int): Boolean {
         val snapshot = snapshotFramebufferBindings()
         val previousReadBuffer = GL11.glGetInteger(GL11.GL_READ_BUFFER)
         val previousDrawBuffer = GL11.glGetInteger(GL11.GL_DRAW_BUFFER)
@@ -835,7 +921,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 previousClearRed,
                 previousClearGreen,
                 previousClearBlue,
-                previousClearAlpha
+                previousClearAlpha,
             )
             GL11.glReadBuffer(previousReadBuffer)
             GL11.glDrawBuffer(previousDrawBuffer)
@@ -844,7 +930,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 previousViewportX,
                 previousViewportY,
                 previousViewportWidth,
-                previousViewportHeight
+                previousViewportHeight,
             )
         }
     }
@@ -855,8 +941,11 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     private fun viewportXFromSnapshot(): Int = glIntStateQueryBuffer.get(0)
+
     private fun viewportYFromSnapshot(): Int = glIntStateQueryBuffer.get(1)
+
     private fun viewportWidthFromSnapshot(): Int = glIntStateQueryBuffer.get(2)
+
     private fun viewportHeightFromSnapshot(): Int = glIntStateQueryBuffer.get(3)
 
     private fun snapshotClearColorState() {
@@ -865,8 +954,11 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     private fun clearRedFromSnapshot(): Float = glFloatStateQueryBuffer.get(0)
+
     private fun clearGreenFromSnapshot(): Float = glFloatStateQueryBuffer.get(1)
+
     private fun clearBlueFromSnapshot(): Float = glFloatStateQueryBuffer.get(2)
+
     private fun clearAlphaFromSnapshot(): Float = glFloatStateQueryBuffer.get(3)
 
     private fun argbToRgbaBytes(argb: Int, forceOpaqueAlpha: Boolean = false): ByteArray {
@@ -878,11 +970,11 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
     }
 
     /** Executes DSGL render commands using Minecraft rendering APIs. */
+    @Suppress("LoopWithTooManyJumpStatements")
     override fun paint(commands: List<RenderCommand>) {
         paintsCount++
-        opacityStack.clear()
+        opacityStackSize = 0
         opacityMultiplier = 1f
-        val transformStack = RenderCommandTransformStack()
         transformStack.reset()
         val viewport = viewport()
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
@@ -907,7 +999,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 command.y,
                                 command.x + command.width,
                                 command.y + command.height,
-                                applyOpacity(command.color)
+                                applyOpacity(command.color),
                             )
                         }
 
@@ -917,7 +1009,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 y = command.y,
                                 width = command.width,
                                 height = command.height,
-                                hueDeg = command.hueDeg
+                                hueDeg = command.hueDeg,
                             )
                         }
 
@@ -926,7 +1018,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 x = command.x,
                                 y = command.y,
                                 width = command.width,
-                                height = command.height
+                                height = command.height,
                             )
                         }
 
@@ -936,7 +1028,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 y = command.y,
                                 width = command.width,
                                 height = command.height,
-                                rgbColor = command.rgbColor
+                                rgbColor = command.rgbColor,
                             )
                         }
 
@@ -948,17 +1040,21 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                             try {
                                 textRenderer.draw(
                                     command = command,
-                                    opacityMultiplier = opacityMultiplier
+                                    opacityMultiplier = opacityMultiplier,
                                 )
                             } catch (error: LinkageError) {
                                 logRateLimited(
                                     key = "drawText:linkage",
-                                    message = "[DSGL] Skipping DrawText due linkage error in text renderer: ${error.message}"
+                                    message =
+                                        "[DSGL] Skipping DrawText due linkage error in text renderer: " +
+                                            "${error.message}",
                                 )
-                            } catch (error: Throwable) {
+                            } catch (
+                                @Suppress("TooGenericExceptionCaught") error: Throwable,
+                            ) {
                                 logRateLimited(
                                     key = "drawText:runtime",
-                                    message = "[DSGL] Skipping DrawText due renderer error: ${error.message}"
+                                    message = "[DSGL] Skipping DrawText due renderer error: ${error.message}",
                                 )
                             }
                         }
@@ -976,7 +1072,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 command.width,
                                 command.height,
                                 command.width.toFloat(),
-                                command.height.toFloat()
+                                command.height.toFloat(),
                             )
                         }
 
@@ -997,23 +1093,24 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                                 size = command.size,
                                 width = command.width,
                                 rotY = command.rotYDeg,
-                                rotX = command.rotXDeg
+                                rotX = command.rotXDeg,
                             )
                         }
 
                         is RenderCommand.PushClip -> {
-                            val transformedClip = transformStack.resolveClipRect(
-                                x = command.x,
-                                y = command.y,
-                                width = command.width,
-                                height = command.height
-                            )
+                            val transformedClip =
+                                transformStack.resolveClipRect(
+                                    x = command.x,
+                                    y = command.y,
+                                    width = command.width,
+                                    height = command.height,
+                                )
                             pushClip(
                                 viewport = viewport,
                                 guiX = transformedClip.x,
                                 guiY = transformedClip.y,
                                 guiWidth = transformedClip.width,
-                                guiHeight = transformedClip.height
+                                guiHeight = transformedClip.height,
                             )
                         }
 
@@ -1037,13 +1134,12 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                         }
 
                         is RenderCommand.PushOpacity -> {
-                            opacityStack.add(opacityMultiplier)
+                            pushOpacity(opacityMultiplier)
                             opacityMultiplier = (opacityMultiplier * command.opacity).coerceIn(0f, 1f)
                         }
 
                         is RenderCommand.PopOpacity -> {
-                            opacityMultiplier =
-                                if (opacityStack.isEmpty()) 1f else opacityStack.removeAt(opacityStack.lastIndex)
+                            opacityMultiplier = popOpacityOrDefault()
                         }
                     }
                 }
@@ -1058,10 +1154,24 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         } finally {
             ScissorContext.clear()
             transformStack.reset()
-            opacityStack.clear()
+            opacityStackSize = 0
             opacityMultiplier = 1f
             GL11.glPopAttrib()
         }
+    }
+
+    private fun pushOpacity(value: Float) {
+        if (opacityStackSize == opacityStackValues.size) {
+            opacityStackValues = opacityStackValues.copyOf(opacityStackValues.size * 2)
+        }
+        opacityStackValues[opacityStackSize] = value
+        opacityStackSize += 1
+    }
+
+    private fun popOpacityOrDefault(): Float {
+        if (opacityStackSize == 0) return 1f
+        opacityStackSize -= 1
+        return opacityStackValues[opacityStackSize]
     }
 
     private fun applyOpacity(color: Int): Int {
@@ -1071,7 +1181,13 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         return (color and 0x00FF_FFFF) or (scaled shl 24)
     }
 
-    private fun drawColorField(x: Int, y: Int, width: Int, height: Int, hueDeg: Float) {
+    private fun drawColorField(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        hueDeg: Float,
+    ) {
         if (width <= 0 || height <= 0) return
 
         val normalizedHue = ((hueDeg % 360f) + 360f) % 360f
@@ -1079,35 +1195,51 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
 
         drawGradientBlock {
             drawHorizontalGradientRectRaw(
-                x, y, width, height,
+                x,
+                y,
+                width,
+                height,
                 applyOpacity(0xFFFFFFFF.toInt()),
-                applyOpacity(hueColor)
+                applyOpacity(hueColor),
             )
             drawVerticalGradientRectRaw(
-                x, y, width, height,
+                x,
+                y,
+                width,
+                height,
                 applyOpacity(0x00000000),
-                applyOpacity(0xFF000000.toInt())
+                applyOpacity(0xFF000000.toInt()),
             )
         }
     }
 
-    private fun drawHueBar(x: Int, y: Int, width: Int, height: Int) {
+    private fun drawHueBar(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         if (width <= 0 || height <= 0) return
         val segments = 6
-        val hueStops = floatArrayOf(0f, 60f, 120f, 180f, 240f, 300f, 360f)
         var index = 0
         while (index < segments) {
             val startX = x + (width * index) / segments
             val endX = if (index == segments - 1) x + width else x + (width * (index + 1)) / segments
             val segmentWidth = (endX - startX).coerceAtLeast(1)
-            val startColor = applyOpacity(hsvToArgbInt(hueStops[index], 1f, 1f))
-            val endColor = applyOpacity(hsvToArgbInt(hueStops[index + 1], 1f, 1f))
+            val startColor = applyOpacity(hsvToArgbInt(HUE_STOPS[index], 1f, 1f))
+            val endColor = applyOpacity(hsvToArgbInt(HUE_STOPS[index + 1], 1f, 1f))
             drawHorizontalGradientRect(startX, y, segmentWidth, height, startColor, endColor)
             index += 1
         }
     }
 
-    private fun drawAlphaBar(x: Int, y: Int, width: Int, height: Int, rgbColor: Int) {
+    private fun drawAlphaBar(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        rgbColor: Int,
+    ) {
         if (width <= 0 || height <= 0) return
         val rgbOnly = rgbColor and 0x00FF_FFFF
         val leftColor = applyOpacity(rgbOnly)
@@ -1115,27 +1247,20 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         drawHorizontalGradientRect(x, y, width, height, leftColor, rightColor)
     }
 
-    private fun drawHorizontalGradientRect(x: Int, y: Int, width: Int, height: Int, leftColor: Int, rightColor: Int) {
+    private fun drawHorizontalGradientRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        leftColor: Int,
+        rightColor: Int,
+    ) {
         if (width <= 0 || height <= 0) return
         GL11.glDisable(GL11.GL_TEXTURE_2D)
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
         GL11.glShadeModel(GL11.GL_SMOOTH)
         drawHorizontalGradientRectRaw(x, y, width, height, leftColor, rightColor)
-        GL11.glShadeModel(GL11.GL_FLAT)
-        GL11.glEnable(GL11.GL_TEXTURE_2D)
-        GL11.glColor4f(1f, 1f, 1f, 1f)
-    }
-
-    private fun drawVerticalGradientRect(x: Int, y: Int, width: Int, height: Int, topColor: Int, bottomColor: Int) {
-        if (width <= 0 || height <= 0) return
-        GL11.glDisable(GL11.GL_TEXTURE_2D)
-        GL11.glDisable(GL11.GL_ALPHA)
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-        GL11.glShadeModel(GL11.GL_SMOOTH)
-        drawVerticalGradientRectRaw(x, y, width, height, topColor, bottomColor)
-        GL11.glEnable(GL11.GL_ALPHA)
         GL11.glShadeModel(GL11.GL_FLAT)
         GL11.glEnable(GL11.GL_TEXTURE_2D)
         GL11.glColor4f(1f, 1f, 1f, 1f)
@@ -1167,7 +1292,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         width: Int,
         height: Int,
         leftColor: Int,
-        rightColor: Int
+        rightColor: Int,
     ) {
         GL11.glBegin(GL11.GL_QUADS)
         glColor(leftColor)
@@ -1185,7 +1310,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         width: Int,
         height: Int,
         topColor: Int,
-        bottomColor: Int
+        bottomColor: Int,
     ) {
         GL11.glBegin(GL11.GL_QUADS)
         glColor(topColor)
@@ -1197,42 +1322,9 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         GL11.glEnd()
     }
 
-    private fun drawBilinearGradientRect(
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        topLeftColor: Int,
-        topRightColor: Int,
-        bottomRightColor: Int,
-        bottomLeftColor: Int
-    ) {
-        if (width <= 0 || height <= 0) return
-        GL11.glDisable(GL11.GL_TEXTURE_2D)
-        GL11.glEnable(GL11.GL_BLEND)
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-        GL11.glShadeModel(GL11.GL_SMOOTH)
-        GL11.glBegin(GL11.GL_QUADS)
-        glColor(topLeftColor)
-        GL11.glVertex2f(x.toFloat(), y.toFloat())
-        glColor(bottomLeftColor)
-        GL11.glVertex2f(x.toFloat(), (y + height).toFloat())
-        glColor(bottomRightColor)
-        GL11.glVertex2f((x + width).toFloat(), (y + height).toFloat())
-        glColor(topRightColor)
-        GL11.glVertex2f((x + width).toFloat(), y.toFloat())
-        GL11.glEnd()
-        GL11.glShadeModel(GL11.GL_FLAT)
-        GL11.glEnable(GL11.GL_TEXTURE_2D)
-        GL11.glColor4f(1f, 1f, 1f, 1f)
-    }
-
     private fun glColor(argb: Int) {
-        val a = ((argb ushr 24) and 0xFF) / 255f
-        val r = ((argb ushr 16) and 0xFF) / 255f
-        val g = ((argb ushr 8) and 0xFF) / 255f
-        val b = (argb and 0xFF) / 255f
-        GL11.glColor4f(r, g, b, a)
+        val color = RgbaColor.fromArgbInt(argb)
+        GL11.glColor4f(color.r, color.g, color.b, color.a)
     }
 
     private fun hsvToArgbInt(hueDeg: Float, saturation: Float, value: Float): Int {
@@ -1242,17 +1334,44 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         val c = v * s
         val x = c * (1f - kotlin.math.abs((h / 60f) % 2f - 1f))
         val m = v - c
-        val (r1, g1, b1) = when {
-            h < 60f -> Triple(c, x, 0f)
-            h < 120f -> Triple(x, c, 0f)
-            h < 180f -> Triple(0f, c, x)
-            h < 240f -> Triple(0f, x, c)
-            h < 300f -> Triple(x, 0f, c)
-            else -> Triple(c, 0f, x)
+        val rFromHue: Float
+        val gFromHue: Float
+        val bFromHue: Float
+        when {
+            h < 60f -> {
+                rFromHue = c
+                gFromHue = x
+                bFromHue = 0f
+            }
+            h < 120f -> {
+                rFromHue = x
+                gFromHue = c
+                bFromHue = 0f
+            }
+            h < 180f -> {
+                rFromHue = 0f
+                gFromHue = c
+                bFromHue = x
+            }
+            h < 240f -> {
+                rFromHue = 0f
+                gFromHue = x
+                bFromHue = c
+            }
+            h < 300f -> {
+                rFromHue = x
+                gFromHue = 0f
+                bFromHue = c
+            }
+            else -> {
+                rFromHue = c
+                gFromHue = 0f
+                bFromHue = x
+            }
         }
-        val r = ((r1 + m) * 255f).toInt().coerceIn(0, 255)
-        val g = ((g1 + m) * 255f).toInt().coerceIn(0, 255)
-        val b = ((b1 + m) * 255f).toInt().coerceIn(0, 255)
+        val r = ((rFromHue + m) * 255f).toInt().coerceIn(0, 255)
+        val g = ((gFromHue + m) * 255f).toInt().coerceIn(0, 255)
+        val b = ((bFromHue + m) * 255f).toInt().coerceIn(0, 255)
         return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
     }
 
@@ -1263,14 +1382,14 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             return ReadbackSetup(
                 previousReadBuffer = previousReadBuffer,
                 appliedReadBuffer = desiredReadBuffer,
-                shouldRestore = false
+                shouldRestore = false,
             )
         }
         GL11.glReadBuffer(desiredReadBuffer)
         return ReadbackSetup(
             previousReadBuffer = previousReadBuffer,
             appliedReadBuffer = desiredReadBuffer,
-            shouldRestore = true
+            shouldRestore = true,
         )
     }
 
@@ -1301,41 +1420,37 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         }
     }
 
-    private fun currentReadFramebufferBinding(): Int {
-        return when (readbackApi) {
+    private fun currentReadFramebufferBinding(): Int =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING)
             ReadbackApi.ArbFramebufferObject -> GL11.glGetInteger(ARBFramebufferObject.GL_READ_FRAMEBUFFER_BINDING)
             ReadbackApi.ExtFramebufferObject -> GL11.glGetInteger(EXTFramebufferObject.GL_FRAMEBUFFER_BINDING_EXT)
             ReadbackApi.Legacy -> 0
         }
-    }
 
-    private fun currentDrawFramebufferBinding(): Int {
-        return when (readbackApi) {
+    private fun currentDrawFramebufferBinding(): Int =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING)
             ReadbackApi.ArbFramebufferObject -> GL11.glGetInteger(ARBFramebufferObject.GL_DRAW_FRAMEBUFFER_BINDING)
             ReadbackApi.ExtFramebufferObject -> GL11.glGetInteger(EXTFramebufferObject.GL_FRAMEBUFFER_BINDING_EXT)
             ReadbackApi.Legacy -> 0
         }
-    }
 
-    private fun currentFramebufferBinding(): Int {
-        return when (readbackApi) {
+    private fun currentFramebufferBinding(): Int =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING)
             ReadbackApi.ArbFramebufferObject -> GL11.glGetInteger(ARBFramebufferObject.GL_FRAMEBUFFER_BINDING)
             ReadbackApi.ExtFramebufferObject -> GL11.glGetInteger(EXTFramebufferObject.GL_FRAMEBUFFER_BINDING_EXT)
             ReadbackApi.Legacy -> 0
         }
-    }
 
-    private fun defaultColorAttachmentReadBuffer(): Int {
-        return when (readbackApi) {
+    private fun defaultColorAttachmentReadBuffer(): Int =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> GL30.GL_COLOR_ATTACHMENT0
             ReadbackApi.ArbFramebufferObject -> ARBFramebufferObject.GL_COLOR_ATTACHMENT0
             ReadbackApi.ExtFramebufferObject -> EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT
             ReadbackApi.Legacy -> GL11.GL_BACK
         }
-    }
 
     private fun detectReadbackBindingState(): ReadbackBindingState {
         val readFramebufferBinding = currentReadFramebufferBinding()
@@ -1343,7 +1458,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             readFramebufferBinding = readFramebufferBinding,
             drawFramebufferBinding = currentDrawFramebufferBinding(),
             framebufferBinding = currentFramebufferBinding(),
-            currentReadBuffer = GL11.glGetInteger(GL11.GL_READ_BUFFER)
+            currentReadBuffer = GL11.glGetInteger(GL11.GL_READ_BUFFER),
         )
     }
 
@@ -1353,36 +1468,44 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         sourceY: Int,
         sourceWidth: Int,
         sourceHeight: Int,
-        setup: ReadbackSetup
+        setup: ReadbackSetup,
     ) {
         val state = detectReadbackBindingState()
         val recommended = selectReadBufferForActiveTarget(state.currentReadBuffer)
         val appliedCompatible = isReadBufferCompatibleWithActiveTarget(setup.appliedReadBuffer, state)
         val previousCompatible = isReadBufferCompatibleWithActiveTarget(setup.previousReadBuffer, state)
-        val message = buildString {
-            append("[DSGL-Readback] path=").append(path)
-            append(" src=(").append(sourceX).append(',').append(sourceY).append(' ')
-            append(sourceWidth).append('x').append(sourceHeight).append(')')
-            append(" readFbo=").append(state.readFramebufferBinding)
-            append(" drawFbo=").append(state.drawFramebufferBinding)
-            append(" fbo=").append(state.framebufferBinding)
-            append(" previousReadBuffer=").append(glEnumName(setup.previousReadBuffer))
-            append(" appliedReadBuffer=").append(glEnumName(setup.appliedReadBuffer))
-            append(" currentReadBuffer=").append(glEnumName(state.currentReadBuffer))
-            append(" changed=").append(setup.shouldRestore)
-            append(" previousCompatible=").append(previousCompatible)
-            append(" appliedCompatible=").append(appliedCompatible)
-            append(" recommendedReadBuffer=").append(glEnumName(recommended))
-            append(" api=").append(readbackApi.name)
-        }
+        val message =
+            buildString {
+                append("[DSGL-Readback] path=").append(path)
+                append(" src=(")
+                    .append(sourceX)
+                    .append(',')
+                    .append(sourceY)
+                    .append(' ')
+                append(sourceWidth)
+                    .append('x')
+                    .append(sourceHeight)
+                    .append(')')
+                append(" readFbo=").append(state.readFramebufferBinding)
+                append(" drawFbo=").append(state.drawFramebufferBinding)
+                append(" fbo=").append(state.framebufferBinding)
+                append(" previousReadBuffer=").append(glEnumName(setup.previousReadBuffer))
+                append(" appliedReadBuffer=").append(glEnumName(setup.appliedReadBuffer))
+                append(" currentReadBuffer=").append(glEnumName(state.currentReadBuffer))
+                append(" changed=").append(setup.shouldRestore)
+                append(" previousCompatible=").append(previousCompatible)
+                append(" appliedCompatible=").append(appliedCompatible)
+                append(" recommendedReadBuffer=").append(glEnumName(recommended))
+                append(" api=").append(readbackApi.name)
+            }
         logRateLimited(
             key = "readback:$path:${state.readFramebufferBinding}:${setup.appliedReadBuffer}",
-            message = message
+            message = message,
         )
     }
 
-    private fun isReadBufferCompatibleWithActiveTarget(readBuffer: Int, state: ReadbackBindingState): Boolean {
-        return if (state.usingFramebufferObject) {
+    private fun isReadBufferCompatibleWithActiveTarget(readBuffer: Int, state: ReadbackBindingState): Boolean =
+        if (state.usingFramebufferObject) {
             readBuffer == GL11.GL_NONE || isColorAttachmentReadBuffer(readBuffer)
         } else {
             when (readBuffer) {
@@ -1393,24 +1516,29 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 GL11.GL_FRONT_LEFT,
                 GL11.GL_FRONT_RIGHT,
                 GL11.GL_BACK_LEFT,
-                GL11.GL_BACK_RIGHT -> true
+                GL11.GL_BACK_RIGHT,
+                -> true
 
                 else -> false
             }
         }
-    }
 
-    private fun isColorAttachmentReadBuffer(readBuffer: Int): Boolean {
-        return when (readbackApi) {
+    private fun isColorAttachmentReadBuffer(readBuffer: Int): Boolean =
+        when (readbackApi) {
             ReadbackApi.OpenGl30 -> readBuffer in GL30.GL_COLOR_ATTACHMENT0..(GL30.GL_COLOR_ATTACHMENT0 + 31)
-            ReadbackApi.ArbFramebufferObject -> readBuffer in ARBFramebufferObject.GL_COLOR_ATTACHMENT0..(ARBFramebufferObject.GL_COLOR_ATTACHMENT0 + 15)
-            ReadbackApi.ExtFramebufferObject -> readBuffer in EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT..(EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT + 15)
+            ReadbackApi.ArbFramebufferObject ->
+                readBuffer in
+                    ARBFramebufferObject.GL_COLOR_ATTACHMENT0..(ARBFramebufferObject.GL_COLOR_ATTACHMENT0 + 15)
+
+            ReadbackApi.ExtFramebufferObject ->
+                readBuffer in
+                    EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT..(EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT + 15)
+
             ReadbackApi.Legacy -> false
         }
-    }
 
-    private fun glEnumName(value: Int): String {
-        return when (value) {
+    private fun glEnumName(value: Int): String =
+        when (value) {
             GL11.GL_NONE -> "GL_NONE"
             GL11.GL_FRONT -> "GL_FRONT"
             GL11.GL_BACK -> "GL_BACK"
@@ -1422,13 +1550,14 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             GL11.GL_BACK_RIGHT -> "GL_BACK_RIGHT"
             GL30.GL_COLOR_ATTACHMENT0,
             ARBFramebufferObject.GL_COLOR_ATTACHMENT0,
-            EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT -> "GL_COLOR_ATTACHMENT0"
+            EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
+            -> "GL_COLOR_ATTACHMENT0"
+
             else -> {
                 val hex = Integer.toHexString(value).uppercase()
                 "0x$hex"
             }
         }
-    }
 
     private fun logRateLimited(key: String, message: String) {
         val now = System.currentTimeMillis()
@@ -1438,16 +1567,26 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         println(message)
     }
 
-    private fun pushClip(viewport: Viewport, guiX: Int, guiY: Int, guiWidth: Int, guiHeight: Int) {
+    private fun pushClip(
+        viewport: Viewport,
+        guiX: Int,
+        guiY: Int,
+        guiWidth: Int,
+        guiHeight: Int,
+    ) {
         val scissor = viewport.dsglRectToGlScissor(guiX, guiY, guiWidth, guiHeight)
         ScissorContext.push(scissor.x, scissor.y, scissor.width, scissor.height)
     }
 
-    private fun isBlockStack(stack: ItemStack): Boolean {
-        return stack.item is ItemBlock
-    }
+    private fun isBlockStack(stack: ItemStack): Boolean = stack.item is ItemBlock
 
-    private fun draw2DItem(stack: ItemStack, x: Int, y: Int, size: Int, maxWidth: Int) {
+    private fun draw2DItem(
+        stack: ItemStack,
+        x: Int,
+        y: Int,
+        size: Int,
+        maxWidth: Int,
+    ) {
         val drawX = x + ((maxWidth - size) / 2).coerceAtLeast(0)
         withStack {
             withAttributes(enable = listOf(GL11.GL_DEPTH_TEST)) {
@@ -1459,7 +1598,15 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         }
     }
 
-    private fun draw3DItem(stack: ItemStack, x: Int, y: Int, size: Int, width: Int, rotY: Double, rotX: Double) {
+    private fun draw3DItem(
+        stack: ItemStack,
+        x: Int,
+        y: Int,
+        size: Int,
+        width: Int,
+        rotY: Double,
+        rotX: Double,
+    ) {
         val scale = size / 16.0f
         val drawX = x + ((width - size) / 2).coerceAtLeast(0)
 
@@ -1485,7 +1632,7 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         size: Int,
         width: Int,
         rotY: Double,
-        rotX: Double
+        rotX: Double,
     ) {
         withStack(attributesBitMask = GL11.GL_ALL_ATTRIB_BITS) {
             val previousZ = itemRenderer.zLevel
@@ -1548,8 +1695,8 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
         return File(baseDir, host + File.separator + path)
     }
 
-    private fun downloadToFile(url: URL, file: File): Boolean {
-        return try {
+    private fun downloadToFile(url: URL, file: File): Boolean =
+        try {
             file.parentFile?.mkdirs()
             url.openStream().use { input ->
                 file.outputStream().use { output ->
@@ -1557,10 +1704,9 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
                 }
             }
             true
-        } catch (ex: Exception) {
+        } catch (_: java.io.IOException) {
             false
         }
-    }
 
     private fun loadDynamicTexture(file: File, cacheKey: String): ResourceLocation? {
         if (!file.exists()) return null
@@ -1574,7 +1720,9 @@ class Mc1710UiAdapter(private val mc: Minecraft, var paintsCount: Long = 0L) : U
             val location = mc.textureManager.getDynamicTextureLocation(name, texture)
             imageCache[cacheKey] = location
             location
-        } catch (ex: Exception) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught", "SwallowedException") _: Exception,
+        ) {
             null
         }
     }

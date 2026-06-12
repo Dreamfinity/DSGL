@@ -4,20 +4,25 @@ import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.Display
+import org.dreamfinity.dsgl.core.style.StyleEngine
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SizeConstraintLayoutTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 10
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * ((fontSize ?: 10) / 2).coerceAtLeast(1)
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = fontSize ?: 10
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 10
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * ((fontSize ?: 10) / 2).coerceAtLeast(1)
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = fontSize ?: 10
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {

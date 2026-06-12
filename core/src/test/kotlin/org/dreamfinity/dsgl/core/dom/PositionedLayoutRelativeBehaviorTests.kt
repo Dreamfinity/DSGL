@@ -19,11 +19,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PositionedLayoutRelativeBehaviorTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -34,15 +37,17 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `relative applies visible offset to final geometry`() {
         val root = ContainerNode(key = "root")
-        val child = ContainerNode(key = "relative-child").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "12px",
-                StyleProperty.TOP to "8px"
-            )
-        }
+        val child =
+            ContainerNode(key = "relative-child").apply {
+                width = 40
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.LEFT to "12px",
+                        StyleProperty.TOP to "8px",
+                    )
+            }
         child.applyParent(root)
 
         renderTree(root)
@@ -54,19 +59,22 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `relative preserves normal-flow layout slot`() {
         val root = ContainerNode(key = "flow-root")
-        val first = ContainerNode(key = "first-relative").apply {
-            width = 50
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "24px",
-                StyleProperty.TOP to "16px"
-            )
-        }
-        val second = ContainerNode(key = "second-static").apply {
-            width = 30
-            height = 12
-        }
+        val first =
+            ContainerNode(key = "first-relative").apply {
+                width = 50
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.LEFT to "24px",
+                        StyleProperty.TOP to "16px",
+                    )
+            }
+        val second =
+            ContainerNode(key = "second-static").apply {
+                width = 30
+                height = 12
+            }
         first.applyParent(root)
         second.applyParent(root)
 
@@ -79,15 +87,17 @@ class PositionedLayoutRelativeBehaviorTests {
     fun `relative hit-testing tracks visible shifted rect`() {
         val root = ContainerNode(key = "hit-root")
         var clicks = 0
-        val button = ButtonNode("relative", key = "relative-button").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "30px"
-            )
-            onClick { clicks += 1 }
-        }
+        val button =
+            ButtonNode("relative", key = "relative-button").apply {
+                width = 40
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.LEFT to "30px",
+                    )
+                onClick { clicks += 1 }
+            }
         button.applyParent(root)
 
         renderTree(root)
@@ -102,15 +112,17 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `relative horizontal precedence prefers left over right`() {
         val root = ContainerNode(key = "horizontal-root")
-        val child = ContainerNode(key = "horizontal-relative").apply {
-            width = 30
-            height = 16
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "20px",
-                StyleProperty.RIGHT to "5px"
-            )
-        }
+        val child =
+            ContainerNode(key = "horizontal-relative").apply {
+                width = 30
+                height = 16
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.LEFT to "20px",
+                        StyleProperty.RIGHT to "5px",
+                    )
+            }
         child.applyParent(root)
 
         renderTree(root)
@@ -122,15 +134,17 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `relative vertical precedence prefers top over bottom`() {
         val root = ContainerNode(key = "vertical-root")
-        val child = ContainerNode(key = "vertical-relative").apply {
-            width = 30
-            height = 16
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.TOP to "15px",
-                StyleProperty.BOTTOM to "4px"
-            )
-        }
+        val child =
+            ContainerNode(key = "vertical-relative").apply {
+                width = 30
+                height = 16
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "relative",
+                        StyleProperty.TOP to "15px",
+                        StyleProperty.BOTTOM to "4px",
+                    )
+            }
         child.applyParent(root)
 
         renderTree(root)
@@ -142,15 +156,17 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `static continues to ignore offsets for visible behavior`() {
         val root = ContainerNode(key = "static-root")
-        val child = ContainerNode(key = "static-child").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "static",
-                StyleProperty.LEFT to "50px",
-                StyleProperty.TOP to "30px"
-            )
-        }
+        val child =
+            ContainerNode(key = "static-child").apply {
+                width = 40
+                height = 20
+                inlineStyleDeclarations =
+                    styleDeclarations(
+                        StyleProperty.POSITION to "static",
+                        StyleProperty.LEFT to "50px",
+                        StyleProperty.TOP to "30px",
+                    )
+            }
         child.applyParent(root)
 
         renderTree(root)
@@ -162,10 +178,11 @@ class PositionedLayoutRelativeBehaviorTests {
     @Test
     fun `inspector overrides reposition for relative but not static`() {
         val root = ContainerNode(key = "inspector-root")
-        val child = ContainerNode(key = "inspector-child").apply {
-            width = 40
-            height = 20
-        }
+        val child =
+            ContainerNode(key = "inspector-child").apply {
+                width = 40
+                height = 20
+            }
         child.applyParent(root)
         val tree = DomTree(root)
         tree.render(ctx, 220, 140)
@@ -189,11 +206,10 @@ class PositionedLayoutRelativeBehaviorTests {
         DomTree(root).render(ctx, 240, 160)
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 }

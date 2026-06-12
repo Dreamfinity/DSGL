@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 data class StylesheetSnapshot(
     val version: Long,
     val index: RuleIndex,
-    val rootVariables: Map<String, String>
+    val rootVariables: Map<String, String>,
 )
 
 data class RuleIndex(
@@ -16,18 +16,19 @@ data class RuleIndex(
     val universalIndex: List<StyleRule>,
     val hasAncestorDependentSelectors: Boolean,
     val hasAdjacentSiblingCombinators: Boolean,
-    val hasGeneralSiblingCombinators: Boolean
+    val hasGeneralSiblingCombinators: Boolean,
 ) {
     companion object {
-        val EMPTY = RuleIndex(
-            typeIndex = emptyMap(),
-            classIndex = emptyMap(),
-            idIndex = emptyMap(),
-            universalIndex = emptyList(),
-            hasAncestorDependentSelectors = false,
-            hasAdjacentSiblingCombinators = false,
-            hasGeneralSiblingCombinators = false
-        )
+        val EMPTY =
+            RuleIndex(
+                typeIndex = emptyMap(),
+                classIndex = emptyMap(),
+                idIndex = emptyMap(),
+                universalIndex = emptyList(),
+                hasAncestorDependentSelectors = false,
+                hasAdjacentSiblingCombinators = false,
+                hasGeneralSiblingCombinators = false,
+            )
     }
 }
 
@@ -35,7 +36,7 @@ object StylesheetManager {
     private data class LoadedSheet(
         val file: File,
         val lastModified: Long,
-        val data: StylesheetData
+        val data: StylesheetData,
     )
 
     private var stylesDir: File? = null
@@ -85,10 +86,16 @@ object StylesheetManager {
         lastDirectoryScanMillis = now
         scannedOnce = true
 
-        val currentFiles = dir.walkTopDown()
-            .filter { it.isFile && it.extension.equals("dss", ignoreCase = true) }
-            .sortedBy { it.relativeTo(dir).path.replace('\\', '/') }
-            .toList()
+        val currentFiles =
+            dir
+                .walkTopDown()
+                .filter { it.isFile && it.extension.equals("dss", ignoreCase = true) }
+                .sortedBy {
+                    it
+                        .relativeTo(dir)
+                        .path
+                        .replace('\\', '/')
+                }.toList()
 
         val currentPaths = currentFiles.map { it.absolutePath }.toSet()
         val removedPaths = loadedSheets.keys.filter { it !in currentPaths }
@@ -100,11 +107,11 @@ object StylesheetManager {
             val lastModified = file.lastModified()
             val loaded = loadedSheets[key]
             if (force || loaded == null || loaded.lastModified != lastModified) {
-                val parsed = runCatching { DssParser.parse(file) }
-                    .onFailure { error ->
-                        println("[DSGL-Style] Parse error in ${file.path}: ${error.message}")
-                    }
-                    .getOrNull()
+                val parsed =
+                    runCatching { DssParser.parse(file) }
+                        .onFailure { error ->
+                            println("[DSGL-Style] Parse error in ${file.path}: ${error.message}")
+                        }.getOrNull()
 
                 if (parsed != null) {
                     loadedSheets[key] = LoadedSheet(file, lastModified, parsed)
@@ -123,14 +130,18 @@ object StylesheetManager {
     }
 
     @Synchronized
-    fun snapshot(): StylesheetSnapshot {
-        return snapshot
-    }
+    fun snapshot(): StylesheetSnapshot = snapshot
 
     @Synchronized
     private fun rebuildSnapshot(baseDir: File) {
-        val orderedSheets = loadedSheets.values
-            .sortedBy { it.file.relativeTo(baseDir).path.replace('\\', '/') }
+        val orderedSheets =
+            loadedSheets.values
+                .sortedBy {
+                    it.file
+                        .relativeTo(baseDir)
+                        .path
+                        .replace('\\', '/')
+                }
 
         var sourceOrder = 0
         val rules = mutableListOf<StyleRule>()
@@ -141,18 +152,20 @@ object StylesheetManager {
                 rootVars[name] = value
             }
             loaded.data.rules.forEach { rule ->
-                rules += rule.copy(
-                    sourceOrder = sourceOrder++,
-                    fileName = loaded.file.path
-                )
+                rules +=
+                    rule.copy(
+                        sourceOrder = sourceOrder++,
+                        fileName = loaded.file.path,
+                    )
             }
         }
 
-        snapshot = StylesheetSnapshot(
-            version = ++versionCounter,
-            index = buildIndex(rules),
-            rootVariables = rootVars.toMap()
-        )
+        snapshot =
+            StylesheetSnapshot(
+                version = ++versionCounter,
+                index = buildIndex(rules),
+                rootVariables = rootVars.toMap(),
+            )
     }
 
     private fun buildIndex(rules: List<StyleRule>): RuleIndex {
@@ -205,7 +218,7 @@ object StylesheetManager {
             universalIndex = universalIndex.toList(),
             hasAncestorDependentSelectors = hasAncestorDependentSelectors,
             hasAdjacentSiblingCombinators = hasAdjacentSiblingCombinators,
-            hasGeneralSiblingCombinators = hasGeneralSiblingCombinators
+            hasGeneralSiblingCombinators = hasGeneralSiblingCombinators,
         )
     }
 }

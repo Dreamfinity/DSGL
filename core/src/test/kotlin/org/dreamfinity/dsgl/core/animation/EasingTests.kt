@@ -39,4 +39,3 @@ class EasingTests {
         assertTrue(easeInOutMid in 0.3f..0.7f)
     }
 }
-

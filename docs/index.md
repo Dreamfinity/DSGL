@@ -36,7 +36,8 @@ Reference:
 - **screen host**: a host implementation (for example `DsglScreenHost`) that drives lifecycle, input, and painting
 - **DOM tree**: the retained tree of DSGL nodes (`DomTree` + `DOMNode` hierarchy)
 - **hook runtime**: the per-window hook state/effect system managed by `ComponentHookRuntime`
-- **overlay**: layered UI surfaces above the application root (application/system/debug layers)
+- **domain surface**: one physical screen target owned by a domain, either root DOM or portal host
+- **portal**: a domain-local mount point for floating UI such as modals, dropdowns, context menus, drag ghosts, and panels
 - **stylesheet**: DSS files parsed and applied by the style engine
 - **element**: a concrete node in the DOM tree (for example, text, button, input, container)
 - **component**: a reusable UI composition built with the DSL

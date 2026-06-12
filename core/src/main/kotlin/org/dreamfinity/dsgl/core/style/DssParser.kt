@@ -6,8 +6,9 @@ class DssParseException(
     val path: String,
     val line: Int,
     val column: Int,
-    message: String
-) : RuntimeException("$path:$line:$column $message")
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException("$path:$line:$column $message", cause)
 
 object DssParser {
     private val importantSuffixRegex = Regex("(?i)\\s*!important\\s*$")
@@ -19,6 +20,7 @@ object DssParser {
         return parse(text, file.path)
     }
 
+    @Suppress("ThrowsCount")
     fun parse(sourceText: String, sourceName: String = "<memory>"): StylesheetData {
         val text = stripBlockComments(sourceText)
         var index = 0
@@ -46,37 +48,41 @@ object DssParser {
             index++ // '{'
 
             val declarations = StyleDeclarations()
-            index = parseDeclarations(
-                sourceName = sourceName,
-                text = text,
-                fromIndex = index,
-                declarations = declarations,
-                rootVars = rootVars,
-                allowVariables = selectorText == ":root",
-                warnings = warnings
-            )
-
-            val selector = when (selectorText) {
-                ":root" -> {
-                    if (declarations.values.isEmpty()) {
-                        null
-                    } else {
-                        StyleSelector.parse(ROOT_SELECTOR_ALIAS)
-                    }
-                }
-                else -> try {
-                    StyleSelector.parse(selectorText)
-                } catch (ex: IllegalArgumentException) {
-                    throw parseError(sourceName, text, selectorStart, ex.message ?: "Invalid selector.")
-                }
-            }
-            if (selector != null) {
-                rules += StyleRule(
-                    selector = selector,
+            index =
+                parseDeclarations(
+                    sourceName = sourceName,
+                    text = text,
+                    fromIndex = index,
                     declarations = declarations,
-                    sourceOrder = sourceOrder++,
-                    fileName = sourceName
+                    rootVars = rootVars,
+                    allowVariables = selectorText == ":root",
+                    warnings = warnings,
                 )
+
+            val selector =
+                when (selectorText) {
+                    ":root" -> {
+                        if (declarations.values.isEmpty()) {
+                            null
+                        } else {
+                            StyleSelector.parse(ROOT_SELECTOR_ALIAS)
+                        }
+                    }
+                    else ->
+                        try {
+                            StyleSelector.parse(selectorText)
+                        } catch (ex: IllegalArgumentException) {
+                            throw parseError(sourceName, text, selectorStart, ex.message ?: "Invalid selector.", ex)
+                        }
+                }
+            if (selector != null) {
+                rules +=
+                    StyleRule(
+                        selector = selector,
+                        declarations = declarations,
+                        sourceOrder = sourceOrder++,
+                        fileName = sourceName,
+                    )
             }
         }
 
@@ -84,10 +90,11 @@ object DssParser {
             rules = rules,
             rootVariables = rootVars,
             source = sourceName,
-            warnings = warnings.messages()
+            warnings = warnings.messages(),
         )
     }
 
+    @Suppress("ThrowsCount")
     private fun parseDeclarations(
         sourceName: String,
         text: String,
@@ -95,7 +102,7 @@ object DssParser {
         declarations: StyleDeclarations,
         rootVars: MutableMap<String, String>,
         allowVariables: Boolean,
-        warnings: ParseWarnings
+        warnings: ParseWarnings,
     ): Int {
         var index = fromIndex
         while (index < text.length) {
@@ -138,7 +145,7 @@ object DssParser {
                         sourceName,
                         text,
                         nameStart,
-                        "Variable declarations are only supported inside :root."
+                        "Variable declarations are only supported inside :root.",
                     )
                 }
                 rootVars[rawName] = rawValue
@@ -147,16 +154,17 @@ object DssParser {
                 if (normalizedName == "foreground-color" || normalizedName == "foregroundcolor") {
                     warnings.warnOnce(
                         DEPRECATED_FOREGROUND_COLOR_WARNING_KEY,
-                        "Property 'foreground-color' is deprecated; use 'color'."
+                        "Property 'foreground-color' is deprecated; use 'color'.",
                     )
                 }
-                val property = StyleProperty.fromKeyOrNull(rawName)
-                    ?: throw parseError(
-                        sourceName,
-                        text,
-                        nameStart,
-                        "Unsupported style property '$rawName'."
-                    )
+                val property =
+                    StyleProperty.fromKeyOrNull(rawName)
+                        ?: throw parseError(
+                            sourceName,
+                            text,
+                            nameStart,
+                            "Unsupported style property '$rawName'.",
+                        )
                 val important = importantSuffixRegex.containsMatchIn(rawValue)
                 val normalizedValue = if (important) importantSuffixRegex.replace(rawValue, "") else rawValue
                 if (normalizedValue.isEmpty()) {
@@ -168,10 +176,12 @@ object DssParser {
                         validateLiteralForProperty(
                             property = property,
                             literal = expression.value,
-                            warningReporter = warnings
+                            warningReporter = warnings,
                         )
-                    } catch (ex: Exception) {
-                        throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.")
+                    } catch (
+                        @Suppress("TooGenericExceptionCaught") ex: RuntimeException,
+                    ) {
+                        throw parseError(sourceName, text, valueStart, ex.message ?: "Invalid value.", ex)
                     }
                 }
                 declarations.set(property, expression, important = important)
@@ -194,7 +204,13 @@ object DssParser {
         return index
     }
 
-    private fun parseError(path: String, source: String, index: Int, message: String): DssParseException {
+    private fun parseError(
+        path: String,
+        source: String,
+        index: Int,
+        message: String,
+        cause: Throwable? = null,
+    ): DssParseException {
         val safeIndex = index.coerceIn(0, source.length)
         var line = 1
         var col = 1
@@ -206,7 +222,7 @@ object DssParser {
                 col++
             }
         }
-        return DssParseException(path, line, col, message)
+        return DssParseException(path, line, col, message, cause)
     }
 
     private fun stripBlockComments(source: String): String {

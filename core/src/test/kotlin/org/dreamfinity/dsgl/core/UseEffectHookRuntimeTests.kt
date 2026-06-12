@@ -75,9 +75,10 @@ class UseEffectHookRuntimeTests {
     fun `render failure attempt does not execute effect`() {
         val window = FailingEffectWindow()
 
-        val error = assertFailsWith<IllegalStateException> {
-            renderWithHookSession(window, commit = false)
-        }
+        val error =
+            assertFailsWith<IllegalStateException> {
+                renderWithHookSession(window, commit = false)
+            }
         assertTrue(error.message?.contains("forced render failure") == true)
         assertEquals(emptyList(), window.events)
     }
@@ -90,9 +91,10 @@ class UseEffectHookRuntimeTests {
         renderWithHookSession(window, commit = true)
 
         window.everyCommitBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            renderWithHookSession(window, commit = true)
-        }
+        val error =
+            assertFailsWith<HookUsageException> {
+                renderWithHookSession(window, commit = true)
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("useEffect#0") == true)
@@ -122,11 +124,7 @@ class UseEffectHookRuntimeTests {
         assertEquals(listOf("run:1", "cleanup:1"), window.events)
     }
 
-    private fun renderWithHookSession(
-        window: DsglWindow,
-        mode: HookRenderSessionMode = HookRenderSessionMode.Normal,
-        commit: Boolean
-    ): DomTree {
+    private fun renderWithHookSession(window: DsglWindow, mode: HookRenderSessionMode = HookRenderSessionMode.Normal, commit: Boolean): DomTree {
         window.beginRenderBuild(mode)
         var renderSucceeded = false
         return try {
@@ -221,7 +219,7 @@ class UseEffectHookRuntimeTests {
                 events += "run"
                 onDispose { events += "cleanup" }
             }
-            throw IllegalStateException("forced render failure")
+            error("forced render failure")
         }
     }
 }

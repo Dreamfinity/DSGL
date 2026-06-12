@@ -13,7 +13,7 @@ class NumberInputNode(
     placeholder: String = "",
     var min: Long? = null,
     var max: Long? = null,
-    key: Any? = null
+    key: Any? = null,
 ) : SingleLineInputNode(value.toString(), placeholder, key) {
     private val initialValue: Long = value
     var value: Long = initialValue

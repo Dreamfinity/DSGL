@@ -2,13 +2,13 @@ package org.dreamfinity.dsgl.core
 
 import org.dreamfinity.dsgl.core.hooks.createContext
 import org.dreamfinity.dsgl.core.hooks.provideContext
+import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import org.dreamfinity.dsgl.core.hooks.useCallback
 import org.dreamfinity.dsgl.core.hooks.useContext
 import org.dreamfinity.dsgl.core.hooks.useEffect
 import org.dreamfinity.dsgl.core.hooks.useMemo
 import org.dreamfinity.dsgl.core.hooks.useReducer
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.hooks.ref.useRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -69,8 +69,8 @@ class UiScopeHookApiTests {
         var contextSeen: String? = null
         val effectEvents: MutableList<String> = arrayListOf()
 
-        override fun render(): DomTree {
-            return ui {
+        override fun render(): DomTree =
+            ui {
                 var count by useState(initial)
                 val valueRef by useRef<Int>()
                 val memoValue by useMemo(count) { count * 2 }
@@ -78,10 +78,11 @@ class UiScopeHookApiTests {
                     val captured = count
                     { captured }
                 }
-                val (reducerValue, _) = useReducer(
-                    initialState = 10,
-                    reducer = { old: Int, action: Int -> old + action }
-                )
+                val (reducerValue, _) =
+                    useReducer(
+                        initialState = 10,
+                        reducer = { old: Int, action: Int -> old + action },
+                    )
                 useEffect(count) {
                     val captured = count
                     effectEvents += "run:$captured"
@@ -98,6 +99,5 @@ class UiScopeHookApiTests {
                     contextSeen = useContext(ApiContext)
                 }
             }
-        }
     }
 }

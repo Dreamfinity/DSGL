@@ -19,17 +19,19 @@ class CssLengthTests {
     @Test
     fun `unitless zero is accepted but non-zero is rejected`() {
         assertEquals(CssLength.ZERO_PX, parseCssLength("0"))
-        val error = assertFailsWith<IllegalStateException> {
-            parseCssLength("12")
-        }
+        val error =
+            assertFailsWith<IllegalStateException> {
+                parseCssLength("12")
+            }
         assertTrue(error.message?.contains("Expected explicit unit") == true)
     }
 
     @Test
     fun `unknown units are rejected`() {
-        val error = assertFailsWith<IllegalStateException> {
-            parseCssLength("1q")
-        }
+        val error =
+            assertFailsWith<IllegalStateException> {
+                parseCssLength("1q")
+            }
         assertTrue(error.message?.contains("Unknown length unit") == true)
     }
 
@@ -42,10 +44,11 @@ class CssLengthTests {
 
     @Test
     fun `parses spacing shorthand with mixed units`() {
-        val insets = parseSpacingLengthShorthand(
-            raw = "1em 8px 2vh 5%",
-            allowNegative = false
-        )
+        val insets =
+            parseSpacingLengthShorthand(
+                raw = "1em 8px 2vh 5%",
+                allowNegative = false,
+            )
 
         assertEquals(CssUnit.Em, insets.top.unit)
         assertEquals(CssUnit.Px, insets.right.unit)
@@ -55,19 +58,22 @@ class CssLengthTests {
 
     @Test
     fun `resolves percent against horizontal and vertical axes`() {
-        val context = LengthResolveContext(
-            viewportWidthPx = 400f,
-            viewportHeightPx = 200f,
-            containingBlockWidthPx = 240f,
-            containingBlockHeightPx = 80f,
-            currentFontSizePx = 10f,
-            inheritedFontSizePx = 12f
-        )
+        val context =
+            LengthResolveContext(
+                viewportWidthPx = 400f,
+                viewportHeightPx = 200f,
+                containingBlockWidthPx = 240f,
+                containingBlockHeightPx = 80f,
+                currentFontSizePx = 10f,
+                inheritedFontSizePx = 12f,
+            )
 
-        val horizontal = CssLength(50f, CssUnit.Percent)
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-        val vertical = CssLength(50f, CssUnit.Percent)
-            .resolvePx(context, LengthPercentBase.ContainerHeight)
+        val horizontal =
+            CssLength(50f, CssUnit.Percent)
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+        val vertical =
+            CssLength(50f, CssUnit.Percent)
+                .resolvePx(context, LengthPercentBase.ContainerHeight)
 
         assertEquals(120f, horizontal)
         assertEquals(40f, vertical)
@@ -75,10 +81,11 @@ class CssLengthTests {
 
     @Test
     fun `resolves vw and vh against viewport`() {
-        val context = LengthResolveContext(
-            viewportWidthPx = 320f,
-            viewportHeightPx = 180f
-        )
+        val context =
+            LengthResolveContext(
+                viewportWidthPx = 320f,
+                viewportHeightPx = 180f,
+            )
 
         val vw = CssLength(10f, CssUnit.Vw).resolvePx(context, LengthPercentBase.ContainerWidth)
         val vh = CssLength(20f, CssUnit.Vh).resolvePx(context, LengthPercentBase.ContainerHeight)
@@ -89,22 +96,26 @@ class CssLengthTests {
 
     @Test
     fun `em uses current font size and inherited base for font-size percent`() {
-        val context = LengthResolveContext(
-            viewportWidthPx = 0f,
-            viewportHeightPx = 0f,
-            containingBlockWidthPx = 0f,
-            containingBlockHeightPx = 0f,
-            rootFontSizePx = 24f,
-            currentFontSizePx = 12f,
-            inheritedFontSizePx = 20f
-        )
+        val context =
+            LengthResolveContext(
+                viewportWidthPx = 0f,
+                viewportHeightPx = 0f,
+                containingBlockWidthPx = 0f,
+                containingBlockHeightPx = 0f,
+                rootFontSizePx = 24f,
+                currentFontSizePx = 12f,
+                inheritedFontSizePx = 20f,
+            )
 
-        val rem = CssLength(0.5f, CssUnit.Rem)
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-        val paddingEm = CssLength(1.5f, CssUnit.Em)
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-        val fontPercent = CssLength(125f, CssUnit.Percent)
-            .resolvePx(context, LengthPercentBase.InheritedFontSize)
+        val rem =
+            CssLength(0.5f, CssUnit.Rem)
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+        val paddingEm =
+            CssLength(1.5f, CssUnit.Em)
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+        val fontPercent =
+            CssLength(125f, CssUnit.Percent)
+                .resolvePx(context, LengthPercentBase.InheritedFontSize)
 
         assertEquals(12f, rem)
         assertEquals(18f, paddingEm)

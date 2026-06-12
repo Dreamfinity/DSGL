@@ -8,20 +8,20 @@ enum class EffectAllowed {
     COPY_LINK,
     COPY_MOVE,
     LINK_MOVE,
-    ALL
+    ALL,
 }
 
 enum class DropEffect {
     NONE,
     COPY,
     MOVE,
-    LINK
+    LINK,
 }
 
 data class DragImageSpec(
     val nodeKey: Any,
     val offsetX: Int = 0,
-    val offsetY: Int = 0
+    val offsetY: Int = 0,
 )
 
 /**
@@ -43,9 +43,7 @@ class DataTransfer {
         dataByType[normalized] = value
     }
 
-    fun getData(type: String): String? {
-        return dataByType[type.trim()]
-    }
+    fun getData(type: String): String? = dataByType[type.trim()]
 
     fun clearData(type: String? = null) {
         if (type == null) {

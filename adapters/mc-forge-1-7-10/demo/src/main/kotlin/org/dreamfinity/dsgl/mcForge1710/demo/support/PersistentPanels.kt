@@ -12,7 +12,7 @@ fun UiScope.renderEventInspectorPanel(
     eventLogs: List<EventLogEntry>,
     maxEventLogs: Int,
     visibleEventLines: Int,
-    onClearLogs: () -> Unit
+    onClearLogs: () -> Unit,
 ) {
     div({
         key = "panel.eventInspector"
@@ -24,9 +24,11 @@ fun UiScope.renderEventInspectorPanel(
             padding = 20.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border { width = 1.px; color = DsglColors.BORDER }
+            border {
+                width = 1.px
+                color = DsglColors.BORDER
+            }
         }
-
     }) {
         div({
             style = {
@@ -58,7 +60,7 @@ fun UiScope.renderChecklistPanel(
     checklistPage: Int,
     checklistPageSize: Int,
     onSetChecklistPage: (Int) -> Unit,
-    onMoveChecklistPage: (Int) -> Unit
+    onMoveChecklistPage: (Int) -> Unit,
 ) {
     val required = CapabilityChecklistCatalog.required
     val pageSize = checklistPageSize
@@ -81,9 +83,11 @@ fun UiScope.renderChecklistPanel(
             gap = 4.px
             backgroundColor = DEMO_SURFACE_ALT
             color = DsglColors.TEXT
-            border { width = 1.px; color = DsglColors.BORDER }
+            border {
+                width = 1.px
+                color = DsglColors.BORDER
+            }
         }
-
     }) {
         text("Capability Checklist")
         div({
@@ -110,4 +114,3 @@ fun UiScope.renderChecklistPanel(
         text("Missing: $missing / ${required.size}", { style = { color = if (missing == 0) DEMO_OK else DEMO_ERR } })
     }
 }
-

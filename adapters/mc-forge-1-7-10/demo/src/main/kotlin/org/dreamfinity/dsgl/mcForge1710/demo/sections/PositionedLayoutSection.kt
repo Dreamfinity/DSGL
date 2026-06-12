@@ -1,19 +1,20 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
-import org.dreamfinity.dsgl.core.style.*
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.hooks.useState
+import org.dreamfinity.dsgl.core.style.*
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
-private val POSITION_MODE_OPTIONS = listOf(
-    PositionMode.Static,
-    PositionMode.Relative,
-    PositionMode.Absolute,
-    PositionMode.Fixed,
-    PositionMode.Sticky
-)
+private val POSITION_MODE_OPTIONS =
+    listOf(
+        PositionMode.Static,
+        PositionMode.Relative,
+        PositionMode.Absolute,
+        PositionMode.Fixed,
+        PositionMode.Sticky,
+    )
 
 private const val OFFSET_MIN = -72
 private const val OFFSET_MAX = 120
@@ -65,7 +66,6 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
     val fixedBaseLeft = (viewportWidthPx - 236).coerceAtLeast(104)
     val fixedBaseTop = 72
 
-
     div({
         key = "section.positionedLayout"
         style = {
@@ -80,7 +80,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
         text("Positioned layout verification surface: static/relative/absolute/fixed + z-index + scroll + hit-testing")
         text(
             "Top-level fixed and root-anchored absolute badges are intentional: they prove root-space anchoring.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         controls(
@@ -132,13 +132,16 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     positionedDemoScrollClicks = 0
                     positionedDemoStickyTopClicks = 0
                     positionedDemoStickyCombinedClicks = 0
-                }
-            )
+                },
+            ),
         )
 
         div({
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
             }
         }) {
@@ -147,7 +150,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 key = "positioned.mode.playground"
                 style = {
                     position = PositionMode.Relative
-                    border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF6A7D8F.toInt()
+                    }
                     backgroundColor = 0xFF2A3440.toInt()
                     padding = 5.px
                 }
@@ -158,22 +164,27 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onMouseClick = { positionedDemoLastClick = "mode-$demoMode" }
                     style = {
                         position = demoMode
-                        left = if (positionedDemoUseLeft) {
-                            leftOffset.px
-                        } else {
-                            null
-                        }
+                        left =
+                            if (positionedDemoUseLeft) {
+                                leftOffset.px
+                            } else {
+                                null
+                            }
                         right = rightOffset.px
-                        top = if (positionedDemoUseTop) {
-                            topOffset.px
-                        } else {
-                            null
-                        }
+                        top =
+                            if (positionedDemoUseTop) {
+                                topOffset.px
+                            } else {
+                                null
+                            }
                         bottom = bottomOffset.px
                         padding = 5.px
                         zIndex = zBlue
                         backgroundColor = 0xCC476487.toInt()
-                        border { width = 1.px; color = 0xFFBFD8EE.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFFBFD8EE.toInt()
+                        }
                     }
                 }) {
                     text("mode=$demoMode")
@@ -184,7 +195,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
 
         div({
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
             }
         }) {
@@ -196,7 +210,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     flexDirection = FlexDirection.Column
                     gap = 2.px
                     padding = 5.px
-                    border { width = 1.px; color = 0xFF667A8D.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF667A8D.toInt()
+                    }
                     backgroundColor = 0xFF2A313A.toInt()
                 }
             }) {
@@ -204,7 +221,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     style = {
                         padding = 5.px
                         backgroundColor = 0xFF364352.toInt()
-                        border { width = 1.px; color = 0xFF7E97AD.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF7E97AD.toInt()
+                        }
                     }
                 }) { text("Flow item before") }
                 div({
@@ -221,21 +241,30 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                         bottom = bottomOffset.px
                         padding = 5.px
                         backgroundColor = 0xFF3F5A73.toInt()
-                        border { width = 1.px; color = 0xFF9DB7CF.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF9DB7CF.toInt()
+                        }
                     }
                 }) { text("position: static + offsets (still in normal slot)") }
                 div({
                     style = {
                         padding = 5.px
                         backgroundColor = 0xFF364352.toInt()
-                        border { width = 1.px; color = 0xFF7E97AD.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF7E97AD.toInt()
+                        }
                     }
                 }) { text("Flow item after") }
             }
         }
         div({
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
             }
         }) {
@@ -247,7 +276,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     flexDirection = FlexDirection.Row
                     gap = 3.px
                     padding = 5.px
-                    border { width = 1.px; color = 0xFF6D7C8A.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF6D7C8A.toInt()
+                    }
                     backgroundColor = 0xFF29323D.toInt()
                 }
             }) {
@@ -255,7 +287,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     style = {
                         padding = 5.px
                         backgroundColor = 0xFF455B70.toInt()
-                        border { width = 1.px; color = 0xFF91A9BF.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF91A9BF.toInt()
+                        }
                     }
                 }) { text("left") }
                 div({
@@ -264,21 +299,26 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onMouseClick = { positionedDemoLastClick = "relative-target" }
                     style = {
                         position = PositionMode.Relative
-                        left = if (positionedDemoUseLeft) {
-                            leftOffset.px
-                        } else {
-                            null
-                        }
+                        left =
+                            if (positionedDemoUseLeft) {
+                                leftOffset.px
+                            } else {
+                                null
+                            }
                         right = rightOffset.px
-                        top = if (positionedDemoUseTop) {
-                            topOffset.px
-                        } else {
-                            null
-                        }
+                        top =
+                            if (positionedDemoUseTop) {
+                                topOffset.px
+                            } else {
+                                null
+                            }
                         bottom = bottomOffset.px
                         padding = 5.px
                         backgroundColor = 0xFF4A6A87.toInt()
-                        border { width = 1.px; color = 0xFFB5CFE6.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFFB5CFE6.toInt()
+                        }
                         zIndex = zBlue
                     }
                 }) { text("relative target") }
@@ -286,7 +326,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     style = {
                         padding = 5.px
                         backgroundColor = 0xFF455B70.toInt()
-                        border { width = 1.px; color = 0xFF91A9BF.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF91A9BF.toInt()
+                        }
                     }
                 }) { text("right") }
             }
@@ -294,7 +337,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
 
         div({
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
             }
         }) {
@@ -306,20 +352,27 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     flexDirection = FlexDirection.Column
                     gap = 2.px
                     padding = 5.px
-                    border { width = 1.px; color = 0xFF6A7E8C.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF6A7E8C.toInt()
+                    }
                     backgroundColor = 0xFF2B333E.toInt()
                 }
             }) {
                 text(
                     "Root-anchored absolute badge appears outside this card (near top-middle).",
-                    { style = { color = DEMO_MUTED } })
+                    { style = { color = DEMO_MUTED } },
+                )
                 div({
                     key = "positioned.absolute.container"
                     style = {
                         position = PositionMode.Relative
                         overflowY = Overflow.Auto
                         padding = 5.px
-                        border { width = 1.px; color = 0xFF8AA0B4.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF8AA0B4.toInt()
+                        }
                         backgroundColor = 0xFF344252.toInt()
                     }
                 }) {
@@ -331,21 +384,26 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                         }
                         style = {
                             position = PositionMode.Absolute
-                            left = if (positionedDemoUseLeft) {
-                                leftOffset.px
-                            } else {
-                                null
-                            }
+                            left =
+                                if (positionedDemoUseLeft) {
+                                    leftOffset.px
+                                } else {
+                                    null
+                                }
                             right = rightOffset.px
-                            top = if (positionedDemoUseTop) {
-                                topOffset.px
-                            } else {
-                                null
-                            }
+                            top =
+                                if (positionedDemoUseTop) {
+                                    topOffset.px
+                                } else {
+                                    null
+                                }
                             bottom = bottomOffset.px
                             padding = 5.px
                             backgroundColor = 0xAA2B4E73.toInt()
-                            border { width = 1.px; color = 0xFFD2E8FF.toInt() }
+                            border {
+                                width = 1.px
+                                color = 0xFFD2E8FF.toInt()
+                            }
                             zIndex = zGreen
                         }
                     }) { text("absolute in relative ancestor") }
@@ -358,7 +416,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
 
         div({
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
             }
         }) {
@@ -372,7 +433,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     top = rootAnchoredTop.px
                     padding = 5.px
                     backgroundColor = 0xCC2C5A89.toInt()
-                    border { width = 1.px; color = 0xFFB9D9FA.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFFB9D9FA.toInt()
+                    }
                     zIndex = 18
                 }
             }) {
@@ -386,7 +450,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     position = PositionMode.Relative
                     overflowY = Overflow.Auto
                     padding = 5.px
-                    border { width = 1.px; color = 0xFF73879A.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF73879A.toInt()
+                    }
                     backgroundColor = 0xFF27323E.toInt()
                     display = Display.Flex
                     flexDirection = FlexDirection.Column
@@ -402,7 +469,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                         top = (topOffset / 2).px
                         padding = 5.px
                         backgroundColor = 0xFF496B8A.toInt()
-                        border { width = 1.px; color = 0xFFB6D5EE.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFFB6D5EE.toInt()
+                        }
                     }
                 }) {
                     text("relative in scroller")
@@ -415,7 +485,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                         top = 34.px
                         padding = 5.px
                         backgroundColor = 0xAA345469.toInt()
-                        border { width = 1.px; color = 0xFFCFE6F4.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFFCFE6F4.toInt()
+                        }
                         zIndex = 7
                     }
                 }) { text("absolute in scroller") }
@@ -429,7 +502,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                         positionedDemoLastClick = "scroll-action"
                     }
                 })
-                text("scroll action clicks=${positionedDemoScrollClicks}", { style = { color = DEMO_MUTED } })
+                text("scroll action clicks=$positionedDemoScrollClicks", { style = { color = DEMO_MUTED } })
             }
         }
 
@@ -439,21 +512,26 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
             onMouseClick = { positionedDemoLastClick = "fixed-badge" }
             style = {
                 position = PositionMode.Fixed
-                left = if (positionedDemoUseLeft) {
-                    (fixedBaseLeft + leftOffset).coerceAtLeast(0).px
-                } else {
-                    null
-                }
+                left =
+                    if (positionedDemoUseLeft) {
+                        (fixedBaseLeft + leftOffset).coerceAtLeast(0).px
+                    } else {
+                        null
+                    }
                 right = rightOffset.px
-                top = if (positionedDemoUseTop) {
-                    (fixedBaseTop + topOffset).coerceAtLeast(0).px
-                } else {
-                    null
-                }
+                top =
+                    if (positionedDemoUseTop) {
+                        (fixedBaseTop + topOffset).coerceAtLeast(0).px
+                    } else {
+                        null
+                    }
                 bottom = bottomOffset.px
                 padding = 5.px
                 backgroundColor = 0xCC4F3C73.toInt()
-                border { width = 1.px; color = 0xFFE3D5F6.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFFE3D5F6.toInt()
+                }
                 zIndex = 28
             }
         }) {
@@ -463,31 +541,37 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
         div({
             key = "positioned.sticky.surface"
             style = {
-                border { width = 1.px; color = 0xFF6A7D8F.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6A7D8F.toInt()
+                }
                 padding = 5.px
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
                 gap = 3.px
             }
         }) {
-            text("H. Sticky: in-flow slot + visual stick with per-axis nearest scroll container and direct-parent clamp.")
+            text(
+                "H. Sticky: in-flow slot + visual stick with per-axis nearest scroll " +
+                    "container and direct-parent clamp.",
+            )
             text(
                 "Inspector target key: positioned.sticky.xy.target",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
 
             stickyVerticalGroup(
                 onSetLastHover = { positionedDemoLastHover = it },
                 onSetLastClick = { positionedDemoLastClick = it },
                 stickyTopClicks = positionedDemoStickyTopClicks,
-                onStickyTopClick = { positionedDemoStickyTopClicks += 1 }
+                onStickyTopClick = { positionedDemoStickyTopClicks += 1 },
             )
             stickyHorizontalGroup()
             stickyXYGroup(
                 onSetLastHover = { positionedDemoLastHover = it },
                 onSetLastClick = { positionedDemoLastClick = it },
                 stickyCombinedClicks = positionedDemoStickyCombinedClicks,
-                onStickyCombinedClick = { positionedDemoStickyCombinedClicks += 1 }
+                onStickyCombinedClick = { positionedDemoStickyCombinedClicks += 1 },
             )
             stickyNoInsets()
             stickyClamp()
@@ -498,7 +582,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
             key = "positioned.z.overlap"
             style = {
                 position = PositionMode.Relative
-                border { width = 1.px; color = 0xFF6F8498.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6F8498.toInt()
+                }
                 backgroundColor = 0xFF283340.toInt()
             }
         }) {
@@ -513,7 +600,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 onClick = {
                     positionedDemoBlueClicks += 1
                     positionedDemoLastClick = "blue"
-                }
+                },
             )
             positionedOverlapCard(
                 key = "positioned.z.green",
@@ -526,7 +613,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 onClick = {
                     positionedDemoGreenClicks += 1
                     positionedDemoLastClick = "green"
-                }
+                },
             )
             positionedOverlapCard(
                 key = "positioned.z.red",
@@ -539,12 +626,12 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 onClick = {
                     positionedDemoRedClicks += 1
                     positionedDemoLastClick = "red"
-                }
+                },
             )
         }
         text(
-            "clicks blue=${positionedDemoBlueClicks}, green=${positionedDemoGreenClicks}, red=${positionedDemoRedClicks}",
-            { style = { color = DEMO_MUTED } }
+            "clicks blue=$positionedDemoBlueClicks, green=$positionedDemoGreenClicks, red=$positionedDemoRedClicks",
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -554,15 +641,12 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                 gap = 3.px
             }
         }) {
-            button(
-                if (positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second",
-                {
-                    onMouseClick = { positionedDemoTieSwap = !positionedDemoTieSwap }
-                }
-            )
+            button(if (positionedDemoTieSwap) "tie order: second->first" else "tie order: first->second", {
+                onMouseClick = { positionedDemoTieSwap = !positionedDemoTieSwap }
+            })
             text(
                 "same z, later DOM child should win overlap hit",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
 
@@ -570,7 +654,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
             key = "positioned.tie.sample"
             style = {
                 position = PositionMode.Relative
-                border { width = 1.px; color = 0xFF6C7F91.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6C7F91.toInt()
+                }
                 backgroundColor = 0xFF283440.toInt()
             }
         }) {
@@ -585,7 +672,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onTieClick = {
                         positionedDemoTieSecondClicks += 1
                         positionedDemoLastClick = it
-                    }
+                    },
                 )
                 positionedTieCard(
                     label = "first",
@@ -597,7 +684,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onTieClick = {
                         positionedDemoTieFirstClicks += 1
                         positionedDemoLastClick = it
-                    }
+                    },
                 )
             } else {
                 positionedTieCard(
@@ -610,7 +697,7 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onTieClick = {
                         positionedDemoTieFirstClicks += 1
                         positionedDemoLastClick = it
-                    }
+                    },
                 )
                 positionedTieCard(
                     label = "second",
@@ -622,13 +709,13 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     onTieClick = {
                         positionedDemoTieSecondClicks += 1
                         positionedDemoLastClick = it
-                    }
+                    },
                 )
             }
         }
         text(
-            "tie clicks first=${positionedDemoTieFirstClicks}, second=${positionedDemoTieSecondClicks}",
-            { style = { color = DEMO_MUTED } }
+            "tie clicks first=$positionedDemoTieFirstClicks, second=$positionedDemoTieSecondClicks",
+            { style = { color = DEMO_MUTED } },
         )
 
         text("Mixed static vs positioned overlap (stage rule).")
@@ -636,7 +723,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
             key = "positioned.mixed.sample"
             style = {
                 position = PositionMode.Relative
-                border { width = 1.px; color = 0xFF6E8196.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF6E8196.toInt()
+                }
                 backgroundColor = 0xFF293541.toInt()
             }
         }) {
@@ -652,7 +742,10 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     zIndex = 999
                     padding = 5.px
                     backgroundColor = 0xFF667F9A.toInt()
-                    border { width = 1.px; color = 0xFFC4D8EB.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFFC4D8EB.toInt()
+                    }
                 }
             }) {
                 text("static z=999")
@@ -671,21 +764,29 @@ fun UiScope.positionedLayoutSection(viewportWidthPx: Int) {
                     zIndex = -100
                     padding = 5.px
                     backgroundColor = 0xCC2F536F.toInt()
-                    border { width = 1.px; color = 0xFFB8D7EE.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFFB8D7EE.toInt()
+                    }
                 }
             }) {
                 text("positioned z=-100")
             }
         }
-        text(
-            "mixed clicks static=${positionedDemoMixedStaticClicks}, positioned=${positionedDemoMixedPositionedClicks}",
-            { style = { color = DEMO_MUTED; minHeight = 1.em } }
-        )
+        text("mixed clicks static=$positionedDemoMixedStaticClicks, positioned=$positionedDemoMixedPositionedClicks", {
+            style = {
+                color = DEMO_MUTED
+                minHeight = 1.em
+            }
+        })
         repeat(40) {
             div({
                 style = {
                     padding = 1.px
-                    border { width = 1.px; color = 0xFF617A90.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF617A90.toInt()
+                    }
                 }
             }) {
                 text("Hi there, #$it pyj", { style { fontSize = it.px } })
@@ -698,12 +799,15 @@ private fun UiScope.stickyVerticalGroup(
     onSetLastHover: (String) -> Unit,
     onSetLastClick: (String) -> Unit,
     stickyTopClicks: Int,
-    onStickyTopClick: () -> Unit
+    onStickyTopClick: () -> Unit,
 ) {
     div({
         key = "positioned.sticky.vertical.group"
         style = {
-            border { width = 1.px; color = 0xFF6C8096.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6C8096.toInt()
+            }
             padding = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -721,7 +825,10 @@ private fun UiScope.stickyVerticalGroup(
             div({
                 style = {
                     width = 50.percent
-                    border { width = 1.px; color = 0xFF6A7E90.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF6A7E90.toInt()
+                    }
                     padding = 3.px
                 }
             }) {
@@ -730,7 +837,10 @@ private fun UiScope.stickyVerticalGroup(
                     key = "positioned.sticky.vertical.top.scroller"
                     style = {
                         overflowY = Overflow.Auto
-                        border { width = 1.px; color = 0xFF8097AB.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF8097AB.toInt()
+                        }
                         maxHeight = 7.em
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
@@ -759,7 +869,10 @@ private fun UiScope.stickyVerticalGroup(
             div({
                 style = {
                     width = 50.percent
-                    border { width = 1.px; color = 0xFF6A7E90.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF6A7E90.toInt()
+                    }
                     padding = 3.px
                 }
             }) {
@@ -768,7 +881,10 @@ private fun UiScope.stickyVerticalGroup(
                     key = "positioned.sticky.vertical.bottom.scroller"
                     style = {
                         overflowY = Overflow.Auto
-                        border { width = 1.px; color = 0xFF8097AB.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF8097AB.toInt()
+                        }
                         maxHeight = 7.em
                         display = Display.Flex
                         flexDirection = FlexDirection.Column
@@ -786,7 +902,10 @@ private fun UiScope.stickyVerticalGroup(
                             bottom = 0.px
                             zIndex = 5
                             padding = 3.px
-                            border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                            border {
+                                width = 1.px
+                                color = 0xFF9FC2DF.toInt()
+                            }
                             backgroundColor = 0xCC446181.toInt()
                         }
                     }) {
@@ -802,7 +921,10 @@ private fun UiScope.stickyVerticalGroup(
             key = "positioned.sticky.vertical.precedence.scroller"
             style = {
                 overflowY = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 maxHeight = 6.em
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
@@ -818,7 +940,10 @@ private fun UiScope.stickyVerticalGroup(
                     bottom = 0.px
                     zIndex = 5
                     padding = 3.px
-                    border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9FC2DF.toInt()
+                    }
                     backgroundColor = 0xCC3F5871.toInt()
                 }
             }) { text("top+bottom set -> top wins (top=6)") }
@@ -826,7 +951,7 @@ private fun UiScope.stickyVerticalGroup(
         }
         text(
             "sticky top clicks=$stickyTopClicks",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }
@@ -835,7 +960,10 @@ private fun UiScope.stickyHorizontalGroup() {
     div({
         key = "positioned.sticky.horizontal.group"
         style = {
-            border { width = 1.px; color = 0xFF6C8096.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6C8096.toInt()
+            }
             padding = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -847,7 +975,10 @@ private fun UiScope.stickyHorizontalGroup() {
             key = "positioned.sticky.horizontal.left.scroller"
             style = {
                 overflowX = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
                 gap = 2.px
@@ -861,7 +992,10 @@ private fun UiScope.stickyHorizontalGroup() {
                     left = 0.px
                     zIndex = 5
                     padding = 3.px
-                    border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9FC2DF.toInt()
+                    }
                     backgroundColor = 0xCC3F617B.toInt()
                 }
             }) { text("left=0") }
@@ -873,7 +1007,10 @@ private fun UiScope.stickyHorizontalGroup() {
             key = "positioned.sticky.horizontal.right.scroller"
             style = {
                 overflowX = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
                 gap = 2.px
@@ -890,7 +1027,10 @@ private fun UiScope.stickyHorizontalGroup() {
                     right = 0.px
                     zIndex = 5
                     padding = 3.px
-                    border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9FC2DF.toInt()
+                    }
                     backgroundColor = 0xCC45637F.toInt()
                 }
             }) { text("right=0") }
@@ -902,7 +1042,10 @@ private fun UiScope.stickyHorizontalGroup() {
             key = "positioned.sticky.horizontal.precedence.scroller"
             style = {
                 overflowX = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 display = Display.Flex
                 flexDirection = FlexDirection.Row
                 gap = 2.px
@@ -917,7 +1060,10 @@ private fun UiScope.stickyHorizontalGroup() {
                     right = 0.px
                     zIndex = 5
                     padding = 3.px
-                    border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9FC2DF.toInt()
+                    }
                     backgroundColor = 0xCC415A74.toInt()
                 }
             }) { text("left+right set -> left wins (left=8)") }
@@ -926,19 +1072,21 @@ private fun UiScope.stickyHorizontalGroup() {
             }
         }
     }
-
 }
 
 private fun UiScope.stickyXYGroup(
     onSetLastHover: (String) -> Unit,
     onSetLastClick: (String) -> Unit,
     stickyCombinedClicks: Int,
-    onStickyCombinedClick: () -> Unit
+    onStickyCombinedClick: () -> Unit,
 ) {
     div({
         key = "positioned.sticky.xy.group"
         style = {
-            border { width = 1.px; color = 0xFF6C8096.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6C8096.toInt()
+            }
             padding = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -951,7 +1099,10 @@ private fun UiScope.stickyXYGroup(
             style = {
                 overflowX = Overflow.Auto
                 overflowY = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 maxHeight = 7.em
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
@@ -979,7 +1130,7 @@ private fun UiScope.stickyXYGroup(
         }
         text(
             "sticky x+y clicks=$stickyCombinedClicks",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }
@@ -988,7 +1139,10 @@ private fun UiScope.stickyNoInsets() {
     div({
         key = "positioned.sticky.inactive.group"
         style = {
-            border { width = 1.px; color = 0xFF6C8096.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6C8096.toInt()
+            }
             padding = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -1001,7 +1155,10 @@ private fun UiScope.stickyNoInsets() {
             style = {
                 overflowX = Overflow.Auto
                 overflowY = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 maxHeight = 6.em
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
@@ -1014,7 +1171,10 @@ private fun UiScope.stickyNoInsets() {
                 style = {
                     position = PositionMode.Sticky
                     padding = 3.px
-                    border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF9FC2DF.toInt()
+                    }
                     backgroundColor = 0xCC455F78.toInt()
                 }
             }) { text("sticky without insets") }
@@ -1029,7 +1189,10 @@ private fun UiScope.stickyClamp() {
     div({
         key = "positioned.sticky.clamp.group"
         style = {
-            border { width = 1.px; color = 0xFF6C8096.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6C8096.toInt()
+            }
             padding = 4.px
             display = Display.Flex
             flexDirection = FlexDirection.Column
@@ -1041,7 +1204,10 @@ private fun UiScope.stickyClamp() {
             key = "positioned.sticky.clamp.scroller"
             style = {
                 overflowY = Overflow.Auto
-                border { width = 1.px; color = 0xFF8097AB.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF8097AB.toInt()
+                }
                 maxHeight = 7.em
                 display = Display.Flex
                 flexDirection = FlexDirection.Column
@@ -1053,7 +1219,10 @@ private fun UiScope.stickyClamp() {
             div({
                 key = "positioned.sticky.clamp.parent"
                 style = {
-                    border { width = 1.px; color = 0xFF8FA5B9.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF8FA5B9.toInt()
+                    }
                     backgroundColor = 0xFF2F3D4C.toInt()
                     maxHeight = 6.em
                     overflowY = Overflow.Auto
@@ -1070,7 +1239,10 @@ private fun UiScope.stickyClamp() {
                         top = 0.px
                         zIndex = 6
                         padding = 3.px
-                        border { width = 1.px; color = 0xFF9FC2DF.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF9FC2DF.toInt()
+                        }
                         backgroundColor = 0xCC3F5A74.toInt()
                     }
                 }) { text("clamped sticky top") }
@@ -1105,7 +1277,7 @@ data class ControlsProps(
     val onSetZBlue: (Long) -> Unit,
     val onSetZGreen: (Long) -> Unit,
     val onSetZRed: (Long) -> Unit,
-    val onReset: () -> Unit
+    val onReset: () -> Unit,
 )
 
 private fun UiScope.controls(props: ControlsProps) {
@@ -1116,7 +1288,10 @@ private fun UiScope.controls(props: ControlsProps) {
             flexDirection = FlexDirection.Column
             gap = 3.px
             padding = 5.px
-            border { width = 1.px; color = 0xFF617A90.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF617A90.toInt()
+            }
             backgroundColor = 0xFF2A3541.toInt()
             position = PositionMode.Sticky
             top = 0.px
@@ -1133,18 +1308,12 @@ private fun UiScope.controls(props: ControlsProps) {
             button("mode=${props.demoMode.name.lowercase()}", {
                 onMouseClick = { props.onModeCycle() }
             })
-            button(
-                if (props.useLeft) "h: left first" else "h: right fallback",
-                {
-                    onMouseClick = { props.onToggleUseLeft() }
-                }
-            )
-            button(
-                if (props.useTop) "v: top first" else "v: bottom fallback",
-                {
-                    onMouseClick = { props.onToggleUseTop() }
-                }
-            )
+            button(if (props.useLeft) "h: left first" else "h: right fallback", {
+                onMouseClick = { props.onToggleUseLeft() }
+            })
+            button(if (props.useTop) "v: top first" else "v: bottom fallback", {
+                onMouseClick = { props.onToggleUseTop() }
+            })
             button("Reset", {
                 onMouseClick = { props.onReset() }
             })
@@ -1165,7 +1334,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.leftOffset.toLong(),
             min = OFFSET_MIN.toLong(),
             max = OFFSET_MAX.toLong(),
-            onChange = props.onSetLeft
+            onChange = props.onSetLeft,
         )
         positionedRangeControl(
             label = "right",
@@ -1173,7 +1342,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.rightOffset.toLong(),
             min = 0,
             max = OFFSET_MAX.toLong(),
-            onChange = props.onSetRight
+            onChange = props.onSetRight,
         )
         positionedRangeControl(
             label = "top",
@@ -1181,7 +1350,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.topOffset.toLong(),
             min = OFFSET_MIN.toLong(),
             max = OFFSET_MAX.toLong(),
-            onChange = props.onSetTop
+            onChange = props.onSetTop,
         )
         positionedRangeControl(
             label = "bottom",
@@ -1189,7 +1358,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.bottomOffset.toLong(),
             min = 0,
             max = OFFSET_MAX.toLong(),
-            onChange = props.onSetBottom
+            onChange = props.onSetBottom,
         )
         positionedRangeControl(
             label = "z blue",
@@ -1197,7 +1366,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zBlue.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = props.onSetZBlue
+            onChange = props.onSetZBlue,
         )
         positionedRangeControl(
             label = "z green",
@@ -1205,7 +1374,7 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zGreen.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = props.onSetZGreen
+            onChange = props.onSetZGreen,
         )
         positionedRangeControl(
             label = "z red",
@@ -1213,11 +1382,11 @@ private fun UiScope.controls(props: ControlsProps) {
             value = props.zRed.toLong(),
             min = Z_MIN.toLong(),
             max = Z_MAX.toLong(),
-            onChange = props.onSetZRed
+            onChange = props.onSetZRed,
         )
         text(
             "hover=${props.lastHover} click=${props.lastClick}",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }
@@ -1228,7 +1397,7 @@ private fun UiScope.positionedRangeControl(
     value: Long,
     min: Long,
     max: Long,
-    onChange: (Long) -> Unit
+    onChange: (Long) -> Unit,
 ) {
     div({
         this.key = "$key-container"
@@ -1250,7 +1419,7 @@ private fun UiScope.positionedRangeControl(
                 value = value,
                 min = min,
                 max = max,
-                step = 1
+                step = 1,
             ),
             {
                 this.key = key
@@ -1261,7 +1430,7 @@ private fun UiScope.positionedRangeControl(
                 style = {
                     width = 90.percent
                 }
-            }
+            },
         )
     }
 }
@@ -1274,7 +1443,7 @@ private fun UiScope.positionedOverlapCard(
     zIndex: Int,
     color: Int,
     onHover: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     div({
         this.key = key
@@ -1286,7 +1455,10 @@ private fun UiScope.positionedOverlapCard(
             this.top = top.px
             padding = 5.px
             backgroundColor = color
-            border { width = 1.px; this.color = 0xFFE6F1FD.toInt() }
+            border {
+                width = 1.px
+                this.color = 0xFFE6F1FD.toInt()
+            }
             this.zIndex = zIndex
         }
     }) {
@@ -1301,7 +1473,7 @@ private fun UiScope.positionedTieCard(
     zIndex: Int,
     color: Int,
     onSetLastHover: (String) -> Unit,
-    onTieClick: (String) -> Unit
+    onTieClick: (String) -> Unit,
 ) {
     div({
         key = "positioned.tie.$label"
@@ -1313,13 +1485,13 @@ private fun UiScope.positionedTieCard(
             this.top = top.px
             padding = 5.px
             backgroundColor = color
-            border { width = 1.px; this.color = 0xFFDDEDFD.toInt() }
+            border {
+                width = 1.px
+                this.color = 0xFFDDEDFD.toInt()
+            }
             this.zIndex = zIndex
         }
     }) {
         text("$label z=$zIndex")
     }
 }
-
-
-

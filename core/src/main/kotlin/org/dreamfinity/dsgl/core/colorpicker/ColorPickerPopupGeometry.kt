@@ -9,7 +9,7 @@ internal data class ColorPickerPopupFrame(
     val panelRect: Rect,
     val headerRect: Rect,
     val bodyRect: Rect,
-    val closeRect: Rect
+    val closeRect: Rect,
 )
 
 internal class ColorPickerPopupPositionStore {
@@ -25,9 +25,8 @@ internal class ColorPickerPopupPositionStore {
 internal object ColorPickerPopupGeometry {
     private const val MIN_VALID_VIEWPORT_SIZE = 2
 
-    fun hasValidViewport(viewportWidth: Int, viewportHeight: Int): Boolean {
-        return viewportWidth >= MIN_VALID_VIEWPORT_SIZE && viewportHeight >= MIN_VALID_VIEWPORT_SIZE
-    }
+    fun hasValidViewport(viewportWidth: Int, viewportHeight: Int): Boolean =
+        viewportWidth >= MIN_VALID_VIEWPORT_SIZE && viewportHeight >= MIN_VALID_VIEWPORT_SIZE
 
     fun resolvePanelRect(
         owner: Any,
@@ -38,7 +37,7 @@ internal object ColorPickerPopupGeometry {
         viewportHeight: Int,
         keepPosition: Boolean,
         currentRect: Rect?,
-        store: ColorPickerPopupPositionStore
+        store: ColorPickerPopupPositionStore,
     ): Rect {
         val viewportReady = hasValidViewport(viewportWidth, viewportHeight)
         if (keepPosition && currentRect != null) {
@@ -57,41 +56,44 @@ internal object ColorPickerPopupGeometry {
                 x = anchorRect.x,
                 y = anchorRect.y + anchorRect.height,
                 width = width,
-                height = height
+                height = height,
             )
         }
 
-        val placement = PopupPlacement.resolve(
-            PopupPlacementRequest(
-                preferredRect = Rect(
-                    anchorRect.x,
-                    anchorRect.y + anchorRect.height,
-                    width,
-                    height
+        val placement =
+            PopupPlacement.resolve(
+                PopupPlacementRequest(
+                    preferredRect =
+                        Rect(
+                            anchorRect.x,
+                            anchorRect.y + anchorRect.height,
+                            width,
+                            height,
+                        ),
+                    popupSize = Size(width, height),
+                    viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
+                    padding = 8,
+                    horizontalFlipX = anchorRect.x + anchorRect.width - width,
                 ),
-                popupSize = Size(width, height),
-                viewport = Rect(0, 0, viewportWidth.coerceAtLeast(1), viewportHeight.coerceAtLeast(1)),
-                padding = 8,
-                horizontalFlipX = anchorRect.x + anchorRect.width - width
             )
-        )
         return placement.rect
     }
 
     fun buildFrame(panelRect: Rect, headerHeight: Int, panelPadding: Int): ColorPickerPopupFrame {
         val headerRect = Rect(panelRect.x, panelRect.y, panelRect.width, headerHeight)
-        val bodyRect = Rect(
-            panelRect.x + panelPadding,
-            panelRect.y + headerHeight + panelPadding,
-            (panelRect.width - panelPadding * 2).coerceAtLeast(1),
-            (panelRect.height - headerHeight - panelPadding * 2).coerceAtLeast(1)
-        )
+        val bodyRect =
+            Rect(
+                panelRect.x + panelPadding,
+                panelRect.y + headerHeight + panelPadding,
+                (panelRect.width - panelPadding * 2).coerceAtLeast(1),
+                (panelRect.height - headerHeight - panelPadding * 2).coerceAtLeast(1),
+            )
         val closeRect = Rect(panelRect.x + panelRect.width - 20, panelRect.y + 4, 16, 16)
         return ColorPickerPopupFrame(
             panelRect = panelRect,
             headerRect = headerRect,
             bodyRect = bodyRect,
-            closeRect = closeRect
+            closeRect = closeRect,
         )
     }
 
@@ -107,7 +109,7 @@ internal object ColorPickerPopupGeometry {
             x = rect.x.coerceIn(minX, maxX),
             y = rect.y.coerceIn(minY, maxY),
             width = rect.width,
-            height = rect.height
+            height = rect.height,
         )
     }
 }

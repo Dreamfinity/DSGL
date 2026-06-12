@@ -8,7 +8,7 @@ data class Border(
     val right: Int,
     val bottom: Int,
     val left: Int,
-    val color: Int
+    val color: Int,
 ) {
     /** Combined left/right thickness. */
     val horizontal: Int
@@ -23,8 +23,7 @@ data class Border(
         val NONE: Border = Border(0, 0, 0, 0, 0)
 
         /** Same border on all sides. */
-        fun all(width: Int, color: Int): Border =
-            Border(width, width, width, width, color)
+        fun all(width: Int, color: Int): Border = Border(width, width, width, width, color)
 
         /** Border with separate horizontal and vertical thicknesses. */
         fun horizontalVertical(horizontal: Int, vertical: Int, color: Int): Border =

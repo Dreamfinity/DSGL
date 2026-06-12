@@ -6,7 +6,7 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 
 enum class DragPreviewMode {
     ORIGINAL,
-    GHOST
+    GHOST,
 }
 
 class PlaceholderScope internal constructor() {
@@ -30,8 +30,8 @@ class PlaceholderScope internal constructor() {
                     bounds.y,
                     bounds.width,
                     bounds.height,
-                    color
-                )
+                    color,
+                ),
             )
         }
         val border = borderColor
@@ -44,8 +44,8 @@ class PlaceholderScope internal constructor() {
                     bounds.y + bounds.height - width,
                     bounds.width,
                     width,
-                    border
-                )
+                    border,
+                ),
             )
             out.add(RenderCommand.DrawRect(bounds.x, bounds.y, width, bounds.height, border))
             out.add(
@@ -54,8 +54,8 @@ class PlaceholderScope internal constructor() {
                     bounds.y,
                     width,
                     bounds.height,
-                    border
-                )
+                    border,
+                ),
             )
         }
         return out
@@ -66,35 +66,52 @@ class DragPreviewScope internal constructor(
     val dataTransfer: DataTransfer,
     val sourceBounds: Rect,
     private val anchorX: Int,
-    private val anchorY: Int
+    private val anchorY: Int,
 ) {
     private val commands: MutableList<RenderCommand> = ArrayList(8)
 
-    fun rect(x: Int, y: Int, width: Int, height: Int, color: Int) {
+    fun rect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int,
+    ) {
         commands.add(
             RenderCommand.DrawRect(
                 anchorX + x,
                 anchorY + y,
                 width,
                 height,
-                color
-            )
+                color,
+            ),
         )
     }
 
-    fun text(value: String, x: Int, y: Int, color: Int = DsglColors.WHITE) {
+    fun text(
+        value: String,
+        x: Int,
+        y: Int,
+        color: Int = DsglColors.WHITE,
+    ) {
         commands.add(RenderCommand.DrawText(value, anchorX + x, anchorY + y, color))
     }
 
-    fun image(resource: String, x: Int, y: Int, width: Int, height: Int) {
+    fun image(
+        resource: String,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         commands.add(
             RenderCommand.DrawImage(
                 resource,
                 anchorX + x,
                 anchorY + y,
                 width,
-                height
-            )
+                height,
+            ),
         )
     }
 

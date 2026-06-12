@@ -1,12 +1,12 @@
 package org.dreamfinity.dsgl.core.hooks.ref
 
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import java.util.*
+import java.util.IdentityHashMap
 
 internal class RefManager {
     private data class AttachedRef(
         val target: RefTarget<ElementHandle>,
-        val handle: NodeElementHandle
+        val handle: NodeElementHandle,
     )
 
     private val attachedByNode: MutableMap<DOMNode, AttachedRef> = IdentityHashMap()
@@ -42,9 +42,10 @@ internal class RefManager {
             }
         }
 
-        val staleNodes = attachedByNode.keys.filter { node ->
-            !visited.containsKey(node)
-        }
+        val staleNodes =
+            attachedByNode.keys.filter { node ->
+                !visited.containsKey(node)
+            }
         staleNodes.forEach { node ->
             val attached = attachedByNode.remove(node) ?: return@forEach
             attached.target.set(null)

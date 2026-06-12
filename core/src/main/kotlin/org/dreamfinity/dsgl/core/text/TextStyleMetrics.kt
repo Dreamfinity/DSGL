@@ -8,23 +8,22 @@ object TextStyleMetrics {
         spans: List<ParsedTextSpan>,
         baseFlags: TextStyleFlags,
         rangeStart: Int = 0,
-        rangeEnd: Int = plainText.length
-    ): Int {
-        return boldExtraPxForRangeInText(
+        rangeEnd: Int = plainText.length,
+    ): Int =
+        boldExtraPxForRangeInText(
             plainText = plainText,
             spans = spans,
             baseFlags = baseFlags,
             rangeStart = rangeStart,
-            rangeEnd = rangeEnd
+            rangeEnd = rangeEnd,
         )
-    }
 
     fun boldExtraPxForRangeInText(
         plainText: String,
         spans: List<ParsedTextSpan>,
         baseFlags: TextStyleFlags,
         rangeStart: Int = 0,
-        rangeEnd: Int = plainText.length
+        rangeEnd: Int = plainText.length,
     ): Int {
         if (plainText.isEmpty()) return 0
         val safeStart = rangeStart.coerceIn(0, plainText.length)
@@ -39,12 +38,13 @@ object TextStyleMetrics {
             while (spanIndex < spans.size && absoluteIndex >= spans[spanIndex].end) {
                 spanIndex += 1
             }
-            val spanBold = if (spanIndex < spans.size) {
-                val span = spans[spanIndex]
-                absoluteIndex >= span.start && absoluteIndex < span.end && span.flags.bold
-            } else {
-                false
-            }
+            val spanBold =
+                if (spanIndex < spans.size) {
+                    val span = spans[spanIndex]
+                    absoluteIndex >= span.start && absoluteIndex < span.end && span.flags.bold
+                } else {
+                    false
+                }
             val bold = baseFlags.bold || spanBold
             if (bold && !isWhitespaceCodepoint(codepoint)) {
                 extra += BOLD_ADVANCE_EXTRA_PX
@@ -54,12 +54,11 @@ object TextStyleMetrics {
         return extra
     }
 
-    fun isWhitespaceCodepoint(codepoint: Int): Boolean {
-        return codepoint == ' '.code ||
-                codepoint == '\n'.code ||
-                codepoint == '\r'.code ||
-                codepoint == '\t'.code ||
-                codepoint == 0x00A0 ||
-                Character.isWhitespace(codepoint)
-    }
+    fun isWhitespaceCodepoint(codepoint: Int): Boolean =
+        codepoint == ' '.code ||
+            codepoint == '\n'.code ||
+            codepoint == '\r'.code ||
+            codepoint == '\t'.code ||
+            codepoint == 0x00A0 ||
+            Character.isWhitespace(codepoint)
 }

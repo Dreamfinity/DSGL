@@ -151,7 +151,7 @@ Avoid building app components around internal plumbing:
 
 - `UiScope.mount(...)` (internal)
 - `DsglWindow.hookRuntime()` and `ComponentHookRuntime.withComponentInstance(...)` (internal runtime plumbing)
-- overlay/system internals and devtool internals (`overlay.system.*`, inspector internals, `HotReloadBridge`)
+- portal/system internals and devtool internals (`core.portal.system.*`, inspector internals, `HotReloadBridge`)
 
 These exist for framework/runtime internals, not as stable public extension contracts.
 
@@ -162,6 +162,6 @@ These exist for framework/runtime internals, not as stable public extension cont
 - Add slot lambdas for extensibility.
 - Keep the hook state local only when it is truly local.
 - Use stable keys for interactive or reorderable component instances.
-- Treat internal runtime/overlay APIs as non-public unless docs explicitly promote them.
+- Treat internal runtime/portal APIs as non-public unless docs explicitly promote them.
 
 Next: [Hot-reload setup](hot-reload-agent.md).

@@ -24,63 +24,63 @@ interface Ref<T : Any> : RefTarget<T> {
 }
 
 class RefObject<T : Any>(
-    override var current: T? = null
+    override var current: T? = null,
 ) : Ref<T>
 
 fun <T : Any> createRef(initial: T? = null): Ref<T> = RefObject(initial)
 
-class RefHookDelegate<T : Any> @PublishedApi internal constructor(
-    private val window: DsglWindow,
-    private val initial: T?,
-    private val signature: HookSignature
-) {
-    private val runtime = window.hookRuntime()
-    private val bindingToken = runtime.registerStorageBackedHookCandidate("useRef")
-    private var boundRef: Ref<T>? = null
+class RefHookDelegate<T : Any>
+    @PublishedApi
+    internal constructor(
+        private val window: DsglWindow,
+        private val initial: T?,
+        private val signature: HookSignature,
+    ) {
+        private val runtime = window.hookRuntime()
+        private val bindingToken = runtime.registerStorageBackedHookCandidate("useRef")
+        private var boundRef: Ref<T>? = null
 
-    operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): RefHookDelegate<T> {
-        runtime.markStorageBackedHookBound(bindingToken)
-        val resolved = runtime.resolveNamedTypedEntry(
-            kind = HookEntryKind.Ref,
-            delegateName = property.name,
-            signature = signature,
-            expectedRawType = Ref::class.java
-        ) {
-            RefObject(initial)
+        operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): RefHookDelegate<T> {
+            runtime.markStorageBackedHookBound(bindingToken)
+            val resolved =
+                runtime.resolveNamedTypedEntry(
+                    kind = HookEntryKind.Ref,
+                    delegateName = property.name,
+                    signature = signature,
+                    expectedRawType = Ref::class.java,
+                ) {
+                    RefObject(initial)
+                }
+            boundRef = resolved.value
+            return this
         }
-        boundRef = resolved.value
-        return this
-    }
 
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Ref<T> {
-        val resolved = boundRef
-        if (resolved != null) {
-            return resolved
+        operator fun getValue(thisRef: Any?, property: KProperty<*>): Ref<T> {
+            val resolved = boundRef
+            if (resolved != null) {
+                return resolved
+            }
+            runtime.failStorageBackedHookWithoutDelegate("useRef")
         }
-        runtime.failStorageBackedHookWithoutDelegate("useRef")
     }
-}
 
 @OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T : Any> UiScope.useRef(initial: T? = null): RefHookDelegate<T> {
-    return createRefHookDelegate(window = requireHookOwnerWindow(), initial = initial)
-}
+inline fun <reified T : Any> UiScope.useRef(initial: T? = null): RefHookDelegate<T> =
+    createRefHookDelegate(window = requireHookOwnerWindow(), initial = initial)
 
 @PublishedApi
 @OptIn(ExperimentalStdlibApi::class)
-internal inline fun <reified T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> {
-    return createRefHookDelegate(window = this, initial = initial)
-}
+internal inline fun <reified T : Any> DsglWindow.useRef(initial: T? = null): RefHookDelegate<T> =
+    createRefHookDelegate(window = this, initial = initial)
 
 @PublishedApi
 @OptIn(ExperimentalStdlibApi::class)
 internal inline fun <reified T : Any> createRefHookDelegate(
     window: DsglWindow,
-    initial: T? = null
-): RefHookDelegate<T> {
-    return RefHookDelegate(
+    initial: T? = null,
+): RefHookDelegate<T> =
+    RefHookDelegate(
         window = window,
         initial = initial,
-        signature = HookSignatures.ref(typeOf<T>())
+        signature = HookSignatures.ref(typeOf<T>()),
     )
-}

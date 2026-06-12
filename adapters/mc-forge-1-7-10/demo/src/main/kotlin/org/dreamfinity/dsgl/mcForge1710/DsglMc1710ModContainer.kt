@@ -13,12 +13,15 @@ import net.minecraft.client.Minecraft
     name = DsglMc1710DemoGeneratedMetadata.MOD_NAME,
     version = DsglMc1710DemoGeneratedMetadata.MOD_VERSION,
     acceptedMinecraftVersions = DsglMc1710DemoGeneratedMetadata.MC_VERSION_RANGE,
-    useMetadata = true
+    useMetadata = true,
 )
 class DsglMc1710ModContainer {
     @Mod.EventHandler
-    fun onInit(event: FMLInitializationEvent) {
-        if (FMLCommonHandler.instance().side.isClient) {
+    fun onInit(_event: FMLInitializationEvent) {
+        if (FMLCommonHandler
+                .instance()
+                .side.isClient
+        ) {
             DsglFonts.ensureInitialized(Minecraft.getMinecraft().mcDataDir, javaClass.classLoader)
             DsglClientHotkeys.register()
         }

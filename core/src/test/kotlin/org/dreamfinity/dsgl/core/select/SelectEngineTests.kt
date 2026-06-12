@@ -8,27 +8,33 @@ import org.dreamfinity.dsgl.core.render.RenderCommand
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlin.test.assertNotEquals
 
 class SelectEngineTests {
     private class FakeClock(
-        var now: Long = 0L
+        var now: Long = 0L,
     ) : SelectClock {
         override fun nowMs(): Long = now
+
         fun advance(ms: Long) {
             now += ms
         }
     }
 
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `popup placement clamps and flips above when bottom space is not enough`() {
@@ -39,14 +45,15 @@ class SelectEngineTests {
             SelectStyle(
                 openDurationMs = 1L,
                 closeDurationMs = 1L,
-                viewportPadding = 6
-            )
+                viewportPadding = 6,
+            ),
         )
-        val model = selectModel {
-            repeat(16) { index ->
-                option(id = "id.$index", label = "Option $index")
+        val model =
+            selectModel {
+                repeat(16) { index ->
+                    option(id = "id.$index", label = "Option $index")
+                }
             }
-        }
         val anchor = Rect(180, 96, 72, 18)
         engine.open(
             SelectOpenRequest(
@@ -55,8 +62,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "id.0",
                 anchorRect = anchor,
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, viewportWidth = 260, viewportHeight = 120, viewportScale = 1f)
 
@@ -74,10 +81,11 @@ class SelectEngineTests {
         val owner = "select.state"
         val engine = SelectEngine(clock = clock)
         engine.setStyle(SelectStyle(openDurationMs = 1L, closeDurationMs = 10L))
-        val model = selectModel {
-            option("a", "A")
-            option("b", "B")
-        }
+        val model =
+            selectModel {
+                option("a", "A")
+                option("b", "B")
+            }
         engine.open(
             SelectOpenRequest(
                 owner = owner,
@@ -85,8 +93,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "a",
                 anchorRect = Rect(30, 30, 90, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
         clock.advance(2L)
@@ -106,8 +114,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "a",
                 anchorRect = Rect(30, 30, 90, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
         assertTrue(engine.handleKeyDown(KeyCodes.ESCAPE))
@@ -117,16 +125,61 @@ class SelectEngineTests {
     }
 
     @Test
+    fun `opening same owner while closing reverses close transition`() {
+        val clock = FakeClock()
+        val owner = "select.reopen"
+        val engine = SelectEngine(clock = clock)
+        engine.setStyle(SelectStyle(openDurationMs = 20L, closeDurationMs = 200L))
+        val model =
+            selectModel {
+                option("a", "A")
+                option("b", "B")
+            }
+        val request =
+            SelectOpenRequest(
+                owner = owner,
+                modelToken = model.token,
+                entries = model.entries,
+                selectedId = "a",
+                anchorRect = Rect(30, 30, 90, 18),
+                closeOnSelect = true,
+            )
+
+        engine.open(request)
+        clock.advance(25L)
+        engine.onFrame(ctx, 320, 180, 1f)
+        val panel = requireNotNull(engine.debugPanelRect(owner))
+        val style = engine.currentStyle()
+        val optionX = panel.x + style.panelPaddingX + style.rowPaddingX + 1
+        val optionY = panel.y + style.panelPaddingY + 1
+
+        assertTrue(engine.handleMouseDown(optionX, optionY, MouseButton.LEFT))
+        assertFalse(engine.isClosingFor(owner))
+        assertTrue(engine.handleMouseUp(optionX, optionY, MouseButton.LEFT))
+        assertTrue(engine.isOpen())
+        assertTrue(engine.isClosingFor(owner))
+
+        engine.open(request)
+        assertTrue(engine.isOpen())
+        assertFalse(engine.isClosingFor(owner))
+        clock.advance(25L)
+        engine.onFrame(ctx, 320, 180, 1f)
+
+        assertTrue(engine.isOpenFor(owner))
+    }
+
+    @Test
     fun `keyboard navigation skips disabled options and enter selects`() {
         val clock = FakeClock()
         val owner = "select.keyboard"
         val engine = SelectEngine(clock = clock)
         engine.setStyle(SelectStyle(openDurationMs = 1L, closeDurationMs = 1L))
-        val model = selectModel {
-            option("a", "Alpha")
-            option("b", "Beta") { enabled(false) }
-            option("c", "Charlie")
-        }
+        val model =
+            selectModel {
+                option("a", "Alpha")
+                option("b", "Beta") { enabled(false) }
+                option("c", "Charlie")
+            }
         var selected: String? = null
         engine.open(
             SelectOpenRequest(
@@ -136,8 +189,8 @@ class SelectEngineTests {
                 selectedId = "a",
                 anchorRect = Rect(24, 24, 96, 18),
                 closeOnSelect = true,
-                onSelect = { selected = it }
-            )
+                onSelect = { selected = it },
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
 
@@ -155,12 +208,13 @@ class SelectEngineTests {
         val owner = "select.typeahead"
         val engine = SelectEngine(clock = clock)
         engine.setStyle(SelectStyle(openDurationMs = 1L, closeDurationMs = 1L, typeAheadResetMs = 300L))
-        val model = selectModel {
-            option("apple", "Apple")
-            option("banana", "Banana")
-            option("blueberry", "Blueberry")
-            option("cherry", "Cherry")
-        }
+        val model =
+            selectModel {
+                option("apple", "Apple")
+                option("banana", "Banana")
+                option("blueberry", "Blueberry")
+                option("cherry", "Cherry")
+            }
         var selected: String? = null
         engine.open(
             SelectOpenRequest(
@@ -170,8 +224,8 @@ class SelectEngineTests {
                 selectedId = null,
                 anchorRect = Rect(10, 10, 90, 18),
                 closeOnSelect = true,
-                onSelect = { selected = it }
-            )
+                onSelect = { selected = it },
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
 
@@ -186,10 +240,11 @@ class SelectEngineTests {
         val owner = "select.animation"
         val engine = SelectEngine(clock = clock)
         engine.setStyle(SelectStyle(openDurationMs = 100L, closeDurationMs = 80L))
-        val model = selectModel {
-            option("one", "One")
-            option("two", "Two")
-        }
+        val model =
+            selectModel {
+                option("one", "One")
+                option("two", "Two")
+            }
         engine.open(
             SelectOpenRequest(
                 owner = owner,
@@ -197,8 +252,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = null,
                 anchorRect = Rect(20, 20, 96, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
         assertTrue(engine.snapshot().animationProgress <= 0.01f)
@@ -224,13 +279,14 @@ class SelectEngineTests {
     }
 
     @Test
-    fun `overlay consumes pointer before base dispatch when select is open`() {
-        val owner = "select.overlay.order"
+    fun `portal popup consumes pointer before base dispatch when select is open`() {
+        val owner = "select.portal.order"
         val engine = SelectEngine()
-        val model = selectModel {
-            option("x", "X")
-            option("y", "Y")
-        }
+        val model =
+            selectModel {
+                option("x", "X")
+                option("y", "Y")
+            }
         engine.open(
             SelectOpenRequest(
                 owner = owner,
@@ -238,8 +294,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "x",
                 anchorRect = Rect(26, 26, 88, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 320, 180, 1f)
         val panel = engine.debugPanelRect(owner)
@@ -253,11 +309,12 @@ class SelectEngineTests {
         val owner = "select.wheel.scroll"
         val engine = SelectEngine()
         engine.setStyle(SelectStyle(openDurationMs = 1L, closeDurationMs = 1L, wheelStepRows = 1))
-        val model = selectModel {
-            repeat(40) { index ->
-                option("id-$index", "Item $index")
+        val model =
+            selectModel {
+                repeat(40) { index ->
+                    option("id-$index", "Item $index")
+                }
             }
-        }
         engine.open(
             SelectOpenRequest(
                 owner = owner,
@@ -265,8 +322,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "id-0",
                 anchorRect = Rect(20, 20, 90, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 320, 140, 1f)
         val panel = engine.debugPanelRect(owner)
@@ -291,14 +348,15 @@ class SelectEngineTests {
                 closeDurationMs = 1L,
                 maxPanelHeightPadding = 8,
                 scrollbarTrackColor = trackColor,
-                scrollbarThumbColor = thumbColor
-            )
+                scrollbarThumbColor = thumbColor,
+            ),
         )
-        val overflowModel = selectModel {
-            repeat(50) { index ->
-                option("id-$index", "Option $index")
+        val overflowModel =
+            selectModel {
+                repeat(50) { index ->
+                    option("id-$index", "Option $index")
+                }
             }
-        }
         overflowEngine.open(
             SelectOpenRequest(
                 owner = "select.scrollbar.overflow",
@@ -306,11 +364,11 @@ class SelectEngineTests {
                 entries = overflowModel.entries,
                 selectedId = "id-0",
                 anchorRect = Rect(18, 16, 100, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         val overflowCommands = mutableListOf<RenderCommand>()
-        overflowEngine.appendOverlayCommands(ctx, 240, 120, overflowCommands)
+        overflowEngine.appendPortalCommands(ctx, 240, 120, overflowCommands)
         assertTrue(overflowCommands.any { it is RenderCommand.DrawRect && it.color == trackColor })
         assertTrue(overflowCommands.any { it is RenderCommand.DrawRect && it.color == thumbColor })
         val pushClips = overflowCommands.count { it is RenderCommand.PushClip }
@@ -324,14 +382,15 @@ class SelectEngineTests {
                 closeDurationMs = 1L,
                 maxPanelHeightPadding = 8,
                 scrollbarTrackColor = trackColor,
-                scrollbarThumbColor = thumbColor
-            )
+                scrollbarThumbColor = thumbColor,
+            ),
         )
-        val noOverflowModel = selectModel {
-            option("a", "A")
-            option("b", "B")
-            option("c", "C")
-        }
+        val noOverflowModel =
+            selectModel {
+                option("a", "A")
+                option("b", "B")
+                option("c", "C")
+            }
         noOverflowEngine.open(
             SelectOpenRequest(
                 owner = "select.scrollbar.fit",
@@ -339,11 +398,11 @@ class SelectEngineTests {
                 entries = noOverflowModel.entries,
                 selectedId = "a",
                 anchorRect = Rect(18, 16, 100, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         val noOverflowCommands = mutableListOf<RenderCommand>()
-        noOverflowEngine.appendOverlayCommands(ctx, 240, 200, noOverflowCommands)
+        noOverflowEngine.appendPortalCommands(ctx, 240, 200, noOverflowCommands)
         assertFalse(noOverflowCommands.any { it is RenderCommand.DrawRect && it.color == trackColor })
         assertFalse(noOverflowCommands.any { it is RenderCommand.DrawRect && it.color == thumbColor })
         val pushClipsNoOverflow = noOverflowCommands.count { it is RenderCommand.PushClip }
@@ -360,14 +419,15 @@ class SelectEngineTests {
                 openDurationMs = 1L,
                 closeDurationMs = 1L,
                 maxPanelHeightPadding = 8,
-                scrollbarWidth = 8
-            )
+                scrollbarWidth = 8,
+            ),
         )
-        val model = selectModel {
-            repeat(64) { index ->
-                option("id-$index", "Option $index")
+        val model =
+            selectModel {
+                repeat(64) { index ->
+                    option("id-$index", "Option $index")
+                }
             }
-        }
         engine.open(
             SelectOpenRequest(
                 owner = owner,
@@ -375,8 +435,8 @@ class SelectEngineTests {
                 entries = model.entries,
                 selectedId = "id-0",
                 anchorRect = Rect(20, 20, 120, 18),
-                closeOnSelect = true
-            )
+                closeOnSelect = true,
+            ),
         )
         engine.onFrame(ctx, 300, 140, 1f)
         val panel = engine.debugPanelRect(owner)

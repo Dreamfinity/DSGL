@@ -13,7 +13,7 @@ sealed class InputType {
         val placeholder: String = "",
         val allowedChars: String? = null,
         val minLength: Int? = null,
-        val maxLength: Int? = null
+        val maxLength: Int? = null,
     ) : InputType()
 
     /** Password input rendered with masking. */
@@ -21,7 +21,7 @@ sealed class InputType {
         val value: String = "",
         val placeholder: String = "",
         val minLength: Int? = null,
-        val maxLength: Int? = null
+        val maxLength: Int? = null,
     ) : InputType()
 
     /** Numeric input. */
@@ -29,7 +29,7 @@ sealed class InputType {
         val value: Long = 0L,
         val placeholder: String = "",
         val min: Long? = null,
-        val max: Long? = null
+        val max: Long? = null,
     ) : InputType()
 
     /** Range slider input. */
@@ -37,7 +37,7 @@ sealed class InputType {
         val value: Long = 0L,
         val min: Long = 0L,
         val max: Long = 100L,
-        val step: Long? = null
+        val step: Long? = null,
     ) : InputType()
 
     /** Checkbox group input. */
@@ -45,19 +45,19 @@ sealed class InputType {
         val variants: List<InputOption>,
         val selected: Set<String> = emptySet(),
         val minSelected: Int? = null,
-        val maxSelected: Int? = null
+        val maxSelected: Int? = null,
     ) : InputType()
 
     /** Radio group input. */
     data class Radio(
         val variants: List<InputOption>,
-        val selected: String? = null
+        val selected: String? = null,
     ) : InputType()
 
     /** Date/time input. */
     data class Date(
         val value: Instant? = null,
         val zoneId: ZoneId? = null,
-        val placeholder: String = "dd.MM.yyyy HH:mm"
+        val placeholder: String = "dd.MM.yyyy HH:mm",
     ) : InputType()
 }

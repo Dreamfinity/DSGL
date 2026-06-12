@@ -1,10 +1,16 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
+import org.dreamfinity.dsgl.core.components.modal.BackdropMode
+import org.dreamfinity.dsgl.core.components.modal.ModalSize
+import org.dreamfinity.dsgl.core.components.modal.ModalSpec
+import org.dreamfinity.dsgl.core.components.modal.modalBody
+import org.dreamfinity.dsgl.core.components.modal.modalFooter
+import org.dreamfinity.dsgl.core.components.modal.modalHeader
+import org.dreamfinity.dsgl.core.components.modal.modalTitle
 import org.dreamfinity.dsgl.core.dsl.*
-import org.dreamfinity.dsgl.core.components.modal.*
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
 fun UiScope.modalsSection(
@@ -13,7 +19,7 @@ fun UiScope.modalsSection(
     onRemoveModal: (String) -> Unit,
     onPopTopModal: () -> Unit,
     onClearModals: () -> Unit,
-    onInfo: (String) -> Unit
+    onInfo: (String) -> Unit,
 ) {
     var modalBackgroundCounter by useState(0)
 
@@ -76,26 +82,31 @@ fun UiScope.modalsSection(
         }
 
         text({
-            val stack = if (modals.isEmpty()) "[]" else modals.joinToString(
-                prefix = "[",
-                postfix = "]"
-            ) { it.key }
+            val stack =
+                if (modals.isEmpty()) {
+                    "[]"
+                } else {
+                    modals.joinToString(
+                        prefix = "[",
+                        postfix = "]",
+                    ) { it.key }
+                }
             value = "Stack=$stack"
             style = { color = DEMO_MUTED }
         })
         text(
             "Background counter=$modalBackgroundCounter",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
     }
 }
 
-private fun basicModal(onRemoveModal: (String) -> Unit): ModalSpec {
-    return ModalSpec(
+private fun basicModal(onRemoveModal: (String) -> Unit): ModalSpec =
+    ModalSpec(
         key = "modal.basic",
         backdrop = BackdropMode.True,
         keyboard = true,
-        onHide = { onRemoveModal("modal.basic") }
+        onHide = { onRemoveModal("modal.basic") },
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Basic Modal")
@@ -109,14 +120,13 @@ private fun basicModal(onRemoveModal: (String) -> Unit): ModalSpec {
             })
         }
     }
-}
 
-private fun staticModal(onRemoveModal: (String) -> Unit): ModalSpec {
-    return ModalSpec(
+private fun staticModal(onRemoveModal: (String) -> Unit): ModalSpec =
+    ModalSpec(
         key = "modal.static",
         backdrop = BackdropMode.Static,
         keyboard = false,
-        onHide = { onRemoveModal("modal.static") }
+        onHide = { onRemoveModal("modal.static") },
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Static Backdrop")
@@ -131,21 +141,20 @@ private fun staticModal(onRemoveModal: (String) -> Unit): ModalSpec {
             })
         }
     }
-}
 
-private fun largeCenteredModal(onRemoveModal: (String) -> Unit): ModalSpec {
-    return ModalSpec(
+private fun largeCenteredModal(onRemoveModal: (String) -> Unit): ModalSpec =
+    ModalSpec(
         key = "modal.large",
         size = ModalSize.Lg,
         centered = true,
-        onHide = { onRemoveModal("modal.large") }
+        onHide = { onRemoveModal("modal.large") },
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Large Centered")
         }
         modalBody {
             text("Preset size: Lg; centered=true")
-            text("ModalHost keeps background inert while open.", { style = { color = DEMO_MUTED } })
+            text("Modal portal keeps background inert while open.", { style = { color = DEMO_MUTED } })
         }
         modalFooter {
             button("Done", {
@@ -153,15 +162,11 @@ private fun largeCenteredModal(onRemoveModal: (String) -> Unit): ModalSpec {
             })
         }
     }
-}
 
-private fun flowStep1Modal(
-    onPushModal: (ModalSpec) -> Unit,
-    onRemoveModal: (String) -> Unit
-): ModalSpec {
-    return ModalSpec(
+private fun flowStep1Modal(onPushModal: (ModalSpec) -> Unit, onRemoveModal: (String) -> Unit): ModalSpec =
+    ModalSpec(
         key = "modal.flow.1",
-        onHide = { onRemoveModal("modal.flow.1") }
+        onHide = { onRemoveModal("modal.flow.1") },
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Flow Step 1")
@@ -180,13 +185,12 @@ private fun flowStep1Modal(
             })
         }
     }
-}
 
-private fun flowStep2Modal(onRemoveModal: (String) -> Unit): ModalSpec {
-    return ModalSpec(
+private fun flowStep2Modal(onRemoveModal: (String) -> Unit): ModalSpec =
+    ModalSpec(
         key = "modal.flow.2",
         centered = true,
-        onHide = { onRemoveModal("modal.flow.2") }
+        onHide = { onRemoveModal("modal.flow.2") },
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle("Flow Step 2")
@@ -200,4 +204,3 @@ private fun flowStep2Modal(onRemoveModal: (String) -> Unit): ModalSpec {
             })
         }
     }
-}

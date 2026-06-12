@@ -1,11 +1,11 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
-import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.dom.elements.InputOption
 import org.dreamfinity.dsgl.core.dom.elements.InputType
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
 import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.core.select.SelectRuntime
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
 import org.dreamfinity.dsgl.core.select.SelectStyle
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
@@ -13,22 +13,21 @@ import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import java.time.Instant
 import java.time.ZoneId
 
-private val inputsCheckboxOptions = listOf(
-    InputOption("alpha", "Alpha"),
-    InputOption("beta", "Beta"),
-    InputOption("gamma", "Gamma")
-)
+private val inputsCheckboxOptions =
+    listOf(
+        InputOption("alpha", "Alpha"),
+        InputOption("beta", "Beta"),
+        InputOption("gamma", "Gamma"),
+    )
 
-private val inputsRadioOptions = listOf(
-    InputOption("north", "North"),
-    InputOption("center", "Center"),
-    InputOption("south", "South")
-)
+private val inputsRadioOptions =
+    listOf(
+        InputOption("north", "North"),
+        InputOption("center", "Center"),
+        InputOption("south", "South"),
+    )
 
-fun UiScope.inputsGallerySection(
-    clippingScrollDemoText: String,
-    onClippingScrollDemoTextChange: (String) -> Unit
-) {
+fun UiScope.inputsGallerySection(clippingScrollDemoText: String, onClippingScrollDemoTextChange: (String) -> Unit) {
     var openedAt by useState(Instant.now())
     var timeZoneId by useState(ZoneId.systemDefault())
     var sharedRangeValue by useState(35L)
@@ -58,9 +57,13 @@ fun UiScope.inputsGallerySection(
         return emptySet()
     }
 
-    fun checkboxValueString(): String = inputCheckboxValue.toList().sorted().joinToString(",")
+    fun checkboxValueString(): String =
+        inputCheckboxValue
+            .toList()
+            .sorted()
+            .joinToString(",")
 
-    SelectRuntime.engine.setStyle(
+    DomainPortalServices.applicationSelectEngine.setStyle(
         SelectStyle(
             panelBackgroundColor = 0xFF202A35.toInt(),
             panelBorderColor = 0xFF607286.toInt(),
@@ -69,8 +72,8 @@ fun UiScope.inputsGallerySection(
             optionSelectedBackgroundColor = 0xFF2A4258.toInt(),
             groupTextColor = 0xFFB7C6D6.toInt(),
             openDurationMs = 120L,
-            closeDurationMs = 90L
-        )
+            closeDurationMs = 90L,
+        ),
     )
 
     div({
@@ -84,7 +87,7 @@ fun UiScope.inputsGallerySection(
         text("All InputType variants are interactive below.")
         text(
             "Validation examples: allowed chars, min/max, step, date format.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -109,12 +112,12 @@ fun UiScope.inputsGallerySection(
                         value = "A1",
                         placeholder = "hex",
                         allowedChars = "0123456789ABCDEF",
-                        maxLength = 8
+                        maxLength = 8,
                     ),
                     {
                         key = "input.text"
                         style = { width = 100.percent }
-                    }
+                    },
                 )
 
                 text("Password (max 12)")
@@ -122,12 +125,12 @@ fun UiScope.inputsGallerySection(
                     InputType.Password(
                         value = "",
                         placeholder = "secret",
-                        maxLength = 12
+                        maxLength = 12,
                     ),
                     {
                         key = "input.password"
                         style = { width = 100.percent }
-                    }
+                    },
                 )
 
                 text("Number (10..20, wheel when focused)")
@@ -136,12 +139,12 @@ fun UiScope.inputsGallerySection(
                         value = 15,
                         placeholder = "10..20",
                         min = 10,
-                        max = 20
+                        max = 20,
                     ),
                     {
                         key = "input.number.basic"
                         style = { width = 100.percent }
-                    }
+                    },
                 )
 
                 text("Number 0..100 wired with slider below")
@@ -150,7 +153,7 @@ fun UiScope.inputsGallerySection(
                         value = sharedRangeValue,
                         placeholder = "0..100",
                         min = 0,
-                        max = 100
+                        max = 100,
                     ),
                     {
                         key = "input.number.shared"
@@ -161,7 +164,7 @@ fun UiScope.inputsGallerySection(
                         onValueChange = { event ->
                             sharedRangeValue = event.value.toLongOrNull() ?: sharedRangeValue
                         }
-                    }
+                    },
                 )
 
                 text("Range (step 5, value=$sharedRangeValue)")
@@ -170,7 +173,7 @@ fun UiScope.inputsGallerySection(
                         value = sharedRangeValue,
                         min = 0,
                         max = 100,
-                        step = 5
+                        step = 5,
                     ),
                     {
                         key = "input.range"
@@ -181,7 +184,7 @@ fun UiScope.inputsGallerySection(
                         onValueChange = { event ->
                             sharedRangeValue = event.value.toLongOrNull() ?: sharedRangeValue
                         }
-                    }
+                    },
                 )
             }
 
@@ -200,7 +203,7 @@ fun UiScope.inputsGallerySection(
                         variants = inputsCheckboxOptions,
                         selected = inputCheckboxValue,
                         minSelected = 1,
-                        maxSelected = 2
+                        maxSelected = 2,
                     ),
                     {
                         key = "input.checkbox"
@@ -211,7 +214,7 @@ fun UiScope.inputsGallerySection(
                         onValueChange = { event ->
                             inputCheckboxValue = parseCheckboxSelection(event.parsedValue)
                         }
-                    }
+                    },
                 )
                 text("Selected: ${checkboxValueString()}", { style = { color = DEMO_MUTED } })
 
@@ -219,7 +222,7 @@ fun UiScope.inputsGallerySection(
                 input(
                     InputType.Radio(
                         variants = inputsRadioOptions,
-                        selected = inputRadioValue
+                        selected = inputRadioValue,
                     ),
                     {
                         key = "input.radio"
@@ -230,7 +233,7 @@ fun UiScope.inputsGallerySection(
                         onValueChange = { event ->
                             inputRadioValue = event.parsedValue as? String
                         }
-                    }
+                    },
                 )
                 text("Selected: ${inputRadioValue ?: "-"}", { style = { color = DEMO_MUTED } })
 
@@ -264,12 +267,12 @@ fun UiScope.inputsGallerySection(
                 input(
                     InputType.Date(
                         value = openedAt,
-                        zoneId = timeZoneId
+                        zoneId = timeZoneId,
                     ),
                     {
                         key = "input.date"
                         style = { width = 100.percent }
-                    }
+                    },
                 )
 
                 text("Opened: $openedAt", { style = { color = DEMO_MUTED } })
@@ -286,10 +289,10 @@ fun UiScope.inputsGallerySection(
             }
         })
 
-        text("Select (overlay popup + keyboard + disabled options)")
+        text("Select (portal popup + keyboard + disabled options)")
         text(
             "Use Enter/Space/ArrowDown when focused. Esc closes popup. Wheel scrolls long list.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -374,14 +377,11 @@ fun UiScope.inputsGallerySection(
                     option("alt", "Alternative")
                 }
 
-                button(
-                    if (selectDynamicAlt) "Use option set A" else "Use option set B",
-                    {
-                        onMouseClick = {
-                            selectDynamicAlt = !selectDynamicAlt
-                        }
+                button(if (selectDynamicAlt) "Use option set A" else "Use option set B", {
+                    onMouseClick = {
+                        selectDynamicAlt = !selectDynamicAlt
                     }
-                )
+                })
                 text("Dynamic options")
                 select({
                     key = "input.select.dynamic"
@@ -405,8 +405,9 @@ fun UiScope.inputsGallerySection(
             }
         }
         text(
-            "Select state: basic=${selectBasicValue ?: "-"} many=${selectManyValue ?: "-"} dynamic=${selectDynamicValue ?: "-"}",
-            { style = { color = DEMO_MUTED } }
+            "Select state: basic=${selectBasicValue ?: "-"} many=${selectManyValue ?: "-"} " +
+                "dynamic=${selectDynamicValue ?: "-"}",
+            { style = { color = DEMO_MUTED } },
         )
 
         text("Clipping + internal scrolling demo (100 lines prefilled)", { style = { color = DEMO_MUTED } })
@@ -421,7 +422,7 @@ fun UiScope.inputsGallerySection(
             button("Clear Focus", { onMouseClick = { FocusManager.clearFocus() } })
             text(
                 "1) Clear focus  2) wheel-scroll textarea  3) click visible text: caret must land exactly under cursor",
-                { style = { color = DEMO_MUTED } }
+                { style = { color = DEMO_MUTED } },
             )
         }
         div({

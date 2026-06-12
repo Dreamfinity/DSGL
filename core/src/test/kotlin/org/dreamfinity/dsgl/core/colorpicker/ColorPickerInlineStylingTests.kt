@@ -22,16 +22,17 @@ class ColorPickerInlineStylingTests {
 
     @Test
     fun `inline color picker is stylable in application scope`() {
-        val stylesDir = createTempStylesDir(
-            """
-            color-picker {
-                border-width: 3px;
-                border-color: #224466;
-                padding: 7px;
-                width: 280px;
-            }
-            """.trimIndent()
-        )
+        val stylesDir =
+            createTempStylesDir(
+                """
+                color-picker {
+                    border-width: 3px;
+                    border-color: #224466;
+                    padding: 7px;
+                    width: 280px;
+                }
+                """.trimIndent(),
+            )
         StyleEngine.setStylesDirectory(stylesDir)
         StyleEngine.forceReloadStylesheets()
 

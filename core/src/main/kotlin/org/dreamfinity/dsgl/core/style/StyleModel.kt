@@ -8,13 +8,13 @@ enum class StylePseudoState {
     ACTIVE,
     FOCUS,
     DISABLED,
-    OPEN
+    OPEN,
 }
 
 enum class StyleAlign {
     START,
     CENTER,
-    END
+    END,
 }
 
 enum class Display {
@@ -22,7 +22,7 @@ enum class Display {
     Inline,
     None,
     Flex,
-    Grid
+    Grid,
 }
 
 enum class PositionMode {
@@ -30,19 +30,19 @@ enum class PositionMode {
     Relative,
     Absolute,
     Fixed,
-    Sticky
+    Sticky,
 }
 
 enum class Overflow {
     Visible,
     Hidden,
     Scroll,
-    Auto
+    Auto,
 }
 
 enum class FlexDirection {
     Row,
-    Column
+    Column,
 }
 
 enum class JustifyContent {
@@ -51,58 +51,61 @@ enum class JustifyContent {
     End,
     SpaceBetween,
     SpaceAround,
-    SpaceEvenly
+    SpaceEvenly,
 }
 
 enum class AlignItems {
     Start,
     Center,
     End,
-    Stretch
+    Stretch,
 }
 
 enum class JustifyItems {
     Start,
     Center,
     End,
-    Stretch
+    Stretch,
 }
 
 enum class GridAutoFlow {
     Row,
-    Column
+    Column,
 }
 
 enum class TextWrap {
     Wrap,
-    NoWrap
+    NoWrap,
 }
 
 enum class TextFormatting {
     None,
-    Minecraft
+    Minecraft,
 }
 
 enum class FontWeight {
     Normal,
-    Bold
+    Bold,
 }
 
 enum class FontStyle {
     Normal,
-    Italic
+    Italic,
 }
 
 enum class TextDecoration {
     None,
     Underline,
     Strikethrough,
-    UnderlineStrikethrough
+    UnderlineStrikethrough,
 }
 
 sealed class LineHeightValue {
     object Normal : LineHeightValue()
-    data class Length(val value: CssLength) : LineHeightValue()
+
+    data class Length(
+        val value: CssLength,
+    ) : LineHeightValue()
 }
 
 data class UiTransform(
@@ -110,19 +113,20 @@ data class UiTransform(
     val translateY: Float = 0f,
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
-    val rotateDeg: Float = 0f
+    val rotateDeg: Float = 0f,
 ) {
     fun translated(x: Float, y: Float): UiTransform = copy(translateX = translateX + x, translateY = translateY + y)
+
     fun scaled(x: Float, y: Float = x): UiTransform = copy(scaleX = scaleX * x, scaleY = scaleY * y)
+
     fun rotated(deg: Float): UiTransform = copy(rotateDeg = rotateDeg + deg)
 
-    fun isIdentity(): Boolean {
-        return translateX == 0f &&
-                translateY == 0f &&
-                scaleX == 1f &&
-                scaleY == 1f &&
-                rotateDeg == 0f
-    }
+    fun isIdentity(): Boolean =
+        translateX == 0f &&
+            translateY == 0f &&
+            scaleX == 1f &&
+            scaleY == 1f &&
+            rotateDeg == 0f
 
     companion object {
         val IDENTITY: UiTransform = UiTransform()
@@ -131,7 +135,7 @@ data class UiTransform(
 
 data class TransformOrigin(
     val originX: Float = 0.5f,
-    val originY: Float = 0.5f
+    val originY: Float = 0.5f,
 ) {
     init {
         require(originX in 0f..1f) { "transform originX must be in [0..1]" }
@@ -143,7 +147,9 @@ data class TransformOrigin(
     }
 }
 
-enum class StyleProperty(val key: String) {
+enum class StyleProperty(
+    val key: String,
+) {
     MARGIN("margin"),
     PADDING("padding"),
     BACKGROUND_COLOR("background-color"),
@@ -193,10 +199,12 @@ enum class StyleProperty(val key: String) {
     TEXT_FORMATTING("text-formatting"),
     TRANSFORM("transform"),
     TRANSFORM_ORIGIN("transform-origin"),
-    OPACITY("opacity");
+    OPACITY("opacity"),
+    ;
 
     companion object {
-        private val byName: Map<String, StyleProperty> = entries.associateBy { it.key.lowercase() } +
+        private val byName: Map<String, StyleProperty> =
+            entries.associateBy { it.key.lowercase() } +
                 mapOf(
                     "backgroundcolor" to BACKGROUND_COLOR,
                     "background-color" to BACKGROUND_COLOR,
@@ -220,77 +228,83 @@ enum class StyleProperty(val key: String) {
                     "fontweight" to FONT_WEIGHT,
                     "font-weight" to FONT_WEIGHT,
                     "fontstyle" to FONT_STYLE,
-                    "font-style" to FONT_STYLE
-                ) + mapOf(
-            "position" to POSITION,
-            "left" to LEFT,
-            "top" to TOP,
-            "right" to RIGHT,
-            "bottom" to BOTTOM,
-            "zindex" to Z_INDEX,
-            "z-index" to Z_INDEX,
-            "flexdirection" to FLEX_DIRECTION,
-            "flex-direction" to FLEX_DIRECTION,
-            "justifycontent" to JUSTIFY_CONTENT,
-            "justify-content" to JUSTIFY_CONTENT,
-            "alignitems" to ALIGN_ITEMS,
-            "align-items" to ALIGN_ITEMS,
-            "justifyitems" to JUSTIFY_ITEMS,
-            "justify-items" to JUSTIFY_ITEMS,
-            "flexgrow" to FLEX_GROW,
-            "flex-grow" to FLEX_GROW,
-            "flexshrink" to FLEX_SHRINK,
-            "flex-shrink" to FLEX_SHRINK,
-            "flexbasis" to FLEX_BASIS,
-            "flex-basis" to FLEX_BASIS,
-            "gridcolumns" to GRID_COLUMNS,
-            "grid-columns" to GRID_COLUMNS,
-            "gridrows" to GRID_ROWS,
-            "grid-rows" to GRID_ROWS,
-            "gridautoflow" to GRID_AUTO_FLOW,
-            "grid-auto-flow" to GRID_AUTO_FLOW,
-            "gridcolumnspan" to GRID_COLUMN_SPAN,
-            "grid-column-span" to GRID_COLUMN_SPAN,
-            "gridrowspan" to GRID_ROW_SPAN,
-            "grid-row-span" to GRID_ROW_SPAN,
-            "overflow" to OVERFLOW,
-            "overflowx" to OVERFLOW_X,
-            "overflow-x" to OVERFLOW_X,
-            "overflowy" to OVERFLOW_Y,
-            "overflow-y" to OVERFLOW_Y,
-            "minwidth" to MIN_WIDTH,
-            "min-width" to MIN_WIDTH,
-            "minheight" to MIN_HEIGHT,
-            "min-height" to MIN_HEIGHT,
-            "maxwidth" to MAX_WIDTH,
-            "max-width" to MAX_WIDTH,
-            "maxheight" to MAX_HEIGHT,
-            "max-height" to MAX_HEIGHT,
-            "textwrap" to TEXT_WRAP,
-            "text-wrap" to TEXT_WRAP,
-            "textformatting" to TEXT_FORMATTING,
-            "text-formatting" to TEXT_FORMATTING,
-            "textdecoration" to TEXT_DECORATION,
-            "text-decoration" to TEXT_DECORATION,
-            "obfuscated" to OBFUSCATED,
-            "transform" to TRANSFORM,
-            "transformorigin" to TRANSFORM_ORIGIN,
-            "transform-origin" to TRANSFORM_ORIGIN,
-            "opacity" to OPACITY
-        )
+                    "font-style" to FONT_STYLE,
+                ) +
+                mapOf(
+                    "position" to POSITION,
+                    "left" to LEFT,
+                    "top" to TOP,
+                    "right" to RIGHT,
+                    "bottom" to BOTTOM,
+                    "zindex" to Z_INDEX,
+                    "z-index" to Z_INDEX,
+                    "flexdirection" to FLEX_DIRECTION,
+                    "flex-direction" to FLEX_DIRECTION,
+                    "justifycontent" to JUSTIFY_CONTENT,
+                    "justify-content" to JUSTIFY_CONTENT,
+                    "alignitems" to ALIGN_ITEMS,
+                    "align-items" to ALIGN_ITEMS,
+                    "justifyitems" to JUSTIFY_ITEMS,
+                    "justify-items" to JUSTIFY_ITEMS,
+                    "flexgrow" to FLEX_GROW,
+                    "flex-grow" to FLEX_GROW,
+                    "flexshrink" to FLEX_SHRINK,
+                    "flex-shrink" to FLEX_SHRINK,
+                    "flexbasis" to FLEX_BASIS,
+                    "flex-basis" to FLEX_BASIS,
+                    "gridcolumns" to GRID_COLUMNS,
+                    "grid-columns" to GRID_COLUMNS,
+                    "gridrows" to GRID_ROWS,
+                    "grid-rows" to GRID_ROWS,
+                    "gridautoflow" to GRID_AUTO_FLOW,
+                    "grid-auto-flow" to GRID_AUTO_FLOW,
+                    "gridcolumnspan" to GRID_COLUMN_SPAN,
+                    "grid-column-span" to GRID_COLUMN_SPAN,
+                    "gridrowspan" to GRID_ROW_SPAN,
+                    "grid-row-span" to GRID_ROW_SPAN,
+                    "overflow" to OVERFLOW,
+                    "overflowx" to OVERFLOW_X,
+                    "overflow-x" to OVERFLOW_X,
+                    "overflowy" to OVERFLOW_Y,
+                    "overflow-y" to OVERFLOW_Y,
+                    "minwidth" to MIN_WIDTH,
+                    "min-width" to MIN_WIDTH,
+                    "minheight" to MIN_HEIGHT,
+                    "min-height" to MIN_HEIGHT,
+                    "maxwidth" to MAX_WIDTH,
+                    "max-width" to MAX_WIDTH,
+                    "maxheight" to MAX_HEIGHT,
+                    "max-height" to MAX_HEIGHT,
+                    "textwrap" to TEXT_WRAP,
+                    "text-wrap" to TEXT_WRAP,
+                    "textformatting" to TEXT_FORMATTING,
+                    "text-formatting" to TEXT_FORMATTING,
+                    "textdecoration" to TEXT_DECORATION,
+                    "text-decoration" to TEXT_DECORATION,
+                    "obfuscated" to OBFUSCATED,
+                    "transform" to TRANSFORM,
+                    "transformorigin" to TRANSFORM_ORIGIN,
+                    "transform-origin" to TRANSFORM_ORIGIN,
+                    "opacity" to OPACITY,
+                )
 
         fun fromKeyOrNull(name: String): StyleProperty? = byName[name.trim().lowercase()]
     }
 }
 
 sealed class StyleExpression {
-    data class Literal(val value: String) : StyleExpression()
-    data class VariableRef(val name: String) : StyleExpression()
+    data class Literal(
+        val value: String,
+    ) : StyleExpression()
+
+    data class VariableRef(
+        val name: String,
+    ) : StyleExpression()
 }
 
 data class StyleDeclarations(
     val values: MutableMap<StyleProperty, StyleExpression> = linkedMapOf(),
-    val importantProperties: MutableSet<StyleProperty> = linkedSetOf()
+    val importantProperties: MutableSet<StyleProperty> = linkedSetOf(),
 ) {
     fun set(property: StyleProperty, value: StyleExpression, important: Boolean = false) {
         values[property] = value
@@ -384,7 +398,7 @@ data class ComputedStyle(
     val textFormatting: TextFormatting,
     val transform: UiTransform,
     val transformOrigin: TransformOrigin,
-    val opacity: Float
+    val opacity: Float,
 )
 
 data class ComputedStyleDefaults(
@@ -438,10 +452,10 @@ data class ComputedStyleDefaults(
     val textFormatting: TextFormatting = TextFormatting.None,
     val transform: UiTransform = UiTransform.IDENTITY,
     val transformOrigin: TransformOrigin = TransformOrigin.CENTER,
-    val opacity: Float = 1f
+    val opacity: Float = 1f,
 ) {
-    fun toComputedStyle(): ComputedStyle {
-        return ComputedStyle(
+    fun toComputedStyle(): ComputedStyle =
+        ComputedStyle(
             margin = margin,
             padding = padding,
             backgroundColor = backgroundColor,
@@ -492,7 +506,6 @@ data class ComputedStyleDefaults(
             textFormatting = textFormatting,
             transform = transform,
             transformOrigin = transformOrigin,
-            opacity = opacity
+            opacity = opacity,
         )
-    }
 }

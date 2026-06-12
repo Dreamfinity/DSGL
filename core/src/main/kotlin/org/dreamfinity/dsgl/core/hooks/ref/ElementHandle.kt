@@ -14,7 +14,7 @@ interface ElementHandle {
 }
 
 internal class NodeElementHandle(
-    node: DOMNode
+    node: DOMNode,
 ) : ElementHandle {
     private var nodeRef: DOMNode? = node
 
@@ -25,13 +25,12 @@ internal class NodeElementHandle(
         get() = nodeRef?.bounds ?: Rect(0, 0, 0, 0)
 
     override fun requestFocus() {
-        val node = nodeRef ?: return
-        val focusable = FocusManager.resolveFocusable(node) ?: return
-        FocusManager.requestFocus(focusable)
+        FocusManager.requestFocusFrom(nodeRef)
     }
 
+    @Suppress("ForbiddenComment")
     override fun scrollIntoView() {
-        // TODO: add scroll container integration when generic scrolling API is available.
+        // TODO(Veritaris): add scroll container integration when generic scrolling API is available.
     }
 
     fun detach() {

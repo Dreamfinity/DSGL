@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:DsglScreenHost.kt$DsglScreenHost$!inspectorBlocks &amp;&amp; !contextMenuBlocks &amp;&amp; !selectBlocks &amp;&amp; !systemSelectBlocks &amp;&amp; !colorPickerBlocks</ID>
+    <ID>ComplexCondition:DsglScreenHost.kt$DsglScreenHost$inspectorBlocks || contextMenuBlocks || selectBlocks || systemSelectBlocks || colorPickerBlocks</ID>
+    <ID>ComplexCondition:DsglScreenHost.kt$DsglScreenHost$lastWidth > 0 &amp;&amp; lastHeight > 0 &amp;&amp; (rootBounds.width &lt;= 0 || rootBounds.height &lt;= 0)</ID>
+    <ID>ComplexCondition:Mc1710UiAdapter.kt$Mc1710UiAdapter$x &lt; 0 || y &lt; 0 || x >= viewport.width || y >= viewport.height</ID>
+    <ID>ComplexCondition:MsdfTextRenderer.kt$MsdfTextRenderer.SegmentBuffer$last >= 0 &amp;&amp; kind[last] == segmentKind &amp;&amp; color[last] == segmentColor &amp;&amp; kotlin.math.abs(endX[last] - segmentStartX) &lt;= 0.51f &amp;&amp; kotlin.math.abs(y[last] - segmentY) &lt;= 0.51f &amp;&amp; kotlin.math.abs(thickness[last] - segmentThickness) &lt;= 0.1f</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun handleKeyboardKeyDown( keyCode: Int, keyChar: Char, inspectorMouseX: Int, inspectorMouseY: Int, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DsglScreenHost.kt$DsglScreenHost$private fun updateFrameInteractionState( tree: DomTree, dtSeconds: Double, dsglMouseX: Int, dsglMouseY: Int, applicationPortalInputEnabled: Boolean, systemPortalInputEnabled: Boolean, inspectorBlocks: Boolean, )</ID>
+    <ID>CyclomaticComplexMethod:Mc1710UiAdapter.kt$Mc1710UiAdapter$@Suppress("LoopWithTooManyJumpStatements") override fun paint(commands: List&lt;RenderCommand>)</ID>
+    <ID>CyclomaticComplexMethod:MsdfTextRenderer.kt$MsdfTextRenderer$fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float)</ID>
+    <ID>CyclomaticComplexMethod:MsdfTextRenderer.kt$MsdfTextRenderer$private fun drawDecorationSegments(segments: SegmentBuffer, includeDebug: Boolean)</ID>
+    <ID>LargeClass:DsglScreenHost.kt$DsglScreenHost : GuiScreenDsglWindowHost</ID>
+    <ID>LargeClass:Mc1710UiAdapter.kt$Mc1710UiAdapter : UiMeasureContext</ID>
+    <ID>LargeClass:MsdfTextRenderer.kt$MsdfTextRenderer</ID>
+    <ID>LongMethod:Mc1710UiAdapter.kt$Mc1710UiAdapter$@Suppress("LoopWithTooManyJumpStatements") override fun paint(commands: List&lt;RenderCommand>)</ID>
+    <ID>LongMethod:Mc1710UiAdapter.kt$Mc1710UiAdapter$private fun captureScreenRegion(command: RenderCommand.CaptureScreenRegion, viewport: Viewport)</ID>
+    <ID>LongMethod:MsdfTextRenderer.kt$MsdfTextRenderer$fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float)</ID>
+    <ID>MagicNumber:DsglScreenHost.kt$DsglScreenHost$0.25</ID>
+    <ID>MagicNumber:DsglScreenHost.kt$DsglScreenHost$1_000_000_000.0</ID>
+    <ID>MagicNumber:DsglScreenHost.kt$DsglScreenHost$2_000L</ID>
+    <ID>MagicNumber:DsglScreenHost.kt$DsglScreenHost$60.0</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0.1f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0.5f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0.999f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0x00FF_FFFF</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0xFF</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$0xFFFF_FFFFL</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$1000.0</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$120f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$15</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$180f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$24</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$240f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$300f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$31</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$32</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$360f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$3_000L</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$4096</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$6</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$60f</ID>
+    <ID>MagicNumber:Mc1710UiAdapter.kt$Mc1710UiAdapter$8.0</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$0.5f</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$0.999f</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$0x00FF_FFFF</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$0xFF</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$1_000L</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$1_000_000_000.0</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$24</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$31</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$32</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$3_000L</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$4096</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer$64</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer.SegmentBuffer$0.1f</ID>
+    <ID>MagicNumber:MsdfTextRenderer.kt$MsdfTextRenderer.SegmentBuffer$0.51f</ID>
+    <ID>NestedBlockDepth:Mc1710UiAdapter.kt$Mc1710UiAdapter$@Suppress("LoopWithTooManyJumpStatements") override fun paint(commands: List&lt;RenderCommand>)</ID>
+    <ID>NestedBlockDepth:MsdfTextRenderer.kt$MsdfTextRenderer$fun draw(command: RenderCommand.DrawText, opacityMultiplier: Float)</ID>
+    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeApplicationPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>ReturnCount:DsglScreenHost.kt$DsglScreenHost$private fun consumeSystemPortalPointerEvent( mouseX: Int, mouseY: Int, dWheel: Int, mouseButton: Int, mappedButton: MouseButton?, buttonPressed: Boolean, ): Boolean</ID>
+    <ID>TooManyFunctions:DsglScreenHost.kt$DsglScreenHost : GuiScreenDsglWindowHost</ID>
+    <ID>TooManyFunctions:Mc1710UiAdapter.kt$Mc1710UiAdapter : UiMeasureContext</ID>
+    <ID>TooManyFunctions:MsdfTextRenderer.kt$MsdfTextRenderer</ID>
+  </CurrentIssues>
+</SmellBaseline>

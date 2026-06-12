@@ -1,0 +1,454 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:ColorPickerInlineNode.kt$ColorPickerInlineNode$!force &amp;&amp; currentArgb == syncedColorArgb &amp;&amp; previousArgb == syncedPreviousArgb &amp;&amp; mode == syncedMode &amp;&amp; alphaEnabled == syncedAlphaEnabled &amp;&amp; closeOnSelect == syncedCloseOnSelect</ID>
+    <ID>ComplexCondition:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$previous.anchorRect != request.anchorRect || previous.width != request.width || previous.style != request.style || previous.state.alphaEnabled != request.state.alphaEnabled</ID>
+    <ID>ComplexCondition:DOMNode.kt$DOMNode$border.top &lt;= 0 &amp;&amp; border.right &lt;= 0 &amp;&amp; border.bottom &lt;= 0 &amp;&amp; border.left &lt;= 0</ID>
+    <ID>ComplexCondition:DOMNode.kt$DOMNode$relativeOffsetX == 0 &amp;&amp; relativeOffsetY == 0 &amp;&amp; stickyOffsetX == 0 &amp;&amp; stickyOffsetY == 0</ID>
+    <ID>ComplexCondition:DomTree.kt$DomTree$( !laidOut || styleReport.layoutDirty || scrollInvalidation.layoutDirty || requiresIsolatedScopeScrollLayoutFallback ) &amp;&amp; lastWidth > 0 &amp;&amp; lastHeight > 0</ID>
+    <ID>ComplexCondition:FontRegistry.kt$FontRegistry$end > start &amp;&amp; end &lt; text.length &amp;&amp; Character.isLowSurrogate(text[end]) &amp;&amp; Character.isHighSurrogate(text[end - 1])</ID>
+    <ID>ComplexCondition:FontRegistry.kt$FontRegistry$start > 0 &amp;&amp; start &lt; text.length &amp;&amp; Character.isLowSurrogate(text[start]) &amp;&amp; Character.isHighSurrogate(text[start - 1])</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$!dragMoved &amp;&amp; ( kotlin.math.abs(resized.width - dragStartRect.width) >= 2 || kotlin.math.abs(resized.height - dragStartRect.height) >= 2 || kotlin.math.abs(resized.x - dragStartRect.x) >= 2 || kotlin.math.abs(resized.y - dragStartRect.y) >= 2 )</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$!hoverDirty &amp;&amp; lastHoverMouseX == mouseX &amp;&amp; lastHoverMouseY == mouseY &amp;&amp; lastHoverLayoutVersion == layoutVersion</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$a.width &lt;= 0 || a.height &lt;= 0 || b.width &lt;= 0 || b.height &lt;= 0</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$cached != null &amp;&amp; cached.key == key &amp;&amp; cached.nodeClass == klass &amp;&amp; cached.layoutVersion == layoutVersion</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$endedMode == DragMode.MinimizedMove &amp;&amp; clickLike &amp;&amp; panelState == InspectorPanelState.Minimized &amp;&amp; minimizedBounds.contains(mouseX, mouseY)</ID>
+    <ID>ComplexCondition:InspectorController.kt$InspectorController$numberText.isEmpty() || numberText == "-" || numberText == "." || numberText == "-."</ID>
+    <ID>ComplexCondition:SurfaceDomInputRouter.kt$SurfaceDomInputRouter$node.onMouseDown != null || node.onMouseUp != null || node.onMouseClick != null || node.onMouseDrag != null || node.onMouseWheel != null || node.onMouseMove != null || node.onKeyDown != null || node.onKeyUp != null</ID>
+    <ID>ComplexCondition:ModalPortalSessionStore.kt$ModalPortalSessionStore$(needsFocusOnTop || (topMost.trapFocus &amp;&amp; focusOutsideTop)) &amp;&amp; !FocusManager.requestFocusFirstInSubtree(topDialogKey)</ID>
+    <ID>ComplexCondition:SelectNode.kt$SelectNode$!controlled &amp;&amp; uncontrolledValue == null &amp;&amp; value != null &amp;&amp; optionExists(value)</ID>
+    <ID>ComplexCondition:SingleLineInputNode.kt$SingleLineInputNode$!showPlaceholder &amp;&amp; focused &amp;&amp; !styleDisabled &amp;&amp; editState.isCaretVisible(caretBlinkPeriodMs)</ID>
+    <ID>ComplexCondition:StyleSelector.kt$StyleSelector.Companion$index &lt; token.length &amp;&amp; (token[index].isLetterOrDigit() || token[index] == '_' || token[index] == '-')</ID>
+    <ID>ComplexCondition:StyleSelector.kt$StyleSelector.Companion$index &lt; trimmed.length &amp;&amp; !trimmed[index].isWhitespace() &amp;&amp; trimmed[index] != '>' &amp;&amp; trimmed[index] != '+' &amp;&amp; trimmed[index] != '~'</ID>
+    <ID>ComplexCondition:SystemColorPickerCustomSurfaceNodes.kt$ColorFieldSurfaceNode$style != typedTemplate.style || hueDeg != typedTemplate.hueDeg || saturation != typedTemplate.saturation || brightness != typedTemplate.brightness</ID>
+    <ID>ComplexCondition:SystemColorPickerCustomSurfaceNodes.kt$ColorFieldSurfaceNode$this.style != style || this.hueDeg != hueDeg || saturation != nextSaturation || brightness != nextBrightness</ID>
+    <ID>ComplexCondition:SystemColorPickerCustomSurfaceNodes.kt$EyedropperMagnifierDrawNode$this.columns != nextColumns || this.rows != nextRows || this.magnification != nextMagnification || this.gridEnabled != gridEnabled || this.gridColor != gridColor</ID>
+    <ID>ComplexCondition:TextAreaNode.kt$TextAreaNode$!showPlaceholder &amp;&amp; focused &amp;&amp; !styleDisabled &amp;&amp; editState.isCaretVisible(caretBlinkPeriodMs)</ID>
+    <ID>ComplexCondition:TextDecorationLayout.kt$TextDecorationLayout$last != null &amp;&amp; last.type == quad.type &amp;&amp; last.lineIndex == quad.lineIndex &amp;&amp; kotlin.math.abs(last.xEnd - quad.xStart) &lt;= 0.51f &amp;&amp; kotlin.math.abs(last.y - quad.y) &lt;= 0.51f &amp;&amp; kotlin.math.abs(last.thickness - quad.thickness) &lt;= 0.1f &amp;&amp; last.color == quad.color</ID>
+    <ID>CyclomaticComplexMethod:ColorPickerController.kt$ColorPickerController$fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ColorPickerController.kt$ColorPickerController$fun handleMouseDown( globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ColorPickerController.kt$ColorPickerController$private fun applyInputDraftValue(key: String, rawValue: String): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ColorTextCodec.kt$ColorTextCodec$private fun parseHsbLike(raw: String): RgbaColor?</ID>
+    <ID>CyclomaticComplexMethod:ColorTextCodec.kt$ColorTextCodec$private fun parseRgbLike(raw: String): ParsedColorText?</ID>
+    <ID>CyclomaticComplexMethod:ComponentHookRuntime.kt$ComponentHookRuntime$private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch)</ID>
+    <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun measureBlock(ctx: UiMeasureContext, children: List&lt;DOMNode>, wrapWidth: Int?): Size</ID>
+    <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun measureWithConstraint(ctx: UiMeasureContext, constrainedContentWidth: Int?): Size</ID>
+    <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun renderFlex(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
+    <ID>CyclomaticComplexMethod:ContainerNode.kt$ContainerNode$private fun renderGrid(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
+    <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$@Suppress("LoopWithTooManyJumpStatements") private fun ensureLayout()</ID>
+    <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>CyclomaticComplexMethod:ContextMenuEngine.kt$ContextMenuEngine$fun handleKeyDown(keyCode: Int): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$fun measure( menuToken: Long, entries: List&lt;MenuEntry>, style: ContextMenuStyle, fontId: String?, fontSize: Int?, ctx: UiMeasureContext, dpiScale: Float, ): Measurement</ID>
+    <ID>CyclomaticComplexMethod:CssLength.kt$fun parseCssLength(raw: String, allowUnitlessZero: Boolean = true): CssLength</ID>
+    <ID>CyclomaticComplexMethod:DOMNode.kt$DOMNode$fun scrollContainerState(): ScrollContainerState</ID>
+    <ID>CyclomaticComplexMethod:DOMNode.kt$DOMNode$internal fun applyComputedStyle(style: ComputedStyle): NodeStyleApplyResult</ID>
+    <ID>CyclomaticComplexMethod:DOMNode.kt$DOMNode$internal fun restoreScrollSessionSnapshot(snapshot: ScrollSessionSnapshot?)</ID>
+    <ID>CyclomaticComplexMethod:DOMNode.kt$DOMNode$private fun advanceScrollAnimationAxis( scrollContainer: Boolean, maxScroll: Int, vertical: Boolean, dtSeconds: Double, ): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DOMNode.kt$DOMNode$private fun resolveScrollbarResolution( overflowX: Overflow, overflowY: Overflow, contentExtent: Size, baseViewportWidth: Int, baseViewportHeight: Int, ): ScrollbarResolution</ID>
+    <ID>CyclomaticComplexMethod:DefaultDndEngine.kt$DefaultDndEngine$private fun shiftCommand(command: RenderCommand, dx: Int, dy: Int): RenderCommand</ID>
+    <ID>CyclomaticComplexMethod:DomTree.kt$DomTree$fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List&lt;RenderCommand></ID>
+    <ID>CyclomaticComplexMethod:DssParser.kt$DssParser$@Suppress("ThrowsCount") private fun parseDeclarations( sourceName: String, text: String, fromIndex: Int, declarations: StyleDeclarations, rootVars: MutableMap&lt;String, String>, allowVariables: Boolean, warnings: ParseWarnings, ): Int</ID>
+    <ID>CyclomaticComplexMethod:EventBus.kt$EventBus$fun post(event: Event)</ID>
+    <ID>CyclomaticComplexMethod:FontRegistry.kt$FontRegistry$private fun buildShapingSegments( text: String, startIndex: Int, endIndexExclusive: Int, primary: LoadedMsdfFont, fallback: LoadedMsdfFont?, ): List&lt;MutableShapingSegment></ID>
+    <ID>CyclomaticComplexMethod:InlineLayoutTests.kt$InlineLayoutTests$private fun createDisplayInlineScenario(rootWidth: Int, inlineContentWidth: Int): Pair&lt;ContainerNode, ContainerNode></ID>
+    <ID>CyclomaticComplexMethod:InspectorController.kt$InspectorController$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
+    <ID>CyclomaticComplexMethod:InspectorController.kt$InspectorController$private fun applyStyleEdit( selected: DOMNode, property: StyleProperty, operation: EditOperation, step: Float, payload: String?, actionBounds: Rect, )</ID>
+    <ID>CyclomaticComplexMethod:InspectorController.kt$InspectorController$private fun buildExpandedDomSnapshot( root: DOMNode, viewportWidth: Int, viewportHeight: Int, ): InspectorDomSnapshot</ID>
+    <ID>CyclomaticComplexMethod:InspectorController.kt$InspectorController$private fun literalFromComputed(style: ComputedStyle, property: StyleProperty): String</ID>
+    <ID>CyclomaticComplexMethod:InspectorController.kt$InspectorController$private fun updateExpandedDrag( mouseX: Int, mouseY: Int, viewportWidth: Int, viewportHeight: Int, )</ID>
+    <ID>CyclomaticComplexMethod:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$fun build(context: InspectorStyleEditorSnapshotBuildContext): InspectorStyleEditorSnapshotBuildResult</ID>
+    <ID>CyclomaticComplexMethod:KeyInput.kt$KeyInput$fun applyShift(ch: Char, shiftDown: Boolean): Char</ID>
+    <ID>CyclomaticComplexMethod:MinecraftFormattingParser.kt$MinecraftFormattingParser$@Suppress("LoopWithTooManyJumpStatements") private fun parseMinecraft(text: String): ParsedText</ID>
+    <ID>CyclomaticComplexMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
+    <ID>CyclomaticComplexMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
+    <ID>CyclomaticComplexMethod:FloatingPanel.kt$FloatingPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
+    <ID>CyclomaticComplexMethod:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>CyclomaticComplexMethod:SingleLineInputNode.kt$SingleLineInputNode$override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList&lt;RenderCommand>)</ID>
+    <ID>CyclomaticComplexMethod:StyleEngine.kt$StyleEngine$private fun applyProperty( current: ComputedStyle, parentComputed: ComputedStyle?, property: StyleProperty, expression: StyleExpression, variables: Map&lt;String, String>, rootFontSizePx: Int, ): ComputedStyle</ID>
+    <ID>CyclomaticComplexMethod:StyleEngine.kt$StyleEngine$private fun selectorLabel(selector: StyleSelector): String</ID>
+    <ID>CyclomaticComplexMethod:StyleEngine.kt$StyleEngine$private fun selectorPartMatches(node: DOMNode, part: StyleSelectorPart): Boolean</ID>
+    <ID>CyclomaticComplexMethod:StyleSelector.kt$StyleSelector.Companion$@Suppress("LoopWithTooManyJumpStatements") fun parse(rawSelector: String): StyleSelector</ID>
+    <ID>CyclomaticComplexMethod:StyleSelector.kt$StyleSelector.Companion$private fun parsePartToken(token: String, rawSelector: String): StyleSelectorPart</ID>
+    <ID>CyclomaticComplexMethod:StyleValueParsing.kt$fun validateLiteralForProperty( property: StyleProperty, literal: String, warningReporter: StyleWarningReporter? = null, deprecatedLengthWarningKey: String = "deprecated.unitless-length", )</ID>
+    <ID>CyclomaticComplexMethod:StylesheetManager.kt$StylesheetManager$@Synchronized fun pollForChanges(force: Boolean = false)</ID>
+    <ID>CyclomaticComplexMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
+    <ID>CyclomaticComplexMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector native body content remains clipped in narrow viewport`()</ID>
+    <ID>CyclomaticComplexMethod:TextAreaNode.kt$TextAreaNode$override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList&lt;RenderCommand>)</ID>
+    <ID>CyclomaticComplexMethod:TextAreaNode.kt$TextAreaNode$private fun handleKey(event: KeyboardKeyDownEvent)</ID>
+    <ID>CyclomaticComplexMethod:TextEditShortcutDispatcher.kt$TextEditShortcutDispatcher$fun dispatch(event: KeyboardKeyDownEvent, callbacks: TextShortcutCallbacks): Boolean</ID>
+    <ID>LargeClass:ColorPickerController.kt$ColorPickerController</ID>
+    <ID>LargeClass:ColorPickerPopupEngineTests.kt$ColorPickerPopupEngineTests</ID>
+    <ID>LargeClass:ComponentHookRuntime.kt$ComponentHookRuntime</ID>
+    <ID>LargeClass:ContainerNode.kt$ContainerNode : DOMNode</ID>
+    <ID>LargeClass:ContextMenuEngine.kt$ContextMenuEngine : ContextMenuPortalService</ID>
+    <ID>LargeClass:DOMNode.kt$DOMNode</ID>
+    <ID>LargeClass:DefaultDndEngine.kt$DefaultDndEngine : DndEngine</ID>
+    <ID>LargeClass:FontRegistry.kt$FontRegistry</ID>
+    <ID>LargeClass:InspectorController.kt$InspectorController</ID>
+    <ID>LargeClass:PositionedLayoutStickyBehaviorTests.kt$PositionedLayoutStickyBehaviorTests</ID>
+    <ID>LargeClass:SelectEngine.kt$SelectEngine</ID>
+    <ID>LargeClass:StyleEngine.kt$StyleEngine</ID>
+    <ID>LargeClass:StyleScope.kt$StyleScope : CssLengthUnitsDsl</ID>
+    <ID>LargeClass:SystemColorPickerPopupBodyNode.kt$SystemColorPickerPopupBodyNode : DOMNode</ID>
+    <ID>LargeClass:SystemInspectorPortalNode.kt$SystemInspectorPortalNode : DOMNode</ID>
+    <ID>LargeClass:SystemPortalColorPickerEntryTests.kt$SystemPortalColorPickerEntryTests</ID>
+    <ID>LargeClass:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests</ID>
+    <ID>LargeClass:TextAreaNode.kt$TextAreaNode : DOMNode</ID>
+    <ID>LargeClass:TextPerformanceHotPathCharacterizationTests.kt$TextPerformanceHotPathCharacterizationTests</ID>
+    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun appendCommands( layout: ColorPickerLayout, out: MutableList&lt;RenderCommand>, nowMs: Long = System.currentTimeMillis(), )</ID>
+    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun appendEyedropperPreview(viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>)</ID>
+    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun buildLayout(bounds: Rect): ColorPickerLayout</ID>
+    <ID>LongMethod:ColorPickerController.kt$ColorPickerController$fun handleMouseDown( globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout, ): Boolean</ID>
+    <ID>LongMethod:ComponentHookRuntime.kt$ComponentHookRuntime$private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch)</ID>
+    <ID>LongMethod:ContainerNode.kt$ContainerNode$private fun renderFlex(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
+    <ID>LongMethod:ContainerNode.kt$ContainerNode$private fun renderGrid(ctx: UiMeasureContext, children: List&lt;DOMNode>)</ID>
+    <ID>LongMethod:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>LongMethod:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$fun measure( menuToken: Long, entries: List&lt;MenuEntry>, style: ContextMenuStyle, fontId: String?, fontSize: Int?, ctx: UiMeasureContext, dpiScale: Float, ): Measurement</ID>
+    <ID>LongMethod:DOMNode.kt$DOMNode$@Suppress("UnusedParameter") internal fun resolveLayoutStyleValues(ctx: UiMeasureContext, parentContentWidth: Int?, parentContentHeight: Int?)</ID>
+    <ID>LongMethod:DOMNode.kt$DOMNode$fun scrollContainerState(): ScrollContainerState</ID>
+    <ID>LongMethod:DOMNode.kt$DOMNode$internal fun applyComputedStyle(style: ComputedStyle): NodeStyleApplyResult</ID>
+    <ID>LongMethod:DOMNode.kt$DOMNode$internal fun syncBaseFrom(template: DOMNode)</ID>
+    <ID>LongMethod:DndHooks.kt$internal fun DsglWindow.useSortable( id: String, nodeKey: Any = id, containerId: String, items: List&lt;String>, data: Any? = null, previewMode: DragPreviewMode = DragPreviewMode.ORIGINAL, hideSourceWhileDragging: Boolean = true, ): Sortable</ID>
+    <ID>LongMethod:DomTree.kt$DomTree$fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List&lt;RenderCommand></ID>
+    <ID>LongMethod:DssParser.kt$DssParser$@Suppress("ThrowsCount") private fun parseDeclarations( sourceName: String, text: String, fromIndex: Int, declarations: StyleDeclarations, rootVars: MutableMap&lt;String, String>, allowVariables: Boolean, warnings: ParseWarnings, ): Int</ID>
+    <ID>LongMethod:InlineLayoutTests.kt$InlineLayoutTests$private fun createDisplayInlineScenario(rootWidth: Int, inlineContentWidth: Int): Pair&lt;ContainerNode, ContainerNode></ID>
+    <ID>LongMethod:InspectorController.kt$InspectorController$private fun buildExpandedDomSnapshot( root: DOMNode, viewportWidth: Int, viewportHeight: Int, ): InspectorDomSnapshot</ID>
+    <ID>LongMethod:InspectorController.kt$InspectorController$private fun literalFromComputed(style: ComputedStyle, property: StyleProperty): String</ID>
+    <ID>LongMethod:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$fun build(context: InspectorStyleEditorSnapshotBuildContext): InspectorStyleEditorSnapshotBuildResult</ID>
+    <ID>LongMethod:ModalDsl.kt$fun UiScope.modalPortal(modals: List&lt;ModalSpec>, modalKey: String = "modal.host", content: UiScope.() -> Unit)</ID>
+    <ID>LongMethod:MsdfFontMetaParser.kt$MsdfFontMetaParser$fun parse(rawJson: String): MsdfFontMeta</ID>
+    <ID>LongMethod:FloatingPanel.kt$FloatingPanel$private fun buildResizedRect(viewportWidth: Int, viewportHeight: Int): Rect</ID>
+    <ID>LongMethod:PositionedLayoutStickyBehaviorTests.kt$PositionedLayoutStickyBehaviorTests$@Test fun `non-sticky positioned modes remain unchanged with sticky enabled`()</ID>
+    <ID>LongMethod:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>LongMethod:StyleEngine.kt$StyleEngine$private fun applyProperty( current: ComputedStyle, parentComputed: ComputedStyle?, property: StyleProperty, expression: StyleExpression, variables: Map&lt;String, String>, rootFontSizePx: Int, ): ComputedStyle</ID>
+    <ID>LongMethod:StyleValueParsing.kt$fun validateLiteralForProperty( property: StyleProperty, literal: String, warningReporter: StyleWarningReporter? = null, deprecatedLengthWarningKey: String = "deprecated.unitless-length", )</ID>
+    <ID>LongMethod:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$private fun renderExpanded(ctx: UiMeasureContext, snapshot: InspectorDomSnapshot, viewportRect: Rect)</ID>
+    <ID>LongMethod:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$private fun renderHighlights(scope: UiScope, ctx: UiMeasureContext)</ID>
+    <ID>LongMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector clipped body blocks hidden row input and accepts visible portion`()</ID>
+    <ID>LongMethod:SystemPortalInspectorNativeEntryTests.kt$SystemPortalInspectorNativeEntryTests$@Test fun `inspector wheel scrolling remains symmetric across rebuilds`()</ID>
+    <ID>LongMethod:TextPerformanceHotPathCharacterizationTests.kt$TextPerformanceHotPathCharacterizationTests$@Test fun `cache boundaries are explicit for wrapped layout paths`()</ID>
+    <ID>LongParameterList:ColorPickerInlineNode.kt$ColorPickerInlineNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
+    <ID>LongParameterList:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$( controlled: Boolean = false, value: RgbaColor? = null, defaultValue: RgbaColor = RgbaColor.WHITE, previousValue: RgbaColor? = null, mode: ColorFormatMode = ColorFormatMode.HEX, alphaEnabled: Boolean = true, key: Any? = null, )</ID>
+    <ID>LongParameterList:ColorPickerPopupEngine.kt$ColorPickerPopupManager$( ownerDomain: ScreenDomainId = ScreenDomainId.Application, anchorRect: Rect, title: String, state: ColorPickerState, style: ColorPickerStyle = ColorPickerStyle(), width: Int = 320, draggable: Boolean = true, closeOnOutsideClick: Boolean = false, onPreview: ((RgbaColor) -> Unit)? = null, onChange: ((RgbaColor) -> Unit)? = null, onCommit: ((RgbaColor) -> Unit)? = null, onClose: (() -> Unit)? = null, )</ID>
+    <ID>LongParameterList:ComponentProps.kt$ComponentProps$( var style: StyleScope.() -> Unit = {}, var key: Any? = null, var id: String? = null, var className: String = "", var classes: Set&lt;String> = emptySet(), var overlapChildren: Boolean = false, var disabled: Boolean = false, var draggable: Boolean = false, var droppable: Boolean = false, var dragPreviewMode: DragPreviewMode = DragPreviewMode.GHOST, var hideSourceWhileDragging: Boolean = false, var dragPreview: (DragPreviewScope.() -> Unit)? = null, var dragPlaceholder: (PlaceholderScope.() -> Unit)? = null, var ref: RefTarget&lt;ElementHandle>? = null, var onMouseEnter: ((MouseEnterEvent) -> Unit)? = null, var onMouseLeave: ((MouseLeaveEvent) -> Unit)? = null, var onMouseOver: ((MouseOverEvent) -> Unit)? = null, var onMouseMove: ((MouseMoveEvent) -> Unit)? = null, var onMouseDown: ((MouseDownEvent) -> Unit)? = null, var onMouseUp: ((MouseUpEvent) -> Unit)? = null, var onMouseClick: ((MouseClickEvent) -> Unit)? = null, var onMouseDrag: ((MouseDragEvent) -> Unit)? = null, var onMouseWheel: ((MouseWheelEvent) -> Unit)? = null, var onKeyDown: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyUp: ((KeyboardKeyUpEvent) -> Unit)? = null, var onKeyPressed: ((KeyboardKeyDownEvent) -> Unit)? = null, var onKeyReleased: ((KeyboardKeyUpEvent) -> Unit)? = null, var onFocusGain: ((FocusGainEvent) -> Unit)? = null, var onFocusLose: ((FocusLoseEvent) -> Unit)? = null, var onInput: ((InputEvent) -> Unit)? = null, var onValueChange: ((ValueChangedEvent) -> Unit)? = null, var onDragStart: ((DragStartEvent) -> Unit)? = null, var onDrag: ((DragEvent) -> Unit)? = null, var onDragEnd: ((DragEndEvent) -> Unit)? = null, var onDragEnter: ((DragEnterEvent) -> Unit)? = null, var onDragOver: ((DragOverEvent) -> Unit)? = null, var onDragLeave: ((DragLeaveEvent) -> Unit)? = null, var onDrop: ((DropEvent) -> Unit)? = null, )</ID>
+    <ID>LongParameterList:ContainerNode.kt$ContainerNode$( ctx: UiMeasureContext, child: DOMNode, parentContentX: Int, parentContentY: Int, parentContentWidth: Int, parentContentHeight: Int, desiredX: Int, desiredY: Int, desiredWidth: Int, desiredHeight: Int, )</ID>
+    <ID>LongParameterList:DndHooks.kt$( id: String, nodeKey: Any = id, type: String = "default", data: Any? = null, previewMode: DragPreviewMode = DragPreviewMode.GHOST, hideSourceWhileDragging: Boolean = false, renderPreview: (DragPreviewScope.() -> Unit)? = null, renderPlaceholder: (PlaceholderScope.() -> Unit)? = null, onDragStart: ((DragStartEvent) -> Unit)? = null, onDrag: ((DragEvent) -> Unit)? = null, onDragEnd: ((DragEndEvent) -> Unit)? = null, )</ID>
+    <ID>LongParameterList:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$( x: Int, y: Int, width: Int, options: List&lt;String>, property: StyleProperty, unitSelect: Boolean, pointerProjectionScrollY: Int, rowHeightPx: Int, viewportWidth: Int, viewportHeight: Int, mouseX: Int, mouseY: Int, currentScrollIndex: Int, )</ID>
+    <ID>LongParameterList:InspectorStyleEditorSnapshotBuilderTests.kt$InspectorStyleEditorSnapshotBuilderTests$( selected: ContainerNode, inspection: org.dreamfinity.dsgl.core.style.StyleInspection, panelRect: Rect = Rect(20, 20, 360, 260), editableProperties: List&lt;StyleProperty>, pointerProjectionScrollY: Int = 0, mouseX: Int = 180, mouseY: Int = 120, openValueSelectProperty: StyleProperty? = null, openUnitSelectProperty: StyleProperty? = null, openValueSelectScrollIndex: Int = 0, openUnitSelectScrollIndex: Int = 0, )</ID>
+    <ID>LongParameterList:SelectNode.kt$SelectNode$( model: SelectModel, controlled: Boolean = false, value: String? = null, defaultValue: String? = null, closeOnSelect: Boolean = true, ownerDomain: ScreenDomainId = ScreenDomainId.Application, key: Any? = null, )</ID>
+    <ID>LongParameterList:SystemColorPickerPanelManager.kt$SystemColorPickerPortalService$( anchorRect: Rect, title: String, state: ColorPickerState, style: ColorPickerStyle = ColorPickerStyle(), width: Int = 320, draggable: Boolean = true, closeOnOutsideClick: Boolean = false, onPreview: ((RgbaColor) -> Unit)? = null, onChange: ((RgbaColor) -> Unit)? = null, onCommit: ((RgbaColor) -> Unit)? = null, onClose: (() -> Unit)? = null, )</ID>
+    <ID>MagicNumber:AnimationModel.kt$ColorAnimatable$0xFF</ID>
+    <ID>MagicNumber:AnimationModel.kt$ColorAnimatable$24</ID>
+    <ID>MagicNumber:AnimationModel.kt$TransformAnimatable$180f</ID>
+    <ID>MagicNumber:AnimationModel.kt$TransformAnimatable$360f</ID>
+    <ID>MagicNumber:CheckboxGroupNode.kt$CheckboxGroupNode$6</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$0x33222A34</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$12</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$156</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$20</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$24</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$32</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$360f</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$40</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$44</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$5</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$500L</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$6</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$64</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$7</ID>
+    <ID>MagicNumber:ColorPickerController.kt$ColorPickerController$84</ID>
+    <ID>MagicNumber:ColorPickerPopupGeometry.kt$ColorPickerPopupGeometry$20</ID>
+    <ID>MagicNumber:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$120</ID>
+    <ID>MagicNumber:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$24</ID>
+    <ID>MagicNumber:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode$42</ID>
+    <ID>MagicNumber:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$18</ID>
+    <ID>MagicNumber:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$20</ID>
+    <ID>MagicNumber:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$220</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$0.5f</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$0xFF</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$1000f</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$1e-6f</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$24</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$360</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$360f</ID>
+    <ID>MagicNumber:ColorTextCodec.kt$ColorTextCodec$6</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$0.5f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$120f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$1e-6f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$240f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$360f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$5f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$60f</ID>
+    <ID>MagicNumber:ColorTypes.kt$ColorConversions$6f</ID>
+    <ID>MagicNumber:ColorTypes.kt$HslColor$360f</ID>
+    <ID>MagicNumber:ColorTypes.kt$HsvColor$360f</ID>
+    <ID>MagicNumber:ColorTypes.kt$RgbaColor$0.5f</ID>
+    <ID>MagicNumber:ColorTypes.kt$RgbaColor$24</ID>
+    <ID>MagicNumber:ColorTypes.kt$RgbaColor.Companion$0xFF</ID>
+    <ID>MagicNumber:ColorTypes.kt$RgbaColor.Companion$24</ID>
+    <ID>MagicNumber:ContainerNode.kt$ContainerNode$0xFFFF_FFFFL</ID>
+    <ID>MagicNumber:ContainerNode.kt$ContainerNode$32</ID>
+    <ID>MagicNumber:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$14</ID>
+    <ID>MagicNumber:ContextMenuMeasurementCache.kt$ContextMenuMeasurementCache$31</ID>
+    <ID>MagicNumber:DOMNode.kt$DOMNode$0.8f</ID>
+    <ID>MagicNumber:DOMNode.kt$DOMNode$0.999f</ID>
+    <ID>MagicNumber:DOMNode.kt$DOMNode$120</ID>
+    <ID>MagicNumber:DOMNode.kt$DOMNode$31L</ID>
+    <ID>MagicNumber:DateInputNode.kt$DateInputNode$13</ID>
+    <ID>MagicNumber:DateInputNode.kt$DateInputNode$5</ID>
+    <ID>MagicNumber:DefaultDndEngine.kt$DefaultDndEngine$12</ID>
+    <ID>MagicNumber:DefaultDndEngine.kt$DefaultDndEngine$14</ID>
+    <ID>MagicNumber:DefaultDndEngine.kt$DefaultDndEngine$32</ID>
+    <ID>MagicNumber:DefaultDndEngine.kt$DefaultDndEngine$48</ID>
+    <ID>MagicNumber:DefaultDndEngine.kt$DefaultDndEngine$6</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$0.2</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$0.999f</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$1_000_000_000.0</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$240.0</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$2_000L</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$31L</ID>
+    <ID>MagicNumber:DomTree.kt$DomTree$60.0</ID>
+    <ID>MagicNumber:DragPresentation.kt$PlaceholderScope$5</ID>
+    <ID>MagicNumber:Easing.kt$CubicBezierEasing$0.5</ID>
+    <ID>MagicNumber:Easing.kt$CubicBezierEasing$18</ID>
+    <ID>MagicNumber:Easing.kt$CubicBezierEasing$1e-5</ID>
+    <ID>MagicNumber:FontRegistry.kt$AtlasPayload$0xFF</ID>
+    <ID>MagicNumber:FontRegistry.kt$AtlasPayload$24</ID>
+    <ID>MagicNumber:FontRegistry.kt$FontRegistry$0.6f</ID>
+    <ID>MagicNumber:FontRegistry.kt$FontRegistry$1_000_000L</ID>
+    <ID>MagicNumber:FontRegistry.kt$FontRegistry$3_000L</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$0.56f</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$12</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$120</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$128</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$140</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$160</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$18</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$20</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$24</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$26</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$264</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$32</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$40</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$44</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$5</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$6</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$64</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$86</ID>
+    <ID>MagicNumber:InspectorController.kt$InspectorController$96</ID>
+    <ID>MagicNumber:InspectorEditorRegistry.kt$InspectorEditorRegistry$6</ID>
+    <ID>MagicNumber:InspectorPresentationSupport.kt$InspectorPresentationSupport$0.56f</ID>
+    <ID>MagicNumber:InspectorPresentationSupport.kt$InspectorPresentationSupport$6</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$0.40f</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$12</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$140</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$148</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$160</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$18</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$20</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$22</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$24</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$28</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$30</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$34</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$36</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$40</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$6</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$64</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$68</ID>
+    <ID>MagicNumber:InspectorStyleEditorSnapshotBuilder.kt$InspectorStyleEditorSnapshotBuilder$80</ID>
+    <ID>MagicNumber:ItemStackNode.kt$ItemStackNode$11.0</ID>
+    <ID>MagicNumber:LayoutValidator.kt$LayoutValidator$0x6688C15B</ID>
+    <ID>MagicNumber:LayoutValidator.kt$LayoutValidator$0x7700AEEF</ID>
+    <ID>MagicNumber:MeasuredTextRangeWidthSource.kt$MeasuredTextRangeWidthSource$0xFFFF_FFFFL</ID>
+    <ID>MagicNumber:MeasuredTextRangeWidthSource.kt$MeasuredTextRangeWidthSource$32</ID>
+    <ID>MagicNumber:MeasuredTextRangeWidthSource.kt$MeasuredTextRangeWidthSource.Companion$31</ID>
+    <ID>MagicNumber:MediaDsl.kt$ItemStackProps$11.0</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$0x00FF_FFFF</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$0xFF</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$13</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$14</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$24</ID>
+    <ID>MagicNumber:MinecraftFormattingParser.kt$MinecraftFormattingParser$6</ID>
+    <ID>MagicNumber:ModalDsl.kt$132</ID>
+    <ID>MagicNumber:ModalDsl.kt$184</ID>
+    <ID>MagicNumber:ModalDsl.kt$232</ID>
+    <ID>MagicNumber:ModalDsl.kt$6</ID>
+    <ID>MagicNumber:MsdfFontMeta.kt$MsdfFontMeta$0.25f</ID>
+    <ID>MagicNumber:MsdfFontMeta.kt$MsdfFontMeta$0.5f</ID>
+    <ID>MagicNumber:MsdfFontMeta.kt$MsdfFontMeta$0x00A0</ID>
+    <ID>MagicNumber:MsdfFontMeta.kt$MsdfFontMeta.Companion$0xFFFF_FFFFL</ID>
+    <ID>MagicNumber:MsdfFontMeta.kt$MsdfFontMeta.Companion$32</ID>
+    <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$0x7FFF_FFFFL</ID>
+    <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$17</ID>
+    <ID>MagicNumber:ObfuscationTextSelector.kt$ObfuscationTextSelector$31</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$120</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$176</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$18</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$24</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$300</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$34</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$56</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlHost$96</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$0x5F000000</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$14</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$18</ID>
+    <ID>MagicNumber:DebugDomainHosts.kt$DebugDomainControlRootNode$20</ID>
+    <ID>MagicNumber:DomainSurfaceDebugState.kt$DomainSurfaceDebugState$1000.0</ID>
+    <ID>MagicNumber:FloatingPanel.kt$FloatingPanel$6</ID>
+    <ID>MagicNumber:RadioGroupNode.kt$RadioGroupNode$6</ID>
+    <ID>MagicNumber:RangeInputNode.kt$RangeInputNode$12</ID>
+    <ID>MagicNumber:RangeInputNode.kt$RangeInputNode$120</ID>
+    <ID>MagicNumber:SelectEngine.kt$SelectEngine$0.001f</ID>
+    <ID>MagicNumber:SelectEngine.kt$SelectEngine$0.999f</ID>
+    <ID>MagicNumber:SelectMeasurementCache.kt$SelectMeasurementCache$14</ID>
+    <ID>MagicNumber:SelectMeasurementCache.kt$SelectMeasurementCache$31</ID>
+    <ID>MagicNumber:SelectNode.kt$SelectNode$31L</ID>
+    <ID>MagicNumber:SelectNode.kt$SelectNode$6</ID>
+    <ID>MagicNumber:SelectStyle.kt$SelectStyle$4f</ID>
+    <ID>MagicNumber:SingleLineInputNode.kt$SingleLineInputNode$17L</ID>
+    <ID>MagicNumber:SingleLineInputNode.kt$SingleLineInputNode$31L</ID>
+    <ID>MagicNumber:SingleLineInputNode.kt$SingleLineInputNode$6</ID>
+    <ID>MagicNumber:StyleAnimationEngine.kt$StyleAnimationEngine$1000.0</ID>
+    <ID>MagicNumber:StyleAnimationEngine.kt$StyleAnimationEngine$1e-6f</ID>
+    <ID>MagicNumber:StyleEngine.kt$StyleEngine$20</ID>
+    <ID>MagicNumber:StyleEngine.kt$StyleEngine$31</ID>
+    <ID>MagicNumber:StyleEngine.kt$StyleEngine$5</ID>
+    <ID>MagicNumber:StyleEngine.kt$StyleEngine$6</ID>
+    <ID>MagicNumber:StyleModel.kt$StyleDeclarations$31</ID>
+    <ID>MagicNumber:StyleScope.kt$StyleScope$0xFFFFFFFFL</ID>
+    <ID>MagicNumber:StyleValueParsing.kt$0xFF</ID>
+    <ID>MagicNumber:StyleValueParsing.kt$24</ID>
+    <ID>MagicNumber:StyleValueParsing.kt$6</ID>
+    <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$ColorFieldSurfaceNode$5</ID>
+    <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$ColorFieldSurfaceNode$7</ID>
+    <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$ColorSwatchSurfaceNode$0x33222A34</ID>
+    <ID>MagicNumber:SystemColorPickerCustomSurfaceNodes.kt$HueSurfaceNode$360f</ID>
+    <ID>MagicNumber:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperPreviewNode$6</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x18212C39</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x1B293746</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x1E263241</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x22313D4B</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A425164</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A465968</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x2A4E3F56</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x3346596E</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x334D5D70</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x3A47A0FF</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x4426A69A</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x444285F4</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x44F3B33D</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x55394654</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x553F4A57</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x663F4A57</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x66FF5252</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x775E738C</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x77607084</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$0x777A5C84</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$12</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$14</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$160</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$18</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$20</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$22</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$24</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$264</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$32</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$34</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$36</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$40</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$5</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$58</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$6</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$64</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$86</ID>
+    <ID>MagicNumber:SystemInspectorPortalNode.kt$SystemInspectorPortalNode$96</ID>
+    <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$17L</ID>
+    <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$31L</ID>
+    <ID>MagicNumber:TextAreaNode.kt$TextAreaNode$6</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.06f</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.08f</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.1f</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.30f</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.51f</ID>
+    <ID>MagicNumber:TextDecorationLayout.kt$TextDecorationLayout$0.5f</ID>
+    <ID>MagicNumber:TextEditOps.kt$TextEditOps$127</ID>
+    <ID>MagicNumber:TextLayoutEngine.kt$TextLayoutEngine$31</ID>
+    <ID>MagicNumber:TextStyleMetrics.kt$TextStyleMetrics$0x00A0</ID>
+    <ID>NestedBlockDepth:ComponentHookRuntime.kt$ComponentHookRuntime$private fun applyEffectCommitBatch(batch: PendingEffectCommitBatch)</ID>
+    <ID>NestedBlockDepth:ContainerNode.kt$ContainerNode$private fun computeGridPlacements(children: List&lt;DOMNode>, columns: Int): List&lt;GridPlacement></ID>
+    <ID>NestedBlockDepth:ContextMenuEngine.kt$ContextMenuEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>NestedBlockDepth:DssParser.kt$DssParser$@Suppress("ThrowsCount") private fun parseDeclarations( sourceName: String, text: String, fromIndex: Int, declarations: StyleDeclarations, rootVars: MutableMap&lt;String, String>, allowVariables: Boolean, warnings: ParseWarnings, ): Int</ID>
+    <ID>NestedBlockDepth:EventBus.kt$EventBus$fun post(event: Event)</ID>
+    <ID>NestedBlockDepth:FontRegistry.kt$AtlasPayload$private fun decodeDeflatedRgba(bytes: ByteArray): AtlasBitmap?</ID>
+    <ID>NestedBlockDepth:SelectEngine.kt$SelectEngine$fun appendPortalCommands( measureContext: UiMeasureContext, viewportWidth: Int, viewportHeight: Int, out: MutableList&lt;RenderCommand>, )</ID>
+    <ID>NestedBlockDepth:StylesheetManager.kt$StylesheetManager$@Synchronized fun pollForChanges(force: Boolean = false)</ID>
+    <ID>ReturnCount:ColorPickerController.kt$ColorPickerController$fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean</ID>
+    <ID>ReturnCount:ColorPickerController.kt$ColorPickerController$fun handleMouseDown( globalX: Int, globalY: Int, button: MouseButton, layout: ColorPickerLayout, ): Boolean</ID>
+    <ID>ReturnCount:ColorPickerController.kt$ColorPickerController$private fun applyInputDraftValue(key: String, rawValue: String): Boolean</ID>
+    <ID>ReturnCount:ColorPickerPopupEngine.kt$ColorPickerPopupEngine$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
+    <ID>ReturnCount:ColorTextCodec.kt$ColorTextCodec$private fun parseHsbLike(raw: String): RgbaColor?</ID>
+    <ID>ReturnCount:ColorTextCodec.kt$ColorTextCodec$private fun parseHslLike(raw: String): RgbaColor?</ID>
+    <ID>ReturnCount:ColorTextCodec.kt$ColorTextCodec$private fun parseRgbLike(raw: String): ParsedColorText?</ID>
+    <ID>ReturnCount:ComponentHookRuntime.kt$ComponentHookRuntime$private fun isInferenceFrameworkFrame(frame: StackTraceElement): Boolean</ID>
+    <ID>ReturnCount:ComponentHookRuntime.kt$ComponentHookRuntime$private fun normalizeInferenceMethodName(rawMethodName: String): String?</ID>
+    <ID>ReturnCount:ContextMenuEngine.kt$ContextMenuEngine$fun handleKeyDown(keyCode: Int): Boolean</ID>
+    <ID>ReturnCount:DOMNode.kt$DOMNode$open fun handleGenericWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean</ID>
+    <ID>ReturnCount:FontRegistry.kt$FontRegistry$private fun load(descriptor: MsdfFontResource): LoadedMsdfFont?</ID>
+    <ID>ReturnCount:InspectorController.kt$InspectorController$fun handleKeyDown(keyCode: Int, keyChar: Char): Boolean</ID>
+    <ID>ReturnCount:InspectorController.kt$InspectorController$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
+    <ID>ReturnCount:InspectorController.kt$InspectorController$fun handleMouseWheel(mouseX: Int, mouseY: Int, delta: Int): Boolean</ID>
+    <ID>ReturnCount:InspectorController.kt$InspectorController$private fun resolveResizeDragMode(mouseX: Int, mouseY: Int): DragMode</ID>
+    <ID>ReturnCount:SurfaceDomInputRouter.kt$SurfaceDomInputRouter$private fun collectHoverChainLocal( root: DOMNode, mouseX: Int, mouseY: Int, parentTransform: AffineTransform2D, parentInputClipRect: Rect?, out: MutableList&lt;DOMNode>, ): Boolean</ID>
+    <ID>ReturnCount:FloatingPanel.kt$FloatingPanel$fun handleMouseDown( mouseX: Int, mouseY: Int, button: MouseButton, includeCloseButton: Boolean = true, ): Boolean</ID>
+    <ID>ReturnCount:FloatingPanel.kt$FloatingPanel$private fun resolveResizeHandle(panelRect: Rect, mouseX: Int, mouseY: Int): FloatingPanelResizeHandle?</ID>
+    <ID>ReturnCount:SelectEngine.kt$SelectEngine$fun handleKeyDown(keyCode: Int, keyChar: Char = 0.toChar()): Boolean</ID>
+    <ID>ReturnCount:SelectEngine.kt$SelectEngine$fun handleMouseDown(mouseX: Int, mouseY: Int, button: MouseButton): Boolean</ID>
+    <ID>ReturnCount:SelectEngine.kt$SelectEngine$private fun entryAt(current: PopupState, mouseX: Int, mouseY: Int): Int</ID>
+    <ID>ReturnCount:TextEditShortcutDispatcher.kt$TextEditShortcutDispatcher$fun dispatch(event: KeyboardKeyDownEvent, callbacks: TextShortcutCallbacks): Boolean</ID>
+    <ID>TooManyFunctions:ButtonNode.kt$ButtonNode : DOMNode</ID>
+    <ID>TooManyFunctions:CheckboxGroupNode.kt$CheckboxGroupNode : DOMNode</ID>
+    <ID>TooManyFunctions:ColorPickerController.kt$ColorPickerController</ID>
+    <ID>TooManyFunctions:ColorPickerInlineNode.kt$ColorPickerInlineNode : DOMNode</ID>
+    <ID>TooManyFunctions:ColorPickerPopupPaneNode.kt$ColorPickerPopupPaneNode : DOMNode</ID>
+    <ID>TooManyFunctions:ColorPickerPopupEngine.kt$ColorPickerPopupEngine : ColorPickerPopupPortalService</ID>
+    <ID>TooManyFunctions:ColorTextCodec.kt$ColorTextCodec</ID>
+    <ID>TooManyFunctions:ComponentHookRuntime.kt$ComponentHookRuntime</ID>
+    <ID>TooManyFunctions:ContainerNode.kt$ContainerNode : DOMNode</ID>
+    <ID>TooManyFunctions:ContextMenuDsl.kt$ContextMenuSubmenuBuilder</ID>
+    <ID>TooManyFunctions:ContextMenuEngine.kt$ContextMenuEngine : ContextMenuPortalService</ID>
+    <ID>TooManyFunctions:DOMNode.kt$DOMNode</ID>
+    <ID>TooManyFunctions:DefaultDndEngine.kt$DefaultDndEngine : DndEngine</ID>
+    <ID>TooManyFunctions:DomTree.kt$DomTree</ID>
+    <ID>TooManyFunctions:DsglWindow.kt$DsglWindow</ID>
+    <ID>TooManyFunctions:EventBus.kt$EventBus</ID>
+    <ID>TooManyFunctions:FocusManager.kt$FocusManager</ID>
+    <ID>TooManyFunctions:FontRegistry.kt$FontRegistry</ID>
+    <ID>TooManyFunctions:InspectorController.kt$InspectorController</ID>
+    <ID>TooManyFunctions:InspectorEditorRegistry.kt$InspectorEditorRegistry</ID>
+    <ID>TooManyFunctions:SurfaceDomInputRouter.kt$SurfaceDomInputRouter</ID>
+    <ID>TooManyFunctions:LayoutValidator.kt$LayoutValidator</ID>
+    <ID>TooManyFunctions:MsdfFontMeta.kt$MsdfFontMeta</ID>
+    <ID>TooManyFunctions:DebugDomainHosts.kt$DebugDomainControlHost</ID>
+    <ID>TooManyFunctions:FloatingPanel.kt$FloatingPanel</ID>
+    <ID>TooManyFunctions:PositionedLayoutModel.kt$PositionedLayoutModel</ID>
+    <ID>TooManyFunctions:RadioGroupNode.kt$RadioGroupNode : DOMNode</ID>
+    <ID>TooManyFunctions:RangeInputNode.kt$RangeInputNode : DOMNode</ID>
+    <ID>TooManyFunctions:ScrollPerformanceCounters.kt$ScrollPerformanceCounters</ID>
+    <ID>TooManyFunctions:SelectEngine.kt$SelectEngine</ID>
+    <ID>TooManyFunctions:SelectNode.kt$SelectNode : DOMNode</ID>
+    <ID>TooManyFunctions:SingleLineInputNode.kt$SingleLineInputNode : DOMNode</ID>
+    <ID>TooManyFunctions:StyleAnimationEngine.kt$StyleAnimationEngine</ID>
+    <ID>TooManyFunctions:StyleEngine.kt$StyleEngine</ID>
+    <ID>TooManyFunctions:StyleScope.kt$StyleScope : CssLengthUnitsDsl</ID>
+    <ID>TooManyFunctions:StyleValueParsing.kt$org.dreamfinity.dsgl.core.style.StyleValueParsing.kt</ID>
+    <ID>TooManyFunctions:SystemColorPickerPopupBodyNode.kt$SystemColorPickerEyedropperPreviewNode : DOMNode</ID>
+    <ID>TooManyFunctions:SystemColorPickerPopupBodyNode.kt$SystemColorPickerPopupBodyNode : DOMNode</ID>
+    <ID>TooManyFunctions:SystemInspectorPortalNode.kt$SystemInspectorPortalNode : DOMNode</ID>
+    <ID>TooManyFunctions:SystemPortalHost.kt$SystemPortalHost : DomainSurfaceHost</ID>
+    <ID>TooManyFunctions:SystemPortalHost.kt$SystemPortalHost$ColorPickerPortalEntry : SystemPortalEntrySystemColorPickerPortalService</ID>
+    <ID>TooManyFunctions:TextAreaNode.kt$TextAreaNode : DOMNode</ID>
+    <ID>TooManyFunctions:ToggleNode.kt$ToggleNode : DOMNode</ID>
+  </CurrentIssues>
+</SmellBaseline>

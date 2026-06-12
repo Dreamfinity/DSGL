@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
@@ -19,7 +19,7 @@ import javax.imageio.ImageIO
 
 enum class FontPathMode {
     Resource,
-    FileSystem
+    FileSystem,
 }
 
 data class MsdfFontResource(
@@ -28,13 +28,13 @@ data class MsdfFontResource(
     val pathMode: FontPathMode,
     val metaPath: String,
     val atlasPath: String,
-    val ttfPath: String?
+    val ttfPath: String?,
 )
 
 data class FontTextureHandle(
     val textureId: Int,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
 data class LoadedMsdfFont(
@@ -44,17 +44,17 @@ data class LoadedMsdfFont(
     val preferredMissingGlyphIndex: Int?,
     val preferredQuestionGlyphIndex: Int?,
     val atlasPayload: AtlasPayload,
-    var handle: FontTextureHandle? = null
+    var handle: FontTextureHandle? = null,
 )
 
 data class AtlasBitmap(
     val width: Int,
     val height: Int,
-    var rgbaBytes: ByteArray
+    var rgbaBytes: ByteArray,
 )
 
 class AtlasPayload internal constructor(
-    private var encodedPngBytes: ByteArray?
+    private var encodedPngBytes: ByteArray?,
 ) {
     @Volatile
     private var decodedBitmap: AtlasBitmap? = null
@@ -70,7 +70,7 @@ class AtlasPayload internal constructor(
         decodedBitmap?.let { return it }
         synchronized(this) {
             decodedBitmap?.let { return it }
-            val bytes = encodedPngBytes ?: throw IllegalStateException("Missing atlas payload bytes")
+            val bytes = encodedPngBytes ?: error("Missing atlas payload bytes")
             val decoded = decodeAtlasBitmap(bytes)
             decodedBitmap = decoded
             encodedPngBytes = null
@@ -109,9 +109,10 @@ class AtlasPayload internal constructor(
     }
 
     private fun decodePng(bytes: ByteArray): AtlasBitmap {
-        val image = ByteArrayInputStream(bytes).use { input ->
-            ImageIO.read(input)
-        } ?: throw IllegalStateException("Atlas payload is neither deflated rgba nor PNG")
+        val image =
+            ByteArrayInputStream(bytes).use { input ->
+                ImageIO.read(input)
+            } ?: error("Atlas payload is neither deflated rgba nor PNG")
 
         val width = image.width.coerceAtLeast(1)
         val height = image.height.coerceAtLeast(1)
@@ -139,7 +140,7 @@ data class RegisteredFontInfo(
     val source: FontAssetSource,
     val metaPath: String,
     val atlasPath: String,
-    val ttfPath: String?
+    val ttfPath: String?,
 )
 
 data class FontPreloadSummary(
@@ -151,7 +152,7 @@ data class FontPreloadSummary(
     val failedFonts: Int,
     val totalFonts: Int,
     val durationMs: Long,
-    val fallbackReady: Boolean
+    val fallbackReady: Boolean,
 )
 
 data class ShapedGlyph(
@@ -162,7 +163,7 @@ data class ShapedGlyph(
     val advance: Float,
     val charStart: Int,
     val charEnd: Int,
-    val sourceCodepoint: Int
+    val sourceCodepoint: Int,
 )
 
 data class ShapedTextRun(
@@ -170,13 +171,13 @@ data class ShapedTextRun(
     val charStart: Int,
     val charEnd: Int,
     val glyphs: List<ShapedGlyph>,
-    val advance: Float
+    val advance: Float,
 )
 
 data class ShapedText(
     val glyphs: List<ShapedGlyph>,
     val runs: List<ShapedTextRun>,
-    val width: Float
+    val width: Float,
 )
 
 object FontRegistry {
@@ -198,12 +199,12 @@ object FontRegistry {
         val rangeStart: Int,
         val rangeEnd: Int,
         val directionFlags: Int,
-        val formattingMode: String
+        val formattingMode: String,
     )
 
     private data class FontCodepointKey(
         val fontId: FontId,
-        val codepoint: Int
+        val codepoint: Int,
     )
 
     private data class MutableShapingSegment(
@@ -212,7 +213,7 @@ object FontRegistry {
         val sourceStartByChar: MutableList<Int> = ArrayList(),
         val sourceEndByChar: MutableList<Int> = ArrayList(),
         var charStart: Int = Int.MAX_VALUE,
-        var charEnd: Int = 0
+        var charEnd: Int = 0,
     )
 
     private val descriptors: MutableMap<FontId, MsdfFontResource> = linkedMapOf()
@@ -221,9 +222,8 @@ object FontRegistry {
     private val parseErrorLogTimes: MutableMap<String, Long> = ConcurrentHashMap()
     private val shapeCache: MutableMap<ShapeCacheKey, ShapedText> =
         object : LinkedHashMap<ShapeCacheKey, ShapedText>(128, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ShapeCacheKey, ShapedText>?): Boolean {
-                return size > 1024
-            }
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ShapeCacheKey, ShapedText>?): Boolean =
+                size > 1024
         }
     private val derivedFontCache: MutableMap<String, Font> = ConcurrentHashMap()
     private val fontRenderContext: FontRenderContext = FontRenderContext(AffineTransform(), true, true)
@@ -256,7 +256,7 @@ object FontRegistry {
         val hits: Long,
         val misses: Long,
         val entries: Int,
-        val maxEntries: Int
+        val maxEntries: Int,
     )
 
     data class TextHotPathStats(
@@ -273,23 +273,24 @@ object FontRegistry {
         val glyphIndexForCodepointCalls: Long,
         val glyphIndexCacheHits: Long,
         val glyphIndexCacheMisses: Long,
-        val glyphIndexVectorBuildCalls: Long
+        val glyphIndexVectorBuildCalls: Long,
     )
 
     @Synchronized
     fun discoverAndPreloadFonts(
         externalFontsDir: File?,
-        classLoader: ClassLoader = javaClass.classLoader
+        classLoader: ClassLoader = javaClass.classLoader,
     ): FontPreloadSummary {
         val startedAt = System.nanoTime()
         resourceClassLoader = classLoader
         ensureDefaults()
 
         val jarDiscovered = descriptors.values.count { it.source == FontAssetSource.Jar }
-        val externalPackages = externalFontsDir
-            ?.takeIf { it.exists() && it.isDirectory }
-            ?.let { FontDiscovery.discoverExternalPackages(it.toPath()) }
-            .orEmpty()
+        val externalPackages =
+            externalFontsDir
+                ?.takeIf { it.exists() && it.isDirectory }
+                ?.let { FontDiscovery.discoverExternalPackages(it.toPath()) }
+                .orEmpty()
 
         var externalDiscovered = 0
         var externalOverrodeJar = 0
@@ -302,9 +303,9 @@ object FontRegistry {
                     key = "external-missing:${candidate.fontId}",
                     message = "[DSGL-MSDF] Skipping external font '${candidate.fontId}', missing: ${
                         candidate.missing.joinToString(
-                            ", "
+                            ", ",
                         )
-                    }"
+                    }",
                 )
                 return@forEach
             }
@@ -318,7 +319,7 @@ object FontRegistry {
                 fontId = candidate.fontId,
                 metaFile = candidate.metaPath,
                 atlasFile = candidate.atlasPath,
-                ttfFile = candidate.ttfPath
+                ttfFile = candidate.ttfPath,
             )
         }
 
@@ -329,14 +330,15 @@ object FontRegistry {
         if (!fallbackReady) {
             logParseErrorRateLimited(
                 key = "fallback-missing",
-                message = "[DSGL-MSDF] Fallback font '$FALLBACK_FONT_ID' is not available after preload."
+                message = "[DSGL-MSDF] Fallback font '$FALLBACK_FONT_ID' is not available after preload.",
             )
         }
 
         val durationMs = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(0L)
         println(
             "[DSGL-MSDF] preload summary: jar=$jarDiscovered external=$externalDiscovered " +
-                    "override=$externalOverrodeJar invalidExternal=$invalidExternalPackages loaded=$loadedFonts/$totalFonts in ${durationMs}ms"
+                "override=$externalOverrodeJar invalidExternal=$invalidExternalPackages " +
+                "loaded=$loadedFonts/$totalFonts in ${durationMs}ms",
         )
 
         return FontPreloadSummary(
@@ -348,7 +350,7 @@ object FontRegistry {
             failedFonts = failedFonts,
             totalFonts = totalFonts,
             durationMs = durationMs,
-            fallbackReady = fallbackReady
+            fallbackReady = fallbackReady,
         )
     }
 
@@ -368,29 +370,28 @@ object FontRegistry {
         metaResourcePath: String,
         atlasResourcePath: String,
         ttfResourcePath: String? = null,
-        source: FontAssetSource = FontAssetSource.Jar
+        source: FontAssetSource = FontAssetSource.Jar,
     ) {
         val normalizedMeta = normalizeRelativePath(metaResourcePath)
         val normalizedAtlas = normalizeRelativePath(atlasResourcePath)
-        val normalizedTtf = ttfResourcePath?.let(::normalizeRelativePath)
-            ?: (normalizedMeta.removeSuffix("-meta.json") + ".ttf")
+        val normalizedTtf =
+            ttfResourcePath?.let(::normalizeRelativePath)
+                ?: (normalizedMeta.removeSuffix("-meta.json") + ".ttf")
 
-        descriptors[fontId] = MsdfFontResource(
-            fontId = fontId,
-            source = source,
-            pathMode = FontPathMode.Resource,
-            metaPath = normalizedMeta,
-            atlasPath = normalizedAtlas,
-            ttfPath = normalizedTtf
-        )
+        descriptors[fontId] =
+            MsdfFontResource(
+                fontId = fontId,
+                source = source,
+                pathMode = FontPathMode.Resource,
+                metaPath = normalizedMeta,
+                atlasPath = normalizedAtlas,
+                ttfPath = normalizedTtf,
+            )
         onDescriptorChanged(fontId)
     }
 
     @Synchronized
-    fun registerGeneratedFromTtfPath(
-        relativeTtfPath: String,
-        fontId: FontId = fontIdFromTtfPath(relativeTtfPath)
-    ) {
+    fun registerGeneratedFromTtfPath(relativeTtfPath: String, fontId: FontId = fontIdFromTtfPath(relativeTtfPath)) {
         val normalized = normalizeRelativePath(relativeTtfPath)
         require(normalized.endsWith(".ttf", ignoreCase = true)) {
             "Expected .ttf path, got '$relativeTtfPath'"
@@ -401,7 +402,7 @@ object FontRegistry {
             metaResourcePath = "fonts/$base-meta.json",
             atlasResourcePath = "fonts/$base-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/$normalized",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
     }
 
@@ -435,7 +436,7 @@ object FontRegistry {
                     source = descriptor.source,
                     metaPath = descriptor.metaPath,
                     atlasPath = descriptor.atlasPath,
-                    ttfPath = descriptor.ttfPath
+                    ttfPath = descriptor.ttfPath,
                 )
             }
     }
@@ -460,24 +461,26 @@ object FontRegistry {
         if (text.contains('\n')) {
             return text.lineSequence().maxOfOrNull { line -> measureText(line, fontId, fontSize) } ?: 0
         }
-        return shapeText(text, fontId, fontSize).width.toInt().coerceAtLeast(0)
+        return shapeText(text, fontId, fontSize)
+            .width
+            .toInt()
+            .coerceAtLeast(0)
     }
 
     fun shapeText(
         text: String,
         fontId: FontId?,
         fontSize: Int?,
-        formattingMode: String = "plain"
-    ): ShapedText {
-        return shapeTextRange(
+        formattingMode: String = "plain",
+    ): ShapedText =
+        shapeTextRange(
             text = text,
             startIndex = 0,
             endIndexExclusive = text.length,
             fontId = fontId,
             fontSize = fontSize,
-            formattingMode = formattingMode
+            formattingMode = formattingMode,
         )
-    }
 
     fun shapeTextRange(
         text: String,
@@ -485,7 +488,7 @@ object FontRegistry {
         endIndexExclusive: Int,
         fontId: FontId?,
         fontSize: Int?,
-        formattingMode: String = "plain"
+        formattingMode: String = "plain",
     ): ShapedText {
         shapeTextRangeCalls.incrementAndGet()
         val (safeStart, safeEnd) = normalizeRange(text, startIndex, endIndexExclusive)
@@ -499,21 +502,23 @@ object FontRegistry {
             return ShapedText(
                 glyphs = emptyList(),
                 runs = emptyList(),
-                width = fallbackMeasureText(text, fontSize).toFloat()
+                width = fallbackMeasureText(text, fontSize).toFloat(),
             )
         }
-        val fallback = getExact(FALLBACK_FONT_ID)
-            ?.takeIf { it.descriptor.fontId != primary.descriptor.fontId && it.awtBaseFont != null }
-        val cacheKey = ShapeCacheKey(
-            primaryFontId = primary.descriptor.fontId,
-            fallbackFontId = fallback?.descriptor?.fontId,
-            fontPx = fontPx,
-            text = text,
-            rangeStart = safeStart,
-            rangeEnd = safeEnd,
-            directionFlags = Font.LAYOUT_LEFT_TO_RIGHT,
-            formattingMode = formattingMode
-        )
+        val fallback =
+            getExact(FALLBACK_FONT_ID)
+                ?.takeIf { it.descriptor.fontId != primary.descriptor.fontId && it.awtBaseFont != null }
+        val cacheKey =
+            ShapeCacheKey(
+                primaryFontId = primary.descriptor.fontId,
+                fallbackFontId = fallback?.descriptor?.fontId,
+                fontPx = fontPx,
+                text = text,
+                rangeStart = safeStart,
+                rangeEnd = safeEnd,
+                directionFlags = Font.LAYOUT_LEFT_TO_RIGHT,
+                formattingMode = formattingMode,
+            )
         synchronized(shapeCache) {
             shapeCacheRequests.incrementAndGet()
             shapeCache[cacheKey]?.let {
@@ -522,14 +527,15 @@ object FontRegistry {
             }
         }
         shapeCacheMisses.incrementAndGet()
-        val shaped = shapeSingleLine(
-            text = text,
-            startIndex = safeStart,
-            endIndexExclusive = safeEnd,
-            primary = primary,
-            fallback = fallback,
-            fontPx = fontPx
-        )
+        val shaped =
+            shapeSingleLine(
+                text = text,
+                startIndex = safeStart,
+                endIndexExclusive = safeEnd,
+                primary = primary,
+                fallback = fallback,
+                fontPx = fontPx,
+            )
         synchronized(shapeCache) {
             shapeCache[cacheKey] = shaped
         }
@@ -541,13 +547,9 @@ object FontRegistry {
         return font.meta.lineHeightPx(resolveFontSize(fontSize))
     }
 
-    fun resolveFontSize(fontSize: Int?): Int {
-        return (fontSize ?: DEFAULT_FONT_SIZE).coerceAtLeast(1)
-    }
+    fun resolveFontSize(fontSize: Int?): Int = (fontSize ?: DEFAULT_FONT_SIZE).coerceAtLeast(1)
 
-    fun fontIdFromTtfPath(relativeTtfPath: String): FontId {
-        return FontDiscovery.fontIdFromRelativeTtfPath(relativeTtfPath)
-    }
+    fun fontIdFromTtfPath(relativeTtfPath: String): FontId = FontDiscovery.fontIdFromRelativeTtfPath(relativeTtfPath)
 
     fun predecodeAtlases(fontIds: Collection<FontId>): Int {
         ensureDefaults()
@@ -559,7 +561,9 @@ object FontRegistry {
                 .onFailure { error ->
                     logParseErrorRateLimited(
                         key = "atlas-predecode:$fontId",
-                        message = "[DSGL-MSDF] Failed atlas predecode for '$fontId': ${error.message ?: error.javaClass.simpleName}"
+                        message =
+                            "[DSGL-MSDF] Failed atlas predecode for '$fontId': " +
+                                "${error.message ?: error.javaClass.simpleName}",
                     )
                 }
         }
@@ -573,7 +577,7 @@ object FontRegistry {
             hits = shapeCacheHits.get(),
             misses = shapeCacheMisses.get(),
             entries = entries,
-            maxEntries = 1024
+            maxEntries = 1024,
         )
     }
 
@@ -583,8 +587,8 @@ object FontRegistry {
         shapeCacheMisses.set(0L)
     }
 
-    fun textHotPathStats(): TextHotPathStats {
-        return TextHotPathStats(
+    fun textHotPathStats(): TextHotPathStats =
+        TextHotPathStats(
             shapeTextRangeCalls = shapeTextRangeCalls.get(),
             shapeSegmentCalls = shapeSegmentCalls.get(),
             requiresReplacementGlyphCalls = requiresReplacementGlyphCalls.get(),
@@ -598,9 +602,8 @@ object FontRegistry {
             glyphIndexForCodepointCalls = glyphIndexForCodepointCalls.get(),
             glyphIndexCacheHits = glyphIndexCacheHits.get(),
             glyphIndexCacheMisses = glyphIndexCacheMisses.get(),
-            glyphIndexVectorBuildCalls = glyphIndexVectorBuildCalls.get()
+            glyphIndexVectorBuildCalls = glyphIndexVectorBuildCalls.get(),
         )
-    }
 
     fun resetTextHotPathStats() {
         shapeTextRangeCalls.set(0L)
@@ -632,35 +635,35 @@ object FontRegistry {
             metaResourcePath = "fonts/minecraft/MinecraftDefault-Regular-meta.json",
             atlasResourcePath = "fonts/minecraft/MinecraftDefault-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/minecraft/MinecraftDefault-Regular.ttf",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
         registerMsdf(
             fontId = FONT_UBUNTU,
             metaResourcePath = "fonts/ubuntu/Ubuntu-Regular-meta.json",
             atlasResourcePath = "fonts/ubuntu/Ubuntu-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/ubuntu/Ubuntu-Regular.ttf",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
         registerMsdf(
             fontId = FONT_NOTO_SANS,
             metaResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular-meta.json",
             atlasResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/noto/Noto_Sans/NotoSans-Regular.ttf",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
         registerMsdf(
             fontId = FONT_JB_MONO,
             metaResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular-meta.json",
             atlasResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/jetbrains_mono/JetBrainsMono-Regular.ttf",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
         registerMsdf(
             fontId = TELEGRAFICO,
             metaResourcePath = "fonts/telegrafico/telegrafico-meta.json",
             atlasResourcePath = "fonts/telegrafico/telegrafico-mtsdf.rgba.deflate",
             ttfResourcePath = "fonts/telegrafico/telegrafico.ttf",
-            source = FontAssetSource.Jar
+            source = FontAssetSource.Jar,
         )
         loadGeneratedFontManifest()
         defaultsRegistered = true
@@ -671,16 +674,29 @@ object FontRegistry {
         fontId: FontId,
         metaFile: Path,
         atlasFile: Path,
-        ttfFile: Path
+        ttfFile: Path,
     ) {
-        descriptors[fontId] = MsdfFontResource(
-            fontId = fontId,
-            source = FontAssetSource.External,
-            pathMode = FontPathMode.FileSystem,
-            metaPath = metaFile.toAbsolutePath().normalize().toString(),
-            atlasPath = atlasFile.toAbsolutePath().normalize().toString(),
-            ttfPath = ttfFile.toAbsolutePath().normalize().toString()
-        )
+        descriptors[fontId] =
+            MsdfFontResource(
+                fontId = fontId,
+                source = FontAssetSource.External,
+                pathMode = FontPathMode.FileSystem,
+                metaPath =
+                    metaFile
+                        .toAbsolutePath()
+                        .normalize()
+                        .toString(),
+                atlasPath =
+                    atlasFile
+                        .toAbsolutePath()
+                        .normalize()
+                        .toString(),
+                ttfPath =
+                    ttfFile
+                        .toAbsolutePath()
+                        .normalize()
+                        .toString(),
+            )
         onDescriptorChanged(fontId)
     }
 
@@ -714,39 +730,41 @@ object FontRegistry {
         }
 
         val metaRaw = String(metaBytes, StandardCharsets.UTF_8)
-        val meta = runCatching { MsdfFontMetaParser.parse(metaRaw) }
-            .onFailure { error ->
-                failFontLoad(
-                    descriptor,
-                    "Failed to parse metadata '${descriptor.metaPath}': ${error.message ?: error.javaClass.simpleName}"
-                )
-            }
-            .getOrNull() ?: return null
-
-        val awtBase = descriptor.ttfPath?.let { ttfPath ->
-            val ttfBytes = readBytes(ttfPath, descriptor.pathMode)
-            if (ttfBytes == null) {
-                failFontLoad(descriptor, "Missing TTF '$ttfPath'")
-                return null
-            }
-            runCatching { loadAwtFont(ttfBytes) }
+        val meta =
+            runCatching { MsdfFontMetaParser.parse(metaRaw) }
                 .onFailure { error ->
+                    val reason = error.message ?: error.javaClass.simpleName
                     failFontLoad(
                         descriptor,
-                        "Failed to load TTF '$ttfPath': ${error.message ?: error.javaClass.simpleName}"
+                        "Failed to parse metadata '${descriptor.metaPath}': $reason",
                     )
-                }
-                .getOrNull() ?: return null
-        }
+                }.getOrNull() ?: return null
 
-        val loadedFont = LoadedMsdfFont(
-            descriptor = descriptor,
-            meta = meta,
-            awtBaseFont = awtBase,
-            preferredMissingGlyphIndex = computeGlyphIndexForCodepoint(awtBase, 0xFFFD),
-            preferredQuestionGlyphIndex = computeGlyphIndexForCodepoint(awtBase, '?'.code),
-            atlasPayload = AtlasPayload(atlasBytes)
-        )
+        val awtBase =
+            descriptor.ttfPath?.let { ttfPath ->
+                val ttfBytes = readBytes(ttfPath, descriptor.pathMode)
+                if (ttfBytes == null) {
+                    failFontLoad(descriptor, "Missing TTF '$ttfPath'")
+                    return null
+                }
+                runCatching { loadAwtFont(ttfBytes) }
+                    .onFailure { error ->
+                        failFontLoad(
+                            descriptor,
+                            "Failed to load TTF '$ttfPath': ${error.message ?: error.javaClass.simpleName}",
+                        )
+                    }.getOrNull() ?: return null
+            }
+
+        val loadedFont =
+            LoadedMsdfFont(
+                descriptor = descriptor,
+                meta = meta,
+                awtBaseFont = awtBase,
+                preferredMissingGlyphIndex = computeGlyphIndexForCodepoint(awtBase, 0xFFFD),
+                preferredQuestionGlyphIndex = computeGlyphIndexForCodepoint(awtBase, '?'.code),
+                atlasPayload = AtlasPayload(atlasBytes),
+            )
         loaded[descriptor.fontId] = loadedFont
         failedLoads.remove(descriptor.fontId)
         return loadedFont
@@ -756,7 +774,9 @@ object FontRegistry {
         failedLoads.add(descriptor.fontId)
         logParseErrorRateLimited(
             key = "font-load:${descriptor.fontId}",
-            message = "[DSGL-MSDF] Failed to load font '${descriptor.fontId}' (${descriptor.source.name.lowercase()}): $reason"
+            message =
+                "[DSGL-MSDF] Failed to load font '${descriptor.fontId}' " +
+                    "(${descriptor.source.name.lowercase()}): $reason",
         )
     }
 
@@ -773,9 +793,7 @@ object FontRegistry {
         }
     }
 
-    private fun normalizeRelativePath(path: String): String {
-        return FontDiscovery.normalizeRelativePath(path)
-    }
+    private fun normalizeRelativePath(path: String): String = FontDiscovery.normalizeRelativePath(path)
 
     private fun loadGeneratedFontManifest() {
         val manifestPath = "fonts/generated-fonts.txt"
@@ -797,15 +815,16 @@ object FontRegistry {
         endIndexExclusive: Int,
         primary: LoadedMsdfFont,
         fallback: LoadedMsdfFont?,
-        fontPx: Int
+        fontPx: Int,
     ): ShapedText {
-        val segments = buildShapingSegments(
-            text = text,
-            startIndex = startIndex,
-            endIndexExclusive = endIndexExclusive,
-            primary = primary,
-            fallback = fallback
-        )
+        val segments =
+            buildShapingSegments(
+                text = text,
+                startIndex = startIndex,
+                endIndexExclusive = endIndexExclusive,
+                primary = primary,
+                fallback = fallback,
+            )
         if (segments.isEmpty()) {
             return ShapedText(glyphs = emptyList(), runs = emptyList(), width = 0f)
         }
@@ -814,13 +833,14 @@ object FontRegistry {
         var penX = 0f
 
         segments.forEach { segment ->
-            val shapedRun = shapeSegment(
-                sourceText = text,
-                sourceRangeStart = startIndex,
-                segment = segment,
-                fontPx = fontPx,
-                penX = penX
-            )
+            val shapedRun =
+                shapeSegment(
+                    sourceText = text,
+                    sourceRangeStart = startIndex,
+                    segment = segment,
+                    fontPx = fontPx,
+                    penX = penX,
+                )
             allGlyphs += shapedRun.glyphs
             runs += shapedRun
             penX += shapedRun.advance
@@ -828,7 +848,7 @@ object FontRegistry {
         return ShapedText(
             glyphs = allGlyphs,
             runs = runs,
-            width = penX.coerceAtLeast(0f)
+            width = penX.coerceAtLeast(0f),
         )
     }
 
@@ -837,7 +857,7 @@ object FontRegistry {
         startIndex: Int,
         endIndexExclusive: Int,
         primary: LoadedMsdfFont,
-        fallback: LoadedMsdfFont?
+        fallback: LoadedMsdfFont?,
     ): List<MutableShapingSegment> {
         val out = ArrayList<MutableShapingSegment>(4)
         var segment: MutableShapingSegment? = null
@@ -852,16 +872,18 @@ object FontRegistry {
 
             val primaryNeedsReplacement = requiresReplacementGlyph(primary, codepoint)
             val fallbackNeedsReplacement = fallback?.let { requiresReplacementGlyph(it, codepoint) } ?: true
-            val selectedFont = when {
-                !primaryNeedsReplacement -> primary
-                fallback != null && !fallbackNeedsReplacement -> fallback
-                fallback != null -> fallback
-                else -> primary
-            }
-            val replacementNeeded = when (selectedFont.descriptor.fontId) {
-                primary.descriptor.fontId -> primaryNeedsReplacement
-                else -> fallbackNeedsReplacement
-            }
+            val selectedFont =
+                when {
+                    !primaryNeedsReplacement -> primary
+                    fallback != null && !fallbackNeedsReplacement -> fallback
+                    fallback != null -> fallback
+                    else -> primary
+                }
+            val replacementNeeded =
+                when (selectedFont.descriptor.fontId) {
+                    primary.descriptor.fontId -> primaryNeedsReplacement
+                    else -> fallbackNeedsReplacement
+                }
 
             if (segment == null || segment.font.descriptor.fontId != selectedFont.descriptor.fontId) {
                 segment = MutableShapingSegment(font = selectedFont)
@@ -890,7 +912,7 @@ object FontRegistry {
         sourceRangeStart: Int,
         segment: MutableShapingSegment,
         fontPx: Int,
-        penX: Float
+        penX: Float,
     ): ShapedTextRun {
         shapeSegmentCalls.incrementAndGet()
         val font = deriveAwtFont(segment.font, fontPx)
@@ -900,50 +922,58 @@ object FontRegistry {
                 charStart = if (segment.charStart == Int.MAX_VALUE) 0 else segment.charStart,
                 charEnd = segment.charEnd,
                 glyphs = emptyList(),
-                advance = 0f
+                advance = 0f,
             )
         }
-        val chars = segment.text.toString().toCharArray()
-        val glyphVector = runCatching {
-            font.layoutGlyphVector(
-                fontRenderContext,
-                chars,
-                0,
-                chars.size,
-                Font.LAYOUT_LEFT_TO_RIGHT
-            )
-        }.getOrElse {
-            font.createGlyphVector(fontRenderContext, segment.text.toString())
-        }
+        val chars =
+            segment.text
+                .toString()
+                .toCharArray()
+        val glyphVector =
+            runCatching {
+                font.layoutGlyphVector(
+                    fontRenderContext,
+                    chars,
+                    0,
+                    chars.size,
+                    Font.LAYOUT_LEFT_TO_RIGHT,
+                )
+            }.getOrElse {
+                font.createGlyphVector(fontRenderContext, segment.text.toString())
+            }
         val glyphCount = glyphVector.numGlyphs
         val positions = glyphVector.getGlyphPositions(0, glyphCount + 1, null)
         val runGlyphs = ArrayList<ShapedGlyph>(glyphCount)
         for (i in 0 until glyphCount) {
-            val charIndex = glyphVector.getGlyphCharIndex(i)
-                .coerceIn(0, (segment.sourceStartByChar.size - 1).coerceAtLeast(0))
+            val charIndex =
+                glyphVector
+                    .getGlyphCharIndex(i)
+                    .coerceIn(0, (segment.sourceStartByChar.size - 1).coerceAtLeast(0))
             val sourceStart = segment.sourceStartByChar.getOrElse(charIndex) { 0 }
             val sourceEnd = segment.sourceEndByChar.getOrElse(charIndex) { sourceStart + 1 }
             val sourceGlobalStart = sourceRangeStart + sourceStart
-            val sourceCodepoint = if (charIndex in chars.indices) {
-                Character.codePointAt(chars, charIndex, chars.size)
-            } else if (sourceGlobalStart in sourceText.indices) {
-                Character.codePointAt(sourceText, sourceGlobalStart)
-            } else {
-                '?'.code
-            }
+            val sourceCodepoint =
+                if (charIndex in chars.indices) {
+                    Character.codePointAt(chars, charIndex, chars.size)
+                } else if (sourceGlobalStart in sourceText.indices) {
+                    Character.codePointAt(sourceText, sourceGlobalStart)
+                } else {
+                    '?'.code
+                }
             val x = (penX + positions[i * 2])
             val y = positions[i * 2 + 1]
             val advance = (positions[(i + 1) * 2] - positions[i * 2])
-            runGlyphs += ShapedGlyph(
-                fontId = segment.font.descriptor.fontId,
-                glyphIndex = glyphVector.getGlyphCode(i),
-                x = x,
-                y = y,
-                advance = advance,
-                charStart = sourceStart,
-                charEnd = sourceEnd,
-                sourceCodepoint = sourceCodepoint
-            )
+            runGlyphs +=
+                ShapedGlyph(
+                    fontId = segment.font.descriptor.fontId,
+                    glyphIndex = glyphVector.getGlyphCode(i),
+                    x = x,
+                    y = y,
+                    advance = advance,
+                    charStart = sourceStart,
+                    charEnd = sourceEnd,
+                    sourceCodepoint = sourceCodepoint,
+                )
         }
         val runAdvance = positions[glyphCount * 2].coerceAtLeast(0f)
         return ShapedTextRun(
@@ -951,7 +981,7 @@ object FontRegistry {
             charStart = if (segment.charStart == Int.MAX_VALUE) 0 else segment.charStart,
             charEnd = segment.charEnd,
             glyphs = runGlyphs,
-            advance = runAdvance
+            advance = runAdvance,
         )
     }
 
@@ -987,23 +1017,24 @@ object FontRegistry {
         }
         requiresReplacementGlyphCacheMisses.incrementAndGet()
         requiresReplacementGlyphEvaluations.incrementAndGet()
-        val resolved = if (!Character.isValidCodePoint(codepoint)) {
-            true
-        } else if (!canDisplay(font, codepoint)) {
-            true
-        } else {
-            val glyphIndex = glyphIndexForCodepoint(font, codepoint)
-            if (glyphIndex == null || glyphIndex < 0) {
+        val resolved =
+            if (!Character.isValidCodePoint(codepoint)) {
+                true
+            } else if (!canDisplay(font, codepoint)) {
                 true
             } else {
-                val missingIndex = font.preferredMissingGlyphIndex
-                if (missingIndex != null && glyphIndex == missingIndex) {
+                val glyphIndex = glyphIndexForCodepoint(font, codepoint)
+                if (glyphIndex == null || glyphIndex < 0) {
                     true
                 } else {
-                    glyphIndex == 0 && (missingIndex == null || missingIndex == 0)
+                    val missingIndex = font.preferredMissingGlyphIndex
+                    if (missingIndex != null && glyphIndex == missingIndex) {
+                        true
+                    } else {
+                        glyphIndex == 0 && (missingIndex == null || missingIndex == 0)
+                    }
                 }
             }
-        }
         requiresReplacementGlyphByFontCodepoint[key] = resolved
         return resolved
     }
@@ -1036,11 +1067,10 @@ object FontRegistry {
         }.getOrNull()
     }
 
-    private fun loadAwtFont(ttfBytes: ByteArray): Font {
-        return ByteArrayInputStream(ttfBytes).use { input ->
+    private fun loadAwtFont(ttfBytes: ByteArray): Font =
+        ByteArrayInputStream(ttfBytes).use { input ->
             Font.createFont(Font.TRUETYPE_FONT, input)
         }
-    }
 
     private fun normalizeRange(text: String, startIndex: Int, endIndexExclusive: Int): Pair<Int, Int> {
         var start = startIndex.coerceIn(0, text.length)

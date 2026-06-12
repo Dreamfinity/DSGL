@@ -66,7 +66,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .a ~ .b { color: #33AA66; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -92,7 +92,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .target { color: #2288FF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -113,7 +113,7 @@ class StyleEngineIncrementalTests {
         installStylesheet(
             """
             .node { color: #FFFFFF; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -130,6 +130,31 @@ class StyleEngineIncrementalTests {
         assertEquals(1, report.visitedNodes, "Expected subtree short-circuit on cache hit.")
         assertEquals(1, report.cacheHits, "Branch node should be served from style cache.")
         assertEquals(0, report.recomputedNodes)
+    }
+
+    @Test
+    fun `changed node state invalidates style cache entry`() {
+        installStylesheet(
+            """
+            .marked { color: #AA3344; }
+            """.trimIndent(),
+        )
+
+        val root = ContainerNode(key = "root")
+        val leaf = TextNode(TextSource.Static("leaf"), key = "leaf").applyParent(root)
+        StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        val unchanged = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertEquals(0, unchanged.recomputedNodes, "Unchanged nodes must be served from the style cache.")
+
+        leaf.setClassNames("marked")
+        val afterClassChange = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertTrue(afterClassChange.recomputedNodes >= 1, "Class change must invalidate the cached style.")
+        assertEquals(0xFFAA3344.toInt(), leaf.color)
+
+        leaf.setHoveredState(true)
+        val afterHoverChange = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertTrue(afterHoverChange.recomputedNodes >= 1, "Pseudo-state change must invalidate the cached style.")
     }
 
     private fun installStylesheet(contents: String) {

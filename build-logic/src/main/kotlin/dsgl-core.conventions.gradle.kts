@@ -68,3 +68,7 @@ tasks.named("sourcesJar") {
 tasks.named("dokkaGeneratePublicationHtml") {
     dependsOn(generateDsglCoreMetadata)
 }
+
+tasks.matching { it.name.startsWith("runKtlintCheckOver") || it.name.startsWith("runKtlintFormatOver") }.configureEach {
+    dependsOn(generateDsglCoreMetadata)
+}

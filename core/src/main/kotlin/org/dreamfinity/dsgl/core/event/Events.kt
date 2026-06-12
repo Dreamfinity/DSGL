@@ -29,5 +29,5 @@ enum class Events {
     FOCUS,
     BLUR,
     INPUT,
-    CHANGE
+    CHANGE,
 }

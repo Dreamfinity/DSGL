@@ -25,11 +25,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UnifiedUsedGeometryInspectorCharacterizationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 9
-        override fun measureText(text: String): Int = text.length * 6
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 9
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -41,24 +44,27 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
     fun `core click and hover reach render-visible absolute outside ancestor bounds`() {
         val fixture = createAbsoluteOutsideAncestorFixture()
         fixture.tree.render(ctx, width = 260, height = 140)
-        val drawRects = fixture.tree.paint(ctx).filterIsInstance<RenderCommand.DrawRect>()
+        val drawRects =
+            fixture.tree
+                .paint(ctx)
+                .filterIsInstance<RenderCommand.DrawRect>()
         assertTrue(
             drawRects.any { it.color == fixture.childColor && it.x == 100 && it.y == 5 },
-            "Render draws absolute child at its final positioned rect outside ancestor bounds"
+            "Render draws absolute child at its final positioned rect outside ancestor bounds",
         )
 
         var childClicks = 0
         fixture.child.onClick { childClicks += 1 }
         assertTrue(
             dispatchClick(fixture.root, MouseClickEvent(105, 10, MouseButton.LEFT)),
-            "Core click now reaches visible absolute child outside ancestor-local bounds"
+            "Core click now reaches visible absolute child outside ancestor-local bounds",
         )
         assertEquals(1, childClicks)
         val hoverChain = collectHoverChain(fixture.root, 105, 10)
         assertEquals(
             fixture.child.key,
             hoverChain.lastOrNull()?.key,
-            "Core hover now resolves the same visible absolute target"
+            "Core hover now resolves the same visible absolute target",
         )
     }
 
@@ -72,9 +78,10 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onCursorMoved(105, 10)
 
         assertEquals(
-            fixture.child.key?.toString(),
+            fixture.child.key
+                ?.toString(),
             inspector.hoveredKey,
-            "Inspector picking now follows shared used geometry for absolute-outside-ancestor case"
+            "Inspector picking now follows shared used geometry for absolute-outside-ancestor case",
         )
     }
 
@@ -82,7 +89,10 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
     fun `render core interaction and inspector all target promoted fixed`() {
         val fixture = createPositionedOverlapFixture()
         fixture.tree.render(ctx, width = 220, height = 140)
-        val drawRects = fixture.tree.paint(ctx).filterIsInstance<RenderCommand.DrawRect>()
+        val drawRects =
+            fixture.tree
+                .paint(ctx)
+                .filterIsInstance<RenderCommand.DrawRect>()
 
         val fixedPaintIndex = drawRects.indexOfFirst { it.color == fixture.fixedColor && it.x == 8 && it.y == 8 }
         val laterPaintIndex = drawRects.indexOfFirst { it.color == fixture.laterColor && it.x == 0 && it.y == 0 }
@@ -104,9 +114,10 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onLayoutCommitted(fixture.root, 1L)
         inspector.onCursorMoved(10, 10)
         assertEquals(
-            fixture.fixed.key?.toString(),
+            fixture.fixed.key
+                ?.toString(),
             inspector.hoveredKey,
-            "Inspector now resolves the same topmost promoted fixed node as render/core interaction"
+            "Inspector now resolves the same topmost promoted fixed node as render/core interaction",
         )
     }
 
@@ -118,7 +129,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         assertEquals(
             listOf(fixture.fixed, fixture.laterContainer, fixture.earlyContainer),
             fixture.root.orderedChildrenForHitTestingTraversal(),
-            "Positioned hit traversal resolves promoted fixed first"
+            "Positioned hit traversal resolves promoted fixed first",
         )
 
         val inspector = InspectorController()
@@ -127,9 +138,10 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onCursorMoved(10, 10)
 
         assertEquals(
-            fixture.fixed.key?.toString(),
+            fixture.fixed.key
+                ?.toString(),
             inspector.hoveredKey,
-            "Inspector now uses shared ordering for overlap picking"
+            "Inspector now uses shared ordering for overlap picking",
         )
     }
 
@@ -149,56 +161,70 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val absoluteHover = collectHoverChain(absoluteFixture.root, 105, 10).lastOrNull()?.key
 
         assertEquals(fixedFixture.fixed.key, fixedHover, "Core hover sees promoted fixed in overlap case")
-        assertEquals(absoluteFixture.child.key, absoluteHover, "Core hover reaches absolute child outside ancestor bounds")
         assertEquals(
-            fixedFixture.fixed.key?.toString(),
+            absoluteFixture.child.key,
+            absoluteHover,
+            "Core hover reaches absolute child outside ancestor bounds",
+        )
+        assertEquals(
+            fixedFixture.fixed.key
+                ?.toString(),
             inspector.hoveredKey,
-            "Inspector now matches core positioned ordering in overlap case"
+            "Inspector now matches core positioned ordering in overlap case",
         )
         var absoluteClicks = 0
         absoluteFixture.child.onClick { absoluteClicks += 1 }
         assertTrue(
             dispatchClick(absoluteFixture.root, MouseClickEvent(105, 10, MouseButton.LEFT)),
-            "Core click reaches absolute-outside-ancestor case after shared used-geometry migration"
+            "Core click reaches absolute-outside-ancestor case after shared used-geometry migration",
         )
         assertEquals(1, absoluteClicks)
 
         inspector.onLayoutCommitted(absoluteFixture.root, 22L)
         inspector.onCursorMoved(105, 10)
         assertEquals(
-            absoluteFixture.child.key?.toString(),
+            absoluteFixture.child.key
+                ?.toString(),
             inspector.hoveredKey,
-            "Inspector now matches core/app-host geometry for absolute-outside-ancestor case"
+            "Inspector now matches core/app-host geometry for absolute-outside-ancestor case",
         )
     }
 
     @Test
     fun `core and inspector preserve fixed and non-fixed clip semantics`() {
         val root = ContainerNode(key = "clip-root", stackLayout = true)
-        val overflowParent = ContainerNode(key = "clip-parent").apply {
-            width = 80
-            height = 40
-            overflowY = Overflow.Hidden
-            inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
-        }.applyParent(root)
-        val fixed = ButtonNode("fixed", key = "clip-fixed").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "fixed",
-                StyleProperty.LEFT to "180px",
-                StyleProperty.TOP to "20px"
-            )
-        }.applyParent(overflowParent)
-        val absolute = ButtonNode("absolute", key = "clip-absolute").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "absolute",
-                StyleProperty.LEFT to "140px",
-                StyleProperty.TOP to "90px"
-            )
-        }.applyParent(overflowParent)
+        val overflowParent =
+            ContainerNode(key = "clip-parent")
+                .apply {
+                    width = 80
+                    height = 40
+                    overflowY = Overflow.Hidden
+                    inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
+                }.applyParent(root)
+        val fixed =
+            ButtonNode("fixed", key = "clip-fixed")
+                .apply {
+                    width = 40
+                    height = 20
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "fixed",
+                            StyleProperty.LEFT to "180px",
+                            StyleProperty.TOP to "20px",
+                        )
+                }.applyParent(overflowParent)
+        val absolute =
+            ButtonNode("absolute", key = "clip-absolute")
+                .apply {
+                    width = 40
+                    height = 20
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "absolute",
+                            StyleProperty.LEFT to "140px",
+                            StyleProperty.TOP to "90px",
+                        )
+                }.applyParent(overflowParent)
 
         val tree = DomTree(root)
         tree.render(ctx, width = 200, height = 120)
@@ -232,34 +258,43 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
     @Test
     fun `inspector highlight uses shared used geometry and clipping`() {
-        val root = ContainerNode(key = "highlight-root", stackLayout = true).apply {
-            width = 200
-            height = 120
-        }
-        val overflowParent = ContainerNode(key = "highlight-parent").apply {
-            width = 80
-            height = 40
-            overflowY = Overflow.Hidden
-            inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
-        }.applyParent(root)
-        val fixed = ButtonNode("fixed", key = "highlight-fixed").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "fixed",
-                StyleProperty.LEFT to "180px",
-                StyleProperty.TOP to "20px"
-            )
-        }.applyParent(overflowParent)
-        val absolute = ButtonNode("absolute", key = "highlight-absolute").apply {
-            width = 40
-            height = 20
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "absolute",
-                StyleProperty.LEFT to "140px",
-                StyleProperty.TOP to "90px"
-            )
-        }.applyParent(overflowParent)
+        val root =
+            ContainerNode(key = "highlight-root", stackLayout = true).apply {
+                width = 200
+                height = 120
+            }
+        val overflowParent =
+            ContainerNode(key = "highlight-parent")
+                .apply {
+                    width = 80
+                    height = 40
+                    overflowY = Overflow.Hidden
+                    inlineStyleDeclarations = styleDeclarations(StyleProperty.POSITION to "relative")
+                }.applyParent(root)
+        val fixed =
+            ButtonNode("fixed", key = "highlight-fixed")
+                .apply {
+                    width = 40
+                    height = 20
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "fixed",
+                            StyleProperty.LEFT to "180px",
+                            StyleProperty.TOP to "20px",
+                        )
+                }.applyParent(overflowParent)
+        val absolute =
+            ButtonNode("absolute", key = "highlight-absolute")
+                .apply {
+                    width = 40
+                    height = 20
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "absolute",
+                            StyleProperty.LEFT to "140px",
+                            StyleProperty.TOP to "90px",
+                        )
+                }.applyParent(overflowParent)
 
         val tree = DomTree(root)
         tree.render(ctx, width = 200, height = 120)
@@ -269,42 +304,47 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
 
         inspector.onCursorMoved(185, 25)
         inspector.buildDomSnapshot(800, 600)
-        val fixedHighlight = inspector.debugHoveredHighlight()
+        val fixedHighlight = inspector.portalHoveredHighlight()
         assertNotNull(fixedHighlight)
         val fixedUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixed)
         assertEquals(
             fixedUsedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
-            fixedHighlight.borderRect
+            fixedHighlight.borderRect,
         )
 
         inspector.onCursorMoved(145, 95)
         inspector.buildDomSnapshot(800, 600)
-        val clippedHighlight = inspector.debugHoveredHighlight()
+        val clippedHighlight = inspector.portalHoveredHighlight()
         assertNotNull(clippedHighlight)
         val rootUsedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(root)
         assertEquals(
             rootUsedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             clippedHighlight.borderRect,
-            "Non-fixed clipped case highlights resolved fallback target with shared used geometry"
+            "Non-fixed clipped case highlights resolved fallback target with shared used geometry",
         )
     }
 
     @Test
     fun `relative positioned node highlight uses final rendered position`() {
         val root = ContainerNode(key = "relative-root")
-        val relative = ButtonNode("relative", key = "relative-target").apply {
-            width = 60
-            height = 24
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative",
-                StyleProperty.LEFT to "40px",
-                StyleProperty.TOP to "18px"
-            )
-        }.applyParent(root)
-        val sibling = ButtonNode("sibling", key = "relative-sibling").apply {
-            width = 70
-            height = 24
-        }.applyParent(root)
+        val relative =
+            ButtonNode("relative", key = "relative-target")
+                .apply {
+                    width = 60
+                    height = 24
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "relative",
+                            StyleProperty.LEFT to "40px",
+                            StyleProperty.TOP to "18px",
+                        )
+                }.applyParent(root)
+        val sibling =
+            ButtonNode("sibling", key = "relative-sibling")
+                .apply {
+                    width = 70
+                    height = 24
+                }.applyParent(root)
 
         val tree = DomTree(root)
         tree.render(ctx, width = 260, height = 140)
@@ -319,12 +359,12 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.buildDomSnapshot(800, 600)
 
         assertEquals(relative.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         assertEquals(
             usedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             highlight.borderRect,
-            "Relative highlight must use final rendered geometry, not original layout slot"
+            "Relative highlight must use final rendered geometry, not original layout slot",
         )
 
         // Ensure we did not accidentally break neighboring static hit/highlight behavior.
@@ -345,14 +385,18 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         inspector.onCursorMoved(10, 10)
         inspector.buildDomSnapshot(800, 600)
 
-        assertEquals(fixture.fixed.key?.toString(), inspector.hoveredKey)
-        val highlight = inspector.debugHoveredHighlight()
+        assertEquals(
+            fixture.fixed.key
+                ?.toString(),
+            inspector.hoveredKey,
+        )
+        val highlight = inspector.portalHoveredHighlight()
         assertNotNull(highlight)
         val fixedGeometry = UsedInteractionGeometryResolver.resolveNodeGeometry(fixture.fixed)
         assertEquals(
             fixedGeometry.visibleBorderRect ?: Rect(0, 0, 0, 0),
             highlight.borderRect,
-            "Inspector highlight must match picked node final used geometry in overlap cases"
+            "Inspector highlight must match picked node final used geometry in overlap cases",
         )
     }
 
@@ -364,7 +408,7 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val fixed: ButtonNode,
         val later: ButtonNode,
         val fixedColor: Int,
-        val laterColor: Int
+        val laterColor: Int,
     )
 
     private data class AbsoluteOutsideAncestorFixture(
@@ -372,35 +416,42 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
         val root: ContainerNode,
         val ancestor: ContainerNode,
         val child: ButtonNode,
-        val childColor: Int
+        val childColor: Int,
     )
 
     private fun createPositionedOverlapFixture(): PositionedOverlapFixture {
         val fixedColor = 0x00_27_83_B4
         val laterColor = 0x00_B4_5D_27
         val root = ContainerNode(key = "root", stackLayout = true)
-        val early = ContainerNode(key = "early", stackLayout = true).apply {
-            width = 120
-            height = 60
-        }
-        val laterContainer = ContainerNode(key = "later-container", stackLayout = true).apply {
-            width = 120
-            height = 60
-        }
-        val fixed = ButtonNode("fixed", backgroundColor = fixedColor, key = "fixed").apply {
-            width = 72
-            height = 24
-            zIndex = 9_999
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "fixed",
-                StyleProperty.LEFT to "8px",
-                StyleProperty.TOP to "8px"
-            )
-        }.applyParent(early)
-        val later = ButtonNode("later", backgroundColor = laterColor, key = "later").apply {
-            width = 72
-            height = 24
-        }.applyParent(laterContainer)
+        val early =
+            ContainerNode(key = "early", stackLayout = true).apply {
+                width = 120
+                height = 60
+            }
+        val laterContainer =
+            ContainerNode(key = "later-container", stackLayout = true).apply {
+                width = 120
+                height = 60
+            }
+        val fixed =
+            ButtonNode("fixed", backgroundColor = fixedColor, key = "fixed")
+                .apply {
+                    width = 72
+                    height = 24
+                    zIndex = 9_999
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "fixed",
+                            StyleProperty.LEFT to "8px",
+                            StyleProperty.TOP to "8px",
+                        )
+                }.applyParent(early)
+        val later =
+            ButtonNode("later", backgroundColor = laterColor, key = "later")
+                .apply {
+                    width = 72
+                    height = 24
+                }.applyParent(laterContainer)
         early.applyParent(root)
         laterContainer.applyParent(root)
         return PositionedOverlapFixture(
@@ -411,43 +462,48 @@ class UnifiedUsedGeometryInspectorCharacterizationTests {
             fixed = fixed,
             later = later,
             fixedColor = fixedColor,
-            laterColor = laterColor
+            laterColor = laterColor,
         )
     }
 
     private fun createAbsoluteOutsideAncestorFixture(): AbsoluteOutsideAncestorFixture {
         val childColor = 0x00_1F_9A_55
         val root = ContainerNode(key = "abs-root")
-        val ancestor = ContainerNode(key = "abs-ancestor").apply {
-            width = 40
-            height = 40
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "relative"
-            )
-        }.applyParent(root)
-        val child = ButtonNode("abs-child", backgroundColor = childColor, key = "abs-child").apply {
-            width = 36
-            height = 16
-            inlineStyleDeclarations = styleDeclarations(
-                StyleProperty.POSITION to "absolute",
-                StyleProperty.LEFT to "100px",
-                StyleProperty.TOP to "5px"
-            )
-        }.applyParent(ancestor)
+        val ancestor =
+            ContainerNode(key = "abs-ancestor")
+                .apply {
+                    width = 40
+                    height = 40
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "relative",
+                        )
+                }.applyParent(root)
+        val child =
+            ButtonNode("abs-child", backgroundColor = childColor, key = "abs-child")
+                .apply {
+                    width = 36
+                    height = 16
+                    inlineStyleDeclarations =
+                        styleDeclarations(
+                            StyleProperty.POSITION to "absolute",
+                            StyleProperty.LEFT to "100px",
+                            StyleProperty.TOP to "5px",
+                        )
+                }.applyParent(ancestor)
         return AbsoluteOutsideAncestorFixture(
             tree = DomTree(root),
             root = root,
             ancestor = ancestor,
             child = child,
-            childColor = childColor
+            childColor = childColor,
         )
     }
 
-    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations {
-        return StyleDeclarations().apply {
+    private fun styleDeclarations(vararg entries: Pair<StyleProperty, String>): StyleDeclarations =
+        StyleDeclarations().apply {
             entries.forEach { (property, literal) ->
                 set(property, StyleExpression.Literal(literal))
             }
         }
-    }
 }

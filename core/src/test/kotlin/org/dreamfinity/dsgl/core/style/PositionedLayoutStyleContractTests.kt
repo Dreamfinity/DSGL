@@ -1,7 +1,7 @@
 package org.dreamfinity.dsgl.core.style
 
-import org.dreamfinity.dsgl.core.dsl.StyleScope
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
+import org.dreamfinity.dsgl.core.dsl.StyleScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -38,23 +38,25 @@ class PositionedLayoutStyleContractTests {
     @Test
     fun `position z-index and offsets reach computed style`() {
         val node = ContainerNode(key = "positioned-style-node")
-        val expectations = listOf(
-            "static" to PositionMode.Static,
-            "relative" to PositionMode.Relative,
-            "absolute" to PositionMode.Absolute,
-            "fixed" to PositionMode.Fixed,
-            "sticky" to PositionMode.Sticky
-        )
+        val expectations =
+            listOf(
+                "static" to PositionMode.Static,
+                "relative" to PositionMode.Relative,
+                "absolute" to PositionMode.Absolute,
+                "fixed" to PositionMode.Fixed,
+                "sticky" to PositionMode.Sticky,
+            )
 
         expectations.forEach { (literal, expectedPosition) ->
-            node.inlineStyleDeclarations = StyleDeclarations().apply {
-                set(StyleProperty.POSITION, StyleExpression.Literal(literal))
-                set(StyleProperty.LEFT, StyleExpression.Literal("10px"))
-                set(StyleProperty.TOP, StyleExpression.Literal("2em"))
-                set(StyleProperty.RIGHT, StyleExpression.Literal("auto"))
-                set(StyleProperty.BOTTOM, StyleExpression.Literal("0"))
-                set(StyleProperty.Z_INDEX, StyleExpression.Literal("13"))
-            }
+            node.inlineStyleDeclarations =
+                StyleDeclarations().apply {
+                    set(StyleProperty.POSITION, StyleExpression.Literal(literal))
+                    set(StyleProperty.LEFT, StyleExpression.Literal("10px"))
+                    set(StyleProperty.TOP, StyleExpression.Literal("2em"))
+                    set(StyleProperty.RIGHT, StyleExpression.Literal("auto"))
+                    set(StyleProperty.BOTTOM, StyleExpression.Literal("0"))
+                    set(StyleProperty.Z_INDEX, StyleExpression.Literal("13"))
+                }
             StyleEngine.clearCache()
             StyleEngine.applyStylesRecursively(node)
             val computed = node.appliedComputedStyleSnapshot()
@@ -79,4 +81,3 @@ class PositionedLayoutStyleContractTests {
         assertEquals("sticky", literal)
     }
 }
-

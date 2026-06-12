@@ -5,7 +5,7 @@ const val DND_DATA_TYPE_MIME: String = "application/x-dsgl-dnd-type"
 
 data class Transform(
     val x: Double,
-    val y: Double
+    val y: Double,
 )
 
 data class ActiveDrag(
@@ -18,18 +18,18 @@ data class ActiveDrag(
     val cursorY: Int,
     val transform: Transform,
     val dropEffect: DropEffect,
-    val dataTransfer: DataTransfer
+    val dataTransfer: DataTransfer,
 )
 
 enum class InsertPosition {
     BEFORE,
     AFTER,
-    APPEND
+    APPEND,
 }
 
 data class SortableProjection(
     val activeId: String?,
     val overId: String?,
     val insertPosition: InsertPosition,
-    val newIndex: Int?
+    val newIndex: Int?,
 )

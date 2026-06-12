@@ -10,27 +10,30 @@ import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 
-private val easingOptions: List<Pair<String, Easing>> = listOf(
-    "linear" to Easings.LINEAR,
-    "ease" to Easings.EASE,
-    "ease-in" to Easings.EASE_IN,
-    "ease-out" to Easings.EASE_OUT,
-    "ease-in-out" to Easings.EASE_IN_OUT
-)
+private val easingOptions: List<Pair<String, Easing>> =
+    listOf(
+        "linear" to Easings.LINEAR,
+        "ease" to Easings.EASE,
+        "ease-in" to Easings.EASE_IN,
+        "ease-out" to Easings.EASE_OUT,
+        "ease-in-out" to Easings.EASE_IN_OUT,
+    )
 
-private val directionOptions: List<AnimationDirection> = listOf(
-    AnimationDirection.Normal,
-    AnimationDirection.Reverse,
-    AnimationDirection.Alternate,
-    AnimationDirection.AlternateReverse
-)
+private val directionOptions: List<AnimationDirection> =
+    listOf(
+        AnimationDirection.Normal,
+        AnimationDirection.Reverse,
+        AnimationDirection.Alternate,
+        AnimationDirection.AlternateReverse,
+    )
 
-private val fillModeOptions: List<AnimationFillMode> = listOf(
-    AnimationFillMode.None,
-    AnimationFillMode.Forwards,
-    AnimationFillMode.Backwards,
-    AnimationFillMode.Both
-)
+private val fillModeOptions: List<AnimationFillMode> =
+    listOf(
+        AnimationFillMode.None,
+        AnimationFillMode.Forwards,
+        AnimationFillMode.Backwards,
+        AnimationFillMode.Both,
+    )
 
 fun UiScope.animationsSection(onInfo: (String) -> Unit) {
     var animationsToggle by useState(false)
@@ -47,15 +50,19 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
     var animationsBezierY2 by useState(67L)
 
     val duration = animationsDurationMs.toInt().coerceIn(200, 6000)
-    val customBezier = cubicBezier(
-        animationsBezierX1.toFloat() / 100f,
-        animationsBezierY1.toFloat() / 100f,
-        animationsBezierX2.toFloat() / 100f,
-        animationsBezierY2.toFloat() / 100f
-    )
-    val dynamicEasingOptions = easingOptions + listOf(
-        "custom($animationsBezierX1,$animationsBezierY1,$animationsBezierX2,$animationsBezierY2)" to customBezier
-    )
+    val customBezier =
+        cubicBezier(
+            animationsBezierX1.toFloat() / 100f,
+            animationsBezierY1.toFloat() / 100f,
+            animationsBezierX2.toFloat() / 100f,
+            animationsBezierY2.toFloat() / 100f,
+        )
+    val dynamicEasingOptions =
+        easingOptions +
+            listOf(
+                "custom($animationsBezierX1,$animationsBezierY1,$animationsBezierX2,$animationsBezierY2)" to
+                    customBezier,
+            )
     val easingIndex = animationsEasingIndex.coerceIn(0, dynamicEasingOptions.lastIndex)
     val directionIndex = animationsDirectionIndex.coerceIn(0, directionOptions.lastIndex)
     val fillIndex = animationsFillModeIndex.coerceIn(0, fillModeOptions.lastIndex)
@@ -77,7 +84,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
         text("Transforms + Transitions + Keyframes")
         text(
             "Transforms are layout-neutral; hit testing follows transformed geometry.",
-            { style = { color = DEMO_MUTED } }
+            { style = { color = DEMO_MUTED } },
         )
 
         div({
@@ -87,15 +94,12 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                 flexDirection = FlexDirection.Row
             }
         }) {
-            button(
-                if (animationsToggle) "Retarget: ON" else "Retarget: OFF",
-                {
-                    onMouseClick = {
-                        animationsToggle = !animationsToggle
-                        onInfo("Animation retarget toggle=$animationsToggle")
-                    }
+            button(if (animationsToggle) "Retarget: ON" else "Retarget: OFF", {
+                onMouseClick = {
+                    animationsToggle = !animationsToggle
+                    onInfo("Animation retarget toggle=$animationsToggle")
                 }
-            )
+            })
             button(if (animationsPaused) "Play" else "Pause", {
                 onMouseClick = {
                     animationsPaused = !animationsPaused
@@ -136,7 +140,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                     value = duration.toLong(),
                     min = 200,
                     max = 6000,
-                    step = 50
+                    step = 50,
                 ),
                 {
                     key = "animations.duration.slider"
@@ -145,7 +149,7 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: duration.toLong()
                         animationsDurationMs = next.coerceIn(200, 6000)
                     }
-                }
+                },
             )
         }
 
@@ -173,7 +177,10 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                 flexDirection = FlexDirection.Row
                 alignItems = AlignItems.Center
                 justifyContent = JustifyContent.Start
-                border { width = 1.px; color = 0xFF3F4D5E.toInt() }
+                border {
+                    width = 1.px
+                    color = 0xFF3F4D5E.toInt()
+                }
             }
         }) {
             div({
@@ -199,10 +206,16 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         scale(scale)
                         rotate(if (animationsToggle) 8f else 0f)
                     }
-                    transformOrigin { x = 0.5f; y = 0.5f }
+                    transformOrigin {
+                        x = 0.5f
+                        y = 0.5f
+                    }
                     opacity = if (animationsToggle) 0.65f else 1f
                     foregroundColor = if (animationsToggle) 0xFFA4F0C2.toInt() else 0xFFEAF3FF.toInt()
-                    border { width = 1.px; color = 0xFF56677A.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF56677A.toInt()
+                    }
                     padding { all(4.px) }
                 }
             }) {
@@ -226,11 +239,17 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                             iterationCount = iterations,
                             direction = direction,
                             fillMode = fillMode,
-                            playState = playState
+                            playState = playState,
                         )
                     }
-                    transformOrigin { x = 0.5f; y = 0.5f }
-                    border { width = 1.px; color = 0xFF5F5F72.toInt() }
+                    transformOrigin {
+                        x = 0.5f
+                        y = 0.5f
+                    }
+                    border {
+                        width = 1.px
+                        color = 0xFF5F5F72.toInt()
+                    }
                     padding { all(4.px) }
                 }
             }) {
@@ -248,11 +267,17 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                     transform {
                         rotate(if (animationsToggle) 12f else 0f)
                     }
-                    transformOrigin { x = 0.5f; y = 0.5f }
+                    transformOrigin {
+                        x = 0.5f
+                        y = 0.5f
+                    }
                     transition {
                         property(StyleAnimProps.transform, 260, easing = Easings.EASE_IN_OUT)
                     }
-                    border { width = 1.px; color = 0xFF4C6077.toInt() }
+                    border {
+                        width = 1.px
+                        color = 0xFF4C6077.toInt()
+                    }
                 }
             }) {
                 div({
@@ -264,13 +289,16 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
                         transform {
                             translate(
                                 if (animationsToggle) 10f else 0f,
-                                if (animationsToggle) 4f else 0f
+                                if (animationsToggle) 4f else 0f,
                             )
                         }
                         transition {
                             property(StyleAnimProps.transform, 220, easing = Easings.EASE_OUT)
                         }
-                        border { width = 1.px; color = 0xFF7593B8.toInt() }
+                        border {
+                            width = 1.px
+                            color = 0xFF7593B8.toInt()
+                        }
                     }
                 }) {
                     text("Nested", { style = { color = 0xFFEAF3FF.toInt() } })
@@ -280,16 +308,27 @@ fun UiScope.animationsSection(onInfo: (String) -> Unit) {
 
         text({
             val debug = StyleAnimationEngine.debugSnapshotForKey("animations.keyframes.card")
-            val transitionDebug = debug?.activeTransitions?.joinToString(", ").orEmpty().ifBlank { "-" }
-            val keyframesDebug = debug?.activeKeyframes?.joinToString(", ").orEmpty().ifBlank { "-" }
-            val transformDebug = debug?.effectiveTransform?.let {
-                "tx=${it.translateX},ty=${it.translateY},sx=${it.scaleX},sy=${it.scaleY},rot=${it.rotateDeg}"
-            } ?: "-"
+            val transitionDebug =
+                debug
+                    ?.activeTransitions
+                    ?.joinToString(", ")
+                    .orEmpty()
+                    .ifBlank { "-" }
+            val keyframesDebug =
+                debug
+                    ?.activeKeyframes
+                    ?.joinToString(", ")
+                    .orEmpty()
+                    .ifBlank { "-" }
+            val transformDebug =
+                debug?.effectiveTransform?.let {
+                    "tx=${it.translateX},ty=${it.translateY},sx=${it.scaleX},sy=${it.scaleY},rot=${it.rotateDeg}"
+                } ?: "-"
             "debug: hover=$animationsHover toggle=$animationsToggle " +
-                    "easing=$easingName direction=${direction.name} fill=${fillMode.name} " +
-                    "play=${playState.name} iterations=${if (animationsUseInfinite) "infinite" else "3"} " +
-                    "activeTransitions=$transitionDebug activeKeyframes=$keyframesDebug " +
-                    "effectiveOpacity=${debug?.effectiveOpacity ?: 1f} transform={$transformDebug}"
+                "easing=$easingName direction=${direction.name} fill=${fillMode.name} " +
+                "play=${playState.name} iterations=${if (animationsUseInfinite) "infinite" else "3"} " +
+                "activeTransitions=$transitionDebug activeKeyframes=$keyframesDebug " +
+                "effectiveOpacity=${debug?.effectiveOpacity ?: 1f} transform={$transformDebug}"
 
             style = { color = DEMO_MUTED }
         })
@@ -300,7 +339,7 @@ private fun UiScope.bezierSliderRow(
     label: String,
     key: String,
     value: Long,
-    onChange: (Long) -> Unit
+    onChange: (Long) -> Unit,
 ) {
     div({
         style = {
@@ -315,7 +354,7 @@ private fun UiScope.bezierSliderRow(
                 value = value,
                 min = 0,
                 max = 100,
-                step = 1
+                step = 1,
             ),
             {
                 this.key = key
@@ -324,7 +363,7 @@ private fun UiScope.bezierSliderRow(
                     val next = (event.parsedValue as? Long) ?: event.value.toLongOrNull() ?: value
                     onChange(next.coerceIn(0, 100))
                 }
-            }
+            },
         )
     }
 }

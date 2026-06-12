@@ -13,25 +13,29 @@ class FontDiscoveryTests {
     fun `fontId mapping preserves subdirectories`() {
         assertEquals("Minecraft", FontDiscovery.fontIdFromRelativeTtfPath("Minecraft.ttf"))
         assertEquals("ui/Ubuntu", FontDiscovery.fontIdFromRelativeTtfPath("ui/Ubuntu.ttf"))
-        assertEquals("noto/Noto_Sans/NotoSans-Regular", FontDiscovery.fontIdFromRelativeTtfPath("noto\\Noto_Sans\\NotoSans-Regular.ttf"))
+        assertEquals(
+            "noto/Noto_Sans/NotoSans-Regular",
+            FontDiscovery.fontIdFromRelativeTtfPath("noto\\Noto_Sans\\NotoSans-Regular.ttf"),
+        )
     }
 
     @Test
     fun `generated index parsing keeps only ttf entries`() {
-        val parsed = FontDiscovery.parseGeneratedFontIndex(
-            """
-            minecraft/MinecraftDefault-Regular.ttf
-            not-a-font.txt
+        val parsed =
+            FontDiscovery.parseGeneratedFontIndex(
+                """
+                minecraft/MinecraftDefault-Regular.ttf
+                not-a-font.txt
 
-            ubuntu/Ubuntu-Regular.ttf
-            """.trimIndent()
-        )
+                ubuntu/Ubuntu-Regular.ttf
+                """.trimIndent(),
+            )
         assertEquals(
             listOf(
                 "minecraft/MinecraftDefault-Regular.ttf",
-                "ubuntu/Ubuntu-Regular.ttf"
+                "ubuntu/Ubuntu-Regular.ttf",
             ),
-            parsed
+            parsed,
         )
     }
 
@@ -65,10 +69,11 @@ class FontDiscoveryTests {
 
     @Test
     fun `external source overrides jar for same font id`() {
-        val prioritized = FontDiscovery.resolveSourcePriority(
-            jarFontIds = listOf("minecraft/MinecraftDefault-Regular", "ui/Ubuntu"),
-            externalFontIds = listOf("ui/Ubuntu")
-        )
+        val prioritized =
+            FontDiscovery.resolveSourcePriority(
+                jarFontIds = listOf("minecraft/MinecraftDefault-Regular", "ui/Ubuntu"),
+                externalFontIds = listOf("ui/Ubuntu"),
+            )
         assertEquals(FontAssetSource.Jar, prioritized["minecraft/MinecraftDefault-Regular"])
         assertEquals(FontAssetSource.External, prioritized["ui/Ubuntu"])
     }

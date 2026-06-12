@@ -18,7 +18,7 @@ object KeyframesRegistry {
 }
 
 class KeyframesBuilder internal constructor(
-    private val name: String
+    private val name: String,
 ) {
     private val frames: MutableList<Keyframe> = ArrayList()
 
@@ -48,13 +48,12 @@ class KeyframeScope internal constructor() {
         transform = UiTransformBuilder().apply(block).build()
     }
 
-    internal fun build(): KeyframeValue {
-        return KeyframeValue(
+    internal fun build(): KeyframeValue =
+        KeyframeValue(
             transform = transform,
             opacity = opacity?.coerceIn(0f, 1f),
-            color = color
+            color = color,
         )
-    }
 }
 
 class UiTransformBuilder internal constructor() {
@@ -78,17 +77,16 @@ class UiTransformBuilder internal constructor() {
         rotate += deg
     }
 
-    fun build(): UiTransform {
-        return UiTransform(translateX = tx, translateY = ty, scaleX = sx, scaleY = sy, rotateDeg = rotate)
-    }
+    fun build(): UiTransform =
+        UiTransform(translateX = tx, translateY = ty, scaleX = sx, scaleY = sy, rotateDeg = rotate)
 }
 
 internal fun KeyframesDefinition.normalized(): KeyframesDefinition {
-    val normalizedFrames = frames
-        .sortedBy { it.fraction }
-        .map { frame ->
-            frame.copy(fraction = frame.fraction.coerceIn(0f, 1f))
-        }
+    val normalizedFrames =
+        frames
+            .sortedBy { it.fraction }
+            .map { frame ->
+                frame.copy(fraction = frame.fraction.coerceIn(0f, 1f))
+            }
     return copy(frames = normalizedFrames)
 }
-

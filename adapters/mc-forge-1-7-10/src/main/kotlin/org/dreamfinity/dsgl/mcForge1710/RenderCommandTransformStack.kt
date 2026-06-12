@@ -1,15 +1,17 @@
 package org.dreamfinity.dsgl.mcForge1710
 
-import kotlin.math.ceil
-import kotlin.math.floor
 import org.dreamfinity.dsgl.core.dom.layout.AffineTransform2D
 import org.dreamfinity.dsgl.core.render.RenderCommand
+import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.sin
 
 internal data class GuiClipRect(
     val x: Int,
     val y: Int,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
 internal class RenderCommandTransformStack {
@@ -32,11 +34,14 @@ internal class RenderCommandTransformStack {
 
     fun currentTransform(): AffineTransform2D = current
 
-    fun transformPoint(x: Float, y: Float): Pair<Float, Float> {
-        return current.transform(x, y)
-    }
+    fun transformPoint(x: Float, y: Float): Pair<Float, Float> = current.transform(x, y)
 
-    fun resolveClipRect(x: Int, y: Int, width: Int, height: Int): GuiClipRect {
+    fun resolveClipRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ): GuiClipRect {
         val safeWidth = width.coerceAtLeast(0)
         val safeHeight = height.coerceAtLeast(0)
         if (safeWidth == 0 || safeHeight == 0) {
@@ -46,15 +51,24 @@ internal class RenderCommandTransformStack {
             return GuiClipRect(x, y, safeWidth, safeHeight)
         }
 
-        val topLeft = current.transform(x.toFloat(), y.toFloat())
-        val topRight = current.transform((x + safeWidth).toFloat(), y.toFloat())
-        val bottomLeft = current.transform(x.toFloat(), (y + safeHeight).toFloat())
-        val bottomRight = current.transform((x + safeWidth).toFloat(), (y + safeHeight).toFloat())
+        val transform = current
+        val left = x.toFloat()
+        val top = y.toFloat()
+        val right = (x + safeWidth).toFloat()
+        val bottom = (y + safeHeight).toFloat()
+        val topLeftX = transform.a * left + transform.c * top + transform.tx
+        val topLeftY = transform.b * left + transform.d * top + transform.ty
+        val topRightX = transform.a * right + transform.c * top + transform.tx
+        val topRightY = transform.b * right + transform.d * top + transform.ty
+        val bottomLeftX = transform.a * left + transform.c * bottom + transform.tx
+        val bottomLeftY = transform.b * left + transform.d * bottom + transform.ty
+        val bottomRightX = transform.a * right + transform.c * bottom + transform.tx
+        val bottomRightY = transform.b * right + transform.d * bottom + transform.ty
 
-        val minX = minOf(topLeft.first, topRight.first, bottomLeft.first, bottomRight.first)
-        val maxX = maxOf(topLeft.first, topRight.first, bottomLeft.first, bottomRight.first)
-        val minY = minOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
-        val maxY = maxOf(topLeft.second, topRight.second, bottomLeft.second, bottomRight.second)
+        val minX = minOf(minOf(topLeftX, topRightX), minOf(bottomLeftX, bottomRightX))
+        val maxX = maxOf(maxOf(topLeftX, topRightX), maxOf(bottomLeftX, bottomRightX))
+        val minY = minOf(minOf(topLeftY, topRightY), minOf(bottomLeftY, bottomRightY))
+        val maxY = maxOf(maxOf(topLeftY, topRightY), maxOf(bottomLeftY, bottomRightY))
 
         val resolvedX = floor(minX.toDouble()).toInt()
         val resolvedY = floor(minY.toDouble()).toInt()
@@ -64,16 +78,22 @@ internal class RenderCommandTransformStack {
     }
 
     private fun RenderCommand.PushTransform.toAffineTransform(): AffineTransform2D {
-        val toOrigin = AffineTransform2D.translation(originX, originY)
-        val translate = AffineTransform2D.translation(translateX, translateY)
-        val rotate = AffineTransform2D.rotation(rotateDeg)
-        val scale = AffineTransform2D.scale(scaleX, scaleY)
-        val fromOrigin = AffineTransform2D.translation(-originX, -originY)
-        return toOrigin
-            .times(translate)
-            .times(rotate)
-            .times(scale)
-            .times(fromOrigin)
+        // Closed form of T(origin) * T(translate) * R(rotateDeg) * S(scaleX, scaleY) * T(-origin):
+        // chaining times() would allocate nine intermediate matrices per push in the paint loop.
+        val rad = Math.toRadians(rotateDeg.toDouble())
+        val cos = cos(rad).toFloat()
+        val sin = sin(rad).toFloat()
+        val a = cos * scaleX
+        val b = sin * scaleX
+        val c = -sin * scaleY
+        val d = cos * scaleY
+        return AffineTransform2D(
+            a = a,
+            b = b,
+            c = c,
+            d = d,
+            tx = originX + translateX - a * originX - c * originY,
+            ty = originY + translateY - b * originX - d * originY,
+        )
     }
 }
-

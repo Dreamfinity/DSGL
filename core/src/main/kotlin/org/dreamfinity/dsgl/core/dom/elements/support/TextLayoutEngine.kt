@@ -8,7 +8,7 @@ object TextLayoutEngine {
         val text: String,
         val startIndex: Int,
         val endIndexExclusive: Int,
-        val width: Int
+        val width: Int,
     ) {
         val length: Int
             get() = endIndexExclusive - startIndex
@@ -18,7 +18,7 @@ object TextLayoutEngine {
         val lines: List<Line>,
         val maxLineWidth: Int,
         val totalHeight: Int,
-        val lineHeight: Int
+        val lineHeight: Int,
     ) {
         fun lineForCaret(caretIndex: Int): Int {
             if (lines.isEmpty()) return 0
@@ -38,7 +38,7 @@ object TextLayoutEngine {
         val fontHeight: Int,
         val fontFingerprint: Int,
         val usesRangeMeasurement: Boolean,
-        val rangeMeasureCacheKey: Any?
+        val rangeMeasureCacheKey: Any?,
     )
 
     data class HotPathStats(
@@ -54,15 +54,15 @@ object TextLayoutEngine {
         val temporarySegmentSubstringCalls: Long,
         val probeMeasureSubstringCalls: Long,
         val finalLineTextSubstringCalls: Long,
-        val substringSliceCalls: Long
+        val substringSliceCalls: Long,
     )
 
     private const val MAX_CACHE_SIZE: Int = 512
-    private val cache: MutableMap<CacheKey, Layout> = object : LinkedHashMap<CacheKey, Layout>(128, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, Layout>?): Boolean {
-            return size > MAX_CACHE_SIZE
+    private val cache: MutableMap<CacheKey, Layout> =
+        object : LinkedHashMap<CacheKey, Layout>(128, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, Layout>?): Boolean =
+                size > MAX_CACHE_SIZE
         }
-    }
     private val layoutCalls = AtomicLong(0L)
     private val cacheHits = AtomicLong(0L)
     private val cacheMisses = AtomicLong(0L)
@@ -90,7 +90,7 @@ object TextLayoutEngine {
         fontHeight: Int,
         measureText: (String) -> Int,
         measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)? = null,
-        measureRangeCacheKey: Any? = null
+        measureRangeCacheKey: Any? = null,
     ): Layout {
         layoutCalls.incrementAndGet()
         val resolvedHeight = fontHeight.coerceAtLeast(1)
@@ -104,23 +104,25 @@ object TextLayoutEngine {
                 lines = lines,
                 maxLineWidth = maxLineWidth,
                 totalHeight = totalHeight,
-                lineHeight = resolvedHeight
+                lineHeight = resolvedHeight,
             )
         }
-        val fingerprint = if (measureRange != null) {
-            measureRangeCacheKey.hashCode()
-        } else {
-            measureText("M") * 31 + measureText("i")
-        }
-        val key = CacheKey(
-            text = text,
-            maxWidth = constrainedWidth,
-            wrap = wrap,
-            fontHeight = resolvedHeight,
-            fontFingerprint = fingerprint,
-            usesRangeMeasurement = measureRange != null,
-            rangeMeasureCacheKey = measureRangeCacheKey
-        )
+        val fingerprint =
+            if (measureRange != null) {
+                measureRangeCacheKey.hashCode()
+            } else {
+                measureText("M") * 31 + measureText("i")
+            }
+        val key =
+            CacheKey(
+                text = text,
+                maxWidth = constrainedWidth,
+                wrap = wrap,
+                fontHeight = resolvedHeight,
+                fontFingerprint = fingerprint,
+                usesRangeMeasurement = measureRange != null,
+                rangeMeasureCacheKey = measureRangeCacheKey,
+            )
         synchronized(cache) {
             cache[key]?.let {
                 cacheHits.incrementAndGet()
@@ -141,8 +143,8 @@ object TextLayoutEngine {
         return result
     }
 
-    fun hotPathStats(): HotPathStats {
-        return HotPathStats(
+    fun hotPathStats(): HotPathStats =
+        HotPathStats(
             layoutCalls = layoutCalls.get(),
             cacheHits = cacheHits.get(),
             cacheMisses = cacheMisses.get(),
@@ -155,9 +157,8 @@ object TextLayoutEngine {
             temporarySegmentSubstringCalls = temporarySegmentSubstringCalls.get(),
             probeMeasureSubstringCalls = probeMeasureSubstringCalls.get(),
             finalLineTextSubstringCalls = finalLineTextSubstringCalls.get(),
-            substringSliceCalls = substringSliceCalls.get()
+            substringSliceCalls = substringSliceCalls.get(),
         )
-    }
 
     fun resetHotPathStats() {
         layoutCalls.set(0L)
@@ -175,12 +176,13 @@ object TextLayoutEngine {
         substringSliceCalls.set(0L)
     }
 
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun buildLines(
         text: String,
         maxWidth: Int?,
         wrap: TextWrap,
         measureText: (String) -> Int,
-        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?
+        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?,
     ): List<Line> {
         buildLinesCalls.incrementAndGet()
         if (text.isEmpty()) {
@@ -198,13 +200,14 @@ object TextLayoutEngine {
                         text = lineText,
                         startIndex = logicalStart,
                         endIndexExclusive = newlineIndex,
-                        width = measureWidth(
-                            measureRange = measureRange,
-                            startIndex = logicalStart,
-                            endIndexExclusive = newlineIndex,
-                            fallbackMeasure = { measureText(lineText) }
-                        )
-                    )
+                        width =
+                            measureWidth(
+                                measureRange = measureRange,
+                                startIndex = logicalStart,
+                                endIndexExclusive = newlineIndex,
+                                fallbackMeasure = { measureText(lineText) },
+                            ),
+                    ),
                 )
             } else {
                 appendWrappedSegment(
@@ -214,7 +217,7 @@ object TextLayoutEngine {
                     segmentEndExclusive = newlineIndex,
                     maxWidth = maxWidth,
                     measureText = measureText,
-                    measureRange = measureRange
+                    measureRange = measureRange,
                 )
             }
 
@@ -242,7 +245,7 @@ object TextLayoutEngine {
         segmentEndExclusive: Int,
         maxWidth: Int,
         measureText: (String) -> Int,
-        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?
+        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?,
     ) {
         appendWrappedSegmentCalls.incrementAndGet()
         if (segmentStart >= segmentEndExclusive) {
@@ -252,14 +255,15 @@ object TextLayoutEngine {
 
         var lineStart = segmentStart
         while (lineStart < segmentEndExclusive) {
-            var lineEndExclusive = findMaxFittingEnd(
-                text = text,
-                start = lineStart,
-                segmentEndExclusive = segmentEndExclusive,
-                maxWidth = maxWidth,
-                measureText = measureText,
-                measureRange = measureRange
-            )
+            var lineEndExclusive =
+                findMaxFittingEnd(
+                    text = text,
+                    start = lineStart,
+                    segmentEndExclusive = segmentEndExclusive,
+                    maxWidth = maxWidth,
+                    measureText = measureText,
+                    measureRange = measureRange,
+                )
             if (lineEndExclusive <= lineStart) {
                 lineEndExclusive = (lineStart + 1).coerceAtMost(segmentEndExclusive)
             } else if (lineEndExclusive < segmentEndExclusive) {
@@ -275,13 +279,14 @@ object TextLayoutEngine {
                     text = lineText,
                     startIndex = lineStart,
                     endIndexExclusive = lineEndExclusive,
-                    width = measureWidth(
-                        measureRange = measureRange,
-                        startIndex = lineStart,
-                        endIndexExclusive = lineEndExclusive,
-                        fallbackMeasure = { measureText(lineText) }
-                    )
-                )
+                    width =
+                        measureWidth(
+                            measureRange = measureRange,
+                            startIndex = lineStart,
+                            endIndexExclusive = lineEndExclusive,
+                            fallbackMeasure = { measureText(lineText) },
+                        ),
+                ),
             )
             lineStart = lineEndExclusive
         }
@@ -293,7 +298,7 @@ object TextLayoutEngine {
         segmentEndExclusive: Int,
         maxWidth: Int,
         measureText: (String) -> Int,
-        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?
+        measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?,
     ): Int {
         findMaxFittingCalls.incrementAndGet()
         var low = (start + 1).coerceAtMost(segmentEndExclusive)
@@ -301,16 +306,17 @@ object TextLayoutEngine {
         var best = start
         while (low <= high) {
             val mid = (low + high) ushr 1
-            val width = measureWidth(
-                measureRange = measureRange,
-                startIndex = start,
-                endIndexExclusive = mid,
-                fallbackMeasure = {
-                    probeMeasureSubstringCalls.incrementAndGet()
-                    substringSliceCalls.incrementAndGet()
-                    measureText(text.substring(start, mid))
-                }
-            )
+            val width =
+                measureWidth(
+                    measureRange = measureRange,
+                    startIndex = start,
+                    endIndexExclusive = mid,
+                    fallbackMeasure = {
+                        probeMeasureSubstringCalls.incrementAndGet()
+                        substringSliceCalls.incrementAndGet()
+                        measureText(text.substring(start, mid))
+                    },
+                )
             if (width <= maxWidth) {
                 best = mid
                 low = mid + 1
@@ -325,16 +331,15 @@ object TextLayoutEngine {
         measureRange: ((startIndex: Int, endIndexExclusive: Int) -> Int)?,
         startIndex: Int,
         endIndexExclusive: Int,
-        fallbackMeasure: () -> Int
-    ): Int {
-        return if (measureRange != null) {
+        fallbackMeasure: () -> Int,
+    ): Int =
+        if (measureRange != null) {
             rangeMeasureCalls.incrementAndGet()
             measureRange.invoke(startIndex, endIndexExclusive)
         } else {
             plainMeasureCalls.incrementAndGet()
             fallbackMeasure()
         }
-    }
 
     private fun lastWhitespaceBreak(text: String, start: Int, endExclusive: Int): Int? {
         var index = endExclusive

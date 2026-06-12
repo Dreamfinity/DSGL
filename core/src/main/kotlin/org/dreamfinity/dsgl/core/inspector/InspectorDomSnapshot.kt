@@ -13,5 +13,5 @@ internal data class InspectorDomSnapshot(
     val parentLabel: String?,
     val childLabels: List<String>,
     val styleEditorHeight: Int,
-    val styleLines: List<String>
+    val styleLines: List<String>,
 )

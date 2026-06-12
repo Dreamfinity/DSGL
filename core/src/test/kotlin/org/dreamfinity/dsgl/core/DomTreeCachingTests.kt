@@ -1,8 +1,8 @@
 package org.dreamfinity.dsgl.core
 
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
-import org.dreamfinity.dsgl.core.dom.applyParent
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalAnchorNode
 import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.dom.applyParent
 import org.dreamfinity.dsgl.core.dom.elements.ContainerNode
 import org.dreamfinity.dsgl.core.dom.elements.TextNode
 import org.dreamfinity.dsgl.core.dom.elements.TextSource
@@ -15,14 +15,14 @@ import org.dreamfinity.dsgl.core.style.StyleEngine
 import org.dreamfinity.dsgl.core.style.UiTransform
 import kotlin.test.AfterTest
 import kotlin.test.Test
-import kotlin.test.assertSame
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class DomTreeCachingTests {
     private class CountingRectNode(
         private var color: Int,
-        key: Any? = null
+        key: Any? = null,
     ) : DOMNode(key) {
         var buildCount: Int = 0
             private set
@@ -45,7 +45,7 @@ class DomTreeCachingTests {
 
     private class TestRectNode(
         private val color: Int,
-        key: Any? = null
+        key: Any? = null,
     ) : DOMNode(key) {
         var throwOnBuild: Boolean = false
         override val styleType: String = "test-rect"
@@ -62,7 +62,7 @@ class DomTreeCachingTests {
 
     private class LegacyManualChildrenNode(
         private val color: Int,
-        key: Any? = null
+        key: Any? = null,
     ) : DOMNode(key) {
         override val styleType: String = "legacy-manual"
 
@@ -76,13 +76,18 @@ class DomTreeCachingTests {
         }
     }
 
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 6
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -175,17 +180,19 @@ class DomTreeCachingTests {
 
         node.display = Display.None
         val afterHide = tree.paint(ctx)
-        assertTrue(afterHide.none { command ->
-            command is RenderCommand.DrawRect &&
-                command.color == 0xFF3399CC.toInt()
-        })
+        assertTrue(
+            afterHide.none { command ->
+                command is RenderCommand.DrawRect &&
+                    command.color == 0xFF3399CC.toInt()
+            },
+        )
     }
 
     @Test
-    fun `modal host does not duplicate child commands in chunk assembly`() {
-        val host = ModalHostNode(key = "modal-host")
+    fun `modal portal does not duplicate child commands in chunk assembly`() {
+        val host = ModalPortalAnchorNode(key = "modal-host")
         CountingRectNode(color = 0xFFAA3300.toInt(), key = "content").applyParent(host)
-        CountingRectNode(color = 0xFF0033AA.toInt(), key = "overlay").applyParent(host)
+        CountingRectNode(color = 0xFF0033AA.toInt(), key = "floating-layer").applyParent(host)
         val tree = DomTree(host)
 
         tree.render(ctx, 320, 180)
@@ -214,9 +221,10 @@ class DomTreeCachingTests {
 
     @Test
     fun `render command chunk does not hold dom node references`() {
-        val hasNodeField = RenderCommandChunk::class.java.declaredFields.any { field ->
-            DOMNode::class.java.isAssignableFrom(field.type)
-        }
+        val hasNodeField =
+            RenderCommandChunk::class.java.declaredFields.any { field ->
+                DOMNode::class.java.isAssignableFrom(field.type)
+            }
         assertTrue(!hasNodeField)
     }
 }

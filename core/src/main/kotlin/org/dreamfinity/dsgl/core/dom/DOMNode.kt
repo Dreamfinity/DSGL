@@ -1,30 +1,24 @@
 package org.dreamfinity.dsgl.core.dom
 
-import org.dreamfinity.dsgl.core.dsl.ComponentProps
 import org.dreamfinity.dsgl.core.DsglColors
-import org.dreamfinity.dsgl.core.dsl.StyleScope
-import org.dreamfinity.dsgl.core.animation.AnimationSpec
-import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
-import org.dreamfinity.dsgl.core.animation.TransitionSpec
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.debug.ScrollPerformanceCounters
 import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.layout.*
+import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
+import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.*
-import org.dreamfinity.dsgl.core.font.FontRegistry
+import org.dreamfinity.dsgl.core.font.*
 import org.dreamfinity.dsgl.core.hooks.ref.ElementHandle
 import org.dreamfinity.dsgl.core.hooks.ref.RefTarget
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.style.*
-import org.dreamfinity.dsgl.core.text.MinecraftFormattingParser
-import org.dreamfinity.dsgl.core.text.ParsedText
-import org.dreamfinity.dsgl.core.text.TextStyleFlags
-import org.dreamfinity.dsgl.core.text.TextStyleMetrics
-import org.dreamfinity.dsgl.core.dom.text.ResolvedTextMetrics
+import org.dreamfinity.dsgl.core.text.*
 import kotlin.math.roundToInt
 
 data class NodeStyleApplyResult(
     val visualDirty: Boolean,
-    val layoutDirty: Boolean
+    val layoutDirty: Boolean,
 )
 
 data class ScrollAxisState(
@@ -32,7 +26,7 @@ data class ScrollAxisState(
     val scrollContainer: Boolean,
     val clipsToViewport: Boolean,
     val scrollbarPresent: Boolean,
-    val scrollbarGutter: Int
+    val scrollbarGutter: Int,
 )
 
 data class ScrollContainerState(
@@ -46,7 +40,7 @@ data class ScrollContainerState(
     val horizontalScrollbarGutter: Int,
     val verticalScrollbarGutter: Int,
     val axisX: ScrollAxisState,
-    val axisY: ScrollAxisState
+    val axisY: ScrollAxisState,
 )
 
 data class ScrollAnimationDebugState(
@@ -55,7 +49,7 @@ data class ScrollAnimationDebugState(
     val displayedX: Double,
     val displayedY: Double,
     val resolvedX: Int,
-    val resolvedY: Int
+    val resolvedY: Int,
 )
 
 data class ScrollSessionSnapshot(
@@ -65,20 +59,21 @@ data class ScrollSessionSnapshot(
     val displayedY: Double,
     val resolvedX: Int,
     val resolvedY: Int,
-    val dragSession: ScrollbarDragSessionDebugState?
+    val dragSession: ScrollbarDragSessionDebugState?,
 )
 
 data class ScrollInvalidationState(
     val layoutDirty: Boolean,
     val visualDirty: Boolean,
-    val interactionDirty: Boolean
+    val interactionDirty: Boolean,
 ) {
     companion object {
-        val CLEAN = ScrollInvalidationState(
-            layoutDirty = false,
-            visualDirty = false,
-            interactionDirty = false
-        )
+        val CLEAN =
+            ScrollInvalidationState(
+                layoutDirty = false,
+                visualDirty = false,
+                interactionDirty = false,
+            )
     }
 
     val anyDirty: Boolean
@@ -93,19 +88,19 @@ data class ScrollbarDragSessionDebugState(
     val maxThumbTravelPx: Int,
     val maxScroll: Int,
     val grabOffsetPx: Int,
-    val initialResolvedScroll: Int
+    val initialResolvedScroll: Int,
 )
 
 data class ScrollbarVisualAxis(
     val trackRect: Rect,
     val thumbRect: Rect,
     val maxScroll: Int,
-    val scrollOffset: Int
+    val scrollOffset: Int,
 )
 
 data class ScrollbarVisualState(
     val horizontal: ScrollbarVisualAxis?,
-    val vertical: ScrollbarVisualAxis?
+    val vertical: ScrollbarVisualAxis?,
 )
 
 private data class ScrollbarResolution(
@@ -114,13 +109,13 @@ private data class ScrollbarResolution(
     val horizontalGutter: Int,
     val verticalGutter: Int,
     val viewportWidth: Int,
-    val viewportHeight: Int
+    val viewportHeight: Int,
 )
 
 private data class NativeFontMetricsPx(
     val lineHeightPx: Int,
     val ascenderPx: Float,
-    val descenderPx: Float
+    val descenderPx: Float,
 )
 
 private data class ScrollbarDragSession(
@@ -131,12 +126,12 @@ private data class ScrollbarDragSession(
     val maxThumbTravelPx: Int,
     val maxScroll: Int,
     val grabOffsetPx: Int,
-    val initialResolvedScroll: Int
+    val initialResolvedScroll: Int,
 )
 
 private enum class ScrollbarAxis {
     Horizontal,
-    Vertical
+    Vertical,
 }
 
 /**
@@ -145,7 +140,7 @@ private enum class ScrollbarAxis {
  * Nodes are measured, laid out, and then converted into [RenderCommand]s by the host.
  */
 abstract class DOMNode(
-    var key: Any? = null
+    var key: Any? = null,
 ) {
     companion object {
         const val NORMAL_LINE_HEIGHT_MULTIPLIER: Float = 1.2f
@@ -338,7 +333,7 @@ abstract class DOMNode(
     private var stickyVisualOffsetXPx: Int = 0
     private var stickyVisualOffsetYPx: Int = 0
     private var stickyVisualOffsetsDirty: Boolean = true
-     private var stickyVisualRefreshSubtreeDirty: Boolean = true
+    private var stickyVisualRefreshSubtreeDirty: Boolean = true
     private var gapStyleValue: CssLength = CssLength.px(gap)
     private var flexBasisStyleValue: CssLength? = null
     private var borderColorStyleValue: Int = border.color
@@ -552,76 +547,85 @@ abstract class DOMNode(
         }
 
     /** Measures the node's desired size. */
-    internal fun resolveLayoutStyleValues(
-        ctx: UiMeasureContext,
-        parentContentWidth: Int?,
-        parentContentHeight: Int?
-    ) {
+    @Suppress("UnusedParameter")
+    internal fun resolveLayoutStyleValues(ctx: UiMeasureContext, parentContentWidth: Int?, parentContentHeight: Int?) {
         if (appliedComputedStyle == null) {
             return
         }
-        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
+        val context = lengthResolveContext(parentContentWidth, parentContentHeight)
         margin = marginStyleValue.resolveToInsets(context)
         padding = paddingStyleValue.resolveToInsets(context)
-        val borderWidthPx = borderWidthStyleValue
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-            .roundToInt()
-            .coerceAtLeast(0)
+        val borderWidthPx =
+            borderWidthStyleValue
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+                .roundToInt()
+                .coerceAtLeast(0)
         border = Border.all(borderWidthPx, borderColorStyleValue)
-        borderRadius = borderRadiusStyleValue
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-            .roundToInt()
-            .coerceAtLeast(0)
-        val resolvedWidth = widthStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
-        val resolvedHeight = heightStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
-        val resolvedMinWidth = minWidthStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
-        val resolvedMinHeight = minHeightStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
-        val resolvedMaxWidth = maxWidthStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
-        val resolvedMaxHeight = maxHeightStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerHeight)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
+        borderRadius =
+            borderRadiusStyleValue
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+                .roundToInt()
+                .coerceAtLeast(0)
+        val resolvedWidth =
+            widthStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
+        val resolvedHeight =
+            heightStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
+        val resolvedMinWidth =
+            minWidthStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
+        val resolvedMinHeight =
+            minHeightStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
+        val resolvedMaxWidth =
+            maxWidthStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
+        val resolvedMaxHeight =
+            maxHeightStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerHeight)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
         minWidth = resolvedMinWidth
         minHeight = resolvedMinHeight
         maxWidth = resolvedMaxWidth
         maxHeight = resolvedMaxHeight
-        width = resolvedWidth?.let {
-            clampContentLengthToConstraints(
-                length = it,
-                minConstraint = resolvedMinWidth,
-                maxConstraint = resolvedMaxWidth
-            )
-        }
-        height = resolvedHeight?.let {
-            clampContentLengthToConstraints(
-                length = it,
-                minConstraint = resolvedMinHeight,
-                maxConstraint = resolvedMaxHeight
-            )
-        }
-        gap = gapStyleValue
-            .resolvePx(context, LengthPercentBase.ContainerWidth)
-            .roundToInt()
-            .coerceAtLeast(0)
-        flexBasis = flexBasisStyleValue
-            ?.resolvePx(context, LengthPercentBase.ContainerWidth)
-            ?.roundToInt()
-            ?.coerceAtLeast(0)
+        width =
+            resolvedWidth?.let {
+                clampContentLengthToConstraints(
+                    length = it,
+                    minConstraint = resolvedMinWidth,
+                    maxConstraint = resolvedMaxWidth,
+                )
+            }
+        height =
+            resolvedHeight?.let {
+                clampContentLengthToConstraints(
+                    length = it,
+                    minConstraint = resolvedMinHeight,
+                    maxConstraint = resolvedMaxHeight,
+                )
+            }
+        gap =
+            gapStyleValue
+                .resolvePx(context, LengthPercentBase.ContainerWidth)
+                .roundToInt()
+                .coerceAtLeast(0)
+        flexBasis =
+            flexBasisStyleValue
+                ?.resolvePx(context, LengthPercentBase.ContainerWidth)
+                ?.roundToInt()
+                ?.coerceAtLeast(0)
 
         val resolvedRelativeOffsetX = resolveRelativeVisualOffsetXPx(context)
         val resolvedRelativeOffsetY = resolveRelativeVisualOffsetYPx(context)
@@ -668,55 +672,62 @@ abstract class DOMNode(
         val verticalActive = verticalInset.active
         if (!horizontalActive && !verticalActive) return 0 to 0
 
-        val references = StickyLayoutModel.nearestStickyScrollContainers(
-            node = this,
-            resolveHorizontal = horizontalActive,
-            resolveVertical = verticalActive
-        )
+        val references =
+            StickyLayoutModel.nearestStickyScrollContainers(
+                node = this,
+                resolveHorizontal = horizontalActive,
+                resolveVertical = verticalActive,
+            )
         val containingBlockRect = stickyContainingBlockForPositioningRect()
         val baseRect = visualBoundsWithPendingScrollTranslation(this)
         val referenceStates = HashMap<DOMNode, ScrollContainerState>(2)
+
         fun viewportRect(reference: DOMNode): Rect {
-            val state = referenceStates.getOrPut(reference) {
-                reference.scrollContainerState()
-            }
+            val state =
+                referenceStates.getOrPut(reference) {
+                    reference.scrollContainerState()
+                }
             return stickyReferenceViewportRect(reference, state)
         }
 
-        val offsetX = if (horizontalActive) {
-            val viewportRect = viewportRect(references.horizontal)
-            val offsetContext = positioningOffsetResolveContext(viewportRect)
-            val insetLength = horizontalInset.value
-                ?: error("Sticky horizontal inset must be present when horizontal sticky axis is active")
-            val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerWidth).roundToInt()
-            StickyLayoutModel.resolveHorizontalVisualOffsetPx(
-                baseX = baseRect.x,
-                nodeWidth = baseRect.width.coerceAtLeast(0),
-                viewportRect = viewportRect,
-                containingBlockRect = containingBlockRect,
-                insetResolution = horizontalInset,
-                insetPx = insetPx
-            )
-        } else {
-            0
-        }
-        val offsetY = if (verticalActive) {
-            val viewportRect = viewportRect(references.vertical)
-            val offsetContext = positioningOffsetResolveContext(viewportRect)
-            val insetLength = verticalInset.value
-                ?: error("Sticky vertical inset must be present when vertical sticky axis is active")
-            val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerHeight).roundToInt()
-            StickyLayoutModel.resolveVerticalVisualOffsetPx(
-                baseY = baseRect.y,
-                nodeHeight = baseRect.height.coerceAtLeast(0),
-                viewportRect = viewportRect,
-                containingBlockRect = containingBlockRect,
-                insetResolution = verticalInset,
-                insetPx = insetPx
-            )
-        } else {
-            0
-        }
+        val offsetX =
+            if (horizontalActive) {
+                val viewportRect = viewportRect(references.horizontal)
+                val offsetContext = positioningOffsetResolveContext(viewportRect)
+                val insetLength =
+                    horizontalInset.value
+                        ?: error("Sticky horizontal inset must be present when horizontal sticky axis is active")
+                val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerWidth).roundToInt()
+                StickyLayoutModel.resolveHorizontalVisualOffsetPx(
+                    baseX = baseRect.x,
+                    nodeWidth = baseRect.width.coerceAtLeast(0),
+                    viewportRect = viewportRect,
+                    containingBlockRect = containingBlockRect,
+                    insetResolution = horizontalInset,
+                    insetPx = insetPx,
+                )
+            } else {
+                0
+            }
+        val offsetY =
+            if (verticalActive) {
+                val viewportRect = viewportRect(references.vertical)
+                val offsetContext = positioningOffsetResolveContext(viewportRect)
+                val insetLength =
+                    verticalInset.value
+                        ?: error("Sticky vertical inset must be present when vertical sticky axis is active")
+                val insetPx = insetLength.resolvePx(offsetContext, LengthPercentBase.ContainerHeight).roundToInt()
+                StickyLayoutModel.resolveVerticalVisualOffsetPx(
+                    baseY = baseRect.y,
+                    nodeHeight = baseRect.height.coerceAtLeast(0),
+                    viewportRect = viewportRect,
+                    containingBlockRect = containingBlockRect,
+                    insetResolution = verticalInset,
+                    insetPx = insetPx,
+                )
+            } else {
+                0
+            }
         return offsetX to offsetY
     }
 
@@ -738,7 +749,7 @@ abstract class DOMNode(
 
     private fun stickyReferenceViewportRect(
         referenceScrollContainer: DOMNode,
-        referenceState: ScrollContainerState? = null
+        referenceState: ScrollContainerState? = null,
     ): Rect {
         val viewportRect = (referenceState ?: referenceScrollContainer.scrollContainerState()).viewportRect
         val adjustedBounds = visualBoundsWithPendingScrollTranslation(referenceScrollContainer)
@@ -749,7 +760,7 @@ abstract class DOMNode(
             x = viewportRect.x + shiftX,
             y = viewportRect.y + shiftY,
             width = viewportRect.width,
-            height = viewportRect.height
+            height = viewportRect.height,
         )
     }
 
@@ -760,7 +771,7 @@ abstract class DOMNode(
             x = adjustedBounds.x,
             y = adjustedBounds.y,
             width = adjustedBounds.width.coerceAtLeast(0),
-            height = adjustedBounds.height.coerceAtLeast(0)
+            height = adjustedBounds.height.coerceAtLeast(0),
         )
     }
 
@@ -773,7 +784,7 @@ abstract class DOMNode(
             x = node.bounds.x - pendingDelta.first,
             y = node.bounds.y - pendingDelta.second,
             width = node.bounds.width,
-            height = node.bounds.height
+            height = node.bounds.height,
         )
     }
 
@@ -796,34 +807,33 @@ abstract class DOMNode(
         return deltaX to deltaY
     }
 
+    @Suppress("UnusedParameter")
     internal fun resolveFlexBasisForAxis(
         ctx: UiMeasureContext,
         parentContentWidth: Int?,
         parentContentHeight: Int?,
-        axis: FlexDirection
+        axis: FlexDirection,
     ): Int? {
-        val context = lengthResolveContext(ctx, parentContentWidth, parentContentHeight)
-        val percentBase = if (axis == FlexDirection.Row) {
-            LengthPercentBase.ContainerWidth
-        } else {
-            LengthPercentBase.ContainerHeight
-        }
+        val context = lengthResolveContext(parentContentWidth, parentContentHeight)
+        val percentBase =
+            if (axis == FlexDirection.Row) {
+                LengthPercentBase.ContainerWidth
+            } else {
+                LengthPercentBase.ContainerHeight
+            }
         return flexBasisStyleValue
             ?.resolvePx(context, percentBase)
             ?.roundToInt()
             ?.coerceAtLeast(0)
     }
 
-    private fun lengthResolveContext(
-        ctx: UiMeasureContext,
-        parentContentWidth: Int?,
-        parentContentHeight: Int?
-    ): LengthResolveContext {
+    private fun lengthResolveContext(parentContentWidth: Int?, parentContentHeight: Int?): LengthResolveContext {
         val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
-        val inheritedFontSizePx = (
+        val inheritedFontSizePx =
+            (
                 parent?.resolveComputedFontSizePx()
                     ?: resolveComputedFontSizePx()
-                ).toFloat()
+            ).toFloat()
         val currentFontSizePx = resolveComputedFontSizePx().toFloat()
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
@@ -832,7 +842,7 @@ abstract class DOMNode(
             containingBlockHeightPx = parentContentHeight?.toFloat(),
             rootFontSizePx = rootFontSizePx,
             currentFontSizePx = currentFontSizePx,
-            inheritedFontSizePx = inheritedFontSizePx
+            inheritedFontSizePx = inheritedFontSizePx,
         )
     }
 
@@ -844,104 +854,87 @@ abstract class DOMNode(
         return current
     }
 
+    internal fun participatesInPositionedOrderingModel(): Boolean = PositionedLayoutModel.isPositioned(this)
 
-    internal fun participatesInPositionedOrderingModel(): Boolean {
-        return PositionedLayoutModel.isPositioned(this)
-    }
+    internal fun rootStackingScopeForPositioning(): DOMNode = PositionedLayoutModel.rootStackingScope(this)
 
-    internal fun rootStackingScopeForPositioning(): DOMNode {
-        return PositionedLayoutModel.rootStackingScope(this)
-    }
+    internal fun sharesRootStackingScopeForPositioning(other: DOMNode): Boolean =
+        PositionedLayoutModel.sharesRootStackingScope(this, other)
 
-    internal fun sharesRootStackingScopeForPositioning(other: DOMNode): Boolean {
-        return PositionedLayoutModel.sharesRootStackingScope(this, other)
-    }
+    internal fun rootStackingContextIdentityForPositioning(): PositionedLayoutModel.RootStackingContextId =
+        PositionedLayoutModel.rootStackingContextId(this)
 
-    internal fun rootStackingContextIdentityForPositioning(): PositionedLayoutModel.RootStackingContextId {
-        return PositionedLayoutModel.rootStackingContextId(this)
-    }
+    internal fun stackingContextScaffoldForTraversalOwner(): PositionedLayoutModel.StackingContext =
+        PositionedLayoutModel.stackingContextScaffold(this)
 
-    internal fun stackingContextScaffoldForTraversalOwner(): PositionedLayoutModel.StackingContext {
-        return PositionedLayoutModel.stackingContextScaffold(this)
-    }
+    internal fun containingBlockForAbsolutePositioning(): DOMNode =
+        PositionedLayoutModel.containingBlockForAbsolute(this)
 
-    internal fun containingBlockForAbsolutePositioning(): DOMNode {
-        return PositionedLayoutModel.containingBlockForAbsolute(this)
-    }
+    internal fun fixedViewportRootForPositioning(): DOMNode = PositionedLayoutModel.fixedViewportRoot(this)
 
-    internal fun fixedViewportRootForPositioning(): DOMNode {
-        return PositionedLayoutModel.fixedViewportRoot(this)
-    }
+    internal fun stickyReferenceScrollContainerVertical(): DOMNode =
+        StickyLayoutModel.nearestStickyScrollContainerVertical(this)
 
-    internal fun stickyReferenceScrollContainerVertical(): DOMNode {
-        return StickyLayoutModel.nearestStickyScrollContainerVertical(this)
-    }
+    internal fun stickyReferenceScrollContainerHorizontal(): DOMNode =
+        StickyLayoutModel.nearestStickyScrollContainerHorizontal(this)
 
-    internal fun stickyReferenceScrollContainerHorizontal(): DOMNode {
-        return StickyLayoutModel.nearestStickyScrollContainerHorizontal(this)
-    }
+    internal fun stickyContainingBlockForPositioning(): DOMNode = StickyLayoutModel.stickyContainingBlock(this)
 
-    internal fun stickyContainingBlockForPositioning(): DOMNode {
-        return StickyLayoutModel.stickyContainingBlock(this)
-    }
-
-    internal fun stickyHorizontalInsetResolutionContract(): StickyLayoutModel.StickyHorizontalInsetResolution {
-        return StickyLayoutModel.resolveHorizontalInsets(
+    internal fun stickyHorizontalInsetResolutionContract(): StickyLayoutModel.StickyHorizontalInsetResolution =
+        StickyLayoutModel.resolveHorizontalInsets(
             left = leftStyleValue,
-            right = rightStyleValue
+            right = rightStyleValue,
         )
-    }
 
-    internal fun stickyVerticalInsetResolutionContract(): StickyLayoutModel.StickyInsetResolution {
-        return StickyLayoutModel.resolveVerticalInsets(
+    internal fun stickyVerticalInsetResolutionContract(): StickyLayoutModel.StickyInsetResolution =
+        StickyLayoutModel.resolveVerticalInsets(
             top = topStyleValue,
-            bottom = bottomStyleValue
+            bottom = bottomStyleValue,
         )
-    }
 
-    internal fun stickyPositionedGeometryIntegrationPoint(): StickyLayoutModel.PositionedGeometryIntegrationPoint {
-        return StickyLayoutModel.positionedGeometryIntegrationPoint()
-    }
+    internal fun stickyPositionedGeometryIntegrationPoint(): StickyLayoutModel.PositionedGeometryIntegrationPoint =
+        StickyLayoutModel.positionedGeometryIntegrationPoint()
 
-    internal fun isRemovedFromNormalFlowForPositioning(): Boolean {
-        return position == PositionMode.Absolute || position == PositionMode.Fixed
-    }
+    internal fun isRemovedFromNormalFlowForPositioning(): Boolean =
+        position == PositionMode.Absolute || position == PositionMode.Fixed
 
     internal fun resolveAbsoluteLayoutRect(
         ctx: UiMeasureContext,
         desiredX: Int,
         desiredY: Int,
         desiredWidth: Int,
-        desiredHeight: Int
+        desiredHeight: Int,
     ): Rect {
         if (position != PositionMode.Absolute) {
             return Rect(
                 x = desiredX,
                 y = desiredY,
                 width = desiredWidth.coerceAtLeast(0),
-                height = desiredHeight.coerceAtLeast(0)
+                height = desiredHeight.coerceAtLeast(0),
             )
         }
 
         val containingBlockRect = absoluteContainingBlockRect()
         val offsetContext = positioningOffsetResolveContext(ctx, containingBlockRect)
-        val resolvedX = resolvePositionedX(
-            context = offsetContext,
-            containerRect = containingBlockRect,
-            desiredX = desiredX,
-            desiredWidth = desiredWidth
-        )
-        val resolvedY = resolvePositionedY(
-            context = offsetContext,
-            containerRect = containingBlockRect,
-            desiredY = desiredY,
-            desiredHeight = desiredHeight
-        )
+        val resolvedX =
+            resolvePositionedX(
+                context = offsetContext,
+                containerRect = containingBlockRect,
+                desiredX = desiredX,
+                desiredWidth = desiredWidth,
+            )
+        val resolvedY =
+            resolvePositionedY(
+                context = offsetContext,
+                containerRect = containingBlockRect,
+                desiredY = desiredY,
+                desiredHeight = desiredHeight,
+            )
         return Rect(
             x = resolvedX,
             y = resolvedY,
             width = desiredWidth.coerceAtLeast(0),
-            height = desiredHeight.coerceAtLeast(0)
+            height = desiredHeight.coerceAtLeast(0),
         )
     }
 
@@ -950,79 +943,77 @@ abstract class DOMNode(
         desiredX: Int,
         desiredY: Int,
         desiredWidth: Int,
-        desiredHeight: Int
+        desiredHeight: Int,
     ): Rect {
         if (position != PositionMode.Fixed) {
             return Rect(
                 x = desiredX,
                 y = desiredY,
                 width = desiredWidth.coerceAtLeast(0),
-                height = desiredHeight.coerceAtLeast(0)
+                height = desiredHeight.coerceAtLeast(0),
             )
         }
 
         val viewportRect = fixedViewportAnchorRect()
         val offsetContext = positioningOffsetResolveContext(ctx, viewportRect)
-        val resolvedX = resolvePositionedX(
-            context = offsetContext,
-            containerRect = viewportRect,
-            desiredX = desiredX,
-            desiredWidth = desiredWidth
-        )
-        val resolvedY = resolvePositionedY(
-            context = offsetContext,
-            containerRect = viewportRect,
-            desiredY = desiredY,
-            desiredHeight = desiredHeight
-        )
+        val resolvedX =
+            resolvePositionedX(
+                context = offsetContext,
+                containerRect = viewportRect,
+                desiredX = desiredX,
+                desiredWidth = desiredWidth,
+            )
+        val resolvedY =
+            resolvePositionedY(
+                context = offsetContext,
+                containerRect = viewportRect,
+                desiredY = desiredY,
+                desiredHeight = desiredHeight,
+            )
         return Rect(
             x = resolvedX,
             y = resolvedY,
             width = desiredWidth.coerceAtLeast(0),
-            height = desiredHeight.coerceAtLeast(0)
+            height = desiredHeight.coerceAtLeast(0),
         )
     }
 
-    internal fun orderedChildrenForPaintTraversal(): List<DOMNode> {
-        return PositionedLayoutModel.orderedChildrenForPaint(this)
-    }
+    internal fun orderedChildrenForPaintTraversal(): List<DOMNode> = PositionedLayoutModel.orderedChildrenForPaint(this)
 
-    internal fun orderedChildrenForHitTestingTraversal(): List<DOMNode> {
-        return PositionedLayoutModel.orderedChildrenForHitTesting(this)
-    }
+    internal fun orderedChildrenForHitTestingTraversal(): List<DOMNode> =
+        PositionedLayoutModel.orderedChildrenForHitTesting(this)
 
     internal fun clampMeasuredOuterSize(size: Size): Size {
         val extrasWidth = (padding.horizontal + border.horizontal).coerceAtLeast(0)
         val extrasHeight = (padding.vertical + border.vertical).coerceAtLeast(0)
         val contentWidth = (size.width - extrasWidth).coerceAtLeast(0)
         val contentHeight = (size.height - extrasHeight).coerceAtLeast(0)
-        val clampedContentWidth = clampContentLengthToConstraints(
-            length = contentWidth,
-            minConstraint = minWidth,
-            maxConstraint = maxWidth
-        )
-        val clampedContentHeight = clampContentLengthToConstraints(
-            length = contentHeight,
-            minConstraint = minHeight,
-            maxConstraint = maxHeight
-        )
+        val clampedContentWidth =
+            clampContentLengthToConstraints(
+                length = contentWidth,
+                minConstraint = minWidth,
+                maxConstraint = maxWidth,
+            )
+        val clampedContentHeight =
+            clampContentLengthToConstraints(
+                length = contentHeight,
+                minConstraint = minHeight,
+                maxConstraint = maxHeight,
+            )
         return Size(
             width = clampedContentWidth + extrasWidth,
-            height = clampedContentHeight + extrasHeight
+            height = clampedContentHeight + extrasHeight,
         )
     }
 
-    private fun clampContentLengthToConstraints(
-        length: Int,
-        minConstraint: Int?,
-        maxConstraint: Int?
-    ): Int {
+    private fun clampContentLengthToConstraints(length: Int, minConstraint: Int?, maxConstraint: Int?): Int {
         val normalizedMin = minConstraint?.coerceAtLeast(0)
         val normalizedMax = maxConstraint?.coerceAtLeast(0)
-        val effectiveMax = when {
-            normalizedMin != null && normalizedMax != null -> normalizedMax.coerceAtLeast(normalizedMin)
-            else -> normalizedMax
-        }
+        val effectiveMax =
+            when {
+                normalizedMin != null && normalizedMax != null -> normalizedMax.coerceAtLeast(normalizedMin)
+                else -> normalizedMax
+            }
         var result = length.coerceAtLeast(0)
         if (normalizedMin != null && result < normalizedMin) {
             result = normalizedMin
@@ -1039,8 +1030,12 @@ abstract class DOMNode(
         return Rect(
             x = state.viewportRect.x - state.scrollX,
             y = state.viewportRect.y - state.scrollY,
-            width = state.viewportRect.width.coerceAtLeast(0),
-            height = state.viewportRect.height.coerceAtLeast(0)
+            width =
+                state.viewportRect.width
+                    .coerceAtLeast(0),
+            height =
+                state.viewportRect.height
+                    .coerceAtLeast(0),
         )
     }
 
@@ -1050,21 +1045,21 @@ abstract class DOMNode(
         return Rect(
             x = state.viewportRect.x,
             y = state.viewportRect.y,
-            width = state.viewportRect.width.coerceAtLeast(0),
-            height = state.viewportRect.height.coerceAtLeast(0)
+            width =
+                state.viewportRect.width
+                    .coerceAtLeast(0),
+            height =
+                state.viewportRect.height
+                    .coerceAtLeast(0),
         )
     }
 
-    private fun fixedViewportAnchorRect(): Rect {
-        return fixedViewportClipRectForPromotedParticipation()
-    }
+    private fun fixedViewportAnchorRect(): Rect = fixedViewportClipRectForPromotedParticipation()
 
     private fun positioningOffsetResolveContext(
         @Suppress("UNUSED_PARAMETER") ctx: UiMeasureContext,
-        containerRect: Rect
-    ): LengthResolveContext {
-        return positioningOffsetResolveContext(containerRect)
-    }
+        containerRect: Rect,
+    ): LengthResolveContext = positioningOffsetResolveContext(containerRect)
 
     private fun positioningOffsetResolveContext(containerRect: Rect): LengthResolveContext {
         val rootFontSizePx = rootNode().resolveComputedFontSizePx().toFloat()
@@ -1073,11 +1068,17 @@ abstract class DOMNode(
         return LengthResolveContext(
             viewportWidthPx = StyleEngine.viewportWidthPx().toFloat(),
             viewportHeightPx = StyleEngine.viewportHeightPx().toFloat(),
-            containingBlockWidthPx = containerRect.width.coerceAtLeast(0).toFloat(),
-            containingBlockHeightPx = containerRect.height.coerceAtLeast(0).toFloat(),
+            containingBlockWidthPx =
+                containerRect.width
+                    .coerceAtLeast(0)
+                    .toFloat(),
+            containingBlockHeightPx =
+                containerRect.height
+                    .coerceAtLeast(0)
+                    .toFloat(),
             rootFontSizePx = rootFontSizePx,
             currentFontSizePx = currentFontSizePx,
-            inheritedFontSizePx = inheritedFontSizePx
+            inheritedFontSizePx = inheritedFontSizePx,
         )
     }
 
@@ -1085,7 +1086,7 @@ abstract class DOMNode(
         context: LengthResolveContext,
         containerRect: Rect,
         desiredX: Int,
-        desiredWidth: Int
+        desiredWidth: Int,
     ): Int {
         val resolution = PositionedLayoutModel.resolveHorizontalOffset(left = leftStyleValue, right = rightStyleValue)
         val value = resolution.value ?: return desiredX
@@ -1101,7 +1102,7 @@ abstract class DOMNode(
         context: LengthResolveContext,
         containerRect: Rect,
         desiredY: Int,
-        desiredHeight: Int
+        desiredHeight: Int,
     ): Int {
         val resolution = PositionedLayoutModel.resolveVerticalOffset(top = topStyleValue, bottom = bottomStyleValue)
         val value = resolution.value ?: return desiredY
@@ -1114,9 +1115,7 @@ abstract class DOMNode(
     }
 
     /** Measures the node's desired size. */
-    internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measure(ctx)
-    }
+    internal open fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size = measure(ctx)
 
     /** Measures the node's desired size. */
     open fun measure(ctx: UiMeasureContext): Size {
@@ -1131,7 +1130,13 @@ abstract class DOMNode(
     }
 
     /** Lays out this node and its children for the given bounds. */
-    open fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    open fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         if (display == Display.None) {
             val next = Rect(x, y, 0, 0)
             if (bounds != next) {
@@ -1159,7 +1164,7 @@ abstract class DOMNode(
             child.resolveLayoutStyleValues(
                 ctx = ctx,
                 parentContentWidth = availableOuterWidth,
-                parentContentHeight = availableOuterHeight
+                parentContentHeight = availableOuterHeight,
             )
             val childSize = child.clampMeasuredOuterSize(child.measureForLayout(ctx, availableOuterWidth))
             val childX = layoutContentX + child.margin.left
@@ -1177,20 +1182,22 @@ abstract class DOMNode(
         val localClipRect = overflowViewportRect()
         val inheritedClipRect = currentInheritedChildRenderClipRect()
         if (localClipRect != null) {
-            val effectiveClipRect = if (inheritedClipRect != null) {
-                inheritedClipRect.intersection(localClipRect) ?: return
-            } else {
-                localClipRect
-            }
+            val effectiveClipRect =
+                if (inheritedClipRect != null) {
+                    inheritedClipRect.intersection(localClipRect) ?: return
+                } else {
+                    localClipRect
+                }
             if (effectiveClipRect.width <= 0 || effectiveClipRect.height <= 0) {
                 return
             }
-            out += RenderCommand.PushClip(
-                x = effectiveClipRect.x,
-                y = effectiveClipRect.y,
-                width = effectiveClipRect.width.coerceAtLeast(0),
-                height = effectiveClipRect.height.coerceAtLeast(0)
-            )
+            out +=
+                RenderCommand.PushClip(
+                    x = effectiveClipRect.x,
+                    y = effectiveClipRect.y,
+                    width = effectiveClipRect.width.coerceAtLeast(0),
+                    height = effectiveClipRect.height.coerceAtLeast(0),
+                )
             withInheritedChildRenderClipRect(effectiveClipRect) {
                 orderedChildrenForPaintTraversal().forEach { child ->
                     child.appendRenderCommands(ctx, out)
@@ -1217,15 +1224,16 @@ abstract class DOMNode(
         if (transformPushed) {
             val ox = bounds.x + bounds.width * transformOrigin.originX
             val oy = bounds.y + bounds.height * transformOrigin.originY
-            out += RenderCommand.PushTransform(
-                originX = ox,
-                originY = oy,
-                translateX = activeTransform.translateX,
-                translateY = activeTransform.translateY,
-                scaleX = activeTransform.scaleX,
-                scaleY = activeTransform.scaleY,
-                rotateDeg = activeTransform.rotateDeg
-            )
+            out +=
+                RenderCommand.PushTransform(
+                    originX = ox,
+                    originY = oy,
+                    translateX = activeTransform.translateX,
+                    translateY = activeTransform.translateY,
+                    scaleX = activeTransform.scaleX,
+                    scaleY = activeTransform.scaleY,
+                    rotateDeg = activeTransform.rotateDeg,
+                )
         }
         if (opacityPushed) {
             out += RenderCommand.PushOpacity(activeOpacity)
@@ -1243,23 +1251,18 @@ abstract class DOMNode(
     open fun handleClick(event: MouseClickEvent): Boolean = false
 
     /** Dispatches a click through this node and its subtree. */
-    fun dispatchClick(event: MouseClickEvent): Boolean {
-        return dispatchClickInternal(
+    fun dispatchClick(event: MouseClickEvent): Boolean =
+        dispatchClickInternal(
             element = this,
             event = event,
             parentTransform = AffineTransform2D.IDENTITY,
-            parentInputClipRect = null
+            parentInputClipRect = null,
         )
-    }
 
     /** Returns true if the mouse event is within current bounds. */
-    fun hovered(event: MouseEvent): Boolean {
-        return isHitTestVisible() && containsGlobalPoint(event.mouseX, event.mouseY)
-    }
+    fun hovered(event: MouseEvent): Boolean = isHitTestVisible() && containsGlobalPoint(event.mouseX, event.mouseY)
 
-    fun isHitTestVisible(): Boolean {
-        return !dragHitTestHidden && display != Display.None
-    }
+    fun isHitTestVisible(): Boolean = !dragHitTestHidden && display != Display.None
 
     /** Applies event handlers from [ComponentProps] to this node. */
     fun applyHandlers(props: ComponentProps) {
@@ -1275,10 +1278,10 @@ abstract class DOMNode(
         this@DOMNode.styleDisabled = props.disabled
         this@DOMNode.draggable = props.draggable
         this@DOMNode.droppable = props.droppable ||
-                props.onDragEnter != null ||
-                props.onDragOver != null ||
-                props.onDragLeave != null ||
-                props.onDrop != null
+            props.onDragEnter != null ||
+            props.onDragOver != null ||
+            props.onDragLeave != null ||
+            props.onDrop != null
         this@DOMNode.dragPreviewMode = props.dragPreviewMode
         this@DOMNode.hideSourceWhileDragging = props.hideSourceWhileDragging
         this@DOMNode.dragPreviewBuilder = props.dragPreview
@@ -1379,7 +1382,7 @@ abstract class DOMNode(
         mouseY: Int,
         mouseDX: Int,
         mouseDY: Int,
-        button: MouseButton
+        button: MouseButton,
     ) {
         if (styleDisabled || button != MouseButton.LEFT) return
         updateScrollbarPointerDrag(mouseX, mouseY)
@@ -1572,62 +1575,71 @@ abstract class DOMNode(
         markRenderCommandsDirty()
     }
 
+    /**
+     * Optional node-specific reconcile sync hook.
+     *
+     * Called by reconciler after [syncBaseFrom] only when class and key already match.
+     * Default behavior is no-op.
+     */
+    internal open fun syncCustomFrom(template: DOMNode) = Unit
+
     internal fun captureStyleDefaults(): ComputedStyleDefaults {
         val existing = styleDefaultsSnapshot
         if (existing != null) return existing
         val defaultFontSize = defaultFontSize()
-        val computed = ComputedStyleDefaults(
-            margin = LengthInsets.fromInsets(margin),
-            padding = LengthInsets.fromInsets(padding),
-            backgroundColor = defaultBackgroundColor(),
-            backgroundImage = defaultBackgroundImage(),
-            borderColor = border.color,
-            borderWidth = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left)),
-            borderRadius = CssLength.px(borderRadius),
-            foregroundColor = defaultForegroundColor(),
-            fontId = defaultFontId(),
-            fontSize = defaultFontSize,
-            fontSizeValue = defaultFontSize?.let { CssLength.px(it) },
-            fontWeight = fontWeight,
-            fontStyle = fontStyle,
-            textDecoration = textDecoration,
-            obfuscated = textObfuscated,
-            width = width?.let { CssLength.px(it) },
-            height = height?.let { CssLength.px(it) },
-            minWidth = minWidth?.let { CssLength.px(it) },
-            minHeight = minHeight?.let { CssLength.px(it) },
-            maxWidth = maxWidth?.let { CssLength.px(it) },
-            maxHeight = maxHeight?.let { CssLength.px(it) },
-            align = align,
-            display = display,
-            position = position,
-            left = leftStyleValue,
-            top = topStyleValue,
-            right = rightStyleValue,
-            bottom = bottomStyleValue,
-            zIndex = zIndex,
-            flexDirection = flexDirection,
-            justifyContent = justifyContent,
-            alignItems = alignItems,
-            justifyItems = justifyItems,
-            gap = CssLength.px(gap),
-            flexGrow = flexGrow,
-            flexShrink = flexShrink,
-            flexBasis = flexBasis?.let { CssLength.px(it) },
-            gridColumns = gridColumns,
-            gridRows = gridRows,
-            gridAutoFlow = gridAutoFlow,
-            gridColumnSpan = gridColumnSpan,
-            gridRowSpan = gridRowSpan,
-            overflow = overflow,
-            overflowX = overflowX,
-            overflowY = overflowY,
-            textWrap = textWrap,
-            textFormatting = textFormatting,
-            transform = transform,
-            transformOrigin = transformOrigin,
-            opacity = opacity
-        )
+        val computed =
+            ComputedStyleDefaults(
+                margin = LengthInsets.fromInsets(margin),
+                padding = LengthInsets.fromInsets(padding),
+                backgroundColor = defaultBackgroundColor(),
+                backgroundImage = defaultBackgroundImage(),
+                borderColor = border.color,
+                borderWidth = CssLength.px(maxOf(border.top, border.right, border.bottom, border.left)),
+                borderRadius = CssLength.px(borderRadius),
+                foregroundColor = defaultForegroundColor(),
+                fontId = defaultFontId(),
+                fontSize = defaultFontSize,
+                fontSizeValue = defaultFontSize?.let { CssLength.px(it) },
+                fontWeight = fontWeight,
+                fontStyle = fontStyle,
+                textDecoration = textDecoration,
+                obfuscated = textObfuscated,
+                width = width?.let { CssLength.px(it) },
+                height = height?.let { CssLength.px(it) },
+                minWidth = minWidth?.let { CssLength.px(it) },
+                minHeight = minHeight?.let { CssLength.px(it) },
+                maxWidth = maxWidth?.let { CssLength.px(it) },
+                maxHeight = maxHeight?.let { CssLength.px(it) },
+                align = align,
+                display = display,
+                position = position,
+                left = leftStyleValue,
+                top = topStyleValue,
+                right = rightStyleValue,
+                bottom = bottomStyleValue,
+                zIndex = zIndex,
+                flexDirection = flexDirection,
+                justifyContent = justifyContent,
+                alignItems = alignItems,
+                justifyItems = justifyItems,
+                gap = CssLength.px(gap),
+                flexGrow = flexGrow,
+                flexShrink = flexShrink,
+                flexBasis = flexBasis?.let { CssLength.px(it) },
+                gridColumns = gridColumns,
+                gridRows = gridRows,
+                gridAutoFlow = gridAutoFlow,
+                gridColumnSpan = gridColumnSpan,
+                gridRowSpan = gridRowSpan,
+                overflow = overflow,
+                overflowX = overflowX,
+                overflowY = overflowY,
+                textWrap = textWrap,
+                textFormatting = textFormatting,
+                transform = transform,
+                transformOrigin = transformOrigin,
+                opacity = opacity,
+            )
         styleDefaultsSnapshot = computed
         return computed
     }
@@ -1638,7 +1650,7 @@ abstract class DOMNode(
             StyleAnimationEngine.onComputedStyleApplied(this, previous, style)
             return NodeStyleApplyResult(
                 visualDirty = false,
-                layoutDirty = false
+                layoutDirty = false,
             )
         }
         marginStyleValue = style.margin
@@ -1700,10 +1712,11 @@ abstract class DOMNode(
         if (previous == null) {
             return NodeStyleApplyResult(
                 visualDirty = true,
-                layoutDirty = true
+                layoutDirty = true,
             )
         }
-        val layoutDirty = previous.margin != style.margin ||
+        val layoutDirty =
+            previous.margin != style.margin ||
                 previous.padding != style.padding ||
                 previous.borderWidth != style.borderWidth ||
                 previous.borderColor != style.borderColor ||
@@ -1747,7 +1760,7 @@ abstract class DOMNode(
                 previous.lineHeight != style.lineHeight
         return NodeStyleApplyResult(
             visualDirty = true,
-            layoutDirty = layoutDirty
+            layoutDirty = layoutDirty,
         )
     }
 
@@ -1757,8 +1770,8 @@ abstract class DOMNode(
         val normalizedOpacity = opacity?.coerceIn(0f, 1f)
         val changed =
             animatedTransform != transform ||
-                    animatedOpacity != normalizedOpacity ||
-                    animatedColor != color
+                animatedOpacity != normalizedOpacity ||
+                animatedColor != color
         animatedTransform = transform
         animatedOpacity = normalizedOpacity
         animatedColor = color
@@ -1784,7 +1797,10 @@ abstract class DOMNode(
         result = 31L * result + scrollOffsetResolvedX.toLong()
         result = 31L * result + scrollOffsetResolvedY.toLong()
         result = 31L * result + effectiveTransform().hashCode().toLong()
-        result = 31L * result + java.lang.Float.floatToIntBits(effectiveOpacity()).toLong()
+        result = 31L * result +
+            java.lang.Float
+                .floatToIntBits(effectiveOpacity())
+                .toLong()
         result = 31L * result + volatileRenderCommandsSignature(nowMs)
         return result
     }
@@ -1793,6 +1809,10 @@ abstract class DOMNode(
 
     protected fun markRenderCommandsDirty() {
         renderCommandsRevision += 1L
+    }
+
+    internal fun requestRenderCommandsInvalidation() {
+        markRenderCommandsDirty()
     }
 
     fun effectiveTransform(): UiTransform {
@@ -1814,7 +1834,7 @@ abstract class DOMNode(
         }
         return base.copy(
             translateX = base.translateX + relativeOffsetX.toFloat() + stickyOffsetX.toFloat(),
-            translateY = base.translateY + relativeOffsetY.toFloat() + stickyOffsetY.toFloat()
+            translateY = base.translateY + relativeOffsetY.toFloat() + stickyOffsetY.toFloat(),
         )
     }
 
@@ -1833,7 +1853,11 @@ abstract class DOMNode(
         val translate = AffineTransform2D.translation(active.translateX, active.translateY)
         val rotate = AffineTransform2D.rotation(active.rotateDeg)
         val scale = AffineTransform2D.scale(active.scaleX, active.scaleY)
-        return translate.times(origin).times(rotate).times(scale).times(originBack)
+        return translate
+            .times(origin)
+            .times(rotate)
+            .times(scale)
+            .times(originBack)
     }
 
     fun worldTransformMatrix(): AffineTransform2D {
@@ -1882,54 +1906,50 @@ abstract class DOMNode(
 
     protected open fun applyFontSize(value: Int?) {}
 
-    protected fun resolveFontSize(ctx: UiMeasureContext): Int {
-        return ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
-    }
+    protected fun resolveFontSize(ctx: UiMeasureContext): Int = ctx.fontHeight(fontId, fontSize).coerceAtLeast(1)
 
-    protected fun resolveComputedFontSizePx(): Int {
-        return (appliedComputedStyleSnapshot()?.fontSize ?: fontSize ?: 16).coerceAtLeast(1)
-    }
+    protected fun resolveComputedFontSizePx(): Int =
+        (appliedComputedStyleSnapshot()?.fontSize ?: fontSize ?: 16).coerceAtLeast(1)
 
-    protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int {
-        return resolveTextMetrics(ctx).lineHeightPx
-    }
+    protected fun resolveEffectiveLineHeight(ctx: UiMeasureContext): Int = resolveTextMetrics(ctx).lineHeightPx
 
-    protected fun resolveEffectiveLineTopLeading(ctx: UiMeasureContext): Int {
-        return resolveTextMetrics(ctx).topLeadingPx.roundToInt().coerceAtLeast(0)
-    }
+    protected fun resolveEffectiveLineTopLeading(ctx: UiMeasureContext): Int =
+        resolveTextMetrics(ctx)
+            .topLeadingPx
+            .roundToInt()
+            .coerceAtLeast(0)
 
-    protected fun resolveEffectiveAscenderPx(ctx: UiMeasureContext): Float {
-        return resolveTextMetrics(ctx).ascenderPx
-    }
+    protected fun resolveEffectiveAscenderPx(ctx: UiMeasureContext): Float = resolveTextMetrics(ctx).ascenderPx
 
-    protected fun resolveEffectiveDescenderPx(ctx: UiMeasureContext): Float {
-        return resolveTextMetrics(ctx).descenderPx
-    }
+    protected fun resolveEffectiveDescenderPx(ctx: UiMeasureContext): Float = resolveTextMetrics(ctx).descenderPx
 
     protected fun resolveTextMetrics(ctx: UiMeasureContext): ResolvedTextMetrics {
         val fontSizePx = resolveComputedFontSizePx().coerceAtLeast(1)
         val nativeMetrics = resolveNativeFontMetrics(ctx, fontSizePx)
         val fallbackFontHeightPx = resolveFontSize(ctx).coerceAtLeast(1)
-        val fallbackNormalLineHeightPx = (fallbackFontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
-            .roundToInt()
-            .coerceAtLeast(fallbackFontHeightPx)
-            .coerceAtLeast(1)
+        val fallbackNormalLineHeightPx =
+            (fallbackFontHeightPx * NORMAL_LINE_HEIGHT_MULTIPLIER)
+                .roundToInt()
+                .coerceAtLeast(fallbackFontHeightPx)
+                .coerceAtLeast(1)
 
         val nativeLineHeightPx = nativeMetrics?.lineHeightPx ?: fallbackNormalLineHeightPx
         val ascenderPx = nativeMetrics?.ascenderPx ?: (fallbackFontHeightPx * 0.8f)
-        val descenderPx = nativeMetrics?.descenderPx
-            ?: (nativeLineHeightPx - ascenderPx).coerceAtLeast(0f)
+        val descenderPx =
+            nativeMetrics?.descenderPx
+                ?: (nativeLineHeightPx - ascenderPx).coerceAtLeast(0f)
 
         val computedLineHeight =
             when (val computedLineHeight = appliedComputedStyleSnapshot()?.lineHeight ?: LineHeightValue.Normal) {
                 LineHeightValue.Normal -> nativeLineHeightPx
                 is LineHeightValue.Length -> {
                     val currentFontSizePx = fontSizePx.toFloat()
-                    val context = LengthResolveContext(
-                        rootFontSizePx = currentFontSizePx,
-                        currentFontSizePx = currentFontSizePx,
-                        inheritedFontSizePx = currentFontSizePx
-                    )
+                    val context =
+                        LengthResolveContext(
+                            rootFontSizePx = currentFontSizePx,
+                            currentFontSizePx = currentFontSizePx,
+                            inheritedFontSizePx = currentFontSizePx,
+                        )
                     computedLineHeight.value
                         .resolvePx(context, LengthPercentBase.CurrentFontSize)
                         .roundToInt()
@@ -1947,7 +1967,7 @@ abstract class DOMNode(
             ascenderPx = ascenderPx,
             descenderPx = descenderPx,
             topLeadingPx = topLeadingPx,
-            bottomLeadingPx = bottomLeadingPx
+            bottomLeadingPx = bottomLeadingPx,
         )
     }
 
@@ -1955,42 +1975,47 @@ abstract class DOMNode(
         val metrics = ctx.fontLineMetrics(fontId, fontSizePx) ?: return null
         if (metrics.emSize <= 0f || metrics.lineHeightEm <= 0f) return null
         val scalePx = fontSizePx / metrics.emSize
-        val lineHeightPx = kotlin.math.ceil(metrics.lineHeightEm * scalePx).toInt().coerceAtLeast(1)
+        val lineHeightPx =
+            kotlin.math
+                .ceil(metrics.lineHeightEm * scalePx)
+                .toInt()
+                .coerceAtLeast(1)
         val ascenderPx = (metrics.ascenderEm * scalePx).coerceAtLeast(0f)
         val descenderPx = kotlin.math.abs(metrics.descenderEm * scalePx)
         return NativeFontMetricsPx(
             lineHeightPx = lineHeightPx,
             ascenderPx = ascenderPx,
-            descenderPx = descenderPx
+            descenderPx = descenderPx,
         )
     }
 
-    protected fun parseTextForFormatting(rawText: String): ParsedText {
-        return MinecraftFormattingParser.parse(rawText, textFormatting)
-    }
+    protected fun parseTextForFormatting(rawText: String): ParsedText =
+        MinecraftFormattingParser.parse(rawText, textFormatting)
 
-    protected fun baseTextStyleFlags(): TextStyleFlags {
-        return TextStyleFlags(
+    protected fun baseTextStyleFlags(): TextStyleFlags =
+        TextStyleFlags(
             bold = fontWeight == FontWeight.Bold,
             italic = fontStyle == FontStyle.Italic,
-            underline = textDecoration == TextDecoration.Underline ||
+            underline =
+                textDecoration == TextDecoration.Underline ||
                     textDecoration == TextDecoration.UnderlineStrikethrough,
-            strikethrough = textDecoration == TextDecoration.Strikethrough ||
+            strikethrough =
+                textDecoration == TextDecoration.Strikethrough ||
                     textDecoration == TextDecoration.UnderlineStrikethrough,
-            obfuscated = textObfuscated
+            obfuscated = textObfuscated,
         )
-    }
 
     protected fun measureText(ctx: UiMeasureContext, text: String): Int {
         val metrics = resolveTextMetrics(ctx)
         val parsed = parseTextForFormatting(text)
         val plainText = parsed.plainText
         val base = ctx.measureText(plainText, fontId, metrics.fontSizePx)
-        val extraBold = TextStyleMetrics.boldExtraPxForRange(
-            plainText = plainText,
-            spans = parsed.spans,
-            baseFlags = baseTextStyleFlags()
-        )
+        val extraBold =
+            TextStyleMetrics.boldExtraPxForRange(
+                plainText = plainText,
+                spans = parsed.spans,
+                baseFlags = baseTextStyleFlags(),
+            )
         return base + extraBold
     }
 
@@ -2000,7 +2025,7 @@ abstract class DOMNode(
         x: Int,
         y: Int,
         color: Int,
-        styleSpans: List<RenderCommand.TextStyleSpan> = emptyList()
+        styleSpans: List<RenderCommand.TextStyleSpan> = emptyList(),
     ): RenderCommand.DrawText {
         val metrics = resolveTextMetrics(ctx)
         val baseFlags = baseTextStyleFlags()
@@ -2018,7 +2043,7 @@ abstract class DOMNode(
             strikethrough = baseFlags.strikethrough,
             obfuscated = baseFlags.obfuscated,
             textStyleSpans = styleSpans,
-            sourceKey = key?.toString()
+            sourceKey = key?.toString(),
         )
     }
 
@@ -2026,27 +2051,17 @@ abstract class DOMNode(
 
     protected fun contentY(): Int = bounds.y + border.top + padding.top
 
-    protected fun contentWidth(): Int =
-        (bounds.width - border.horizontal - padding.horizontal).coerceAtLeast(0)
+    protected fun contentWidth(): Int = (bounds.width - border.horizontal - padding.horizontal).coerceAtLeast(0)
 
-    protected fun contentHeight(): Int =
-        (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
+    protected fun contentHeight(): Int = (bounds.height - border.vertical - padding.vertical).coerceAtLeast(0)
 
-    protected fun viewportContentX(): Int {
-        return scrollContainerState().viewportRect.x
-    }
+    protected fun viewportContentX(): Int = scrollContainerState().viewportRect.x
 
-    protected fun viewportContentY(): Int {
-        return scrollContainerState().viewportRect.y
-    }
+    protected fun viewportContentY(): Int = scrollContainerState().viewportRect.y
 
-    protected fun viewportContentWidth(): Int {
-        return scrollContainerState().viewportRect.width
-    }
+    protected fun viewportContentWidth(): Int = scrollContainerState().viewportRect.width
 
-    protected fun viewportContentHeight(): Int {
-        return scrollContainerState().viewportRect.height
-    }
+    protected fun viewportContentHeight(): Int = scrollContainerState().viewportRect.height
 
     protected fun setContentLayoutScroll(scrollX: Int, scrollY: Int) {
         contentLayoutScrollX = scrollX
@@ -2102,13 +2117,11 @@ abstract class DOMNode(
         return ScrollInvalidationState(
             layoutDirty = layoutDirty,
             visualDirty = visualDirty,
-            interactionDirty = interactionDirty
+            interactionDirty = interactionDirty,
         )
     }
 
-    internal fun consumeScrollLayoutDirtyRecursively(): Boolean {
-        return consumeScrollInvalidationRecursively().layoutDirty
-    }
+    internal fun consumeScrollLayoutDirtyRecursively(): Boolean = consumeScrollInvalidationRecursively().layoutDirty
 
     internal fun invalidateStickyVisualOffsetsRecursively() {
         ScrollPerformanceCounters.incrementStickyVisualInvalidateRuns()
@@ -2202,12 +2215,13 @@ abstract class DOMNode(
             return 0
         }
         var translated = 0
-        val next = Rect(
-            x = bounds.x + deltaX,
-            y = bounds.y + deltaY,
-            width = bounds.width,
-            height = bounds.height
-        )
+        val next =
+            Rect(
+                x = bounds.x + deltaX,
+                y = bounds.y + deltaY,
+                width = bounds.width,
+                height = bounds.height,
+            )
         if (next != bounds) {
             bounds = next
             markRenderCommandsDirty()
@@ -2219,16 +2233,15 @@ abstract class DOMNode(
         return translated
     }
 
-    internal fun debugScrollAnimationState(): ScrollAnimationDebugState {
-        return ScrollAnimationDebugState(
+    internal fun debugScrollAnimationState(): ScrollAnimationDebugState =
+        ScrollAnimationDebugState(
             targetX = scrollOffsetTargetX,
             targetY = scrollOffsetTargetY,
             displayedX = scrollOffsetDisplayedX,
             displayedY = scrollOffsetDisplayedY,
             resolvedX = scrollOffsetResolvedX,
-            resolvedY = scrollOffsetResolvedY
+            resolvedY = scrollOffsetResolvedY,
         )
-    }
 
     internal fun captureScrollSessionSnapshot(): ScrollSessionSnapshot {
         val animation = debugScrollAnimationState()
@@ -2239,7 +2252,7 @@ abstract class DOMNode(
             displayedY = if (animation.displayedY.isFinite()) animation.displayedY.coerceAtLeast(0.0) else 0.0,
             resolvedX = animation.resolvedX.coerceAtLeast(0),
             resolvedY = animation.resolvedY.coerceAtLeast(0),
-            dragSession = debugScrollbarDragSession()
+            dragSession = debugScrollbarDragSession(),
         )
     }
 
@@ -2299,16 +2312,17 @@ abstract class DOMNode(
             }
         } else {
             val nextAxis = if (drag.verticalAxis) ScrollbarAxis.Vertical else ScrollbarAxis.Horizontal
-            val nextSession = ScrollbarDragSession(
-                axis = nextAxis,
-                trackStartPx = drag.trackStartPx,
-                trackLengthPx = drag.trackLengthPx,
-                thumbLengthPx = drag.thumbLengthPx,
-                maxThumbTravelPx = drag.maxThumbTravelPx,
-                maxScroll = drag.maxScroll.coerceAtLeast(0),
-                grabOffsetPx = drag.grabOffsetPx.coerceAtLeast(0),
-                initialResolvedScroll = drag.initialResolvedScroll.coerceAtLeast(0)
-            )
+            val nextSession =
+                ScrollbarDragSession(
+                    axis = nextAxis,
+                    trackStartPx = drag.trackStartPx,
+                    trackLengthPx = drag.trackLengthPx,
+                    thumbLengthPx = drag.thumbLengthPx,
+                    maxThumbTravelPx = drag.maxThumbTravelPx,
+                    maxScroll = drag.maxScroll.coerceAtLeast(0),
+                    grabOffsetPx = drag.grabOffsetPx.coerceAtLeast(0),
+                    initialResolvedScroll = drag.initialResolvedScroll.coerceAtLeast(0),
+                )
             if (activeScrollbarDragAxis != nextAxis || scrollbarDragSession != nextSession) {
                 activeScrollbarDragAxis = nextAxis
                 scrollbarDragSession = nextSession
@@ -2320,17 +2334,13 @@ abstract class DOMNode(
             markScrollInvalidation(
                 layoutDirty = layoutChanged,
                 visualDirty = true,
-                interactionDirty = true
+                interactionDirty = true,
             )
             markRenderCommandsDirty()
         }
     }
 
-    private fun markScrollInvalidation(
-        layoutDirty: Boolean,
-        visualDirty: Boolean,
-        interactionDirty: Boolean
-    ) {
+    private fun markScrollInvalidation(layoutDirty: Boolean, visualDirty: Boolean, interactionDirty: Boolean) {
         if (layoutDirty) {
             scrollLayoutDirty = true
         }
@@ -2371,7 +2381,7 @@ abstract class DOMNode(
             markScrollInvalidation(
                 layoutDirty = false,
                 visualDirty = true,
-                interactionDirty = true
+                interactionDirty = true,
             )
             markRenderCommandsDirty()
         }
@@ -2385,14 +2395,16 @@ abstract class DOMNode(
             scrollContainer = state.axisX.scrollContainer,
             maxScroll = state.maxScrollX,
             vertical = false,
-            dtSeconds = normalizedDt
-        ) || changed
+            dtSeconds = normalizedDt,
+        ) ||
+            changed
         changed = advanceScrollAnimationAxis(
             scrollContainer = state.axisY.scrollContainer,
             maxScroll = state.maxScrollY,
             vertical = true,
-            dtSeconds = normalizedDt
-        ) || changed
+            dtSeconds = normalizedDt,
+        ) ||
+            changed
         return changed
     }
 
@@ -2400,7 +2412,7 @@ abstract class DOMNode(
         scrollContainer: Boolean,
         maxScroll: Int,
         vertical: Boolean,
-        dtSeconds: Double
+        dtSeconds: Double,
     ): Boolean {
         if (!scrollContainer) {
             return normalizeScrollAxisForNonScrollable(vertical)
@@ -2429,7 +2441,7 @@ abstract class DOMNode(
                 markScrollInvalidation(
                     layoutDirty = false,
                     visualDirty = true,
-                    interactionDirty = true
+                    interactionDirty = true,
                 )
             }
             return changed
@@ -2444,18 +2456,19 @@ abstract class DOMNode(
         }
 
         val target = clampedTarget.toDouble()
-        val nextDisplayed = if (dtSeconds <= 0.0) {
-            normalizedDisplayed
-        } else {
-            val delta = target - normalizedDisplayed
-            if (kotlin.math.abs(delta) <= wheelScrollSnapThresholdPx()) {
-                target
+        val nextDisplayed =
+            if (dtSeconds <= 0.0) {
+                normalizedDisplayed
             } else {
-                val alpha = 1.0 - kotlin.math.exp(-wheelScrollSmoothingPerSecond() * dtSeconds)
-                val eased = normalizedDisplayed + delta * alpha.coerceIn(0.0, 1.0)
-                if (kotlin.math.abs(target - eased) <= wheelScrollSnapThresholdPx()) target else eased
-            }
-        }.coerceIn(0.0, maxScroll.toDouble())
+                val delta = target - normalizedDisplayed
+                if (kotlin.math.abs(delta) <= wheelScrollSnapThresholdPx()) {
+                    target
+                } else {
+                    val alpha = 1.0 - kotlin.math.exp(-wheelScrollSmoothingPerSecond() * dtSeconds)
+                    val eased = normalizedDisplayed + delta * alpha.coerceIn(0.0, 1.0)
+                    if (kotlin.math.abs(target - eased) <= wheelScrollSnapThresholdPx()) target else eased
+                }
+            }.coerceIn(0.0, maxScroll.toDouble())
         if (nextDisplayed != displayedScrollAxis(vertical)) {
             setDisplayedScrollAxis(vertical, nextDisplayed)
             changed = true
@@ -2471,7 +2484,7 @@ abstract class DOMNode(
             markScrollInvalidation(
                 layoutDirty = false,
                 visualDirty = true,
-                interactionDirty = true
+                interactionDirty = true,
             )
         }
         return changed
@@ -2495,32 +2508,27 @@ abstract class DOMNode(
             markScrollInvalidation(
                 layoutDirty = false,
                 visualDirty = true,
-                interactionDirty = true
+                interactionDirty = true,
             )
             markRenderCommandsDirty()
         }
         return changed
     }
 
-    private fun targetScrollAxis(vertical: Boolean): Int {
-        return if (vertical) scrollOffsetTargetY else scrollOffsetTargetX
-    }
+    private fun targetScrollAxis(vertical: Boolean): Int = if (vertical) scrollOffsetTargetY else scrollOffsetTargetX
 
-    private fun isScrollbarAxisActivelyDragged(vertical: Boolean): Boolean {
-        return when (activeScrollbarDragAxis) {
+    private fun isScrollbarAxisActivelyDragged(vertical: Boolean): Boolean =
+        when (activeScrollbarDragAxis) {
             ScrollbarAxis.Vertical -> vertical
             ScrollbarAxis.Horizontal -> !vertical
             null -> false
         }
-    }
 
-    private fun displayedScrollAxis(vertical: Boolean): Double {
-        return if (vertical) scrollOffsetDisplayedY else scrollOffsetDisplayedX
-    }
+    private fun displayedScrollAxis(vertical: Boolean): Double =
+        if (vertical) scrollOffsetDisplayedY else scrollOffsetDisplayedX
 
-    private fun resolvedScrollAxis(vertical: Boolean): Int {
-        return if (vertical) scrollOffsetResolvedY else scrollOffsetResolvedX
-    }
+    private fun resolvedScrollAxis(vertical: Boolean): Int =
+        if (vertical) scrollOffsetResolvedY else scrollOffsetResolvedX
 
     private fun setTargetScrollAxis(vertical: Boolean, value: Int) {
         if (vertical) {
@@ -2548,51 +2556,59 @@ abstract class DOMNode(
 
     fun scrollContainerState(): ScrollContainerState {
         ScrollPerformanceCounters.incrementScrollContainerStateCalls()
-        val baseViewportRect = Rect(
-            x = contentX(),
-            y = contentY(),
-            width = contentWidth(),
-            height = contentHeight()
-        )
-        val contentExtent = computeContentExtent(
-            contentOriginX = baseViewportRect.x,
-            contentOriginY = baseViewportRect.y,
-            layoutScrollX = contentLayoutScrollX,
-            layoutScrollY = contentLayoutScrollY
-        )
-        val scrollbarResolution = resolveScrollbarResolution(
-            overflowX = overflowX,
-            overflowY = overflowY,
-            contentExtent = contentExtent,
-            baseViewportWidth = baseViewportRect.width,
-            baseViewportHeight = baseViewportRect.height
-        )
-        val viewportRect = Rect(
-            x = baseViewportRect.x,
-            y = baseViewportRect.y,
-            width = scrollbarResolution.viewportWidth,
-            height = scrollbarResolution.viewportHeight
-        )
-        val axisX = axisStateForOverflow(
-            overflowMode = overflowX,
-            scrollbarPresent = scrollbarResolution.horizontalPresent,
-            scrollbarGutter = scrollbarResolution.horizontalGutter
-        )
-        val axisY = axisStateForOverflow(
-            overflowMode = overflowY,
-            scrollbarPresent = scrollbarResolution.verticalPresent,
-            scrollbarGutter = scrollbarResolution.verticalGutter
-        )
-        val maxScrollX = if (axisX.scrollContainer) {
-            (contentExtent.width - viewportRect.width).coerceAtLeast(0)
-        } else {
-            0
-        }
-        val maxScrollY = if (axisY.scrollContainer) {
-            (contentExtent.height - viewportRect.height).coerceAtLeast(0)
-        } else {
-            0
-        }
+        val baseViewportRect =
+            Rect(
+                x = contentX(),
+                y = contentY(),
+                width = contentWidth(),
+                height = contentHeight(),
+            )
+        val contentExtent =
+            computeContentExtent(
+                contentOriginX = baseViewportRect.x,
+                contentOriginY = baseViewportRect.y,
+                layoutScrollX = contentLayoutScrollX,
+                layoutScrollY = contentLayoutScrollY,
+            )
+        val scrollbarResolution =
+            resolveScrollbarResolution(
+                overflowX = overflowX,
+                overflowY = overflowY,
+                contentExtent = contentExtent,
+                baseViewportWidth = baseViewportRect.width,
+                baseViewportHeight = baseViewportRect.height,
+            )
+        val viewportRect =
+            Rect(
+                x = baseViewportRect.x,
+                y = baseViewportRect.y,
+                width = scrollbarResolution.viewportWidth,
+                height = scrollbarResolution.viewportHeight,
+            )
+        val axisX =
+            axisStateForOverflow(
+                overflowMode = overflowX,
+                scrollbarPresent = scrollbarResolution.horizontalPresent,
+                scrollbarGutter = scrollbarResolution.horizontalGutter,
+            )
+        val axisY =
+            axisStateForOverflow(
+                overflowMode = overflowY,
+                scrollbarPresent = scrollbarResolution.verticalPresent,
+                scrollbarGutter = scrollbarResolution.verticalGutter,
+            )
+        val maxScrollX =
+            if (axisX.scrollContainer) {
+                (contentExtent.width - viewportRect.width).coerceAtLeast(0)
+            } else {
+                0
+            }
+        val maxScrollY =
+            if (axisY.scrollContainer) {
+                (contentExtent.height - viewportRect.height).coerceAtLeast(0)
+            } else {
+                0
+            }
         if (axisX.scrollContainer) {
             var axisChanged = false
             val axisDragged = isScrollbarAxisActivelyDragged(vertical = false)
@@ -2617,7 +2633,7 @@ abstract class DOMNode(
                 markScrollInvalidation(
                     layoutDirty = false,
                     visualDirty = true,
-                    interactionDirty = true
+                    interactionDirty = true,
                 )
                 markRenderCommandsDirty()
             }
@@ -2648,7 +2664,7 @@ abstract class DOMNode(
                 markScrollInvalidation(
                     layoutDirty = false,
                     visualDirty = true,
-                    interactionDirty = true
+                    interactionDirty = true,
                 )
                 markRenderCommandsDirty()
             }
@@ -2666,14 +2682,14 @@ abstract class DOMNode(
             horizontalScrollbarGutter = scrollbarResolution.horizontalGutter,
             verticalScrollbarGutter = scrollbarResolution.verticalGutter,
             axisX = axisX,
-            axisY = axisY
+            axisY = axisY,
         )
     }
 
     private fun axisStateForOverflow(
         overflowMode: Overflow,
         scrollbarPresent: Boolean,
-        scrollbarGutter: Int
+        scrollbarGutter: Int,
     ): ScrollAxisState {
         val scrollContainer = overflowMode != Overflow.Visible
         val supportsScrollbar = overflowMode == Overflow.Scroll || overflowMode == Overflow.Auto
@@ -2682,7 +2698,7 @@ abstract class DOMNode(
             scrollContainer = scrollContainer,
             clipsToViewport = scrollContainer,
             scrollbarPresent = supportsScrollbar && scrollbarPresent,
-            scrollbarGutter = if (supportsScrollbar && scrollbarPresent) scrollbarGutter.coerceAtLeast(0) else 0
+            scrollbarGutter = if (supportsScrollbar && scrollbarPresent) scrollbarGutter.coerceAtLeast(0) else 0,
         )
     }
 
@@ -2707,7 +2723,7 @@ abstract class DOMNode(
         overflowY: Overflow,
         contentExtent: Size,
         baseViewportWidth: Int,
-        baseViewportHeight: Int
+        baseViewportHeight: Int,
     ): ScrollbarResolution {
         val thickness = scrollbarThicknessPx().coerceAtLeast(0)
         var horizontalPresent = overflowX == Overflow.Scroll
@@ -2715,16 +2731,18 @@ abstract class DOMNode(
         repeat(3) {
             val viewportWidth = (baseViewportWidth - if (verticalPresent) thickness else 0).coerceAtLeast(0)
             val viewportHeight = (baseViewportHeight - if (horizontalPresent) thickness else 0).coerceAtLeast(0)
-            val nextHorizontal = when (overflowX) {
-                Overflow.Visible, Overflow.Hidden -> false
-                Overflow.Scroll -> true
-                Overflow.Auto -> contentExtent.width > viewportWidth
-            }
-            val nextVertical = when (overflowY) {
-                Overflow.Visible, Overflow.Hidden -> false
-                Overflow.Scroll -> true
-                Overflow.Auto -> contentExtent.height > viewportHeight
-            }
+            val nextHorizontal =
+                when (overflowX) {
+                    Overflow.Visible, Overflow.Hidden -> false
+                    Overflow.Scroll -> true
+                    Overflow.Auto -> contentExtent.width > viewportWidth
+                }
+            val nextVertical =
+                when (overflowY) {
+                    Overflow.Visible, Overflow.Hidden -> false
+                    Overflow.Scroll -> true
+                    Overflow.Auto -> contentExtent.height > viewportHeight
+                }
             if (nextHorizontal == horizontalPresent && nextVertical == verticalPresent) {
                 return ScrollbarResolution(
                     horizontalPresent = nextHorizontal,
@@ -2732,7 +2750,7 @@ abstract class DOMNode(
                     horizontalGutter = if (nextHorizontal) thickness else 0,
                     verticalGutter = if (nextVertical) thickness else 0,
                     viewportWidth = viewportWidth,
-                    viewportHeight = viewportHeight
+                    viewportHeight = viewportHeight,
                 )
             }
             horizontalPresent = nextHorizontal
@@ -2746,50 +2764,58 @@ abstract class DOMNode(
             horizontalGutter = if (horizontalPresent) thickness else 0,
             verticalGutter = if (verticalPresent) thickness else 0,
             viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight
+            viewportHeight = viewportHeight,
         )
     }
 
     private fun scrollbarVisualState(state: ScrollContainerState = scrollContainerState()): ScrollbarVisualState {
-        val verticalTrack = if (state.axisY.scrollbarPresent && state.verticalScrollbarGutter > 0) {
-            Rect(
-                x = state.viewportRect.x + state.viewportRect.width,
-                y = state.viewportRect.y,
-                width = state.verticalScrollbarGutter.coerceAtLeast(1),
-                height = state.viewportRect.height.coerceAtLeast(0)
+        val verticalTrack =
+            if (state.axisY.scrollbarPresent && state.verticalScrollbarGutter > 0) {
+                Rect(
+                    x = state.viewportRect.x + state.viewportRect.width,
+                    y = state.viewportRect.y,
+                    width = state.verticalScrollbarGutter.coerceAtLeast(1),
+                    height =
+                        state.viewportRect.height
+                            .coerceAtLeast(0),
+                )
+            } else {
+                null
+            }
+        val horizontalTrack =
+            if (state.axisX.scrollbarPresent && state.horizontalScrollbarGutter > 0) {
+                Rect(
+                    x = state.viewportRect.x,
+                    y = state.viewportRect.y + state.viewportRect.height,
+                    width =
+                        state.viewportRect.width
+                            .coerceAtLeast(0),
+                    height = state.horizontalScrollbarGutter.coerceAtLeast(1),
+                )
+            } else {
+                null
+            }
+        val vertical =
+            buildScrollbarVisualAxis(
+                trackRect = verticalTrack,
+                viewportExtent = state.viewportRect.height,
+                contentExtent = state.contentExtent.height,
+                scrollOffset = displayedScrollAxis(vertical = true).coerceIn(0.0, state.maxScrollY.toDouble()),
+                maxScroll = state.maxScrollY,
+                verticalAxis = true,
             )
-        } else {
-            null
-        }
-        val horizontalTrack = if (state.axisX.scrollbarPresent && state.horizontalScrollbarGutter > 0) {
-            Rect(
-                x = state.viewportRect.x,
-                y = state.viewportRect.y + state.viewportRect.height,
-                width = state.viewportRect.width.coerceAtLeast(0),
-                height = state.horizontalScrollbarGutter.coerceAtLeast(1)
+        val horizontal =
+            buildScrollbarVisualAxis(
+                trackRect = horizontalTrack,
+                viewportExtent = state.viewportRect.width,
+                contentExtent = state.contentExtent.width,
+                scrollOffset = displayedScrollAxis(vertical = false).coerceIn(0.0, state.maxScrollX.toDouble()),
+                maxScroll = state.maxScrollX,
+                verticalAxis = false,
             )
-        } else {
-            null
-        }
-        val vertical = buildScrollbarVisualAxis(
-            trackRect = verticalTrack,
-            viewportExtent = state.viewportRect.height,
-            contentExtent = state.contentExtent.height,
-            scrollOffset = displayedScrollAxis(vertical = true).coerceIn(0.0, state.maxScrollY.toDouble()),
-            maxScroll = state.maxScrollY,
-            verticalAxis = true
-        )
-        val horizontal = buildScrollbarVisualAxis(
-            trackRect = horizontalTrack,
-            viewportExtent = state.viewportRect.width,
-            contentExtent = state.contentExtent.width,
-            scrollOffset = displayedScrollAxis(vertical = false).coerceIn(0.0, state.maxScrollX.toDouble()),
-            maxScroll = state.maxScrollX,
-            verticalAxis = false
-        )
         return ScrollbarVisualState(
             horizontal = horizontal,
-            vertical = vertical
+            vertical = vertical,
         )
     }
 
@@ -2799,93 +2825,108 @@ abstract class DOMNode(
         contentExtent: Int,
         scrollOffset: Double,
         maxScroll: Int,
-        verticalAxis: Boolean
+        verticalAxis: Boolean,
     ): ScrollbarVisualAxis? {
         val track = trackRect ?: return null
         val trackExtent = if (verticalAxis) track.height else track.width
         if (trackExtent <= 0) return null
 
         val minThumb = minScrollbarThumbSizePx().coerceAtLeast(1)
-        val rawThumbExtent = if (contentExtent <= 0 || viewportExtent <= 0) {
-            trackExtent
-        } else {
-            val ratio = viewportExtent.toFloat() / contentExtent.toFloat()
-            (trackExtent.toFloat() * ratio).roundToInt()
-        }
+        val rawThumbExtent =
+            if (contentExtent <= 0 || viewportExtent <= 0) {
+                trackExtent
+            } else {
+                val ratio = viewportExtent.toFloat() / contentExtent.toFloat()
+                (trackExtent.toFloat() * ratio).roundToInt()
+            }
         val thumbExtent = rawThumbExtent.coerceIn(minThumb.coerceAtMost(trackExtent), trackExtent)
         val thumbTravel = (trackExtent - thumbExtent).coerceAtLeast(0)
-        val thumbOffset = if (maxScroll <= 0 || thumbTravel <= 0) {
-            0
-        } else {
-            val ratio = (scrollOffset.coerceIn(0.0, maxScroll.toDouble()) / maxScroll.toDouble()).toFloat()
-            (ratio * thumbTravel.toFloat()).roundToInt().coerceIn(0, thumbTravel)
-        }
-        val thumbRect = if (verticalAxis) {
-            Rect(track.x, track.y + thumbOffset, track.width, thumbExtent)
-        } else {
-            Rect(track.x + thumbOffset, track.y, thumbExtent, track.height)
-        }
+        val thumbOffset =
+            if (maxScroll <= 0 || thumbTravel <= 0) {
+                0
+            } else {
+                val ratio = (scrollOffset.coerceIn(0.0, maxScroll.toDouble()) / maxScroll.toDouble()).toFloat()
+                (ratio * thumbTravel.toFloat()).roundToInt().coerceIn(0, thumbTravel)
+            }
+        val thumbRect =
+            if (verticalAxis) {
+                Rect(track.x, track.y + thumbOffset, track.width, thumbExtent)
+            } else {
+                Rect(track.x + thumbOffset, track.y, thumbExtent, track.height)
+            }
         return ScrollbarVisualAxis(
             trackRect = track,
             thumbRect = thumbRect,
             maxScroll = maxScroll.coerceAtLeast(0),
-            scrollOffset = scrollOffset.roundToInt().coerceAtLeast(0)
+            scrollOffset = scrollOffset.roundToInt().coerceAtLeast(0),
         )
     }
 
     private fun appendScrollbarCommands(out: MutableList<RenderCommand>, state: ScrollContainerState) {
         val visuals = scrollbarVisualState(state)
         visuals.vertical?.let { axis ->
-            out += RenderCommand.DrawRect(
-                x = axis.trackRect.x,
-                y = axis.trackRect.y,
-                width = axis.trackRect.width,
-                height = axis.trackRect.height,
-                color = scrollbarTrackColor()
-            )
-            val thumbColor = if (activeScrollbarDragAxis == ScrollbarAxis.Vertical) {
-                scrollbarThumbActiveColor()
-            } else {
-                scrollbarThumbColor()
-            }
-            out += RenderCommand.DrawRect(
-                x = axis.thumbRect.x,
-                y = axis.thumbRect.y,
-                width = axis.thumbRect.width,
-                height = axis.thumbRect.height,
-                color = thumbColor
-            )
+            out +=
+                RenderCommand.DrawRect(
+                    x = axis.trackRect.x,
+                    y = axis.trackRect.y,
+                    width = axis.trackRect.width,
+                    height = axis.trackRect.height,
+                    color = scrollbarTrackColor(),
+                )
+            val thumbColor =
+                if (activeScrollbarDragAxis == ScrollbarAxis.Vertical) {
+                    scrollbarThumbActiveColor()
+                } else {
+                    scrollbarThumbColor()
+                }
+            out +=
+                RenderCommand.DrawRect(
+                    x = axis.thumbRect.x,
+                    y = axis.thumbRect.y,
+                    width = axis.thumbRect.width,
+                    height = axis.thumbRect.height,
+                    color = thumbColor,
+                )
         }
         visuals.horizontal?.let { axis ->
-            out += RenderCommand.DrawRect(
-                x = axis.trackRect.x,
-                y = axis.trackRect.y,
-                width = axis.trackRect.width,
-                height = axis.trackRect.height,
-                color = scrollbarTrackColor()
-            )
-            val thumbColor = if (activeScrollbarDragAxis == ScrollbarAxis.Horizontal) {
-                scrollbarThumbActiveColor()
-            } else {
-                scrollbarThumbColor()
-            }
-            out += RenderCommand.DrawRect(
-                x = axis.thumbRect.x,
-                y = axis.thumbRect.y,
-                width = axis.thumbRect.width,
-                height = axis.thumbRect.height,
-                color = thumbColor
-            )
+            out +=
+                RenderCommand.DrawRect(
+                    x = axis.trackRect.x,
+                    y = axis.trackRect.y,
+                    width = axis.trackRect.width,
+                    height = axis.trackRect.height,
+                    color = scrollbarTrackColor(),
+                )
+            val thumbColor =
+                if (activeScrollbarDragAxis == ScrollbarAxis.Horizontal) {
+                    scrollbarThumbActiveColor()
+                } else {
+                    scrollbarThumbColor()
+                }
+            out +=
+                RenderCommand.DrawRect(
+                    x = axis.thumbRect.x,
+                    y = axis.thumbRect.y,
+                    width = axis.thumbRect.width,
+                    height = axis.thumbRect.height,
+                    color = thumbColor,
+                )
         }
     }
 
     private fun resolveScrollbarDragAxisAt(mouseX: Int, mouseY: Int): ScrollbarAxis? {
         if (!containsGlobalPoint(mouseX, mouseY)) return null
         val visuals = scrollbarVisualState()
-        if (visuals.vertical?.trackRect?.contains(mouseX, mouseY) == true) {
+        if (visuals.vertical
+                ?.trackRect
+                ?.contains(mouseX, mouseY) == true
+        ) {
             return ScrollbarAxis.Vertical
         }
-        if (visuals.horizontal?.trackRect?.contains(mouseX, mouseY) == true) {
+        if (visuals.horizontal
+                ?.trackRect
+                ?.contains(mouseX, mouseY) == true
+        ) {
             return ScrollbarAxis.Horizontal
         }
         return null
@@ -2896,12 +2937,13 @@ abstract class DOMNode(
         val vertical = visuals.vertical
         if (vertical != null && vertical.trackRect.contains(mouseX, mouseY)) {
             activeScrollbarDragAxis = ScrollbarAxis.Vertical
-            scrollbarDragSession = beginScrollbarDragSession(
-                axis = ScrollbarAxis.Vertical,
-                visual = vertical,
-                pointerPx = mouseY,
-                pointerInsideThumb = vertical.thumbRect.contains(mouseX, mouseY)
-            )
+            scrollbarDragSession =
+                beginScrollbarDragSession(
+                    axis = ScrollbarAxis.Vertical,
+                    visual = vertical,
+                    pointerPx = mouseY,
+                    pointerInsideThumb = vertical.thumbRect.contains(mouseX, mouseY),
+                )
             markRenderCommandsDirty()
             updateScrollbarPointerDrag(mouseX, mouseY)
             return true
@@ -2910,12 +2952,13 @@ abstract class DOMNode(
         val horizontal = visuals.horizontal
         if (horizontal != null && horizontal.trackRect.contains(mouseX, mouseY)) {
             activeScrollbarDragAxis = ScrollbarAxis.Horizontal
-            scrollbarDragSession = beginScrollbarDragSession(
-                axis = ScrollbarAxis.Horizontal,
-                visual = horizontal,
-                pointerPx = mouseX,
-                pointerInsideThumb = horizontal.thumbRect.contains(mouseX, mouseY)
-            )
+            scrollbarDragSession =
+                beginScrollbarDragSession(
+                    axis = ScrollbarAxis.Horizontal,
+                    visual = horizontal,
+                    pointerPx = mouseX,
+                    pointerInsideThumb = horizontal.thumbRect.contains(mouseX, mouseY),
+                )
             markRenderCommandsDirty()
             updateScrollbarPointerDrag(mouseX, mouseY)
             return true
@@ -2927,33 +2970,37 @@ abstract class DOMNode(
         axis: ScrollbarAxis,
         visual: ScrollbarVisualAxis,
         pointerPx: Int,
-        pointerInsideThumb: Boolean
+        pointerInsideThumb: Boolean,
     ): ScrollbarDragSession {
         val track = visual.trackRect
         val thumb = visual.thumbRect
-        val trackLengthPx = if (axis == ScrollbarAxis.Vertical) {
-            track.height.coerceAtLeast(0)
-        } else {
-            track.width.coerceAtLeast(0)
-        }
-        val thumbLengthPx = if (axis == ScrollbarAxis.Vertical) {
-            thumb.height.coerceAtLeast(1)
-        } else {
-            thumb.width.coerceAtLeast(1)
-        }
+        val trackLengthPx =
+            if (axis == ScrollbarAxis.Vertical) {
+                track.height.coerceAtLeast(0)
+            } else {
+                track.width.coerceAtLeast(0)
+            }
+        val thumbLengthPx =
+            if (axis == ScrollbarAxis.Vertical) {
+                thumb.height.coerceAtLeast(1)
+            } else {
+                thumb.width.coerceAtLeast(1)
+            }
         val trackStartPx = if (axis == ScrollbarAxis.Vertical) track.y else track.x
         val thumbStartPx = if (axis == ScrollbarAxis.Vertical) thumb.y else thumb.x
         val maxThumbTravelPx = (trackLengthPx - thumbLengthPx).coerceAtLeast(0)
-        val grabOffsetPx = if (pointerInsideThumb) {
-            (pointerPx - thumbStartPx).coerceIn(0, (thumbLengthPx - 1).coerceAtLeast(0))
-        } else {
-            (thumbLengthPx / 2).coerceAtLeast(0)
-        }
-        val initialResolvedScroll = if (axis == ScrollbarAxis.Vertical) {
-            resolvedScrollAxis(vertical = true)
-        } else {
-            resolvedScrollAxis(vertical = false)
-        }
+        val grabOffsetPx =
+            if (pointerInsideThumb) {
+                (pointerPx - thumbStartPx).coerceIn(0, (thumbLengthPx - 1).coerceAtLeast(0))
+            } else {
+                (thumbLengthPx / 2).coerceAtLeast(0)
+            }
+        val initialResolvedScroll =
+            if (axis == ScrollbarAxis.Vertical) {
+                resolvedScrollAxis(vertical = true)
+            } else {
+                resolvedScrollAxis(vertical = false)
+            }
         return ScrollbarDragSession(
             axis = axis,
             trackStartPx = trackStartPx,
@@ -2962,24 +3009,26 @@ abstract class DOMNode(
             maxThumbTravelPx = maxThumbTravelPx,
             maxScroll = visual.maxScroll.coerceAtLeast(0),
             grabOffsetPx = grabOffsetPx,
-            initialResolvedScroll = initialResolvedScroll
+            initialResolvedScroll = initialResolvedScroll,
         )
     }
 
     private fun updateScrollbarPointerDrag(mouseX: Int, mouseY: Int) {
         val session = scrollbarDragSession ?: return
         val pointerAxisPx = if (session.axis == ScrollbarAxis.Vertical) mouseY else mouseX
-        val desiredThumbStartPx = if (session.maxThumbTravelPx <= 0) {
-            0
-        } else {
-            (pointerAxisPx - session.trackStartPx - session.grabOffsetPx).coerceIn(0, session.maxThumbTravelPx)
-        }
-        val desiredScroll = if (session.maxThumbTravelPx <= 0 || session.maxScroll <= 0) {
-            0
-        } else {
-            val ratio = desiredThumbStartPx.toDouble() / session.maxThumbTravelPx.toDouble()
-            (ratio * session.maxScroll.toDouble()).roundToInt().coerceIn(0, session.maxScroll)
-        }
+        val desiredThumbStartPx =
+            if (session.maxThumbTravelPx <= 0) {
+                0
+            } else {
+                (pointerAxisPx - session.trackStartPx - session.grabOffsetPx).coerceIn(0, session.maxThumbTravelPx)
+            }
+        val desiredScroll =
+            if (session.maxThumbTravelPx <= 0 || session.maxScroll <= 0) {
+                0
+            } else {
+                val ratio = desiredThumbStartPx.toDouble() / session.maxThumbTravelPx.toDouble()
+                (ratio * session.maxScroll.toDouble()).roundToInt().coerceIn(0, session.maxScroll)
+            }
 
         var nextScrollX = resolvedScrollAxis(vertical = false)
         var nextScrollY = resolvedScrollAxis(vertical = true)
@@ -2990,14 +3039,11 @@ abstract class DOMNode(
         }
         applyDragScrollOffsets(
             scrollX = nextScrollX,
-            scrollY = nextScrollY
+            scrollY = nextScrollY,
         )
     }
 
-    private fun applyDragScrollOffsets(
-        scrollX: Int,
-        scrollY: Int
-    ) {
+    private fun applyDragScrollOffsets(scrollX: Int, scrollY: Int) {
         val resolvedX = scrollX.coerceAtLeast(0)
         val resolvedY = scrollY.coerceAtLeast(0)
         val clampedX = resolvedX.toDouble()
@@ -3031,7 +3077,7 @@ abstract class DOMNode(
             markScrollInvalidation(
                 layoutDirty = false,
                 visualDirty = true,
-                interactionDirty = true
+                interactionDirty = true,
             )
             markRenderCommandsDirty()
         }
@@ -3041,7 +3087,7 @@ abstract class DOMNode(
         contentOriginX: Int,
         contentOriginY: Int,
         layoutScrollX: Int,
-        layoutScrollY: Int
+        layoutScrollY: Int,
     ): Size {
         var maxWidth = 0
         var maxHeight = 0
@@ -3069,8 +3115,22 @@ abstract class DOMNode(
         return Rect(
             x = if (clipX) state.viewportRect.x else root.bounds.x,
             y = if (clipY) state.viewportRect.y else root.bounds.y,
-            width = if (clipX) state.viewportRect.width.coerceAtLeast(0) else root.bounds.width.coerceAtLeast(0),
-            height = if (clipY) state.viewportRect.height.coerceAtLeast(0) else root.bounds.height.coerceAtLeast(0)
+            width =
+                if (clipX) {
+                    state.viewportRect.width
+                        .coerceAtLeast(0)
+                } else {
+                    root.bounds.width
+                        .coerceAtLeast(0)
+                },
+            height =
+                if (clipY) {
+                    state.viewportRect.height
+                        .coerceAtLeast(0)
+                } else {
+                    root.bounds.height
+                        .coerceAtLeast(0)
+                },
         )
     }
 
@@ -3114,11 +3174,12 @@ abstract class DOMNode(
         while (current != null) {
             val clipRect = current.overflowViewportRect()
             if (clipRect != null) {
-                effectiveRect = if (effectiveRect == null) {
-                    clipRect
-                } else {
-                    effectiveRect.intersection(clipRect) ?: return Rect(0, 0, 0, 0)
-                }
+                effectiveRect =
+                    if (effectiveRect == null) {
+                        clipRect
+                    } else {
+                        effectiveRect.intersection(clipRect) ?: return Rect(0, 0, 0, 0)
+                    }
             }
             current = current.parent
         }
@@ -3134,9 +3195,7 @@ abstract class DOMNode(
         }
     }
 
-    internal fun debugScrollbarVisualState(): ScrollbarVisualState {
-        return scrollbarVisualState()
-    }
+    internal fun debugScrollbarVisualState(): ScrollbarVisualState = scrollbarVisualState()
 
     internal fun debugScrollbarDragSession(): ScrollbarDragSessionDebugState? {
         val session = scrollbarDragSession ?: return null
@@ -3148,7 +3207,7 @@ abstract class DOMNode(
             maxThumbTravelPx = session.maxThumbTravelPx,
             maxScroll = session.maxScroll,
             grabOffsetPx = session.grabOffsetPx,
-            initialResolvedScroll = session.initialResolvedScroll
+            initialResolvedScroll = session.initialResolvedScroll,
         )
     }
 
@@ -3253,21 +3312,23 @@ abstract class DOMNode(
         }
     }
 
-    private fun copyStyleDecls(source: StyleDeclarations): StyleDeclarations {
-        return StyleDeclarations(
-            values = linkedMapOf<StyleProperty, StyleExpression>().apply {
-                putAll(source.values)
-            },
-            importantProperties = linkedSetOf<StyleProperty>().apply {
-                addAll(source.importantProperties)
-            }
+    private fun copyStyleDecls(source: StyleDeclarations): StyleDeclarations =
+        StyleDeclarations(
+            values =
+                linkedMapOf<StyleProperty, StyleExpression>().apply {
+                    putAll(source.values)
+                },
+            importantProperties =
+                linkedSetOf<StyleProperty>().apply {
+                    addAll(source.importantProperties)
+                },
         )
-    }
 }
 
 private fun parseClassNames(value: String): Set<String> {
     if (value.isBlank()) return emptySet()
-    return value.trim()
+    return value
+        .trim()
         .split(Regex("\\s+"))
         .filter { it.isNotBlank() }
         .toSet()
@@ -3283,4 +3344,3 @@ fun <T : DOMNode> T.applyParent(parent: DOMNode?): T {
     }
     return this
 }
-

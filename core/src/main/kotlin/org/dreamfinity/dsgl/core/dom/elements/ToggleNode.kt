@@ -20,7 +20,7 @@ class ToggleNode(
     controlled: Boolean = false,
     checked: Boolean = false,
     defaultChecked: Boolean = false,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "toggle"
     override val focusable: Boolean = true
@@ -87,9 +87,7 @@ class ToggleNode(
         }
     }
 
-    fun isChecked(): Boolean {
-        return if (controlled) controlledChecked else uncontrolledChecked
-    }
+    fun isChecked(): Boolean = if (controlled) controlledChecked else uncontrolledChecked
 
     internal fun syncFrom(template: ToggleNode) {
         val wasControlled = controlled
@@ -111,13 +109,10 @@ class ToggleNode(
         markRenderCommandsDirty()
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(null)
 
     private fun measureWithConstraint(availableOuterWidth: Int?): Size {
         val contentLimit = resolvedContentLimit(availableOuterWidth)
@@ -140,7 +135,13 @@ class ToggleNode(
         }
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
         val tx = contentX()
         val ty = contentY()
@@ -158,11 +159,12 @@ class ToggleNode(
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
         addBackgroundImageCommand(out)
-        val trackColor = when {
-            styleDisabled -> trackDisabledColor
-            isChecked() -> trackOnColor
-            else -> trackOffColor
-        }
+        val trackColor =
+            when {
+                styleDisabled -> trackDisabledColor
+                isChecked() -> trackOnColor
+                else -> trackOffColor
+            }
         out += RenderCommand.DrawRect(trackRect.x, trackRect.y, trackRect.width, trackRect.height, trackColor)
         addBorderCommands(out)
         val thumb = if (styleDisabled) thumbDisabledColor else thumbColor

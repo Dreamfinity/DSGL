@@ -5,6 +5,13 @@ pluginManagement {
 
     fun isAdapterEnabled(name: String) = providers.gradleProperty("enable$name").orNull?.toBoolean() ?: false
 
+    val kotlinVersion: String by settings
+
+    plugins {
+        kotlin("jvm") version kotlinVersion
+        id("org.jetbrains.kotlin.plugin.serialization") version kotlinVersion
+    }
+
     repositories {
         maven(url = "https://maven.minecraftforge.net")
         gradlePluginPortal()

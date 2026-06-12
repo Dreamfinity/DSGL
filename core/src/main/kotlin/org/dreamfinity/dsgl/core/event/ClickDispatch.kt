@@ -8,31 +8,31 @@ import org.dreamfinity.dsgl.core.dom.layout.Rect
 /**
  * Dispatches a click through the DOM tree; returns true if handled.
  */
-fun dispatchClick(root: DOMNode, event: MouseClickEvent): Boolean {
-    return dispatchClickInternal(
+fun dispatchClick(root: DOMNode, event: MouseClickEvent): Boolean =
+    dispatchClickInternal(
         element = root,
         event = event,
         parentTransform = AffineTransform2D.IDENTITY,
-        parentInputClipRect = null
+        parentInputClipRect = null,
     )
-}
 
 internal fun dispatchClickInternal(
     element: DOMNode,
     event: MouseClickEvent,
     parentTransform: AffineTransform2D,
-    parentInputClipRect: Rect?
+    parentInputClipRect: Rect?,
 ): Boolean {
     if (!element.isHitTestVisible()) {
         return false
     }
-    val projection = UsedInteractionGeometryResolver.projectNodeAtPoint(
-        node = element,
-        mouseX = event.mouseX,
-        mouseY = event.mouseY,
-        parentTransform = parentTransform,
-        parentInputClipRect = parentInputClipRect
-    ) ?: return false
+    val projection =
+        UsedInteractionGeometryResolver.projectNodeAtPoint(
+            node = element,
+            mouseX = event.mouseX,
+            mouseY = event.mouseY,
+            parentTransform = parentTransform,
+            parentInputClipRect = parentInputClipRect,
+        ) ?: return false
 
     val childInputClipRect = projection.childInputClipRect
     if (projection.canTraverseChildren) {
@@ -42,7 +42,7 @@ internal fun dispatchClickInternal(
                     element = child,
                     event = event,
                     parentTransform = projection.worldTransform,
-                    parentInputClipRect = childInputClipRect
+                    parentInputClipRect = childInputClipRect,
                 )
             ) {
                 return true
@@ -56,4 +56,3 @@ internal fun dispatchClickInternal(
 
     return element.handleClick(event)
 }
-

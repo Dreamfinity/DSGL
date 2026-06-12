@@ -6,8 +6,8 @@ import kotlin.ExperimentalStdlibApi
 import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -118,9 +118,10 @@ class ComponentHookRuntimeTests {
 
         render(runtime, owner) {
             resolveNamedEntry(HookEntryKind.State, "count") { 0 }
-            val error = assertFailsWith<HookUsageException> {
-                resolveNamedEntry(HookEntryKind.State, "count") { 0 }
-            }
+            val error =
+                assertFailsWith<HookUsageException> {
+                    resolveNamedEntry(HookEntryKind.State, "count") { 0 }
+                }
             assertTrue(error.message?.contains("Duplicate hook path") == true)
         }
     }
@@ -131,9 +132,10 @@ class ComponentHookRuntimeTests {
         val owner = Any()
 
         render(runtime, owner) {
-            val error = assertFailsWith<HookUsageException> {
-                resolveDuplicateHookPathProbe()
-            }
+            val error =
+                assertFailsWith<HookUsageException> {
+                    resolveDuplicateHookPathProbe()
+                }
             assertEquals(error.message?.contains("Duplicate hook path"), true)
         }
     }
@@ -149,9 +151,10 @@ class ComponentHookRuntimeTests {
                 assertTrue(first.created)
                 first.entry.value = 5
 
-                val error = assertFailsWith<HookUsageException> {
-                    resolveStateHookFromHelper("count")
-                }
+                val error =
+                    assertFailsWith<HookUsageException> {
+                        resolveStateHookFromHelper("count")
+                    }
                 assertEquals(error.message?.contains("Duplicate hook path"), true)
             }
         }
@@ -175,9 +178,10 @@ class ComponentHookRuntimeTests {
         }
 
         render(runtime, owner) {
-            val error = assertFailsWith<HookUsageException> {
-                resolveNamedEntry(HookEntryKind.State, "shared") { 0 }
-            }
+            val error =
+                assertFailsWith<HookUsageException> {
+                    resolveNamedEntry(HookEntryKind.State, "shared") { 0 }
+                }
             assertTrue(error.message?.contains("Hook kind mismatch") == true)
         }
     }
@@ -212,9 +216,10 @@ class ComponentHookRuntimeTests {
 
         render(runtime, owner) {
             resolveNamedEntry(HookEntryKind.State, "useEffect#0") { 0 }
-            val error = assertFailsWith<HookUsageException> {
-                resolveUnnamedEntry(HookEntryKind.Custom, "useEffect") { Unit }
-            }
+            val error =
+                assertFailsWith<HookUsageException> {
+                    resolveUnnamedEntry(HookEntryKind.Custom, "useEffect") { Unit }
+                }
             assertTrue(error.message?.contains("Synthetic hook key collision") == true)
         }
     }
@@ -224,15 +229,17 @@ class ComponentHookRuntimeTests {
         val runtime = ComponentHookRuntime()
         val owner = Any()
 
-        val outsideRender = assertFailsWith<HookUsageException> {
-            runtime.enterCustomHookScope("counter")
-        }
+        val outsideRender =
+            assertFailsWith<HookUsageException> {
+                runtime.enterCustomHookScope("counter")
+            }
         assertTrue(outsideRender.message?.contains("outside active component render") == true)
 
         render(runtime, owner) {
-            val noScope = assertFailsWith<HookUsageException> {
-                leaveCustomHookScope()
-            }
+            val noScope =
+                assertFailsWith<HookUsageException> {
+                    leaveCustomHookScope()
+                }
             assertTrue(noScope.message?.contains("no active custom hook scope") == true)
         }
     }
@@ -244,29 +251,31 @@ class ComponentHookRuntimeTests {
         val owner = Any()
 
         render(runtime, owner) {
-            val value = resolveNamedTypedEntry(
-                kind = HookEntryKind.State,
-                delegateName = "counter",
-                signature = HookSignatures.state(typeOf<Int>()),
-                expectedRawType = CounterHolder::class.java
-            ) {
-                CounterHolder(0)
-            }
-            value.value.count = 7
-        }
-
-        val error = assertFailsWith<HookUsageException> {
-            render(runtime, owner) {
+            val value =
                 resolveNamedTypedEntry(
                     kind = HookEntryKind.State,
                     delegateName = "counter",
-                    signature = HookSignatures.state(typeOf<String>()),
-                    expectedRawType = CounterHolder::class.java
+                    signature = HookSignatures.state(typeOf<Int>()),
+                    expectedRawType = CounterHolder::class.java,
                 ) {
                     CounterHolder(0)
                 }
-            }
+            value.value.count = 7
         }
+
+        val error =
+            assertFailsWith<HookUsageException> {
+                render(runtime, owner) {
+                    resolveNamedTypedEntry(
+                        kind = HookEntryKind.State,
+                        delegateName = "counter",
+                        signature = HookSignatures.state(typeOf<String>()),
+                        expectedRawType = CounterHolder::class.java,
+                    ) {
+                        CounterHolder(0)
+                    }
+                }
+            }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("counter") == true)
@@ -283,24 +292,25 @@ class ComponentHookRuntimeTests {
                 kind = HookEntryKind.Ref,
                 delegateName = "inputRef",
                 signature = HookSignatures.ref(typeOf<AlphaRefTarget>()),
-                expectedRawType = Ref::class.java
+                expectedRawType = Ref::class.java,
             ) {
                 RefObject<AlphaRefTarget>()
             }
         }
 
-        val error = assertFailsWith<HookUsageException> {
-            render(runtime, owner) {
-                resolveNamedTypedEntry(
-                    kind = HookEntryKind.Ref,
-                    delegateName = "inputRef",
-                    signature = HookSignatures.ref(typeOf<BetaRefTarget>()),
-                    expectedRawType = Ref::class.java
-                ) {
-                    RefObject<BetaRefTarget>()
+        val error =
+            assertFailsWith<HookUsageException> {
+                render(runtime, owner) {
+                    resolveNamedTypedEntry(
+                        kind = HookEntryKind.Ref,
+                        delegateName = "inputRef",
+                        signature = HookSignatures.ref(typeOf<BetaRefTarget>()),
+                        expectedRawType = Ref::class.java,
+                    ) {
+                        RefObject<BetaRefTarget>()
+                    }
                 }
             }
-        }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("inputRef") == true)
@@ -321,7 +331,7 @@ class ComponentHookRuntimeTests {
                     kind = HookEntryKind.State,
                     delegateName = "branchValue",
                     signature = HookSignatures.state(typeOf<String>()),
-                    expectedRawType = BranchHolder::class.java
+                    expectedRawType = BranchHolder::class.java,
                 ) {
                     BranchHolder("s")
                 }
@@ -330,7 +340,7 @@ class ComponentHookRuntimeTests {
                     kind = HookEntryKind.State,
                     delegateName = "branchValue",
                     signature = HookSignatures.state(typeOf<Int>()),
-                    expectedRawType = BranchHolder::class.java
+                    expectedRawType = BranchHolder::class.java,
                 ) {
                     BranchHolder(1)
                 }
@@ -338,29 +348,30 @@ class ComponentHookRuntimeTests {
         }
 
         useStringBranch = true
-        val error = assertFailsWith<HookUsageException> {
-            render(runtime, owner) {
-                if (useStringBranch) {
-                    resolveNamedTypedEntry(
-                        kind = HookEntryKind.State,
-                        delegateName = "branchValue",
-                        signature = HookSignatures.state(typeOf<String>()),
-                        expectedRawType = BranchHolder::class.java
-                    ) {
-                        BranchHolder("s")
-                    }
-                } else {
-                    resolveNamedTypedEntry(
-                        kind = HookEntryKind.State,
-                        delegateName = "branchValue",
-                        signature = HookSignatures.state(typeOf<Int>()),
-                        expectedRawType = BranchHolder::class.java
-                    ) {
-                        BranchHolder(1)
+        val error =
+            assertFailsWith<HookUsageException> {
+                render(runtime, owner) {
+                    if (useStringBranch) {
+                        resolveNamedTypedEntry(
+                            kind = HookEntryKind.State,
+                            delegateName = "branchValue",
+                            signature = HookSignatures.state(typeOf<String>()),
+                            expectedRawType = BranchHolder::class.java,
+                        ) {
+                            BranchHolder("s")
+                        }
+                    } else {
+                        resolveNamedTypedEntry(
+                            kind = HookEntryKind.State,
+                            delegateName = "branchValue",
+                            signature = HookSignatures.state(typeOf<Int>()),
+                            expectedRawType = BranchHolder::class.java,
+                        ) {
+                            BranchHolder(1)
+                        }
                     }
                 }
             }
-        }
 
         assertTrue(error.message?.contains("Hook signature mismatch") == true)
         assertTrue(error.message?.contains("branchValue") == true)
@@ -373,29 +384,32 @@ class ComponentHookRuntimeTests {
         val owner = Any()
 
         render(runtime, owner) {
-            val value = resolveNamedTypedEntry(
-                kind = HookEntryKind.State,
-                delegateName = "counter",
-                signature = HookSignatures.state(typeOf<Int>()),
-                expectedRawType = CounterHolder::class.java
-            ) {
-                CounterHolder(0)
-            }
+            val value =
+                resolveNamedTypedEntry(
+                    kind = HookEntryKind.State,
+                    delegateName = "counter",
+                    signature = HookSignatures.state(typeOf<Int>()),
+                    expectedRawType = CounterHolder::class.java,
+                ) {
+                    CounterHolder(0)
+                }
             value.value.count = 42
         }
 
-        val attempts = renderWithHotReloadRecovery(runtime, owner) {
-            val value = resolveNamedTypedEntry(
-                kind = HookEntryKind.State,
-                delegateName = "counter",
-                signature = HookSignatures.state(typeOf<String>()),
-                expectedRawType = StringHolder::class.java
-            ) {
-                StringHolder("fresh")
+        val attempts =
+            renderWithHotReloadRecovery(runtime, owner) {
+                val value =
+                    resolveNamedTypedEntry(
+                        kind = HookEntryKind.State,
+                        delegateName = "counter",
+                        signature = HookSignatures.state(typeOf<String>()),
+                        expectedRawType = StringHolder::class.java,
+                    ) {
+                        StringHolder("fresh")
+                    }
+                assertTrue(value.created)
+                assertEquals("fresh", value.value.value)
             }
-            assertTrue(value.created)
-            assertEquals("fresh", value.value.value)
-        }
 
         assertEquals(2, attempts)
     }
@@ -422,7 +436,7 @@ class ComponentHookRuntimeTests {
         runtime: ComponentHookRuntime,
         owner: Any,
         mode: HookRenderSessionMode = HookRenderSessionMode.Normal,
-        block: ComponentHookRuntime.() -> Unit
+        block: ComponentHookRuntime.() -> Unit,
     ) {
         runtime.beginRender(owner, mode)
         try {
@@ -436,7 +450,7 @@ class ComponentHookRuntimeTests {
         runtime: ComponentHookRuntime,
         owner: Any,
         maxAttempts: Int = 8,
-        block: ComponentHookRuntime.() -> Unit
+        block: ComponentHookRuntime.() -> Unit,
     ): Int {
         var attempt = 0
         var lastWarning: HookHotReloadRemountException? = null
@@ -454,15 +468,15 @@ class ComponentHookRuntimeTests {
     }
 
     private data class CounterHolder(
-        var count: Int
+        var count: Int,
     )
 
     private data class StringHolder(
-        var value: String
+        var value: String,
     )
 
     private data class BranchHolder(
-        var value: Any
+        var value: Any,
     )
 
     private class AlphaRefTarget
@@ -474,7 +488,8 @@ class ComponentHookRuntimeTests {
         resolveNamedEntry(HookEntryKind.State, "count") { 0 }
     }
 
-    private fun ComponentHookRuntime.resolveStateHookFromHelper(name: String): ResolvedHookEntry {
-        return resolveNamedEntry(HookEntryKind.State, name) { 0 }
-    }
+    private fun ComponentHookRuntime.resolveStateHookFromHelper(name: String): ResolvedHookEntry =
+        resolveNamedEntry(HookEntryKind.State, name) {
+            0
+        }
 }

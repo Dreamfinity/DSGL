@@ -7,17 +7,15 @@ import net.minecraft.client.gui.GuiScreen
 import org.dreamfinity.dsgl.core.DomTree
 import org.dreamfinity.dsgl.core.DsglWindow
 import org.dreamfinity.dsgl.core.HotReloadBridge
-import org.dreamfinity.dsgl.core.animation.StyleAnimationEngine
+import org.dreamfinity.dsgl.core.animation.*
 import org.dreamfinity.dsgl.core.colorpicker.*
-import org.dreamfinity.dsgl.core.contextmenu.ContextMenuRuntime
-import org.dreamfinity.dsgl.core.debug.OverlayDebugControlHost
-import org.dreamfinity.dsgl.core.debug.OverlayLayerDebugState
-import org.dreamfinity.dsgl.core.dnd.DndRuntime
+import org.dreamfinity.dsgl.core.debug.DebugDomainPortalHost
+import org.dreamfinity.dsgl.core.debug.DebugDomainRootHost
+import org.dreamfinity.dsgl.core.debug.DomainSurfaceDebugState
+import org.dreamfinity.dsgl.core.dnd.*
 import org.dreamfinity.dsgl.core.dom.DOMNode
-import org.dreamfinity.dsgl.core.dom.elements.ColorPickerInlineNode
-import org.dreamfinity.dsgl.core.dom.elements.RangeInputNode
-import org.dreamfinity.dsgl.core.dom.elements.SingleLineInputNode
-import org.dreamfinity.dsgl.core.dom.elements.TextAreaNode
+import org.dreamfinity.dsgl.core.dom.elements.*
+import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
 import org.dreamfinity.dsgl.core.hooks.HookHotReloadRemountException
 import org.dreamfinity.dsgl.core.hooks.HookRenderSessionMode
@@ -27,23 +25,41 @@ import org.dreamfinity.dsgl.core.host.rawMouseToDsglX
 import org.dreamfinity.dsgl.core.host.rawMouseToDsglY
 import org.dreamfinity.dsgl.core.input.ClipboardAccess
 import org.dreamfinity.dsgl.core.input.ClipboardBridge
-import org.dreamfinity.dsgl.core.inspector.InspectorController
-import org.dreamfinity.dsgl.core.inspector.InspectorMode
-import org.dreamfinity.dsgl.core.overlay.ApplicationOverlayHost
-import org.dreamfinity.dsgl.core.overlay.OverlayLayerContracts
-import org.dreamfinity.dsgl.core.overlay.OverlayOwnerScope
-import org.dreamfinity.dsgl.core.overlay.UiLayerId
-import org.dreamfinity.dsgl.core.overlay.system.SystemOverlayHost
+import org.dreamfinity.dsgl.core.inspector.*
+import org.dreamfinity.dsgl.core.portal.ApplicationPortalHost
+import org.dreamfinity.dsgl.core.portal.DomainSurfaceHost
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurface
+import org.dreamfinity.dsgl.core.portal.ScreenDomainSurfaces
+import org.dreamfinity.dsgl.core.portal.appendDndGhostPortalCommands
+import org.dreamfinity.dsgl.core.portal.appendFloatingPortalCommands
+import org.dreamfinity.dsgl.core.portal.captureColorPickerEyedropperSample
+import org.dreamfinity.dsgl.core.portal.closeFloatingPortals
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyDownAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyDownBeforeDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyUpAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalKeyUpBeforeDom
+import org.dreamfinity.dsgl.core.portal.handlePortalPointerAfterDom
+import org.dreamfinity.dsgl.core.portal.handlePortalPointerBeforeDom
+import org.dreamfinity.dsgl.core.portal.hasActiveColorPickerEyedropper
+import org.dreamfinity.dsgl.core.portal.hasActiveModalPortal
+import org.dreamfinity.dsgl.core.portal.hasDomPointerTargetAt
+import org.dreamfinity.dsgl.core.portal.hasOpenColorPickerPortal
+import org.dreamfinity.dsgl.core.portal.hasOpenContextMenuPortal
+import org.dreamfinity.dsgl.core.portal.hasOpenSelectPortal
+import org.dreamfinity.dsgl.core.portal.input.PointerCaptureSession
+import org.dreamfinity.dsgl.core.portal.syncPortalFrame
+import org.dreamfinity.dsgl.core.portal.system.SystemPortalHost
+import org.dreamfinity.dsgl.core.portal.toggleFloatingWindowDemo
 import org.dreamfinity.dsgl.core.render.RenderCommand
-import org.dreamfinity.dsgl.core.select.SelectRuntime
-import org.dreamfinity.dsgl.core.style.Display
-import org.dreamfinity.dsgl.core.style.StyleEngine
+import org.dreamfinity.dsgl.core.style.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
-import java.util.*
+import java.util.Collections
+import java.util.IdentityHashMap
 
 /**
  * Minecraft 1.7.10 host that owns UI lifecycle and boilerplate.
@@ -54,8 +70,9 @@ import java.util.*
 @SideOnly(Side.CLIENT)
 abstract class DsglScreenHost(
     private val windowFactory: () -> DsglWindow,
-    var rendersCount: Long = 0
-) : GuiScreen(), DsglWindowHost {
+    var rendersCount: Long = 0,
+) : GuiScreen(),
+    DsglWindowHost {
     companion object {
         @Volatile
         private var stylesPreloadedOnce: Boolean = false
@@ -73,6 +90,7 @@ abstract class DsglScreenHost(
     private var needsLayout: Boolean = true
     private var lastMouseEvent: Long = 0
     private var eventButton: Int = -1
+    private var higherSurfacePointerButton: Int = -1
     private var lastMouseX: Int = 0
     private var lastMouseY: Int = 0
     private var lastMoveX: Int = Int.MIN_VALUE
@@ -80,49 +98,53 @@ abstract class DsglScreenHost(
     private val pressedKeys: MutableSet<Int> = HashSet()
     private val hoverChain: MutableList<DOMNode> = mutableListOf()
     private var hoverTarget: DOMNode? = null
-    private var dragCaptureTarget: DOMNode? = null
-    private var dragCaptureKey: Any? = null
-    private var dragCaptureClass: Class<out DOMNode>? = null
-    private var dragCaptureFocusKey: Any? = null
+    private val pointerCapture: PointerCaptureSession = PointerCaptureSession()
     private var inspectorPointerCaptured: Boolean = false
     private var layoutRevision: Long = 0L
     private val pendingCleanupRoots: MutableSet<DOMNode> =
         Collections.newSetFromMap(IdentityHashMap<DOMNode, Boolean>())
     private val composedCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
     private val stagingCommandsBuffer: MutableList<RenderCommand> = ArrayList(512)
-    private val applicationOverlayCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val applicationPortalCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private val systemPortalCommandsBuffer: MutableList<RenderCommand> = ArrayList(256)
     private var activeTarget: DOMNode? = null
     private var lastFrameNanos: Long = 0L
     private val inspector: InspectorController = InspectorController()
-    private val applicationOverlayHost: ApplicationOverlayHost = ApplicationOverlayHost()
-    private val systemOverlayHost: SystemOverlayHost = SystemOverlayHost(inspector)
-    private val debugOverlayHost: OverlayDebugControlHost = OverlayDebugControlHost()
+    private val applicationPortalHost: ApplicationPortalHost = ApplicationPortalHost()
+    private val systemPortalHost: SystemPortalHost = SystemPortalHost(inspector)
+    private val debugDomainRootHost: DebugDomainRootHost = DebugDomainRootHost()
+    private val debugDomainPortalHost: DebugDomainPortalHost = DebugDomainPortalHost()
+    private val domainOrchestrator: ScreenDomainSurfaceOrchestrator = ScreenDomainSurfaceOrchestrator()
     private val colorSamplerOwnershipRouter: ActiveColorSamplerOwnershipRouter = ActiveColorSamplerOwnershipRouter()
     private var activeColorSamplerOwner: ActiveColorSamplerOwner = ActiveColorSamplerOwner.None
     private var activeInlineColorSamplerNode: ColorPickerInlineNode? = null
     private val inspectorInputDebug: Boolean = false
-    private val perfDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.perf.debug")
-    private val phaseTraceDebug: Boolean = java.lang.Boolean.getBoolean("dsgl.rebuild.trace")
+    private val perfDebug: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.perf.debug")
+    private val phaseTraceDebug: Boolean =
+        java.lang.Boolean
+            .getBoolean("dsgl.rebuild.trace")
     private var lastPerfLogMs: Long = 0L
     private var frameIndex: Long = 0L
     private var blankFrameGuardSkips: Long = 0L
     private val pipelineErrorLogTimes: MutableMap<String, Long> = linkedMapOf()
-    private val clipboardAccess: ClipboardAccess = object : ClipboardAccess {
-        override fun readText(): String {
-            return try {
-                getClipboardString() ?: ""
-            } catch (_: Exception) {
-                ""
-            }
-        }
+    private val clipboardAccess: ClipboardAccess =
+        object : ClipboardAccess {
+            override fun readText(): String =
+                try {
+                    getClipboardString() ?: ""
+                } catch (_: Exception) {
+                    ""
+                }
 
-        override fun writeText(value: String) {
-            try {
-                setClipboardString(value)
-            } catch (_: Exception) {
+            override fun writeText(value: String) {
+                try {
+                    setClipboardString(value)
+                } catch (_: Exception) {
+                }
             }
         }
-    }
 
     override fun initGui() {
         DsglFonts.ensureInitialized(mc.mcDataDir, javaClass.classLoader)
@@ -132,13 +154,18 @@ abstract class DsglScreenHost(
             object : ScreenColorSampler {
                 override fun sampleColorAt(x: Int, y: Int): Int? = adapter.sampleScreenColor(x, y)
 
-                override fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
-                    return adapter.sampleScreenArea(x, y, width, height, outArgb)
-                }
-            }
+                override fun sampleArea(
+                    x: Int,
+                    y: Int,
+                    width: Int,
+                    height: Int,
+                    outArgb: IntArray,
+                ): Boolean = adapter.sampleScreenArea(x, y, width, height, outArgb)
+            },
         )
         inspector.deactivate()
         inspectorPointerCaptured = false
+        higherSurfacePointerButton = -1
         colorSamplerOwnershipRouter.reset()
         activeColorSamplerOwner = ActiveColorSamplerOwner.None
         activeInlineColorSamplerNode = null
@@ -163,25 +190,138 @@ abstract class DsglScreenHost(
         if (!::adapter.isInitialized) return
         frameIndex += 1
         tracePhase("draw.start")
+        val frameCursor = prepareFrameCursor()
+        val rebuiltThisFrame = rebuildIfNeeded()
+        val tree = domTree ?: return
+        val dtSeconds = tickFrameAndAnimations(tree, partialTicks)
+        val layoutPhase =
+            commitLayoutPhaseOrFallback(
+                tree = tree,
+                mouseX = mouseX,
+                mouseY = mouseY,
+                partialTicks = partialTicks,
+            ) ?: return
+        val domainDebugState =
+            syncInspectorAndResolveSurfaceState(
+                tree = tree,
+                dsglMouseX = frameCursor.mouseX,
+                dsglMouseY = frameCursor.mouseY,
+            )
+        syncFeatureRuntimeFrame(
+            tree = tree,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY,
+        )
+        syncApplicationPortalSurface(
+            appPortalEnabled = domainDebugState.appPortalRenderEnabled || domainDebugState.appPortalInputEnabled,
+        )
+        val systemPortalCommands =
+            syncSystemPortalAndCollectCommands(
+                tree = tree,
+                dsglMouseX = frameCursor.mouseX,
+                dsglMouseY = frameCursor.mouseY,
+                systemPortalRenderEnabled = domainDebugState.systemPortalRenderEnabled,
+            )
+        stageSystemPortalCommands(
+            systemPortalCommands = systemPortalCommands,
+            systemPortalRenderEnabled = domainDebugState.systemPortalRenderEnabled,
+        )
+        val debugDomainCommands = collectDebugDomainCommands()
+        updateFrameInteractionState(
+            tree = tree,
+            dtSeconds = dtSeconds,
+            dsglMouseX = frameCursor.mouseX,
+            dsglMouseY = frameCursor.mouseY,
+            appPortalInputEnabled = domainDebugState.appPortalInputEnabled,
+            systemPortalInputEnabled = domainDebugState.systemPortalInputEnabled,
+            inspectorBlocks = domainDebugState.inspectorBlocks,
+        )
+        val commands =
+            paintApplicationRootOrFallback(
+                tree = tree,
+                stylesAlreadyApplied = layoutPhase.stylesAlreadyApplied,
+                mouseX = mouseX,
+                mouseY = mouseY,
+                partialTicks = partialTicks,
+            ) ?: return
+        syncCollectAndStageApplicationPortalAfterRootPaint(
+            tree = tree,
+            appPortalRenderEnabled = domainDebugState.appPortalRenderEnabled,
+            appPortalInputEnabled = domainDebugState.appPortalInputEnabled,
+        )
+        composeAndPresentFrame(
+            tree = tree,
+            commands = commands,
+            debugDomainCommands = debugDomainCommands,
+            rebuiltThisFrame = rebuiltThisFrame,
+            layoutCommittedThisFrame = layoutPhase.layoutCommittedThisFrame,
+        )
+        finishDrawScreenFrame(
+            tree = tree,
+            mouseX = mouseX,
+            mouseY = mouseY,
+            partialTicks = partialTicks,
+        )
+    }
+
+    private data class FrameCursorPosition(
+        val mouseX: Int,
+        val mouseY: Int,
+    )
+
+    private data class LayoutPhaseResult(
+        val stylesAlreadyApplied: Boolean,
+        val layoutCommittedThisFrame: Boolean,
+    )
+
+    private data class DomainSurfaceFrameState(
+        val appPortalRenderEnabled: Boolean,
+        val systemPortalRenderEnabled: Boolean,
+        val appPortalInputEnabled: Boolean,
+        val systemPortalInputEnabled: Boolean,
+        val inspectorBlocks: Boolean,
+    )
+
+    private data class DebugDomainCommands(
+        val root: List<RenderCommand>,
+        val portal: List<RenderCommand>,
+    )
+
+    private fun prepareFrameCursor(): FrameCursorPosition {
         updateSize(force = false)
         val dsglMouseX = lastViewport.rawMouseToDsglX(Mouse.getX())
         val dsglMouseY = lastViewport.rawMouseToDsglY(Mouse.getY())
         window.onFrame(System.currentTimeMillis())
-        val rebuiltThisFrame = rebuildIfNeeded()
-        val tree = domTree ?: return
+        return FrameCursorPosition(
+            mouseX = dsglMouseX,
+            mouseY = dsglMouseY,
+        )
+    }
+
+    private fun tickFrameAndAnimations(tree: DomTree, partialTicks: Float): Double {
         val nowNanos = System.nanoTime()
-        val dtSeconds = if (lastFrameNanos == 0L) {
-            1.0 / 60.0
-        } else {
-            ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
-        }
+        val dtSeconds =
+            if (lastFrameNanos == 0L) {
+                1.0 / 60.0
+            } else {
+                ((nowNanos - lastFrameNanos).toDouble() / 1_000_000_000.0).coerceIn(0.0, 0.25)
+            }
         lastFrameNanos = nowNanos
-        OverlayLayerDebugState.updateFrameTiming(dtSeconds)
+        DomainSurfaceDebugState.updateFrameTiming(dtSeconds)
         window.tick(dtSeconds.toFloat(), partialTicks)
         val animationVisualsChanged = StyleAnimationEngine.tickAndApply(tree.root, dtSeconds, partialTicks)
         if (animationVisualsChanged) {
             tree.markVisualDirty()
         }
+        return dtSeconds
+    }
+
+    private fun commitLayoutPhaseOrFallback(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float,
+    ): LayoutPhaseResult? {
         var stylesAlreadyApplied = false
         var layoutCommittedThisFrame = false
         if (needsLayout) {
@@ -197,155 +337,379 @@ abstract class DsglScreenHost(
                 flushPendingCleanup()
                 super.drawScreen(mouseX, mouseY, partialTicks)
                 captureColorPickerEyedropperSamples()
-                return
+                return null
             }
         }
+        return LayoutPhaseResult(
+            stylesAlreadyApplied = stylesAlreadyApplied,
+            layoutCommittedThisFrame = layoutCommittedThisFrame,
+        )
+    }
+
+    private fun syncInspectorAndResolveSurfaceState(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+    ): DomainSurfaceFrameState {
         inspector.onLayoutCommitted(tree.root, layoutRevision)
         inspector.onCursorMoved(dsglMouseX, dsglMouseY)
         inspectorPointerCaptured = inspector.isPointerCaptured
         if (inspectorPointerCaptured) {
             inspector.onCapturedPointerMove(dsglMouseX, dsglMouseY, lastWidth, lastHeight)
         }
-        val appOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.ApplicationOverlay)
-        val systemOverlayRenderEnabled = OverlayLayerDebugState.isRenderEnabled(UiLayerId.SystemOverlay)
-        val appOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.ApplicationOverlay)
-        val systemOverlayInputEnabled = OverlayLayerDebugState.isInputEnabled(UiLayerId.SystemOverlay)
-        val inspectorBlocks = systemOverlayInputEnabled && (
-                inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
+        val appPortalRenderEnabled = DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemPortalRenderEnabled = DomainSurfaceDebugState.isRenderEnabled(ScreenDomainSurfaces.SystemPortal)
+        val appPortalInputEnabled = DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.ApplicationPortal)
+        val systemPortalInputEnabled = DomainSurfaceDebugState.isInputEnabled(ScreenDomainSurfaces.SystemPortal)
+        val inspectorBlocks =
+            systemPortalInputEnabled &&
+                (
+                    inspectorPointerCaptured || inspector.shouldConsumePointer(dsglMouseX, dsglMouseY)
                 )
+        return DomainSurfaceFrameState(
+            appPortalRenderEnabled = appPortalRenderEnabled,
+            systemPortalRenderEnabled = systemPortalRenderEnabled,
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
+            inspectorBlocks = inspectorBlocks,
+        )
+    }
+
+    private fun paintApplicationRootOrFallback(
+        tree: DomTree,
+        stylesAlreadyApplied: Boolean,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float,
+    ): List<RenderCommand>? {
         tracePhase("commands.start")
         if (!stylesAlreadyApplied) {
             tracePhase("style.start")
         }
-        val commands = try {
-            tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
-        } catch (error: Throwable) {
-            logPipelineError(
-                key = "draw.paint",
-                message = "[DSGL] Paint pipeline failed; rendering previous committed frame: ${error.message}"
-            )
-            adapter.paint(composedCommandsBuffer)
-            flushPendingCleanup()
-            super.drawScreen(mouseX, mouseY, partialTicks)
-            captureColorPickerEyedropperSamples()
-            return
-        }
+        val commands =
+            try {
+                tree.paint(adapter, applyStyles = !stylesAlreadyApplied)
+            } catch (
+                @Suppress("TooGenericExceptionCaught") error: Throwable,
+            ) {
+                logPipelineError(
+                    key = "draw.paint",
+                    message = "[DSGL] Paint pipeline failed; rendering previous committed frame: ${error.message}",
+                )
+                adapter.paint(composedCommandsBuffer)
+                flushPendingCleanup()
+                super.drawScreen(mouseX, mouseY, partialTicks)
+                captureColorPickerEyedropperSamples()
+                return null
+            }
         if (!stylesAlreadyApplied) {
             tracePhase("style.end")
         }
-        ContextMenuRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
-        SelectRuntime.engine.onFrame(adapter, lastWidth, lastHeight, 1f)
-        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
-        ColorPickerRuntime.engine.onCursorPosition(dsglMouseX, dsglMouseY)
+        return commands
+    }
+
+    private fun syncFeatureRuntimeFrame(tree: DomTree, dsglMouseX: Int, dsglMouseY: Int) {
+        applicationPortalHost.syncPortalFrame(
+            measureContext = adapter,
+            viewportWidth = lastWidth,
+            viewportHeight = lastHeight,
+            viewportScale = 1f,
+            mouseX = dsglMouseX,
+            mouseY = dsglMouseY,
+        )
+        systemPortalHost.syncPortalFrame(adapter, lastWidth, lastHeight, 1f)
         refreshActiveColorSamplerOwner(tree.root)
-        val applicationOverlayCommands = if (!appOverlayRenderEnabled) {
-            emptyList()
-        } else {
-            try {
-                applicationOverlayHost.render(adapter, lastWidth, lastHeight)
-                applicationOverlayHost.paint(adapter)
-            } catch (error: Throwable) {
-                logPipelineError(
-                    key = "draw.applicationOverlay",
-                    message = "[DSGL] Application overlay paint failed; skipping app overlay frame: ${error.message}"
-                )
-                emptyList()
-            }
+    }
+
+    private fun syncApplicationPortalSurface(appPortalEnabled: Boolean) {
+        if (!appPortalEnabled) return
+        try {
+            applicationPortalHost.render(adapter, lastWidth, lastHeight)
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
+            logPipelineError(
+                key = "draw.applicationPortal.sync",
+                message =
+                    "[DSGL] Application portal sync failed; " +
+                        "skipping application portal sync frame: ${error.message}",
+            )
         }
-        systemOverlayHost.syncFrame(
+    }
+
+    private fun syncCollectAndStageApplicationPortalAfterRootPaint(
+        tree: DomTree,
+        appPortalRenderEnabled: Boolean,
+        appPortalInputEnabled: Boolean,
+    ) {
+        syncApplicationPortalSurface(
+            appPortalEnabled = appPortalRenderEnabled || appPortalInputEnabled,
+        )
+        val applicationPortalCommands = collectApplicationPortalCommands(appPortalRenderEnabled)
+        stageApplicationPortalCommands(
+            tree = tree,
+            applicationPortalCommands = applicationPortalCommands,
+            appPortalRenderEnabled = appPortalRenderEnabled,
+        )
+    }
+
+    private fun collectApplicationPortalCommands(appPortalRenderEnabled: Boolean): List<RenderCommand> {
+        if (!appPortalRenderEnabled) {
+            return emptyList()
+        }
+        return try {
+            applicationPortalHost.paint(adapter)
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
+            logPipelineError(
+                key = "draw.applicationPortal",
+                message = "[DSGL] Application portal paint failed; skipping application portal frame: ${error.message}",
+            )
+            emptyList()
+        }
+    }
+
+    private fun syncSystemPortalAndCollectCommands(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        systemPortalRenderEnabled: Boolean,
+    ): List<RenderCommand> {
+        systemPortalHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
             cursorX = dsglMouseX,
             cursorY = dsglMouseY,
-            inspectorPointerCaptured = inspectorPointerCaptured
+            inspectorPointerCaptured = inspectorPointerCaptured,
         )
-        val systemOverlayCommands = if (!systemOverlayRenderEnabled) {
+        if (!systemPortalRenderEnabled) {
+            return emptyList()
+        }
+        return try {
+            systemPortalHost.render(adapter, lastWidth, lastHeight)
+            systemPortalHost.paint(adapter)
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
+            logPipelineError(
+                key = "draw.systemPortal",
+                message = "[DSGL] System portal paint failed; skipping system portal frame: ${error.message}",
+            )
             emptyList()
-        } else {
-            try {
-                systemOverlayHost.render(adapter, lastWidth, lastHeight)
-                systemOverlayHost.paint(adapter)
-            } catch (error: Throwable) {
-                logPipelineError(
-                    key = "draw.systemOverlay",
-                    message = "[DSGL] System overlay paint failed; skipping system overlay frame: ${error.message}"
-                )
+        }
+    }
+
+    private fun stageSystemPortalCommands(
+        systemPortalCommands: List<RenderCommand>,
+        systemPortalRenderEnabled: Boolean,
+    ) {
+        systemPortalCommandsBuffer.clear()
+        systemPortalCommandsBuffer.addAll(systemPortalCommands)
+        if (systemPortalRenderEnabled) {
+            systemPortalHost.appendFloatingPortalCommands(
+                measureContext = adapter,
+                viewportWidth = lastWidth,
+                viewportHeight = lastHeight,
+                out = systemPortalCommandsBuffer,
+            )
+        }
+    }
+
+    private fun collectDebugDomainCommands(): DebugDomainCommands {
+        val root =
+            runCatching {
+                debugDomainRootHost.render(adapter, lastWidth, lastHeight)
+                debugDomainRootHost.paint(adapter)
+            }.getOrElse {
                 emptyList()
             }
-        }
-        val debugOverlayCommands = runCatching {
-            debugOverlayHost.render(lastWidth, lastHeight)
-            debugOverlayHost.paint(adapter)
-        }.getOrElse {
-            emptyList()
-        }
-        val contextMenuBlocks = appOverlayInputEnabled && !inspectorBlocks && ContextMenuRuntime.engine.isOpen()
-        val selectBlocks = appOverlayInputEnabled && !inspectorBlocks && SelectRuntime.engine.isOpen()
-        val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
-        val colorPickerBlocks = !inspectorBlocks && (
-                (systemOverlayInputEnabled && systemOverlayHost.isSystemColorPickerOpen()) ||
-                        (appOverlayInputEnabled && ColorPickerRuntime.engine.isOpen() && !inlineSamplerOwnsSession)
-                )
-        if (!inspectorBlocks && !contextMenuBlocks && !selectBlocks && !colorPickerBlocks) {
-            DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
-        }
-        DndRuntime.engine.onFrame(tree.root, dtSeconds)
+        val portal =
+            runCatching {
+                debugDomainPortalHost.render(adapter, lastWidth, lastHeight)
+                debugDomainPortalHost.paint(adapter)
+            }.getOrElse {
+                emptyList()
+            }
+        return DebugDomainCommands(root = root, portal = portal)
+    }
+
+    private fun updateFrameInteractionState(
+        tree: DomTree,
+        dtSeconds: Double,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
+        inspectorBlocks: Boolean,
+    ) {
+        val applicationRootFrameBlocked =
+            isApplicationRootFrameBlocked(
+                dsglMouseX = dsglMouseX,
+                dsglMouseY = dsglMouseY,
+                appPortalInputEnabled = appPortalInputEnabled,
+                systemPortalInputEnabled = systemPortalInputEnabled,
+                inspectorBlocks = inspectorBlocks,
+            )
         val prevX = if (lastMoveX == Int.MIN_VALUE) dsglMouseX else lastMoveX
         val prevY = if (lastMoveY == Int.MIN_VALUE) dsglMouseY else lastMoveY
         val dx = dsglMouseX - prevX
         val dy = dsglMouseY - prevY
-        if (inspectorBlocks || contextMenuBlocks || selectBlocks || colorPickerBlocks) {
-            clearHoverChainStates()
+        val applicationModalBlocks = applicationPortalHost.hasActiveModalPortal()
+        val applicationPortalBlocks =
+            isApplicationPortalFrameBlocking(
+                dsglMouseX = dsglMouseX,
+                dsglMouseY = dsglMouseY,
+                appPortalInputEnabled = appPortalInputEnabled,
+            )
+        if (applicationRootFrameBlocked) {
+            if (applicationModalBlocks) {
+                DndRuntime.engine.cancelActiveDrag()
+            }
+            if (applicationModalBlocks || applicationPortalBlocks) {
+                applicationPortalHost.handleMouseMove(dsglMouseX, dsglMouseY)
+            }
+            clearHoverChainStates(postLeaveEvents = true, mouseX = dsglMouseX, mouseY = dsglMouseY)
             hoverTarget = null
         } else {
-            updateHover(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
-            hoverTarget = hoverChain.lastOrNull()
-            if (dragCaptureTarget != null && hasFocusChangedSinceCapture()) {
-                releaseDragCapture()
-            }
-            if (dx != 0 || dy != 0) {
-                val moveEvent = MouseMoveEvent(dsglMouseX, dsglMouseY, prevX, prevY)
-                moveEvent.target = resolveForcedPointerTarget() ?: dragCaptureTarget ?: hoverTarget
-                EventBus.post(moveEvent)
-            }
+            updateFrameApplicationRootInteraction(tree, dsglMouseX, dsglMouseY, prevX, prevY, dx, dy)
+        }
+        if (!applicationModalBlocks) {
+            DndRuntime.engine.onFrame(tree.root, dtSeconds)
         }
         lastMoveX = dsglMouseX
         lastMoveY = dsglMouseY
-        applicationOverlayCommandsBuffer.clear()
-        if (appOverlayRenderEnabled) {
-            applicationOverlayCommandsBuffer.addAll(applicationOverlayCommands)
-            DndRuntime.engine.appendPlaceholderCommands(applicationOverlayCommandsBuffer)
-            DndRuntime.engine.appendOverlayCommands(
-                tree.root,
-                adapter,
-                lastWidth,
-                lastHeight,
-                applicationOverlayCommandsBuffer
-            )
-            SelectRuntime.engine.appendOverlayCommands(adapter, lastWidth, lastHeight, applicationOverlayCommandsBuffer)
-            ContextMenuRuntime.engine.appendOverlayCommands(
-                adapter,
-                lastWidth,
-                lastHeight,
-                applicationOverlayCommandsBuffer
-            )
-            ColorPickerRuntime.engine.appendOverlayCommands(applicationOverlayCommandsBuffer)
-            appendInlineColorPickerOverlayCommands(applicationOverlayCommandsBuffer)
+    }
+
+    private fun isApplicationRootFrameBlocked(
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
+        inspectorBlocks: Boolean,
+    ): Boolean {
+        if (appPortalInputEnabled && applicationPortalHost.hasActiveModalPortal()) return true
+        if (isApplicationRootPointerDragActive() && pointerCapture.target != null) return false
+        if (inspectorBlocks || higherSurfacePointerButton != -1) return true
+        if (isApplicationPortalFrameBlocking(dsglMouseX, dsglMouseY, appPortalInputEnabled)) return true
+        if (systemPortalInputEnabled && systemPortalHost.hasOpenPortal()) return true
+        return isColorPickerFrameBlocking(
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
+        )
+    }
+
+    private fun isApplicationPortalFrameBlocking(
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        appPortalInputEnabled: Boolean,
+    ): Boolean {
+        if (!appPortalInputEnabled) return false
+        return applicationPortalHost.hasOpenContextMenuPortal() ||
+            applicationPortalHost.hasOpenSelectPortal() ||
+            applicationPortalHost.hasDomPointerTargetAt(dsglMouseX, dsglMouseY)
+    }
+
+    private fun isColorPickerFrameBlocking(
+        appPortalInputEnabled: Boolean,
+        systemPortalInputEnabled: Boolean,
+    ): Boolean {
+        val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
+        val systemPickerBlocks = systemPortalInputEnabled && systemPortalHost.isSystemColorPickerOpen()
+        val applicationPickerBlocks =
+            appPortalInputEnabled &&
+                applicationPortalHost.hasOpenColorPickerPortal() &&
+                !inlineSamplerOwnsSession
+        return systemPickerBlocks || applicationPickerBlocks
+    }
+
+    private fun updateFrameApplicationRootInteraction(
+        tree: DomTree,
+        dsglMouseX: Int,
+        dsglMouseY: Int,
+        prevX: Int,
+        prevY: Int,
+        dx: Int,
+        dy: Int,
+    ) {
+        updateHover(tree.root, hoverChain, dsglMouseX, dsglMouseY, dx, dy)
+        hoverTarget = hoverChain.lastOrNull()
+        if (pointerCapture.target != null && pointerCapture.hasFocusChanged()) {
+            releaseDragCapture()
         }
-        OverlayLayerContracts.composePaintCommands(
+        if (dx != 0 || dy != 0) {
+            if (isApplicationRootPointerDragActive()) {
+                dispatchApplicationRootPointerDragDelta(
+                    tree = tree,
+                    mouseX = dsglMouseX,
+                    mouseY = dsglMouseY,
+                    previousMouseX = prevX,
+                    previousMouseY = prevY,
+                    dx = dx,
+                    dy = dy,
+                )
+                lastMouseX = dsglMouseX
+                lastMouseY = dsglMouseY
+            } else {
+                DndRuntime.engine.onMouseMove(tree.root, dsglMouseX, dsglMouseY)
+                val moveEvent = MouseMoveEvent(dsglMouseX, dsglMouseY, prevX, prevY)
+                moveEvent.target = resolveForcedPointerTarget() ?: pointerCapture.target ?: hoverTarget
+                EventBus.post(moveEvent)
+            }
+        }
+    }
+
+    private fun stageApplicationPortalCommands(
+        tree: DomTree,
+        applicationPortalCommands: List<RenderCommand>,
+        appPortalRenderEnabled: Boolean,
+        measureContext: UiMeasureContext = adapter,
+    ) {
+        applicationPortalCommandsBuffer.clear()
+        if (appPortalRenderEnabled) {
+            applicationPortalCommandsBuffer.addAll(applicationPortalCommands)
+            if (!applicationPortalHost.hasActiveModalPortal()) {
+                applicationPortalHost.appendDndGhostPortalCommands(
+                    root = tree.root,
+                    measureContext = measureContext,
+                    viewportWidth = lastWidth,
+                    viewportHeight = lastHeight,
+                    out = applicationPortalCommandsBuffer,
+                )
+            }
+            applicationPortalHost.appendFloatingPortalCommands(
+                measureContext = measureContext,
+                viewportWidth = lastWidth,
+                viewportHeight = lastHeight,
+                out = applicationPortalCommandsBuffer,
+            )
+            appendInlineColorPickerPortalCommands(applicationPortalCommandsBuffer)
+        }
+    }
+
+    private fun composeAndPresentFrame(
+        tree: DomTree,
+        commands: List<RenderCommand>,
+        debugDomainCommands: DebugDomainCommands,
+        rebuiltThisFrame: Boolean,
+        layoutCommittedThisFrame: Boolean,
+    ) {
+        domainOrchestrator.composePaintCommands(
             applicationRoot = commands,
-            applicationOverlay = applicationOverlayCommandsBuffer,
-            systemOverlay = systemOverlayCommands,
-            debug = debugOverlayCommands,
+            applicationPortal = applicationPortalCommandsBuffer,
+            systemPortal = systemPortalCommandsBuffer,
+            debugRoot = debugDomainCommands.root,
+            debugPortal = debugDomainCommands.portal,
             out = stagingCommandsBuffer,
-            shouldRenderLayer = OverlayLayerDebugState::isRenderEnabled
+            shouldRenderSurface = DomainSurfaceDebugState::isRenderEnabled,
         )
-        val keepPrevious = shouldKeepPreviousFrameCommands(
-            tree = tree,
-            rebuiltThisFrame = rebuiltThisFrame,
-            layoutCommittedThisFrame = layoutCommittedThisFrame,
-            candidate = stagingCommandsBuffer
-        )
+        val keepPrevious =
+            shouldKeepPreviousFrameCommands(
+                tree = tree,
+                rebuiltThisFrame = rebuiltThisFrame,
+                layoutCommittedThisFrame = layoutCommittedThisFrame,
+                candidate = stagingCommandsBuffer,
+            )
         if (!keepPrevious) {
             composedCommandsBuffer.clear()
             composedCommandsBuffer.addAll(stagingCommandsBuffer)
@@ -355,6 +719,14 @@ abstract class DsglScreenHost(
         }
         tracePhase("commands.end")
         adapter.paint(composedCommandsBuffer)
+    }
+
+    private fun finishDrawScreenFrame(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float,
+    ) {
         tracePhase("draw.end")
         maybeLogPerf(tree)
         flushPendingCleanup()
@@ -371,9 +743,8 @@ abstract class DsglScreenHost(
         ScreenColorSamplerBridge.install(null)
         FocusManager.clearFocus()
         DndRuntime.engine.cancelActiveDrag()
-        ColorPickerRuntime.engine.closeAll()
-        SelectRuntime.engine.closeAll()
-        ContextMenuRuntime.engine.closeAll()
+        applicationPortalHost.closeFloatingPortals()
+        systemPortalHost.clearRefs()
         clearActiveTarget()
         flushPendingCleanup()
         clearHoverChainStates()
@@ -386,9 +757,10 @@ abstract class DsglScreenHost(
         StyleEngine.clearAllInspectorOverrides()
         StyleAnimationEngine.clear()
         domTree?.clearRefs()
-        applicationOverlayHost.clearRefs()
-        systemOverlayHost.clearRefs()
-        debugOverlayHost.clearRefs()
+        applicationPortalHost.clearRefs()
+        systemPortalHost.clearRefs()
+        debugDomainRootHost.clearRefs()
+        debugDomainPortalHost.clearRefs()
         domTree?.root?.let { root ->
             EventBus.run { root.clearListenersDeep() }
         }
@@ -407,12 +779,11 @@ abstract class DsglScreenHost(
         needsRender = true
     }
 
+    @Suppress("EmptyFunctionBlock")
     override fun requestRedraw() {
     }
 
-    override fun getViewport(): Viewport {
-        return lastViewport
-    }
+    override fun getViewport(): Viewport = lastViewport
 
     private fun updateSize(force: Boolean) {
         val viewport = adapter.viewport()
@@ -420,7 +791,7 @@ abstract class DsglScreenHost(
         val height = viewport.height
         lastViewport = viewport
         if (force || width != lastWidth || height != lastHeight) {
-            ContextMenuRuntime.engine.closeAll()
+            applicationPortalHost.closeFloatingPortals()
             lastWidth = width
             lastHeight = height
             needsLayout = true
@@ -467,11 +838,13 @@ abstract class DsglScreenHost(
             window.commitRenderBuild()
             tracePhase("rebuild.end")
             true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             window.discardRenderBuild()
             logPipelineError(
                 key = "rebuild",
-                message = "[DSGL] Rebuild failed; keeping previous committed frame/tree: ${error.message}"
+                message = "[DSGL] Rebuild failed; keeping previous committed frame/tree: ${error.message}",
             )
             false
         }
@@ -504,8 +877,8 @@ abstract class DsglScreenHost(
             }
         }
 
-        throw IllegalStateException(
-            "Hot-reload hook remount recovery exceeded $maxAttempts attempts: ${lastRemountRequest?.message}"
+        error(
+            "Hot-reload hook remount recovery exceeded $maxAttempts attempts: ${lastRemountRequest?.message}",
         )
     }
 
@@ -514,258 +887,647 @@ abstract class DsglScreenHost(
         KeyModifiers.sync(
             shift = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT),
             control = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
-            meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA)
+            meta = Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA),
         )
-        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
-        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
+        runSurfaceInputFrame(applicationPortalHost)
+        runSurfaceInputFrame(systemPortalHost)
+        applicationPortalHost.syncPortalFrame(
+            measureContext = adapter,
+            viewportWidth = lastWidth,
+            viewportHeight = lastHeight,
+            viewportScale = 1f,
+            mouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX,
+            mouseY = if (lastMoveY == Int.MIN_VALUE) lastMouseY else lastMoveY,
+        )
         val keyCode = Keyboard.getEventKey()
         val keyChar = Keyboard.getEventCharacter()
         val inspectorMouseX = if (lastMoveX == Int.MIN_VALUE) lastMouseX else lastMoveX
         val inspectorMouseY = if (lastMoveY == Int.MIN_VALUE) lastMouseY else lastMoveY
         if (Keyboard.getEventKeyState()) {
-            if (!Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12) {
-                inspector.toggle()
-                inspectorPointerCaptured = false
-                if (inspector.active) {
-                    DndRuntime.engine.cancelActiveDrag()
-                    releaseDragCapture()
-                    clearActiveTarget()
-                    clearHoverChainStates()
-                }
-                mc.dispatchKeypresses()
-                return
-            }
-            if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12 && inspector.active) {
-                inspector.toggleMode()
-                mc.dispatchKeypresses()
-                return
-            }
-            if (keyCode == Keyboard.KEY_F10) {
-                val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
-                val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
-                systemOverlayHost.togglePanelDemo(demoAnchorX, demoAnchorY)
-                mc.dispatchKeypresses()
-                return
-            }
-            if (keyCode == Keyboard.KEY_ESCAPE && inspector.cancelPickMode()) {
-                logInspectorInput("escape cancelled inspector pick mode")
-                mc.dispatchKeypresses()
-                return
-            }
-            if (consumeOverlayKeyDown(
+            if (handleKeyboardKeyDown(
                     keyCode = keyCode,
                     keyChar = keyChar,
                     inspectorMouseX = inspectorMouseX,
-                    inspectorMouseY = inspectorMouseY
+                    inspectorMouseY = inspectorMouseY,
                 )
             ) {
-                mc.dispatchKeypresses()
                 return
-            }
-            if (keyCode == Keyboard.KEY_F6) {
-                StyleEngine.forceReloadStylesheets()
-                requestRebuild("style reload")
-            }
-            if (pressedKeys.add(keyCode)) {
-                val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
-                EventBus.post(downEvent)
-                if (downEvent.cancelled) {
-                    pressedKeys.remove(keyCode)
-                } else {
-                    window.onKeyTyped(keyChar, keyCode)
-                    if (keyCode == Keyboard.KEY_ESCAPE) {
-                        mc.displayGuiScreen(null)
-                    }
-                }
             }
         } else {
-            val keyboardBlocked = inspector.active && (
-                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
-                            inspector.mode == InspectorMode.Locked
-                    )
-            if (keyboardBlocked) {
-                pressedKeys.remove(keyCode)
-                logInspectorInput("keyboard up consumed keyCode=$keyCode")
-                mc.dispatchKeypresses()
-                return
-            }
-            if (pressedKeys.remove(keyCode)) {
-                EventBus.post(KeyboardKeyUpEvent(keyChar, keyCode))
-            }
+            if (handleKeyboardKeyUp(keyCode, keyChar, inspectorMouseX, inspectorMouseY)) return
         }
 
         mc.dispatchKeypresses()
     }
 
+    private fun handleKeyboardKeyDown(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int,
+    ): Boolean {
+        if (!Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12) {
+            inspector.toggle()
+            inspectorPointerCaptured = false
+            if (inspector.active) {
+                DndRuntime.engine.cancelActiveDrag()
+                releaseDragCapture()
+                clearActiveTarget()
+                clearHoverChainStates()
+            }
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) && keyCode == Keyboard.KEY_F12 && inspector.active) {
+            inspector.toggleMode()
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (keyCode == Keyboard.KEY_F10) {
+            val demoAnchorX = if (lastMoveX == Int.MIN_VALUE) inspectorMouseX else lastMoveX
+            val demoAnchorY = if (lastMoveY == Int.MIN_VALUE) inspectorMouseY else lastMoveY
+            applicationPortalHost.toggleFloatingWindowDemo(demoAnchorX, demoAnchorY)
+            mc.dispatchKeypresses()
+            return true
+        }
+        if (keyCode == Keyboard.KEY_ESCAPE && inspector.cancelPickMode()) {
+            logInspectorInput("escape cancelled inspector pick mode")
+            mc.dispatchKeypresses()
+            return true
+        }
+        when (
+            dispatchDomainKeyDown(
+                keyCode = keyCode,
+                keyChar = keyChar,
+                inspectorMouseX = inspectorMouseX,
+                inspectorMouseY = inspectorMouseY,
+            )
+        ) {
+            DomainKeyDispatchResult.HigherSurfaceConsumed -> {
+                mc.dispatchKeypresses()
+                return true
+            }
+
+            DomainKeyDispatchResult.ApplicationRootHandled, DomainKeyDispatchResult.None -> return false
+        }
+    }
+
+    private enum class DomainKeyDispatchResult {
+        None,
+        HigherSurfaceConsumed,
+        ApplicationRootHandled,
+    }
+
+    private fun handleKeyboardKeyUp(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int,
+    ): Boolean {
+        val keyboardBlocked =
+            inspector.active &&
+                (
+                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                        inspector.mode == InspectorMode.Locked
+                )
+        if (keyboardBlocked) {
+            pressedKeys.remove(keyCode)
+            logInspectorInput("keyboard up consumed keyCode=$keyCode")
+            mc.dispatchKeypresses()
+            return true
+        }
+        when (
+            dispatchDomainKeyUp(
+                keyCode = keyCode,
+                keyChar = keyChar,
+                inspectorMouseX = inspectorMouseX,
+                inspectorMouseY = inspectorMouseY,
+            )
+        ) {
+            DomainKeyDispatchResult.HigherSurfaceConsumed -> {
+                mc.dispatchKeypresses()
+                return true
+            }
+
+            DomainKeyDispatchResult.ApplicationRootHandled, DomainKeyDispatchResult.None -> return false
+        }
+    }
+
     override fun handleMouseInput() {
         updateSize(force = false)
         rebuildIfNeeded()
-        val tree = domTree ?: return
+        val tree = prepareMouseInputTree() ?: return
+        val inputEvent = readMouseInputEvent()
+        syncMouseInputFrame(tree, inputEvent)
+        when (dispatchDomainPointerPhase(tree, inputEvent)) {
+            DomainPointerDispatchResult.HigherSurfaceConsumed -> return
+            DomainPointerDispatchResult.ApplicationRootHandled, DomainPointerDispatchResult.None ->
+                finishMouseInputEvent(inputEvent)
+        }
+    }
+
+    private enum class DomainPointerDispatchResult {
+        None,
+        HigherSurfaceConsumed,
+        ApplicationRootHandled,
+    }
+
+    private data class MouseInputEvent(
+        val mouseX: Int,
+        val mouseY: Int,
+        val dWheel: Int,
+        val mouseButton: Int,
+    )
+
+    private data class DomainPointerDispatchContext(
+        val inputEvent: MouseInputEvent,
+        val mappedButton: MouseButton?,
+        val buttonPressed: Boolean,
+        val applicationRootPressMove: Boolean,
+    )
+
+    private fun prepareMouseInputTree(): DomTree? {
+        val tree = domTree ?: return null
         if (needsLayout) {
             if (tryCommitLayout(tree, "handleMouseInput")) {
                 needsLayout = false
             } else {
-                return
+                return null
             }
         }
+        return tree
+    }
 
-        val mouseX = lastViewport.rawMouseToDsglX(Mouse.getEventX())
-        val mouseY = lastViewport.rawMouseToDsglY(Mouse.getEventY())
-        val dWheel = Mouse.getDWheel()
-        val mouseButton = Mouse.getEventButton()
-        inspector.onCursorMoved(mouseX, mouseY)
-        ContextMenuRuntime.engine.onFrame(
+    private fun readMouseInputEvent(): MouseInputEvent =
+        MouseInputEvent(
+            mouseX = lastViewport.rawMouseToDsglX(Mouse.getEventX()),
+            mouseY = lastViewport.rawMouseToDsglY(Mouse.getEventY()),
+            dWheel = Mouse.getDWheel(),
+            mouseButton = Mouse.getEventButton(),
+        )
+
+    private fun syncMouseInputFrame(tree: DomTree, inputEvent: MouseInputEvent) {
+        inspector.onCursorMoved(inputEvent.mouseX, inputEvent.mouseY)
+        applicationPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
-            viewportScale = 1f
+            viewportScale = 1f,
+            mouseX = inputEvent.mouseX,
+            mouseY = inputEvent.mouseY,
         )
-        SelectRuntime.engine.onFrame(
+        systemPortalHost.syncPortalFrame(
             measureContext = adapter,
             viewportWidth = lastWidth,
             viewportHeight = lastHeight,
-            viewportScale = 1f
+            viewportScale = 1f,
         )
-        systemOverlayHost.onInputFrame(lastWidth, lastHeight)
+        runSurfaceInputFrame(applicationPortalHost)
+        runSurfaceInputFrame(systemPortalHost)
+        runSurfaceInputFrame(debugDomainRootHost)
+        runSurfaceInputFrame(debugDomainPortalHost)
         inspectorPointerCaptured = inspector.isPointerCaptured
-        systemOverlayHost.syncFrame(
+        systemPortalHost.syncFrame(
             inspectedRoot = tree.root,
             inspectedLayoutRevision = layoutRevision,
-            cursorX = mouseX,
-            cursorY = mouseY,
-            inspectorPointerCaptured = inspectorPointerCaptured
+            cursorX = inputEvent.mouseX,
+            cursorY = inputEvent.mouseY,
+            inspectorPointerCaptured = inspectorPointerCaptured,
         )
-        ColorPickerRuntime.engine.onFrame(lastWidth, lastHeight)
         refreshActiveColorSamplerOwner(tree.root)
-        val appPressMove = mouseButton == -1 && eventButton != -1
-        if (!appPressMove && consumeOverlayPointerEvent(mouseX, mouseY, dWheel, mouseButton)) {
-            consumeOverlayPointerState(mouseX, mouseY)
-            return
+    }
+
+    private fun runSurfaceInputFrame(host: DomainSurfaceHost) {
+        host.onInputFrame(lastWidth, lastHeight)
+    }
+
+    private fun dispatchDomainPointerPhase(tree: DomTree, inputEvent: MouseInputEvent): DomainPointerDispatchResult {
+        val context =
+            DomainPointerDispatchContext(
+                inputEvent = inputEvent,
+                mappedButton = mapButton(inputEvent.mouseButton),
+                buttonPressed = Mouse.getEventButtonState(),
+                applicationRootPressMove = inputEvent.mouseButton == -1 && eventButton != -1,
+            )
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    consumeDomainPointerSurface(surface = surface, tree = tree, context = context)
+                },
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
+            )
+        return when (consumedBy) {
+            null ->
+                if (isHigherSurfaceOwnedPointerRelease(context)) {
+                    higherSurfacePointerButton = -1
+                    consumePortalPointerState(
+                        mouseX = inputEvent.mouseX,
+                        mouseY = inputEvent.mouseY,
+                        cancelRootDnd = context.inputEvent.mouseButton != -1,
+                    )
+                    DomainPointerDispatchResult.HigherSurfaceConsumed
+                } else {
+                    DomainPointerDispatchResult.None
+                }
+            ScreenDomainSurfaces.ApplicationRoot -> DomainPointerDispatchResult.ApplicationRootHandled
+            else -> {
+                updateHigherSurfacePointerOwnership(context)
+                consumePortalPointerState(
+                    mouseX = inputEvent.mouseX,
+                    mouseY = inputEvent.mouseY,
+                    cancelRootDnd = context.inputEvent.mouseButton != -1,
+                )
+                DomainPointerDispatchResult.HigherSurfaceConsumed
+            }
+        }
+    }
+
+    private fun consumeDomainPointerSurface(
+        surface: ScreenDomainSurface,
+        tree: DomTree,
+        context: DomainPointerDispatchContext,
+    ): Boolean =
+        when (surface) {
+            ScreenDomainSurfaces.DebugPortal -> consumeDebugPortalPointerSurface(context)
+            ScreenDomainSurfaces.DebugRoot -> consumeDebugRootPointerSurface(context)
+            ScreenDomainSurfaces.SystemPortal -> consumeSystemPortalPointerSurface(context)
+            ScreenDomainSurfaces.SystemRoot -> false
+            ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalPointerSurface(context)
+            ScreenDomainSurfaces.ApplicationRoot ->
+                if (isHigherSurfaceOwnedPointerRelease(context)) {
+                    false
+                } else {
+                    dispatchApplicationRootPointerSurface(
+                        tree = tree,
+                        inputEvent = context.inputEvent,
+                    )
+                }
+
+            else -> false
         }
 
+    private fun isHigherSurfaceOwnedPointerRelease(context: DomainPointerDispatchContext): Boolean =
+        context.inputEvent.mouseButton != -1 &&
+            !context.buttonPressed &&
+            context.inputEvent.mouseButton == higherSurfacePointerButton
 
-        refreshHoverTarget(mouseX, mouseY)
+    private fun updateHigherSurfacePointerOwnership(context: DomainPointerDispatchContext) {
+        if (context.inputEvent.mouseButton == -1 || context.mappedButton == null) return
+        if (context.buttonPressed) {
+            higherSurfacePointerButton = context.inputEvent.mouseButton
+        } else if (higherSurfacePointerButton == context.inputEvent.mouseButton) {
+            higherSurfacePointerButton = -1
+        }
+    }
 
-        if (mouseButton > 2) return
+    private fun consumeDebugRootPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeDebugPointerEvent(
+            host = debugDomainRootHost,
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mappedButton = context.mappedButton,
+            mouseButton = context.inputEvent.mouseButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
 
-        if (Mouse.getEventButtonState()) {
-            eventButton = mouseButton
-            lastMouseEvent = Minecraft.getSystemTime()
-            mapButton(mouseButton)?.let { mappedButton ->
-                val event = MouseDownEvent(mouseX, mouseY, mappedButton)
-                event.target = resolvePointerDownTarget()
-                EventBus.post(event)
-                DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
-                if (mappedButton == MouseButton.LEFT) {
-                    setActiveTarget(event.target ?: hoverTarget)
-                    val captureTarget = resolveDragCaptureTarget(event.target ?: hoverTarget, mouseX, mouseY)
-                    if (captureTarget != null) {
-                        setDragCapture(captureTarget)
-                        captureTarget.beginPointerCapture(mouseX, mouseY, mappedButton)
-                    } else if (dragCaptureTarget != null) {
-                        releaseDragCapture()
-                    }
-                }
-            }
-        } else if (mouseButton != -1 && eventButton == mouseButton) {
-            val releaseTarget = resolvePointerUpTarget()
-            val hadDragCapture = dragCaptureTarget != null
-            eventButton = -1
-            mapButton(mouseButton)?.let { mappedButton ->
-                val upEvent = MouseUpEvent(mouseX, mouseY, mappedButton)
-                upEvent.target = releaseTarget
-                EventBus.post(upEvent)
-                dragCaptureTarget?.endPointerCapture(mouseX, mouseY, mappedButton)
-                val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
-                if (!hadDragCapture && !dndConsumed) {
-                    val clickEvent = MouseClickEvent(mouseX, mouseY, mappedButton)
-                    clickEvent.target = resolveClickTarget()
-                    EventBus.post(clickEvent)
-                }
-            }
-            clearActiveTarget()
-            releaseDragCapture()
+    private fun consumeDebugPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeDebugPointerEvent(
+            host = debugDomainPortalHost,
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mappedButton = context.mappedButton,
+            mouseButton = context.inputEvent.mouseButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun consumeSystemPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeSystemPortalPointerEvent(
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mouseButton = context.inputEvent.mouseButton,
+            mappedButton = context.mappedButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun consumeApplicationPortalPointerSurface(context: DomainPointerDispatchContext): Boolean {
+        if (context.applicationRootPressMove) {
+            return false
+        }
+        return consumeApplicationPortalPointerEvent(
+            mouseX = context.inputEvent.mouseX,
+            mouseY = context.inputEvent.mouseY,
+            dWheel = context.inputEvent.dWheel,
+            mouseButton = context.inputEvent.mouseButton,
+            mappedButton = context.mappedButton,
+            buttonPressed = context.buttonPressed,
+        )
+    }
+
+    private fun dispatchApplicationRootPointerSurface(tree: DomTree, inputEvent: MouseInputEvent): Boolean {
+        refreshHoverTarget(inputEvent.mouseX, inputEvent.mouseY)
+        if (inputEvent.mouseButton > 2) {
+            return false
+        }
+        val pointerHandled = dispatchApplicationRootPointerPhase(tree, inputEvent)
+        val wheelHandled = dispatchApplicationRootWheelPhase(inputEvent)
+        return pointerHandled || wheelHandled
+    }
+
+    private fun dispatchApplicationRootPointerPhase(tree: DomTree, inputEvent: MouseInputEvent): Boolean {
+        if (inputEvent.mouseButton != -1 && Mouse.getEventButtonState()) {
+            dispatchApplicationRootPointerDown(tree, inputEvent, Minecraft.getSystemTime())
+            return true
+        } else if (inputEvent.mouseButton != -1 && eventButton == inputEvent.mouseButton) {
+            dispatchApplicationRootPointerUp(tree, inputEvent)
+            return true
         } else if (eventButton != -1 && lastMouseEvent > 0L) {
-            mapButton(eventButton)?.let { mappedButton ->
-                val dx = mouseX - lastMouseX
-                val dy = mouseY - lastMouseY
-                if (dx != 0 || dy != 0) {
-                    DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
-                    val dragEvent = MouseDragEvent(
-                        lastMouseX,
-                        lastMouseY,
-                        dx,
-                        dy,
-                        mappedButton
+            dispatchApplicationRootPointerDrag(tree, inputEvent)
+            return true
+        }
+        return false
+    }
+
+    private fun dispatchApplicationRootPointerDown(tree: DomTree, inputEvent: MouseInputEvent, eventTimeMs: Long) {
+        eventButton = inputEvent.mouseButton
+        lastMouseEvent = eventTimeMs
+        mapButton(inputEvent.mouseButton)?.let { mappedButton ->
+            val event = MouseDownEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            event.target = resolvePointerDownTarget()
+            EventBus.post(event)
+            if (mappedButton == MouseButton.LEFT) {
+                setActiveTarget(event.target ?: hoverTarget)
+                val captureTarget =
+                    PointerCaptureSession.resolveCaptureTarget(
+                        start = event.target ?: hoverTarget,
+                        mouseX = inputEvent.mouseX,
+                        mouseY = inputEvent.mouseY,
                     )
-                    if (!DndRuntime.engine.isDragging) {
-                        dragEvent.target = dragCaptureTarget ?: hoverTarget
-                        EventBus.post(dragEvent)
-                    }
-                    dragCaptureTarget?.continuePointerCapture(
-                        mouseX = mouseX,
-                        mouseY = mouseY,
-                        mouseDX = dx,
-                        mouseDY = dy,
-                        button = mappedButton
-                    )
+                if (captureTarget != null) {
+                    setDragCapture(captureTarget)
+                    captureTarget.beginPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+                } else if (pointerCapture.target != null) {
+                    releaseDragCapture()
                 }
+                if (captureTarget == null && !event.cancelled) {
+                    DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
+                }
+            } else if (!event.cancelled) {
+                DndRuntime.engine.onMouseDown(tree.root, event.target ?: hoverTarget, event)
             }
         }
+    }
 
-        if (dWheel != 0) {
+    private fun dispatchApplicationRootPointerUp(tree: DomTree, inputEvent: MouseInputEvent) {
+        val releaseTarget = resolvePointerUpTarget()
+        val hadDragCapture = pointerCapture.target != null
+        eventButton = -1
+        mapButton(inputEvent.mouseButton)?.let { mappedButton ->
+            val upEvent = MouseUpEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            upEvent.target = releaseTarget
+            EventBus.post(upEvent)
+            pointerCapture.target?.endPointerCapture(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+            val dndConsumed = DndRuntime.engine.onMouseUp(tree.root, upEvent)
+            if (!hadDragCapture && !dndConsumed) {
+                val clickEvent = MouseClickEvent(inputEvent.mouseX, inputEvent.mouseY, mappedButton)
+                clickEvent.target = resolveClickTarget()
+                EventBus.post(clickEvent)
+            }
+        }
+        clearActiveTarget()
+        releaseDragCapture()
+    }
+
+    private fun dispatchApplicationRootPointerDrag(tree: DomTree, inputEvent: MouseInputEvent) {
+        mapButton(eventButton)?.let { mappedButton ->
+            val dx = inputEvent.mouseX - lastMouseX
+            val dy = inputEvent.mouseY - lastMouseY
+            if (dx != 0 || dy != 0) {
+                dispatchApplicationRootPointerDragDelta(
+                    tree = tree,
+                    mouseX = inputEvent.mouseX,
+                    mouseY = inputEvent.mouseY,
+                    previousMouseX = lastMouseX,
+                    previousMouseY = lastMouseY,
+                    dx = dx,
+                    dy = dy,
+                    mappedButton = mappedButton,
+                )
+            }
+        }
+    }
+
+    private fun dispatchApplicationRootPointerDragDelta(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        previousMouseX: Int,
+        previousMouseY: Int,
+        dx: Int,
+        dy: Int,
+        mappedButton: MouseButton? = mapButton(eventButton),
+    ) {
+        val button = mappedButton ?: return
+        val captured = pointerCapture.target
+        if (captured == null) {
+            DndRuntime.engine.onMouseMove(tree.root, mouseX, mouseY)
+        }
+        val dragEvent =
+            MouseDragEvent(
+                previousMouseX,
+                previousMouseY,
+                dx,
+                dy,
+                button,
+            )
+        if (captured != null || !DndRuntime.engine.isDragging) {
+            dragEvent.target = captured ?: hoverTarget
+            EventBus.post(dragEvent)
+        }
+        captured?.continuePointerCapture(
+            mouseX = mouseX,
+            mouseY = mouseY,
+            mouseDX = dx,
+            mouseDY = dy,
+            button = button,
+        )
+    }
+
+    private fun dispatchApplicationRootWheelPhase(inputEvent: MouseInputEvent): Boolean {
+        if (inputEvent.dWheel != 0) {
             val wheelTarget = resolveWheelTarget()
             if (wheelTarget != null) {
-                val wheelEvent = MouseWheelEvent(mouseX, mouseY, dWheel)
+                val wheelEvent = MouseWheelEvent(inputEvent.mouseX, inputEvent.mouseY, inputEvent.dWheel)
                 wheelEvent.target = wheelTarget
                 EventBus.post(wheelEvent)
                 if (!wheelEvent.cancelled) {
-                    bubbleGenericWheel(wheelTarget, mouseX, mouseY, dWheel)
+                    bubbleGenericWheel(wheelTarget, inputEvent.mouseX, inputEvent.mouseY, inputEvent.dWheel)
+                }
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun finishMouseInputEvent(inputEvent: MouseInputEvent) {
+        lastMouseX = inputEvent.mouseX
+        lastMouseY = inputEvent.mouseY
+    }
+
+    private fun dispatchDomainKeyDown(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int,
+    ): DomainKeyDispatchResult {
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.DebugPortal -> debugDomainPortalHost.handleKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.DebugRoot -> debugDomainRootHost.handleKeyDown(keyCode, keyChar)
+
+                        ScreenDomainSurfaces.SystemPortal ->
+                            consumeSystemPortalKeyDown(
+                                keyCode = keyCode,
+                                keyChar = keyChar,
+                                inspectorMouseX = inspectorMouseX,
+                                inspectorMouseY = inspectorMouseY,
+                            )
+
+                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalKeyDown(keyCode, keyChar)
+                        ScreenDomainSurfaces.ApplicationRoot -> {
+                            dispatchApplicationRootKeyDown(keyCode, keyChar)
+                            true
+                        }
+                        ScreenDomainSurfaces.SystemRoot -> false
+                        else -> false
+                    }
+                },
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
+            )
+        return when (consumedBy) {
+            null -> DomainKeyDispatchResult.None
+            ScreenDomainSurfaces.ApplicationRoot -> DomainKeyDispatchResult.ApplicationRootHandled
+            else -> DomainKeyDispatchResult.HigherSurfaceConsumed
+        }
+    }
+
+    private fun dispatchDomainKeyUp(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int,
+    ): DomainKeyDispatchResult {
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.DebugPortal -> debugDomainPortalHost.handleKeyUp(keyCode, keyChar)
+                        ScreenDomainSurfaces.DebugRoot -> debugDomainRootHost.handleKeyUp(keyCode, keyChar)
+
+                        ScreenDomainSurfaces.SystemPortal ->
+                            consumeSystemPortalKeyUp(
+                                keyCode = keyCode,
+                                keyChar = keyChar,
+                                inspectorMouseX = inspectorMouseX,
+                                inspectorMouseY = inspectorMouseY,
+                            )
+
+                        ScreenDomainSurfaces.ApplicationPortal -> consumeApplicationPortalKeyUp(keyCode, keyChar)
+                        ScreenDomainSurfaces.ApplicationRoot -> dispatchApplicationRootKeyUp(keyCode, keyChar)
+                        ScreenDomainSurfaces.SystemRoot -> false
+                        else -> false
+                    }
+                },
+                isSurfaceInputEnabled = DomainSurfaceDebugState::isInputEnabled,
+            )
+        return when (consumedBy) {
+            null -> DomainKeyDispatchResult.None
+            ScreenDomainSurfaces.ApplicationRoot -> DomainKeyDispatchResult.ApplicationRootHandled
+            else -> DomainKeyDispatchResult.HigherSurfaceConsumed
+        }
+    }
+
+    private fun dispatchApplicationRootKeyDown(keyCode: Int, keyChar: Char) {
+        // TODO(Veritaris): remove this handling from production build
+        if (keyCode == Keyboard.KEY_F6) {
+            StyleEngine.forceReloadStylesheets()
+            requestRebuild("style reload")
+        }
+        if (pressedKeys.add(keyCode)) {
+            val downEvent = dispatchFocusedApplicationRootKeyDown(keyCode, keyChar)
+            if (!downEvent.cancelled && keyCode == Keyboard.KEY_ESCAPE && downEvent.target != null) {
+                FocusManager.clearFocus()
+                downEvent.cancelled = true
+            }
+            if (downEvent.cancelled) {
+                pressedKeys.remove(keyCode)
+            } else {
+                window.onKeyTyped(keyChar, keyCode)
+                if (keyCode == Keyboard.KEY_ESCAPE) {
+                    mc.displayGuiScreen(null)
                 }
             }
         }
-
-        lastMouseX = mouseX
-        lastMouseY = mouseY
     }
 
-    private fun consumeOverlayKeyDown(
+    private fun dispatchApplicationRootKeyUp(keyCode: Int, keyChar: Char): Boolean {
+        if (!pressedKeys.remove(keyCode)) return false
+        dispatchFocusedApplicationRootKeyUp(keyCode, keyChar)
+        return true
+    }
+
+    private fun dispatchFocusedApplicationRootKeyDown(keyCode: Int, keyChar: Char): KeyboardKeyDownEvent {
+        val downEvent = KeyboardKeyDownEvent(keyChar, keyCode)
+        val root = domTree?.root
+        if (root != null) {
+            downEvent.target = FocusManager.focusedNodeWithin(root)
+            if (downEvent.target != null) {
+                EventBus.post(downEvent)
+            }
+        }
+        return downEvent
+    }
+
+    private fun dispatchFocusedApplicationRootKeyUp(keyCode: Int, keyChar: Char) {
+        val root = domTree?.root ?: return
+        val focused = FocusManager.focusedNodeWithin(root) ?: return
+        val upEvent = KeyboardKeyUpEvent(keyChar, keyCode)
+        upEvent.target = focused
+        EventBus.post(upEvent)
+    }
+
+    private fun consumeSystemPortalKeyDown(
         keyCode: Int,
         keyChar: Char,
         inspectorMouseX: Int,
-        inspectorMouseY: Int
+        inspectorMouseY: Int,
     ): Boolean {
-        val consumedBy = OverlayLayerContracts.firstInputConsumer(
-            canConsume = { layer ->
-                when (layer) {
-                    UiLayerId.Debug -> debugOverlayHost.handleKeyDown(keyCode, keyChar)
-                    UiLayerId.SystemOverlay -> consumeSystemOverlayKeyDown(
-                        keyCode = keyCode,
-                        keyChar = keyChar,
-                        inspectorMouseX = inspectorMouseX,
-                        inspectorMouseY = inspectorMouseY
-                    )
-
-                    UiLayerId.ApplicationOverlay -> consumeApplicationOverlayKeyDown(keyCode, keyChar)
-                    UiLayerId.ApplicationRoot -> false
-                }
-            },
-            isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled
-        )
-        return consumedBy != null
-    }
-
-    private fun consumeSystemOverlayKeyDown(
-        keyCode: Int,
-        keyChar: Char,
-        inspectorMouseX: Int,
-        inspectorMouseY: Int
-    ): Boolean {
-        if (systemOverlayHost.handleKeyDown(keyCode, keyChar)) {
+        if (systemPortalHost.handlePortalKeyDown(keyCode, keyChar)) {
             return true
         }
-        val keyboardBlocked = inspector.active && (
-                inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+        if (systemPortalHost.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        val keyboardBlocked =
+            inspector.active &&
+                (
+                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
                         inspector.mode == InspectorMode.Locked
                 )
         if (keyboardBlocked) {
@@ -775,113 +1537,118 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun consumeApplicationOverlayKeyDown(keyCode: Int, keyChar: Char): Boolean {
-        if (ColorPickerRuntime.engine.handleKeyDown(keyCode, keyChar)) {
+    private fun consumeSystemPortalKeyUp(
+        keyCode: Int,
+        keyChar: Char,
+        inspectorMouseX: Int,
+        inspectorMouseY: Int,
+    ): Boolean {
+        if (systemPortalHost.handlePortalKeyUp(keyCode, keyChar)) {
             return true
         }
-        if (applicationOverlayHost.handleKeyDown(keyCode, keyChar)) {
+        if (systemPortalHost.handleKeyUp(keyCode, keyChar)) {
             return true
         }
-        if (SelectRuntime.engine.handleKeyDown(keyCode, keyChar)) {
-            return true
-        }
-        if (ContextMenuRuntime.engine.handleKeyDown(keyCode)) {
+        val keyboardBlocked =
+            inspector.active &&
+                (
+                    inspector.shouldConsumeKeyboard(inspectorMouseX, inspectorMouseY) ||
+                        inspector.mode == InspectorMode.Locked
+                )
+        if (keyboardBlocked) {
+            logInspectorInput("keyboard up consumed keyCode=$keyCode")
             return true
         }
         return false
     }
 
-    private fun consumeOverlayPointerEvent(
-        mouseX: Int,
-        mouseY: Int,
-        dWheel: Int,
-        mouseButton: Int
-    ): Boolean {
-        val mappedButton = mapButton(mouseButton)
-        val buttonPressed = Mouse.getEventButtonState()
-        val consumedBy = OverlayLayerContracts.firstInputConsumer(
-            canConsume = { layer ->
-                when (layer) {
-                    UiLayerId.Debug -> consumeDebugPointerEvent(
-                        mouseX = mouseX,
-                        mouseY = mouseY,
-                        dWheel = dWheel,
-                        mappedButton = mappedButton,
-                        mouseButton = mouseButton,
-                        buttonPressed = buttonPressed
-                    )
+    private fun consumeApplicationPortalKeyDown(keyCode: Int, keyChar: Char): Boolean {
+        if (applicationPortalHost.handlePortalKeyDownBeforeDom(keyCode, keyChar)) {
+            return true
+        }
+        if (applicationPortalHost.handleKeyDown(keyCode, keyChar)) {
+            return true
+        }
+        if (applicationPortalHost.handlePortalKeyDownAfterDom(keyCode, keyChar)) {
+            return true
+        }
+        return false
+    }
 
-                    UiLayerId.SystemOverlay -> consumeSystemOverlayPointerEvent(
-                        mouseX = mouseX,
-                        mouseY = mouseY,
-                        dWheel = dWheel,
-                        mouseButton = mouseButton,
-                        mappedButton = mappedButton,
-                        buttonPressed = buttonPressed
-                    )
-
-                    UiLayerId.ApplicationOverlay -> consumeApplicationOverlayPointerEvent(
-                        mouseX = mouseX,
-                        mouseY = mouseY,
-                        dWheel = dWheel,
-                        mouseButton = mouseButton,
-                        mappedButton = mappedButton,
-                        buttonPressed = buttonPressed
-                    )
-
-                    UiLayerId.ApplicationRoot -> false
-                }
-            },
-            isLayerInputEnabled = OverlayLayerDebugState::isInputEnabled
-        )
-        return consumedBy != null
+    private fun consumeApplicationPortalKeyUp(keyCode: Int, keyChar: Char): Boolean {
+        if (applicationPortalHost.handlePortalKeyUpBeforeDom(keyCode, keyChar)) {
+            return true
+        }
+        if (applicationPortalHost.handleKeyUp(keyCode, keyChar)) {
+            return true
+        }
+        if (applicationPortalHost.handlePortalKeyUpAfterDom(keyCode, keyChar)) {
+            return true
+        }
+        return false
     }
 
     private fun consumeDebugPointerEvent(
+        host: DomainSurfaceHost,
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
         mappedButton: MouseButton?,
         mouseButton: Int,
-        buttonPressed: Boolean
+        buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && debugOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && host.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
             return if (buttonPressed) {
-                debugOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                host.handleMouseDown(mouseX, mouseY, mappedButton)
             } else {
-                debugOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                host.handleMouseUp(mouseX, mouseY, mappedButton)
             }
         }
-        if (mouseButton == -1 && debugOverlayHost.handleMouseMove(mouseX, mouseY)) {
+        if (mouseButton == -1 && host.handleMouseMove(mouseX, mouseY)) {
             return true
         }
         return false
     }
 
-    private fun consumeSystemOverlayPointerEvent(
+    private fun consumeSystemPortalPointerEvent(
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
         mouseButton: Int,
         mappedButton: MouseButton?,
-        buttonPressed: Boolean
+        buttonPressed: Boolean,
     ): Boolean {
-        if (dWheel != 0 && systemOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+        if (dWheel != 0 && systemPortalHost.handlePortalMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (dWheel != 0 && systemPortalHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
             return true
         }
         if (mouseButton != -1 && mappedButton != null) {
-            val consumedBySystemOverlay = if (buttonPressed) {
-                systemOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                systemOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedBySystemOverlay) {
+            val consumedBySystemSelect =
+                if (buttonPressed) {
+                    systemPortalHost.handlePortalMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    systemPortalHost.handlePortalMouseUp(mouseX, mouseY, mappedButton)
+                }
+            if (consumedBySystemSelect) {
                 return true
             }
-        } else if (mouseButton == -1 && systemOverlayHost.handleMouseMove(mouseX, mouseY)) {
+            val consumedBySystemPortal =
+                if (buttonPressed) {
+                    systemPortalHost.handleMouseDown(mouseX, mouseY, mappedButton)
+                } else {
+                    systemPortalHost.handleMouseUp(mouseX, mouseY, mappedButton)
+                }
+            if (consumedBySystemPortal) {
+                return true
+            }
+        } else if (mouseButton == -1 && systemPortalHost.handlePortalMouseMove(mouseX, mouseY)) {
+            return true
+        } else if (mouseButton == -1 && systemPortalHost.handleMouseMove(mouseX, mouseY)) {
             return true
         }
 
@@ -894,102 +1661,80 @@ abstract class DsglScreenHost(
         return true
     }
 
-    private fun consumeApplicationOverlayPointerEvent(
+    private fun consumeApplicationPortalPointerEvent(
         mouseX: Int,
         mouseY: Int,
         dWheel: Int,
         mouseButton: Int,
         mappedButton: MouseButton?,
-        buttonPressed: Boolean
+        buttonPressed: Boolean,
     ): Boolean {
         val inlineSamplerOwnsSession = activeColorSamplerOwner is ActiveColorSamplerOwner.Inline
         if (!inlineSamplerOwnsSession) {
-            if (dWheel != 0 && ColorPickerRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            if (
+                applicationPortalHost.handlePortalPointerBeforeDom(
+                    mouseX = mouseX,
+                    mouseY = mouseY,
+                    dWheel = dWheel,
+                    button = mappedButton,
+                    pressed = buttonPressed,
+                )
+            ) {
                 return true
             }
-            if (mouseButton != -1 && mappedButton != null) {
-                val consumedByColorPicker = if (buttonPressed) {
-                    ColorPickerRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
+        }
+
+        if (dWheel != 0 && applicationPortalHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
+            return true
+        }
+        if (mouseButton != -1 && mappedButton != null) {
+            val consumedByApplicationPortal =
+                if (buttonPressed) {
+                    applicationPortalHost.handleMouseDown(mouseX, mouseY, mappedButton)
                 } else {
-                    ColorPickerRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
+                    applicationPortalHost.handleMouseUp(mouseX, mouseY, mappedButton)
                 }
-                if (consumedByColorPicker) {
-                    return true
-                }
-            } else if (mouseButton == -1 && ColorPickerRuntime.engine.handleMouseMove(mouseX, mouseY)) {
+            if (consumedByApplicationPortal) {
                 return true
             }
-        }
-
-        if (dWheel != 0 && applicationOverlayHost.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (mouseButton != -1 && mappedButton != null) {
-            val consumedByAppOverlay = if (buttonPressed) {
-                applicationOverlayHost.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                applicationOverlayHost.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedByAppOverlay) {
-                return true
-            }
-        } else if (mouseButton == -1 && applicationOverlayHost.handleMouseMove(mouseX, mouseY)) {
+        } else if (mouseButton == -1 && applicationPortalHost.handleMouseMove(mouseX, mouseY)) {
             return true
         }
 
-        if (dWheel != 0 && ContextMenuRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (dWheel != 0 && SelectRuntime.engine.handleMouseWheel(mouseX, mouseY, dWheel)) {
-            return true
-        }
-        if (mouseButton != -1 && mappedButton != null) {
-            val consumedByContextMenu = if (buttonPressed) {
-                ContextMenuRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                ContextMenuRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedByContextMenu) {
-                return true
-            }
-            val consumedBySelect = if (buttonPressed) {
-                SelectRuntime.engine.handleMouseDown(mouseX, mouseY, mappedButton)
-            } else {
-                SelectRuntime.engine.handleMouseUp(mouseX, mouseY, mappedButton)
-            }
-            if (consumedBySelect) {
-                return true
-            }
-            return false
-        }
-        if (mouseButton == -1 && ContextMenuRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            return true
-        }
-        if (mouseButton == -1 && SelectRuntime.engine.handleMouseMove(mouseX, mouseY)) {
-            return true
-        }
-        return false
+        return applicationPortalHost.handlePortalPointerAfterDom(
+            mouseX = mouseX,
+            mouseY = mouseY,
+            dWheel = dWheel,
+            button = mappedButton,
+            pressed = buttonPressed,
+        )
     }
 
-    private fun consumeOverlayPointerState(mouseX: Int, mouseY: Int) {
+    private fun consumePortalPointerState(mouseX: Int, mouseY: Int, cancelRootDnd: Boolean = false) {
+        if (cancelRootDnd) {
+            DndRuntime.engine.cancelActiveDrag()
+        }
         eventButton = -1
         clearActiveTarget()
         releaseDragCapture()
+        clearHoverChainStates(postLeaveEvents = true, mouseX = mouseX, mouseY = mouseY)
+        hoverTarget = null
         lastMouseX = mouseX
         lastMouseY = mouseY
     }
 
-    private fun mapButton(button: Int): MouseButton? {
-        return when (button) {
+    private fun mapButton(button: Int): MouseButton? =
+        when (button) {
             0 -> MouseButton.LEFT
             1 -> MouseButton.RIGHT
             2 -> MouseButton.MIDDLE
             else -> null
         }
-    }
+
+    private fun isApplicationRootPointerDragActive(): Boolean = eventButton != -1 && lastMouseEvent > 0L
 
     init {
-        inspector.installColorPickerHost(systemOverlayHost.systemInspectorColorPickerPopupHost())
+        inspector.installColorPickerPortalService(systemPortalHost.systemInspectorColorPickerService())
     }
 
     private fun refreshActiveColorSamplerOwner(root: DOMNode?) {
@@ -1001,20 +1746,19 @@ abstract class DsglScreenHost(
         if (focusedInline != null && focusedInline.wantsGlobalPointerInput()) {
             inlineByToken.putIfAbsent(colorSamplerToken(focusedInline), focusedInline)
         }
-        activeColorSamplerOwner = colorSamplerOwnershipRouter.update(
-            popupEyedropperActive = ColorPickerRuntime.engine.hasActiveEyedropper(),
-            inlineActiveTokens = inlineByToken.keys.toSet()
-        )
-        activeInlineColorSamplerNode = when (val owner = activeColorSamplerOwner) {
-            is ActiveColorSamplerOwner.Inline -> inlineByToken[owner.token]
-            else -> null
-        }
+        activeColorSamplerOwner =
+            colorSamplerOwnershipRouter.update(
+                popupEyedropperActive = applicationPortalHost.hasActiveColorPickerEyedropper(),
+                inlineActiveTokens = inlineByToken.keys.toSet(),
+            )
+        activeInlineColorSamplerNode =
+            when (val owner = activeColorSamplerOwner) {
+                is ActiveColorSamplerOwner.Inline -> inlineByToken[owner.token]
+                else -> null
+            }
     }
 
-    private fun collectActiveInlineColorSamplers(
-        node: DOMNode,
-        out: MutableMap<Any, ColorPickerInlineNode>
-    ) {
+    private fun collectActiveInlineColorSamplers(node: DOMNode, out: MutableMap<Any, ColorPickerInlineNode>) {
         if (node is ColorPickerInlineNode && node.wantsGlobalPointerInput()) {
             out.putIfAbsent(colorSamplerToken(node), node)
         }
@@ -1023,9 +1767,7 @@ abstract class DsglScreenHost(
         }
     }
 
-    private fun colorSamplerToken(node: ColorPickerInlineNode): Any {
-        return node.key ?: node
-    }
+    private fun colorSamplerToken(node: ColorPickerInlineNode): Any = node.key ?: node
 
     private fun resolveForcedPointerTarget(): DOMNode? {
         if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
@@ -1037,30 +1779,32 @@ abstract class DsglScreenHost(
         return null
     }
 
-    private fun appendInlineColorPickerOverlayCommands(out: MutableList<RenderCommand>) {
-        val layer = OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application)
-        if (layer != UiLayerId.ApplicationOverlay) return
+    private fun appendInlineColorPickerPortalCommands(out: MutableList<RenderCommand>) {
+        val surface = ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.Application)
+        if (surface != ScreenDomainSurfaces.ApplicationPortal) return
         if (activeColorSamplerOwner is ActiveColorSamplerOwner.Inline) {
             val inline = activeInlineColorSamplerNode ?: return
             if (!inline.wantsGlobalPointerInput()) return
-            inline.appendEyedropperOverlayCommands(
+            inline.appendEyedropperPortalCommands(
                 viewportWidth = lastWidth.coerceAtLeast(1),
                 viewportHeight = lastHeight.coerceAtLeast(1),
-                out = out
+                out = out,
             )
         }
     }
 
     private fun captureColorPickerEyedropperSamples() {
         refreshActiveColorSamplerOwner(domTree?.root)
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.System) == UiLayerId.SystemOverlay) {
-            systemOverlayHost.captureSystemColorPickerEyedropperSample()
+        if (ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.System) == ScreenDomainSurfaces.SystemPortal) {
+            systemPortalHost.captureSystemColorPickerEyedropperSample()
         }
-        if (OverlayLayerContracts.resolveTransientLayer(OverlayOwnerScope.Application) != UiLayerId.ApplicationOverlay) {
+        if (ScreenDomainSurfaces.portalSurfaceForDomain(ScreenDomainId.Application) !=
+            ScreenDomainSurfaces.ApplicationPortal
+        ) {
             return
         }
         when (activeColorSamplerOwner) {
-            ActiveColorSamplerOwner.Popup -> ColorPickerRuntime.engine.captureEyedropperSample()
+            ActiveColorSamplerOwner.Popup -> applicationPortalHost.captureColorPickerEyedropperSample()
             is ActiveColorSamplerOwner.Inline -> {
                 val inline = activeInlineColorSamplerNode
                 if (inline != null && inline.wantsGlobalPointerInput()) {
@@ -1069,8 +1813,8 @@ abstract class DsglScreenHost(
             }
 
             ActiveColorSamplerOwner.None -> {
-                if (ColorPickerRuntime.engine.hasActiveEyedropper()) {
-                    ColorPickerRuntime.engine.captureEyedropperSample()
+                if (applicationPortalHost.hasActiveColorPickerEyedropper()) {
+                    applicationPortalHost.captureColorPickerEyedropperSample()
                 }
             }
         }
@@ -1108,22 +1852,177 @@ abstract class DsglScreenHost(
 
     internal fun debugRebuildIfNeededForTests(): Boolean = rebuildIfNeeded()
 
+    internal fun debugComposeDomainPaintCommandsForTests(
+        applicationRoot: List<RenderCommand>,
+        applicationPortal: List<RenderCommand>,
+        systemRoot: List<RenderCommand> = emptyList(),
+        systemPortal: List<RenderCommand>,
+        debugRoot: List<RenderCommand>,
+        debugPortal: List<RenderCommand> = emptyList(),
+        shouldRenderSurface: (ScreenDomainSurface) -> Boolean = { true },
+    ): List<RenderCommand> {
+        val out = ArrayList<RenderCommand>()
+        domainOrchestrator.composePaintCommands(
+            applicationRoot = applicationRoot,
+            applicationPortal = applicationPortal,
+            systemRoot = systemRoot,
+            systemPortal = systemPortal,
+            debugRoot = debugRoot,
+            debugPortal = debugPortal,
+            out = out,
+            shouldRenderSurface = shouldRenderSurface,
+        )
+        return out
+    }
+
+    internal fun debugStageApplicationPortalCommandsForTests(
+        tree: DomTree,
+        applicationPortalCommands: List<RenderCommand>,
+        appPortalRenderEnabled: Boolean = true,
+        measureContext: UiMeasureContext,
+    ): List<RenderCommand> {
+        stageApplicationPortalCommands(
+            tree = tree,
+            applicationPortalCommands = applicationPortalCommands,
+            appPortalRenderEnabled = appPortalRenderEnabled,
+            measureContext = measureContext,
+        )
+        return applicationPortalCommandsBuffer.toList()
+    }
+
+    internal fun debugSyncApplicationPortalSurfaceForTests(
+        measureContext: UiMeasureContext,
+        width: Int,
+        height: Int,
+        appPortalEnabled: Boolean = true,
+    ) {
+        if (appPortalEnabled) {
+            applicationPortalHost.render(measureContext, width, height)
+        }
+    }
+
+    internal fun debugCollectApplicationPortalCommandsForTests(
+        measureContext: UiMeasureContext,
+        appPortalRenderEnabled: Boolean = true,
+    ): List<RenderCommand> =
+        if (appPortalRenderEnabled) {
+            applicationPortalHost.paint(measureContext)
+        } else {
+            emptyList()
+        }
+
+    internal fun debugFirstDomainInputConsumerForTests(
+        canConsume: (ScreenDomainSurface) -> Boolean,
+        isSurfaceInputEnabled: (ScreenDomainSurface) -> Boolean = { true },
+    ): ScreenDomainSurface? =
+        domainOrchestrator.firstInputConsumer(
+            canConsume = canConsume,
+            isSurfaceInputEnabled = isSurfaceInputEnabled,
+        )
+
+    internal fun debugDispatchApplicationPortalThenRootPointerForTests(
+        mouseButton: Int,
+        buttonPressed: Boolean,
+        mouseX: Int = 0,
+        mouseY: Int = 0,
+        applicationPortalConsumes: () -> Boolean,
+        applicationRootConsumes: () -> Boolean,
+    ): ScreenDomainSurface? {
+        val context =
+            DomainPointerDispatchContext(
+                inputEvent =
+                    MouseInputEvent(
+                        mouseX = mouseX,
+                        mouseY = mouseY,
+                        dWheel = 0,
+                        mouseButton = mouseButton,
+                    ),
+                mappedButton = mapButton(mouseButton),
+                buttonPressed = buttonPressed,
+                applicationRootPressMove = false,
+            )
+        val consumedBy =
+            domainOrchestrator.firstInputConsumer(
+                canConsume = { surface ->
+                    when (surface) {
+                        ScreenDomainSurfaces.ApplicationPortal -> applicationPortalConsumes()
+                        ScreenDomainSurfaces.ApplicationRoot ->
+                            if (isHigherSurfaceOwnedPointerRelease(context)) {
+                                false
+                            } else {
+                                applicationRootConsumes()
+                            }
+
+                        else -> false
+                    }
+                },
+            )
+        if (consumedBy != null && consumedBy != ScreenDomainSurfaces.ApplicationRoot) {
+            updateHigherSurfacePointerOwnership(context)
+            consumePortalPointerState(
+                mouseX = mouseX,
+                mouseY = mouseY,
+                cancelRootDnd = context.inputEvent.mouseButton != -1,
+            )
+        } else if (consumedBy == null && isHigherSurfaceOwnedPointerRelease(context)) {
+            higherSurfacePointerButton = -1
+            consumePortalPointerState(
+                mouseX = mouseX,
+                mouseY = mouseY,
+                cancelRootDnd = context.inputEvent.mouseButton != -1,
+            )
+            return ScreenDomainSurfaces.ApplicationPortal
+        }
+        return consumedBy
+    }
+
+    internal fun debugApplicationPortalHostForTests(): ApplicationPortalHost = applicationPortalHost
+
+    internal fun debugUpdateFrameInteractionStateForTests(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        appPortalInputEnabled: Boolean = true,
+        systemPortalInputEnabled: Boolean = true,
+        inspectorBlocks: Boolean = false,
+    ) {
+        updateFrameInteractionState(
+            tree = tree,
+            dtSeconds = 1.0 / 60.0,
+            dsglMouseX = mouseX,
+            dsglMouseY = mouseY,
+            appPortalInputEnabled = appPortalInputEnabled,
+            systemPortalInputEnabled = systemPortalInputEnabled,
+            inspectorBlocks = inspectorBlocks,
+        )
+    }
+
+    internal fun debugDispatchApplicationRootPointerDownForTests(
+        tree: DomTree,
+        mouseX: Int,
+        mouseY: Int,
+        mouseButton: Int = 0,
+    ) {
+        val inputEvent =
+            MouseInputEvent(
+                mouseX = mouseX,
+                mouseY = mouseY,
+                dWheel = 0,
+                mouseButton = mouseButton,
+            )
+        refreshHoverTarget(mouseX, mouseY)
+        dispatchApplicationRootPointerDown(tree, inputEvent, eventTimeMs = 1L)
+        finishMouseInputEvent(inputEvent)
+        lastMoveX = mouseX
+        lastMoveY = mouseY
+    }
+
     private fun setDragCapture(target: DOMNode) {
-        dragCaptureTarget = target
-        dragCaptureKey = target.key
-        dragCaptureClass = target.javaClass
-        dragCaptureFocusKey = FocusManager.focusedNode()?.key
+        pointerCapture.capture(target)
     }
 
     private fun releaseDragCapture() {
-        dragCaptureTarget?.cancelPointerCapture()
-        RangeInputNode.clearActiveDrag()
-        SingleLineInputNode.clearActiveDrag()
-        TextAreaNode.clearActiveDrag()
-        dragCaptureTarget = null
-        dragCaptureKey = null
-        dragCaptureClass = null
-        dragCaptureFocusKey = null
+        pointerCapture.release()
     }
 
     private fun setActiveTarget(target: DOMNode?) {
@@ -1139,71 +2038,8 @@ abstract class DsglScreenHost(
         activeTarget = null
     }
 
-    private fun resolveDragCaptureTarget(start: DOMNode?, mouseX: Int, mouseY: Int): DOMNode? {
-        var current = start
-        while (current != null) {
-            when (current) {
-                is RangeInputNode -> return current
-                is SingleLineInputNode -> if (current.shouldCaptureTextSelectionDrag(mouseX, mouseY)) return current
-                is TextAreaNode -> if (current.shouldCaptureAnyDrag(mouseX, mouseY)) return current
-            }
-            if (current.shouldCapturePointerDrag(mouseX, mouseY)) {
-                return current
-            }
-            current = current.parent
-        }
-        return null
-    }
-
     private fun restoreDragCapture(root: DOMNode) {
-        if (dragCaptureTarget == null) return
-        val key = dragCaptureKey
-        val cls = dragCaptureClass
-        if (cls == null) {
-            releaseDragCapture()
-            return
-        }
-        if (key == null) {
-            val captured = dragCaptureTarget
-            if (captured != null && captured.javaClass == cls) {
-                if (eventButton != -1) {
-                    return
-                }
-                if (isSameOrAncestor(root, captured)) {
-                    return
-                }
-            }
-            releaseDragCapture()
-            return
-        }
-
-        val restored = findByKeyAndClass(root, key, cls)
-        if (restored != null) {
-            dragCaptureTarget = restored
-        } else {
-            releaseDragCapture()
-        }
-    }
-
-    private fun findByKeyAndClass(
-        node: DOMNode,
-        key: Any,
-        cls: Class<out DOMNode>
-    ): DOMNode? {
-        if (node.key == key && node.javaClass == cls) return node
-        for (child in node.children) {
-            val found = findByKeyAndClass(child, key, cls)
-            if (found != null) {
-                return found
-            }
-        }
-        return null
-    }
-
-    private fun hasFocusChangedSinceCapture(): Boolean {
-        if (dragCaptureFocusKey == null) return false
-        val currentFocusKey = FocusManager.focusedNode()?.key
-        return currentFocusKey != dragCaptureFocusKey
+        pointerCapture.restore(root, pointerPressed = eventButton != -1)
     }
 
     private fun refreshHoverTarget(mouseX: Int, mouseY: Int) {
@@ -1219,17 +2055,12 @@ abstract class DsglScreenHost(
         hoverTarget = chain.lastOrNull()
     }
 
-    private fun resolvePointerDownTarget(): DOMNode? {
-        return resolveForcedPointerTarget() ?: hoverTarget
-    }
+    private fun resolvePointerDownTarget(): DOMNode? = resolveForcedPointerTarget() ?: hoverTarget
 
-    private fun resolvePointerUpTarget(): DOMNode? {
-        return dragCaptureTarget ?: resolveForcedPointerTarget() ?: hoverTarget
-    }
+    private fun resolvePointerUpTarget(): DOMNode? =
+        pointerCapture.target ?: resolveForcedPointerTarget() ?: hoverTarget
 
-    private fun resolveClickTarget(): DOMNode? {
-        return hoverTarget
-    }
+    private fun resolveClickTarget(): DOMNode? = hoverTarget
 
     private fun resolveWheelTarget(): DOMNode? {
         val focused = FocusManager.focusedNode()
@@ -1242,7 +2073,12 @@ abstract class DsglScreenHost(
         return hoverTarget
     }
 
-    private fun bubbleGenericWheel(target: DOMNode, mouseX: Int, mouseY: Int, delta: Int): Boolean {
+    private fun bubbleGenericWheel(
+        target: DOMNode,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Int,
+    ): Boolean {
         var current: DOMNode? = target
         while (current != null) {
             if (current.handleGenericWheel(mouseX, mouseY, delta)) {
@@ -1262,9 +2098,19 @@ abstract class DsglScreenHost(
         return false
     }
 
-    private fun clearHoverChainStates() {
+    private fun clearHoverChainStates(
+        postLeaveEvents: Boolean = false,
+        mouseX: Int = lastMoveX,
+        mouseY: Int = lastMoveY,
+    ) {
         hoverChain.forEach { node ->
             node.setHoveredState(false)
+            if (postLeaveEvents) {
+                val leave = MouseLeaveEvent(mouseX, mouseY)
+                leave.target = node
+                EventBus.post(leave)
+                node.onmouseleave?.invoke(leave)
+            }
         }
         hoverChain.clear()
     }
@@ -1281,17 +2127,21 @@ abstract class DsglScreenHost(
             if (lastWidth > 0 && lastHeight > 0 && (rootBounds.width <= 0 || rootBounds.height <= 0)) {
                 logPipelineError(
                     key = "layout.$phase.invalidBounds",
-                    message = "[DSGL] Layout commit produced invalid root bounds ${rootBounds.width}x${rootBounds.height} in $phase."
+                    message =
+                        "[DSGL] Layout commit produced invalid root bounds " +
+                            "${rootBounds.width}x${rootBounds.height} in $phase.",
                 )
                 return false
             }
             layoutRevision++
             inspector.onLayoutCommitted(tree.root, layoutRevision)
             true
-        } catch (error: Throwable) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") error: Throwable,
+        ) {
             logPipelineError(
                 key = "layout.$phase",
-                message = "[DSGL] Layout commit failed in $phase; keeping previous frame: ${error.message}"
+                message = "[DSGL] Layout commit failed in $phase; keeping previous frame: ${error.message}",
             )
             false
         }
@@ -1301,13 +2151,16 @@ abstract class DsglScreenHost(
         tree: DomTree,
         rebuiltThisFrame: Boolean,
         layoutCommittedThisFrame: Boolean,
-        candidate: List<RenderCommand>
+        candidate: List<RenderCommand>,
     ): Boolean {
         val shape = validateCommandShape(candidate)
         if (!shape.valid) {
             logPipelineError(
                 key = "shape.guard",
-                message = "[DSGL] Guarded invalid command shape (clip=${shape.clipDepth}, transform=${shape.transformDepth}, opacity=${shape.opacityDepth}); keeping previous frame."
+                message =
+                    "[DSGL] Guarded invalid command shape " +
+                        "(clip=${shape.clipDepth}, transform=${shape.transformDepth}, " +
+                        "opacity=${shape.opacityDepth}); keeping previous frame.",
             )
             return composedCommandsBuffer.isNotEmpty()
         }
@@ -1317,7 +2170,7 @@ abstract class DsglScreenHost(
         if (!hasRenderableNodes(tree.root)) return false
         logPipelineError(
             key = "blank.guard",
-            message = "[DSGL] Guarded against blank rebuild frame; keeping previous commands."
+            message = "[DSGL] Guarded against blank rebuild frame; keeping previous commands.",
         )
         return true
     }
@@ -1326,7 +2179,7 @@ abstract class DsglScreenHost(
         val valid: Boolean,
         val clipDepth: Int,
         val transformDepth: Int,
-        val opacityDepth: Int
+        val opacityDepth: Int,
     )
 
     private fun validateCommandShape(commands: List<RenderCommand>): CommandShape {
@@ -1360,7 +2213,7 @@ abstract class DsglScreenHost(
             valid = clipDepth == 0 && transformDepth == 0 && opacityDepth == 0,
             clipDepth = clipDepth,
             transformDepth = transformDepth,
-            opacityDepth = opacityDepth
+            opacityDepth = opacityDepth,
         )
     }
 
@@ -1396,9 +2249,10 @@ abstract class DsglScreenHost(
         val styleStats = StyleEngine.lastStyleApplyReport()
         println(
             "[DSGL-PERF] frames=${paintStats.frames} commandRebuilds=${paintStats.commandRebuilds} " +
-                    "chunkVisited=${paintStats.chunkNodesVisitedLastFrame} chunkRebuilt=${paintStats.chunkNodesRebuiltLastFrame} " +
-                    "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
-                    "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips"
+                "chunkVisited=${paintStats.chunkNodesVisitedLastFrame} " +
+                "chunkRebuilt=${paintStats.chunkNodesRebuiltLastFrame} " +
+                "styled=${styleStats.visitedNodes} styleCacheHit=${styleStats.cacheHits} " +
+                "styleRecomputed=${styleStats.recomputedNodes} blankGuardSkips=$blankFrameGuardSkips",
         )
     }
 }

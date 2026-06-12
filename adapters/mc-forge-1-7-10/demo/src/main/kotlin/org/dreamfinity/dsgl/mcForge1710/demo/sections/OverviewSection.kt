@@ -1,19 +1,19 @@
 package org.dreamfinity.dsgl.mcForge1710.demo.sections
 
 import org.dreamfinity.dsgl.core.dsl.*
+import org.dreamfinity.dsgl.core.hooks.useState
 import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
-import org.dreamfinity.dsgl.core.hooks.useState
-import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityId
 import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityChecklistCatalog
 import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityGroup
+import org.dreamfinity.dsgl.mcForge1710.demo.support.CapabilityId
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_MUTED
 import org.dreamfinity.dsgl.mcForge1710.demo.support.DEMO_OK
 
 fun UiScope.overviewSection(
     implementedCapabilities: Set<CapabilityId>,
     onManualInvalidate: (String) -> Unit,
-    onInfo: (String) -> Unit
+    onInfo: (String) -> Unit,
 ) {
     var manualInvalidateCount by useState(0)
     var lastManualReason by useState("none")
@@ -40,7 +40,7 @@ fun UiScope.overviewSection(
         text("Press F6 to force stylesheet reload and rebuild after file edits.", {
             style = { color = DEMO_MUTED }
         })
-        text("Press F10 to toggle the draggable overlay panel panel demo (text + button + image).", {
+        text("Press F10 to toggle the draggable Application portal window demo (text + button + image).", {
             style = { color = DEMO_MUTED }
         })
 
@@ -77,14 +77,16 @@ fun UiScope.overviewSection(
 
         text("Checklist groups", { style = { color = DEMO_OK } })
         CapabilityGroup.entries.forEach { group ->
-            val required = CapabilityChecklistCatalog.required.filter { it.group == group }.size
+            val required =
+                CapabilityChecklistCatalog.required
+                    .filter { it.group == group }
+                    .size
             val implemented = implementedCapabilities.count { it.group == group }
             val ok = implemented == required
             text(
                 "${group.title}: $implemented/$required",
-                { style = { color = if (ok) DEMO_OK else 0xFFE06A6A.toInt() } }
+                { style = { color = if (ok) DEMO_OK else 0xFFE06A6A.toInt() } },
             )
         }
     }
 }
-

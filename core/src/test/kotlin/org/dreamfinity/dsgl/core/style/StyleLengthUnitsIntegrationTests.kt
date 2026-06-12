@@ -11,13 +11,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class StyleLengthUnitsIntegrationTests {
-    private val ctx = object : UiMeasureContext {
-        override val fontHeight: Int = 10
-        override fun measureText(text: String): Int = text.length * 6
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * ((fontSize ?: 10) / 2).coerceAtLeast(1)
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = fontSize ?: 10
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override val fontHeight: Int = 10
+
+            override fun measureText(text: String): Int = text.length * 6
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * ((fontSize ?: 10) / 2).coerceAtLeast(1)
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = fontSize ?: 10
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @AfterTest
     fun cleanup() {
@@ -32,7 +37,7 @@ class StyleLengthUnitsIntegrationTests {
             """
             .parent { font-size: 20px; }
             .child { font-size: 1.2em; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -53,7 +58,7 @@ class StyleLengthUnitsIntegrationTests {
             """
             .parent { font-size: 20px; }
             .child { font-size: 10px; padding: 1.5em; }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -79,7 +84,7 @@ class StyleLengthUnitsIntegrationTests {
               height: 25%;
               margin: 10% 5%;
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -105,7 +110,7 @@ class StyleLengthUnitsIntegrationTests {
               height: 20vh;
               padding: 1vh 1vw;
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")
@@ -130,7 +135,7 @@ class StyleLengthUnitsIntegrationTests {
               font-size: 0.5rem;
               padding: 1rem;
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val root = ContainerNode(key = "root")

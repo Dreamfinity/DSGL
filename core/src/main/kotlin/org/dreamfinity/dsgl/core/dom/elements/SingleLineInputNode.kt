@@ -16,20 +16,20 @@ import org.dreamfinity.dsgl.core.style.TextWrap
 open class SingleLineInputNode(
     text: String = "",
     var placeholder: String = "",
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     companion object {
         private data class UndoSnapshot(
             val text: String,
             val caretIndex: Int,
-            val selectionAnchor: Int?
+            val selectionAnchor: Int?,
         )
 
         private data class PersistedState(
             val caretIndex: Int,
             val selectionAnchor: Int?,
             val undoHistory: List<UndoSnapshot>,
-            val redoHistory: List<UndoSnapshot>
+            val redoHistory: List<UndoSnapshot>,
         )
 
         private val persistedByKey: KeyedStateStore<PersistedState> = KeyedStateStore()
@@ -37,7 +37,6 @@ open class SingleLineInputNode(
 
         fun clearActiveDrag() {
             activeSelectionDragIdentity = null
-
         }
     }
 
@@ -76,12 +75,14 @@ open class SingleLineInputNode(
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!this@SingleLineInputNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 handlePointerDown(event.mouseX)
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
                 if (this@SingleLineInputNode.styleDisabled) return@addEventListener
                 if (!isActiveSelectionDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
                 updateSelectionFromPointerDrag(currentX)
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
@@ -92,6 +93,7 @@ open class SingleLineInputNode(
                 }
                 editState.resetBlinkClock()
                 persistState()
+                event.cancelled = true
             }
             this@SingleLineInputNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
                 if (this@SingleLineInputNode.styleDisabled) return@addEventListener
@@ -110,15 +112,18 @@ open class SingleLineInputNode(
     }
 
     protected open fun displayText(): String = this.text
+
     protected open fun currentEventValue(): String = this.text
+
     protected open fun currentParsedValue(): Any? = this.text
+
     protected open fun allowClipboardCopy(): Boolean = true
+
     protected open fun allowClipboardCut(): Boolean = true
+
     protected open fun allowClipboardPaste(): Boolean = true
 
-    protected open fun sanitizePastedText(raw: String): String {
-        return raw.replace("\r", "").replace("\n", "")
-    }
+    protected open fun sanitizePastedText(raw: String): String = raw.replace("\r", "").replace("\n", "")
 
     protected open fun handleKey(event: KeyboardKeyDownEvent) {
         editState.clampToLength(text.length)
@@ -148,13 +153,9 @@ open class SingleLineInputNode(
         }
     }
 
-    protected fun isPrintable(ch: Char): Boolean {
-        return TextEditOps.isPrintable(ch)
-    }
+    protected fun isPrintable(ch: Char): Boolean = TextEditOps.isPrintable(ch)
 
-    protected open fun canAcceptText(next: String): Boolean {
-        return !(maxLength != null && next.length > maxLength!!)
-    }
+    protected open fun canAcceptText(next: String): Boolean = !(maxLength != null && next.length > maxLength!!)
 
     protected open fun applyText(next: String) {
         text = next
@@ -173,13 +174,10 @@ open class SingleLineInputNode(
         postInput(this, current, currentParsedValue())
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val lineHeight = resolveFontSize(ctx)
@@ -252,12 +250,47 @@ open class SingleLineInputNode(
         if (innerWidth > 0 && innerHeight > 0) {
             out.add(RenderCommand.PopClip)
         }
-
     }
 
     fun shouldCaptureTextSelectionDrag(mouseX: Int, mouseY: Int): Boolean {
         if (styleDisabled) return false
         return containsGlobalPoint(mouseX, mouseY)
+    }
+
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        shouldCaptureTextSelectionDrag(mouseX, mouseY) || super.shouldCapturePointerDrag(mouseX, mouseY)
+
+    override fun beginPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        if (isActiveSelectionDragTarget()) return
+        handlePointerDown(mouseX)
+    }
+
+    override fun continuePointerCapture(
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int,
+        button: MouseButton,
+    ) {
+        if (button != MouseButton.LEFT || styleDisabled || !isActiveSelectionDragTarget()) return
+        updateSelectionFromPointerDrag(mouseX)
+    }
+
+    override fun endPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || !isActiveSelectionDragTarget()) return
+        clearActiveDrag()
+        if (!editState.hasSelection()) {
+            editState.clearSelection()
+        }
+        editState.resetBlinkClock()
+        persistState()
+    }
+
+    override fun cancelPointerCapture() {
+        if (isActiveSelectionDragTarget()) {
+            clearActiveDrag()
+        }
     }
 
     private fun handlePointerDown(mouseX: Int) {
@@ -345,7 +378,12 @@ open class SingleLineInputNode(
         return replaceRange(start, end, insert, recordUndo)
     }
 
-    private fun replaceRange(start: Int, end: Int, insert: String, recordUndo: Boolean = false): Boolean {
+    private fun replaceRange(
+        start: Int,
+        end: Int,
+        insert: String,
+        recordUndo: Boolean = false,
+    ): Boolean {
         val safeStart = start.coerceIn(0, text.length)
         val safeEnd = end.coerceIn(safeStart, text.length)
         val previous = currentEventValue()
@@ -365,8 +403,8 @@ open class SingleLineInputNode(
         return true
     }
 
-    private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean {
-        return TextEditShortcutDispatcher.dispatch(
+    private fun handleClipboardShortcut(event: KeyboardKeyDownEvent): Boolean =
+        TextEditShortcutDispatcher.dispatch(
             event,
             TextShortcutCallbacks(
                 canCopy = allowClipboardCopy(),
@@ -391,28 +429,26 @@ open class SingleLineInputNode(
                     if (action != TextShortcutAction.COPY) {
                         persistState()
                     }
-                }
-            )
+                },
+            ),
         )
-    }
 
     private fun pushUndoSnapshot() {
         history.pushUndo(
             UndoSnapshot(
                 text = text,
                 caretIndex = editState.caretIndex,
-                selectionAnchor = editState.selectionAnchor
-            )
+                selectionAnchor = editState.selectionAnchor,
+            ),
         )
     }
 
-    private fun currentSnapshot(): UndoSnapshot {
-        return UndoSnapshot(
+    private fun currentSnapshot(): UndoSnapshot =
+        UndoSnapshot(
             text = text,
             caretIndex = editState.caretIndex,
-            selectionAnchor = editState.selectionAnchor
+            selectionAnchor = editState.selectionAnchor,
         )
-    }
 
     private fun undoLastEdit(): Boolean {
         val snapshot = history.undo(currentSnapshot()) ?: return false
@@ -436,17 +472,14 @@ open class SingleLineInputNode(
         return true
     }
 
-    private fun shouldRecordTypingUndo(ch: Char): Boolean {
-        return typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
-    }
+    private fun shouldRecordTypingUndo(ch: Char): Boolean =
+        typingUndoGrouping.shouldRecord(ch, editState.hasSelection())
 
     private fun resetTypingUndoGroup() {
         typingUndoGrouping.reset()
     }
 
-    private fun selectedText(): String {
-        return TextEditOps.selectedText(text, editState)
-    }
+    private fun selectedText(): String = TextEditOps.selectedText(text, editState)
 
     private fun caretIndexFromMouseX(mouseX: Int): Int {
         val rendered = displayText()
@@ -469,9 +502,7 @@ open class SingleLineInputNode(
         return rendered.length
     }
 
-    private fun dragIdentity(): Any {
-        return TextEditOps.dragIdentity(key, this)
-    }
+    private fun dragIdentity(): Any = TextEditOps.dragIdentity(key, this)
 
     private fun isActiveSelectionDragTarget(): Boolean {
         val active = activeSelectionDragIdentity ?: return false
@@ -486,8 +517,8 @@ open class SingleLineInputNode(
                 caretIndex = editState.caretIndex,
                 selectionAnchor = editState.selectionAnchor,
                 undoHistory = history.undoHistory(),
-                redoHistory = history.redoHistory()
-            )
+                redoHistory = history.redoHistory(),
+            ),
         )
     }
 

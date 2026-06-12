@@ -28,7 +28,8 @@ class MsdfFontTests {
 
     @Test
     fun `parser ignores unknown keys and preserves glyph fields`() {
-        val raw = """
+        val raw =
+            """
             {
               "atlas": {
                 "type": "mtsdf",
@@ -58,7 +59,7 @@ class MsdfFontTests {
               "kerning": [],
               "unknownTopLevel": { "nested": 1 }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val meta = MsdfFontMetaParser.parse(raw)
         val glyph = meta.glyphByIndex(65)
@@ -70,7 +71,8 @@ class MsdfFontTests {
 
     @Test
     fun `parser handles missing optional fields`() {
-        val raw = """
+        val raw =
+            """
             {
               "atlas": {
                 "type": "mtsdf",
@@ -90,7 +92,7 @@ class MsdfFontTests {
                 { "index": 63, "advance": 0.5 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val meta = MsdfFontMetaParser.parse(raw)
         val glyph = meta.glyphByIndex(63)
@@ -101,7 +103,8 @@ class MsdfFontTests {
 
     @Test
     fun `parser resolves codepoint from unicode and char fields`() {
-        val raw = """
+        val raw =
+            """
             {
               "atlas": { "type": "mtsdf", "distanceRange": 4, "size": 32, "width": 64, "height": 64, "yOrigin": "bottom" },
               "metrics": { "emSize": 1, "lineHeight": 1.1, "ascender": 0.8, "descender": -0.2 },
@@ -110,7 +113,7 @@ class MsdfFontTests {
                 { "index": 66, "char": "\uD83D\uDE00", "advance": 0.7 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val meta = MsdfFontMetaParser.parse(raw)
         assertNotNull(meta.glyph(65))
@@ -122,7 +125,7 @@ class MsdfFontTests {
         assertEquals(listOf(72, 101, 108, 108, 111), "Hello".toCodepointList())
         assertEquals(
             listOf(0x041F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442),
-            "\u041F\u0440\u0438\u0432\u0435\u0442".toCodepointList()
+            "\u041F\u0440\u0438\u0432\u0435\u0442".toCodepointList(),
         )
         assertEquals(listOf(0x1F600), "\uD83D\uDE00".toCodepointList())
     }
@@ -171,9 +174,10 @@ class MsdfFontTests {
     @Test
     fun `missing glyph in both fonts falls back without throwing`() {
         val missing = String(Character.toChars(0x10FFFF))
-        val shaped = runCatching {
-            FontRegistry.shapeText(missing, FontRegistry.FONT_MINECRAFT, 16)
-        }
+        val shaped =
+            runCatching {
+                FontRegistry.shapeText(missing, FontRegistry.FONT_MINECRAFT, 16)
+            }
         assertTrue(shaped.isSuccess)
         assertTrue((shaped.getOrNull()?.width ?: -1f) >= 0f)
     }
@@ -246,12 +250,24 @@ class MsdfFontTests {
         FontRegistry.clearLoadedCache()
         FontRegistry.resetShapeCacheStats()
         FontRegistry.resetTextHotPathStats()
-        val cold = FontRegistry.shapeText(mixed, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "probe-semantic-cold")
+        val cold =
+            FontRegistry.shapeText(
+                mixed,
+                FontRegistry.FONT_MINECRAFT,
+                16,
+                formattingMode = "probe-semantic-cold",
+            )
         val coldStats = FontRegistry.textHotPathStats()
         assertTrue(coldStats.requiresReplacementGlyphEvaluations > 0)
 
         FontRegistry.resetTextHotPathStats()
-        val warm = FontRegistry.shapeText(mixed, FontRegistry.FONT_MINECRAFT, 16, formattingMode = "probe-semantic-warm")
+        val warm =
+            FontRegistry.shapeText(
+                mixed,
+                FontRegistry.FONT_MINECRAFT,
+                16,
+                formattingMode = "probe-semantic-warm",
+            )
         val warmStats = FontRegistry.textHotPathStats()
         assertTrue(warmStats.requiresReplacementGlyphCacheHits > 0)
 
@@ -268,13 +284,14 @@ class MsdfFontTests {
         val lineHeight = FontRegistry.lineHeight(FontRegistry.FONT_MINECRAFT, fontSize)
         val text = "MSDF wrapping should keep lines within container width and avoid overlap for long text runs."
 
-        val layout = TextLayoutEngine.layout(
-            text = text,
-            maxWidth = maxWidth,
-            wrap = TextWrap.Wrap,
-            fontHeight = lineHeight,
-            measureText = { value -> FontRegistry.measureText(value, FontRegistry.FONT_MINECRAFT, fontSize) }
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = text,
+                maxWidth = maxWidth,
+                wrap = TextWrap.Wrap,
+                fontHeight = lineHeight,
+                measureText = { value -> FontRegistry.measureText(value, FontRegistry.FONT_MINECRAFT, fontSize) },
+            )
 
         assertTrue(layout.lines.isNotEmpty())
         assertTrue(layout.lines.all { it.width <= maxWidth + 1 })
@@ -286,20 +303,22 @@ class MsdfFontTests {
         val source = "A\uD83D\uDE00B\u0416C"
         val start = source.indexOf('B')
         val end = source.length
-        val range = FontRegistry.shapeTextRange(
-            text = source,
-            startIndex = start,
-            endIndexExclusive = end,
-            fontId = FontRegistry.FONT_MINECRAFT,
-            fontSize = 16,
-            formattingMode = "plain"
-        )
-        val plain = FontRegistry.shapeText(
-            text = source.substring(start, end),
-            fontId = FontRegistry.FONT_MINECRAFT,
-            fontSize = 16,
-            formattingMode = "plain"
-        )
+        val range =
+            FontRegistry.shapeTextRange(
+                text = source,
+                startIndex = start,
+                endIndexExclusive = end,
+                fontId = FontRegistry.FONT_MINECRAFT,
+                fontSize = 16,
+                formattingMode = "plain",
+            )
+        val plain =
+            FontRegistry.shapeText(
+                text = source.substring(start, end),
+                fontId = FontRegistry.FONT_MINECRAFT,
+                fontSize = 16,
+                formattingMode = "plain",
+            )
         assertEquals(plain.glyphs.size, range.glyphs.size)
         assertEquals(plain.runs.size, range.runs.size)
         assertTrue(abs(plain.width - range.width) <= 0.01f)
@@ -316,22 +335,24 @@ class MsdfFontTests {
     @Test
     fun `shapeTextRange returns empty for empty or inverted range`() {
         val source = "Hello"
-        val empty = FontRegistry.shapeTextRange(
-            text = source,
-            startIndex = 2,
-            endIndexExclusive = 2,
-            fontId = FontRegistry.FONT_MINECRAFT,
-            fontSize = 14,
-            formattingMode = "plain"
-        )
-        val inverted = FontRegistry.shapeTextRange(
-            text = source,
-            startIndex = 4,
-            endIndexExclusive = 1,
-            fontId = FontRegistry.FONT_MINECRAFT,
-            fontSize = 14,
-            formattingMode = "plain"
-        )
+        val empty =
+            FontRegistry.shapeTextRange(
+                text = source,
+                startIndex = 2,
+                endIndexExclusive = 2,
+                fontId = FontRegistry.FONT_MINECRAFT,
+                fontSize = 14,
+                formattingMode = "plain",
+            )
+        val inverted =
+            FontRegistry.shapeTextRange(
+                text = source,
+                startIndex = 4,
+                endIndexExclusive = 1,
+                fontId = FontRegistry.FONT_MINECRAFT,
+                fontSize = 14,
+                formattingMode = "plain",
+            )
         assertTrue(empty.glyphs.isEmpty())
         assertTrue(inverted.glyphs.isEmpty())
         assertEquals(0f, empty.width)
@@ -346,10 +367,11 @@ class MsdfFontTests {
         image.setRGB(0, 1, 0xFF0000FF.toInt())
         image.setRGB(1, 1, 0xFFFFFFFF.toInt())
 
-        val pngBytes = ByteArrayOutputStream().use { output ->
-            ImageIO.write(image, "png", output)
-            output.toByteArray()
-        }
+        val pngBytes =
+            ByteArrayOutputStream().use { output ->
+                ImageIO.write(image, "png", output)
+                output.toByteArray()
+            }
         val decoded = AtlasPayload(pngBytes).ensureDecoded()
         assertEquals(2, decoded.width)
         assertEquals(2, decoded.height)
@@ -371,26 +393,32 @@ class MsdfFontTests {
 
     @Test
     fun `deflated atlas decode path remains supported`() {
-        val expected = byteArrayOf(
-            0x01, 0x02, 0x03, 0x04
-        )
-        val rawPayload = ByteArrayOutputStream().use { rawOut ->
-            DataOutputStream(rawOut).use { data ->
-                data.writeInt(0x4453474C)
-                data.writeInt(1)
-                data.writeInt(1)
-                data.write(expected)
+        val expected =
+            byteArrayOf(
+                0x01,
+                0x02,
+                0x03,
+                0x04,
+            )
+        val rawPayload =
+            ByteArrayOutputStream().use { rawOut ->
+                DataOutputStream(rawOut).use { data ->
+                    data.writeInt(0x4453474C)
+                    data.writeInt(1)
+                    data.writeInt(1)
+                    data.write(expected)
+                }
+                rawOut.toByteArray()
             }
-            rawOut.toByteArray()
-        }
-        val deflated = ByteArrayOutputStream().use { compressedOut ->
-            val deflater = Deflater(Deflater.BEST_SPEED, true)
-            DeflaterOutputStream(compressedOut, deflater).use { zipOut ->
-                zipOut.write(rawPayload)
+        val deflated =
+            ByteArrayOutputStream().use { compressedOut ->
+                val deflater = Deflater(Deflater.BEST_SPEED, true)
+                DeflaterOutputStream(compressedOut, deflater).use { zipOut ->
+                    zipOut.write(rawPayload)
+                }
+                deflater.end()
+                compressedOut.toByteArray()
             }
-            deflater.end()
-            compressedOut.toByteArray()
-        }
 
         val decoded = AtlasPayload(deflated).ensureDecoded()
         assertEquals(1, decoded.width)
@@ -398,16 +426,13 @@ class MsdfFontTests {
         assertTrue(decoded.rgbaBytes.contentEquals(expected))
     }
 
-    private fun findFallbackOnlyCodepoint(primary: Font, fallback: Font): Int? {
-        for (cp in 0x20..0x10FFFF) {
-            if (!Character.isValidCodePoint(cp)) continue
-            if (cp in 0xD800..0xDFFF) continue
-            if (!primary.canDisplay(cp) && fallback.canDisplay(cp)) {
-                return cp
-            }
+    private fun findFallbackOnlyCodepoint(primary: Font, fallback: Font): Int? =
+        (0x20..0x10FFFF).firstOrNull { cp ->
+            Character.isValidCodePoint(cp) &&
+                cp !in 0xD800..0xDFFF &&
+                !primary.canDisplay(cp) &&
+                fallback.canDisplay(cp)
         }
-        return null
-    }
 
     private fun loadResource(path: String): String {
         val stream = javaClass.classLoader.getResourceAsStream(path)

@@ -4,7 +4,7 @@ package org.dreamfinity.dsgl.core.dom.elements.support
  * Tracks "dirty since focus" state and commit baseline for change events.
  */
 internal class TextChangeTracker(
-    initialValue: String
+    initialValue: String,
 ) {
     private var valueAtFocusStart: String = initialValue
     private var dirtySinceFocus: Boolean = false

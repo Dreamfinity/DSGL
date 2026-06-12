@@ -1,12 +1,12 @@
 package org.dreamfinity.dsgl.core.dom.elements.support
 
-import java.util.*
+import java.util.ArrayDeque
 
 /**
  * Undo/redo stack pair with a fixed snapshot capacity.
  */
 internal class UndoRedoHistory<S>(
-    private val limit: Int
+    private val limit: Int,
 ) {
     private val undoStack: ArrayDeque<S> = ArrayDeque()
     private val redoStack: ArrayDeque<S> = ArrayDeque()

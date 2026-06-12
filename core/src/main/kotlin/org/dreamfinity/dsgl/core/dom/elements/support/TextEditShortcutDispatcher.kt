@@ -11,7 +11,7 @@ internal enum class TextShortcutAction {
     CUT,
     PASTE,
     UNDO,
-    REDO
+    REDO,
 }
 
 internal data class TextShortcutCallbacks(
@@ -27,7 +27,7 @@ internal data class TextShortcutCallbacks(
     val undo: () -> Unit,
     val redo: () -> Unit,
     val beforeHandled: () -> Unit,
-    val afterHandled: (TextShortcutAction) -> Unit
+    val afterHandled: (TextShortcutAction) -> Unit,
 )
 
 internal object TextEditShortcutDispatcher {

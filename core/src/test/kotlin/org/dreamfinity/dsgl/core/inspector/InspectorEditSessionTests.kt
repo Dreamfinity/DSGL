@@ -16,7 +16,7 @@ class InspectorEditSessionTests {
             property = StyleProperty.WIDTH,
             initialBuffer = "42",
             initialUnit = CssUnit.Px,
-            isNumeric = true
+            isNumeric = true,
         )
 
         assertEquals(StyleProperty.WIDTH, session.activeProperty)
@@ -27,12 +27,13 @@ class InspectorEditSessionTests {
 
     @Test
     fun `closeAllDropdowns clears dropdown ownership and scroll state`() {
-        val session = InspectorEditSession().apply {
-            openValueProperty = StyleProperty.DISPLAY
-            openValueScrollIndex = 4
-            openUnitProperty = StyleProperty.WIDTH
-            openUnitScrollIndex = 3
-        }
+        val session =
+            InspectorEditSession().apply {
+                openValueProperty = StyleProperty.DISPLAY
+                openValueScrollIndex = 4
+                openUnitProperty = StyleProperty.WIDTH
+                openUnitScrollIndex = 3
+            }
 
         session.closeAllDropdowns()
 
@@ -44,16 +45,17 @@ class InspectorEditSessionTests {
 
     @Test
     fun `resetAll clears both edit and dropdown state`() {
-        val session = InspectorEditSession().apply {
-            begin(
-                property = StyleProperty.HEIGHT,
-                initialBuffer = "11",
-                initialUnit = CssUnit.Em,
-                isNumeric = false
-            )
-            openValueProperty = StyleProperty.DISPLAY
-            openValueScrollIndex = 1
-        }
+        val session =
+            InspectorEditSession().apply {
+                begin(
+                    property = StyleProperty.HEIGHT,
+                    initialBuffer = "11",
+                    initialUnit = CssUnit.Em,
+                    isNumeric = false,
+                )
+                openValueProperty = StyleProperty.DISPLAY
+                openValueScrollIndex = 1
+            }
 
         session.resetAll()
 

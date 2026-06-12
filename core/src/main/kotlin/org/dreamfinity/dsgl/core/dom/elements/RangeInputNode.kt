@@ -17,11 +17,11 @@ class RangeInputNode(
     var min: Long = 0L,
     var max: Long = 100L,
     var step: Long? = null,
-    key: Any? = null
+    key: Any? = null,
 ) : DOMNode(key) {
     private data class SliderGeometry(
         val trackRect: Rect,
-        val knobSize: Int
+        val knobSize: Int,
     )
 
     companion object {
@@ -49,56 +49,30 @@ class RangeInputNode(
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
-                activeDragIdentity = dragIdentity()
-                activeDragStartValue = this@RangeInputNode.value
-                val before = this@RangeInputNode.value
-                updateFromMouse(event.mouseX)
-                if (this@RangeInputNode.value != before) {
-                    postInput(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value
-                    )
-                }
+                beginActiveDrag(event.mouseX)
+                event.cancelled = true
             }
             this@RangeInputNode.addEventListener(Events.MOUSEUP) { event: MouseUpEvent ->
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
-                val start = activeDragStartValue ?: this@RangeInputNode.value
-                if (this@RangeInputNode.value != start) {
-                    postChange(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value
-                    )
-                }
-                clearActiveDrag()
+                completeActiveDrag()
+                event.cancelled = true
             }
             this@RangeInputNode.addEventListener(Events.DRAG) { event: MouseDragEvent ->
                 if (this@RangeInputNode.styleDisabled) return@addEventListener
                 if (!isActiveDragTarget()) return@addEventListener
                 val currentX = event.lastMouseX + event.dx
-                val before = this@RangeInputNode.value
-                updateFromMouse(currentX)
-                if (this@RangeInputNode.value != before) {
-                    postInput(
-                        this@RangeInputNode,
-                        this@RangeInputNode.value.toString(),
-                        this@RangeInputNode.value
-                    )
-                }
+                updateActiveDrag(currentX)
+                event.cancelled = true
             }
         }
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(null)
 
     private fun measureWithConstraint(availableOuterWidth: Int?): Size {
         val contentLimit = resolvedContentLimit(availableOuterWidth)
@@ -121,8 +95,45 @@ class RangeInputNode(
         }
     }
 
-    override fun render(ctx: UiMeasureContext, x: Int, y: Int, width: Int, height: Int) {
+    override fun render(
+        ctx: UiMeasureContext,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
         bounds = Rect(x, y, width, height)
+    }
+
+    override fun shouldCapturePointerDrag(mouseX: Int, mouseY: Int): Boolean =
+        !styleDisabled && containsGlobalPoint(mouseX, mouseY)
+
+    override fun beginPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || styleDisabled) return
+        if (isActiveDragTarget()) return
+        beginActiveDrag(mouseX)
+    }
+
+    override fun continuePointerCapture(
+        mouseX: Int,
+        mouseY: Int,
+        mouseDX: Int,
+        mouseDY: Int,
+        button: MouseButton,
+    ) {
+        if (button != MouseButton.LEFT || styleDisabled || !isActiveDragTarget()) return
+        updateActiveDrag(mouseX)
+    }
+
+    override fun endPointerCapture(mouseX: Int, mouseY: Int, button: MouseButton) {
+        if (button != MouseButton.LEFT || !isActiveDragTarget()) return
+        completeActiveDrag()
+    }
+
+    override fun cancelPointerCapture() {
+        if (isActiveDragTarget()) {
+            clearActiveDrag()
+        }
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
@@ -135,8 +146,8 @@ class RangeInputNode(
                 geometry.trackRect.y,
                 geometry.trackRect.width,
                 geometry.trackRect.height,
-                trackColor
-            )
+                trackColor,
+            ),
         )
         val knobX = valueToX(geometry)
         val knobY = geometry.trackRect.y + (geometry.trackRect.height - geometry.knobSize) / 2
@@ -160,13 +171,44 @@ class RangeInputNode(
         setValue(next)
     }
 
+    private fun beginActiveDrag(mouseX: Int) {
+        activeDragIdentity = dragIdentity()
+        activeDragStartValue = this@RangeInputNode.value
+        updateActiveDrag(mouseX)
+    }
+
+    private fun updateActiveDrag(mouseX: Int) {
+        val before = this@RangeInputNode.value
+        updateFromMouse(mouseX)
+        if (this@RangeInputNode.value != before) {
+            postInput(
+                this@RangeInputNode,
+                this@RangeInputNode.value.toString(),
+                this@RangeInputNode.value,
+            )
+        }
+    }
+
+    private fun completeActiveDrag() {
+        val start = activeDragStartValue ?: this@RangeInputNode.value
+        if (this@RangeInputNode.value != start) {
+            postChange(
+                this@RangeInputNode,
+                this@RangeInputNode.value.toString(),
+                this@RangeInputNode.value,
+            )
+        }
+        clearActiveDrag()
+    }
+
     private fun valueToX(geometry: SliderGeometry): Int {
         val trackRect = geometry.trackRect
         val knobSize = geometry.knobSize
         val trackWidth = trackRect.width.coerceAtLeast(1)
         if (max == min) return trackRect.x
         val ratio = (value - min).toDouble() / (max - min).toDouble()
-        return (trackRect.x + ratio * trackWidth - knobSize / 2.0).toInt()
+        return (trackRect.x + ratio * trackWidth - knobSize / 2.0)
+            .toInt()
             .coerceIn(trackRect.x, trackRect.x + trackWidth - knobSize)
     }
 
@@ -174,15 +216,16 @@ class RangeInputNode(
         val contentHeight = contentHeight()
         val resolvedTrackHeight = maxOf(2, contentHeight / 3)
         val resolvedKnobSize = maxOf(resolvedTrackHeight * 2, 8)
-        val trackRect = Rect(
-            x = contentX(),
-            y = contentY() + (contentHeight - resolvedTrackHeight) / 2,
-            width = contentWidth(),
-            height = resolvedTrackHeight
-        )
+        val trackRect =
+            Rect(
+                x = contentX(),
+                y = contentY() + (contentHeight - resolvedTrackHeight) / 2,
+                width = contentWidth(),
+                height = resolvedTrackHeight,
+            )
         return SliderGeometry(
             trackRect = trackRect,
-            knobSize = resolvedKnobSize
+            knobSize = resolvedKnobSize,
         )
     }
 
@@ -193,9 +236,7 @@ class RangeInputNode(
         value = clamped
     }
 
-    private fun dragIdentity(): Any {
-        return key ?: this
-    }
+    private fun dragIdentity(): Any = key ?: this
 
     private fun isActiveDragTarget(): Boolean {
         val active = activeDragIdentity ?: return false

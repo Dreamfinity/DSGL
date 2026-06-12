@@ -1,8 +1,9 @@
 package org.dreamfinity.dsgl.core.components.modal
 
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalHostNode
-import org.dreamfinity.dsgl.core.components.modal.internal.ModalRuntime
-import org.dreamfinity.dsgl.core.dom.DOMNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalAnchorNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalRootNode
+import org.dreamfinity.dsgl.core.components.modal.internal.ModalPortalSessionStore
+import org.dreamfinity.dsgl.core.components.modal.internal.modalLifecycleKey
 import org.dreamfinity.dsgl.core.dom.elements.InputType
 import org.dreamfinity.dsgl.core.dsl.*
 import org.dreamfinity.dsgl.core.event.FocusManager
@@ -13,17 +14,13 @@ import org.dreamfinity.dsgl.core.style.Display
 import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.core.style.JustifyContent
 
-fun UiScope.modalHost(
-    modals: List<ModalSpec>,
-    modalKey: String = "modal.host",
-    content: UiScope.() -> Unit
-) {
-    ModalRuntime.onBuild(modalKey, modals)
-    val hostNode = mount(ModalHostNode(modalKey))
+fun UiScope.modalPortal(modals: List<ModalSpec>, key: String = "modal.portal", content: UiScope.() -> Unit) {
+    ModalPortalSessionStore.onBuild(key, modals)
+    val hostNode = mount(ModalPortalAnchorNode(key))
     hostNode.onKeyDown = { event ->
         val topMost = modals.lastOrNull()
         if (topMost != null) {
-            val topDialogKey = ModalRuntime.dialogKey(modalKey, topMost.key)
+            val topDialogKey = ModalPortalSessionStore.dialogKey(key, topMost.key)
             val focusInsideTop = FocusManager.isFocusWithinSubtree(topDialogKey)
             if (event.keyCode == KeyCodes.ESCAPE) {
                 if (topMost.keyboard) {
@@ -40,78 +37,35 @@ fun UiScope.modalHost(
     }
 
     val hostScope = childScope(hostNode)
-    hostScope.div({ key = "$modalKey.content" }) {
+    hostScope.div({ this.key = "$key.content" }) {
         content()
     }
 
-    modals.forEachIndexed { index, spec ->
-        val isTopMost = index == modals.lastIndex
-        val dialogKey = ModalRuntime.dialogKey(modalKey, spec.key)
-        val backdropColor = when (spec.backdrop) {
-            BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
-            BackdropMode.False -> 0x00000000
-        }
-        hostScope.div({
-            key = "$modalKey.modal.${spec.key}.layer"
-            onMouseDown = { event ->
-                if (!isTopMost) {
-                    event.cancelled = true
-                } else {
-                    val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                    if (!insideDialog && spec.trapFocus) {
-                        FocusManager.requestFocusFirstInSubtree(dialogKey)
-                    }
-                    event.cancelled = true
-                }
-            }
-            onMouseClick = { event ->
-                if (!isTopMost) {
-                    event.cancelled = true
-                } else {
-                    val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                    if (!insideDialog) {
-                        if (spec.backdrop == BackdropMode.True) {
-                            spec.onHide?.invoke()
-                        }
-                        event.cancelled = true
-                    }
-                }
-            }
-            onMouseWheel = { event ->
-                val insideDialog = isTargetInsideDialog(event.target, dialogKey)
-                if (!insideDialog) {
-                    event.cancelled = true
-                }
-            }
-            style = {
-                backgroundColor = backdropColor
-                display = Display.Flex
-                flexDirection = FlexDirection.Column
-                alignItems = AlignItems.Center
-                justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
-                padding { all((if (spec.centered) 6 else 10).px) }
-            }
+    val portalRoot = ModalPortalRootNode("$key.portal")
+    val portalScope = childScope(portalRoot)
+    hostNode.refTarget = ModalPortalSessionStore.portalHostRef(key)
+    ModalPortalSessionStore.registerPortalTemplate(key, portalRoot)
+    portalRoot.onKeyDown = hostNode.onKeyDown
+    buildModalLayers(portalScope, modals, key)
+}
 
-        }) {
-            modalFrame(
-                spec = spec,
-                dialogKey = dialogKey,
-                scope = ModalScope(
-                    dismiss = spec.onHide,
-                    isTopMost = isTopMost,
-                    modalKey = spec.key
-                )
-            )
-        }
+private fun buildModalLayers(hostScope: UiScope, modals: List<ModalSpec>, modalKey: String) {
+    modals.forEachIndexed { index, spec ->
+        hostScope.modalLayer(
+            spec = spec,
+            modalKey = modalKey,
+            isTopMost = index == modals.lastIndex,
+        )
     }
 
     hostScope.div({
-        key = "$modalKey.modal.lifecycle"
-        ref = RefTarget { handle ->
-            if (handle != null) {
-                ModalRuntime.onCommit(modalKey, modals)
+        key = modalLifecycleKey(modalKey)
+        ref =
+            RefTarget { handle ->
+                if (handle != null) {
+                    ModalPortalSessionStore.onCommit(modalKey, modals)
+                }
             }
-        }
         style = {
             width = 0.px
             height = 0.px
@@ -120,19 +74,52 @@ fun UiScope.modalHost(
     })
 }
 
+private fun UiScope.modalLayer(spec: ModalSpec, modalKey: String, isTopMost: Boolean) {
+    val dialogKey = ModalPortalSessionStore.dialogKey(modalKey, spec.key)
+    div({
+        key = "$modalKey.modal.${spec.key}.layer"
+        style = {
+            backgroundColor = spec.backdropColor()
+            display = Display.Flex
+            flexDirection = FlexDirection.Column
+            alignItems = AlignItems.Center
+            justifyContent = if (spec.centered) JustifyContent.Center else JustifyContent.Start
+            padding { all((if (spec.centered) 6 else 10).px) }
+        }
+    }) {
+        modalFrame(
+            spec = spec,
+            dialogKey = dialogKey,
+            scope =
+                ModalScope(
+                    dismiss = spec.onHide,
+                    isTopMost = isTopMost,
+                    modalKey = spec.key,
+                ),
+        )
+    }
+}
+
+private fun ModalSpec.backdropColor(): Int =
+    when (backdrop) {
+        BackdropMode.True, BackdropMode.Static -> 0x88000000.toInt()
+        BackdropMode.False -> 0x00000000
+    }
+
 fun UiScope.modalFrame(
     spec: ModalSpec,
     dialogKey: String = "modal.dialog.${spec.key}",
-    scope: ModalScope = ModalScope(
-        dismiss = spec.onHide,
-        isTopMost = true,
-        modalKey = spec.key
-    )
+    scope: ModalScope =
+        ModalScope(
+            dismiss = spec.onHide,
+            isTopMost = true,
+            modalKey = spec.key,
+        ),
 ) {
     modalDialog(
         centered = spec.centered,
         size = spec.size,
-        modalKey = dialogKey
+        modalKey = dialogKey,
     ) {
         spec.content(this, scope)
     }
@@ -142,13 +129,14 @@ fun UiScope.modalDialog(
     centered: Boolean = false,
     size: ModalSize? = null,
     modalKey: Any? = null,
-    block: UiScope.() -> Unit
+    block: UiScope.() -> Unit,
 ) {
-    val presetWidth = when (size) {
-        ModalSize.Sm -> 132
-        ModalSize.Lg -> 232
-        null -> 184
-    }
+    val presetWidth =
+        when (size) {
+            ModalSize.Sm -> 132
+            ModalSize.Lg -> 232
+            null -> 184
+        }
     div({
         key = modalKey
         style = {
@@ -159,21 +147,24 @@ fun UiScope.modalDialog(
             gap = 0.px
             backgroundColor = 0xFF2F3A46.toInt()
             if (!centered) {
-                margin { top = 6.px; right = 0.px; bottom = 0.px; left = 0.px }
+                margin {
+                    top = 6.px
+                    right = 0.px
+                    bottom = 0.px
+                    left = 0.px
+                }
             }
-            border { width = 1.px; color = 0xFF6E7D8C.toInt() }
+            border {
+                width = 1.px
+                color = 0xFF6E7D8C.toInt()
+            }
         }
-
     }) {
         block()
     }
 }
 
-fun UiScope.modalHeader(
-    closeButton: Boolean = false,
-    onHide: (() -> Unit)? = null,
-    block: UiScope.() -> Unit = {}
-) {
+fun UiScope.modalHeader(closeButton: Boolean = false, onHide: (() -> Unit)? = null, block: UiScope.() -> Unit = {}) {
     div({
         key = "modal.header"
         style = {
@@ -204,10 +195,7 @@ fun UiScope.modalHeader(
     }
 }
 
-fun UiScope.modalTitle(
-    text: String,
-    modalTitleKey: Any? = null
-) {
+fun UiScope.modalTitle(text: String, modalTitleKey: Any? = null) {
     div({
         key = modalTitleKey
         style = {
@@ -220,10 +208,7 @@ fun UiScope.modalTitle(
     }
 }
 
-fun UiScope.modalBody(
-    modalBodyKey: Any? = null,
-    block: UiScope.() -> Unit
-) {
+fun UiScope.modalBody(modalBodyKey: Any? = null, block: UiScope.() -> Unit) {
     div({
         key = modalBodyKey
         style = {
@@ -238,10 +223,7 @@ fun UiScope.modalBody(
     }
 }
 
-fun UiScope.modalFooter(
-    modalFooterKey: Any? = null,
-    block: UiScope.() -> Unit
-) {
+fun UiScope.modalFooter(modalFooterKey: Any? = null, block: UiScope.() -> Unit) {
     div({
         key = modalFooterKey
         style = {
@@ -255,7 +237,6 @@ fun UiScope.modalFooter(
             justifyContent = JustifyContent.End
             alignItems = AlignItems.Center
         }
-
     }) {
         block()
     }
@@ -265,11 +246,11 @@ fun alertModal(
     modalKey: String,
     title: String,
     message: String,
-    onClose: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onClose: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onClose
+        onHide = onClose,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
@@ -283,7 +264,6 @@ fun alertModal(
             })
         }
     }
-}
 
 fun confirmModal(
     modalKey: String,
@@ -292,11 +272,11 @@ fun confirmModal(
     confirmText: String = "Confirm",
     cancelText: String = "Cancel",
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onCancel: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onCancel
+        onHide = onCancel,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
@@ -315,7 +295,6 @@ fun confirmModal(
             })
         }
     }
-}
 
 fun promptModal(
     modalKey: String,
@@ -325,25 +304,23 @@ fun promptModal(
     confirmText: String = "Apply",
     cancelText: String = "Cancel",
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
-): ModalSpec {
-    return ModalSpec(
+    onCancel: () -> Unit,
+): ModalSpec =
+    ModalSpec(
         key = modalKey,
-        onHide = onCancel
+        onHide = onCancel,
     ) { scope ->
         modalHeader(closeButton = true, onHide = scope.dismiss) {
             modalTitle(title)
         }
         modalBody {
-            input(
-                InputType.Text(value = value, placeholder = "Enter value"), {
-                    this.key = "modal.prompt.input.$key"
-                    style = { width = 150.px }
-                    onInput = { event ->
-                        onValueInput(event.value)
-                    }
+            input(InputType.Text(value = value, placeholder = "Enter value"), {
+                this.key = "modal.prompt.input.$key"
+                style = { width = 150.px }
+                onInput = { event ->
+                    onValueInput(event.value)
                 }
-            )
+            })
         }
         modalFooter {
             button(cancelText, {
@@ -354,14 +331,3 @@ fun promptModal(
             })
         }
     }
-}
-
-private fun isTargetInsideDialog(target: DOMNode?, dialogKey: String): Boolean {
-    var node = target
-    while (node != null) {
-        if (node.key == dialogKey) return true
-        node = node.parent
-    }
-    return false
-}
-

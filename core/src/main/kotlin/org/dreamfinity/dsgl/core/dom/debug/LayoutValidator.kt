@@ -16,7 +16,7 @@ data class LayoutViolation(
     val parentKey: Any?,
     val message: String,
     val nodeBounds: Rect,
-    val parentContentBounds: Rect?
+    val parentContentBounds: Rect?,
 )
 
 object LayoutValidator {
@@ -29,19 +29,19 @@ object LayoutValidator {
             out.forEach { violation ->
                 println(
                     "[DSGL-Layout] ${violation.code} key=${violation.nodeKey} parent=${violation.parentKey} " +
-                        "node=${rectLabel(violation.nodeBounds)} parentContent=${rectLabel(violation.parentContentBounds)} :: " +
-                        violation.message
+                        "node=${
+                            rectLabel(
+                                violation.nodeBounds,
+                            )
+                        } parentContent=${rectLabel(violation.parentContentBounds)} :: " +
+                        violation.message,
                 )
             }
         }
         return out
     }
 
-    fun appendDebugCommands(
-        root: DOMNode,
-        violations: List<LayoutViolation>,
-        out: MutableList<RenderCommand>
-    ) {
+    fun appendDebugCommands(root: DOMNode, violations: List<LayoutViolation>, out: MutableList<RenderCommand>) {
         if (!LayoutDebug.drawBounds) return
         val violatingKeys = violations.mapNotNull { it.nodeKey }.toSet()
         walkDraw(root, violatingKeys, out)
@@ -52,7 +52,7 @@ object LayoutValidator {
         parent: DOMNode?,
         parentContent: Rect?,
         ctx: UiMeasureContext,
-        out: MutableList<LayoutViolation>
+        out: MutableList<LayoutViolation>,
     ) {
         if (node.display == Display.None) return
         validateRectShape(node = node, parent = parent, out = out)
@@ -68,36 +68,46 @@ object LayoutValidator {
                 parent = node,
                 parentContent = content,
                 ctx = ctx,
-                out = out
+                out = out,
             )
         }
     }
 
     private fun validateRectShape(node: DOMNode, parent: DOMNode?, out: MutableList<LayoutViolation>) {
         if (node.bounds.width < 0 || node.bounds.height < 0) {
-            out += LayoutViolation(
-                code = "NEGATIVE_SIZE",
-                nodeKey = node.key,
-                parentKey = parent?.key,
-                message = "Negative bounds size is invalid.",
-                nodeBounds = node.bounds,
-                parentContentBounds = parent?.let { contentRect(it) }
-            )
+            out +=
+                LayoutViolation(
+                    code = "NEGATIVE_SIZE",
+                    nodeKey = node.key,
+                    parentKey = parent?.key,
+                    message = "Negative bounds size is invalid.",
+                    nodeBounds = node.bounds,
+                    parentContentBounds = parent?.let { contentRect(it) },
+                )
         }
 
-        val right = node.bounds.x.toLong() + node.bounds.width.toLong()
-        val bottom = node.bounds.y.toLong() + node.bounds.height.toLong()
+        val right =
+            node.bounds.x
+                .toLong() +
+                node.bounds.width
+                    .toLong()
+        val bottom =
+            node.bounds.y
+                .toLong() +
+                node.bounds.height
+                    .toLong()
         if (right !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() ||
             bottom !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()
         ) {
-            out += LayoutViolation(
-                code = "INT_OVERFLOW",
-                nodeKey = node.key,
-                parentKey = parent?.key,
-                message = "Bounds exceed Int range.",
-                nodeBounds = node.bounds,
-                parentContentBounds = parent?.let { contentRect(it) }
-            )
+            out +=
+                LayoutViolation(
+                    code = "INT_OVERFLOW",
+                    nodeKey = node.key,
+                    parentKey = parent?.key,
+                    message = "Bounds exceed Int range.",
+                    nodeBounds = node.bounds,
+                    parentContentBounds = parent?.let { contentRect(it) },
+                )
         }
     }
 
@@ -105,18 +115,19 @@ object LayoutValidator {
         node: DOMNode,
         parent: DOMNode?,
         parentContent: Rect,
-        out: MutableList<LayoutViolation>
+        out: MutableList<LayoutViolation>,
     ) {
         val outer = outerRect(node)
         if (!containsRect(parentContent, outer)) {
-            out += LayoutViolation(
-                code = "CHILD_OUTSIDE_PARENT_CONTENT",
-                nodeKey = node.key,
-                parentKey = parent?.key,
-                message = "Child outer rect escapes parent content box.",
-                nodeBounds = outer,
-                parentContentBounds = parentContent
-            )
+            out +=
+                LayoutViolation(
+                    code = "CHILD_OUTSIDE_PARENT_CONTENT",
+                    nodeKey = node.key,
+                    parentKey = parent?.key,
+                    message = "Child outer rect escapes parent content box.",
+                    nodeBounds = outer,
+                    parentContentBounds = parentContent,
+                )
         }
     }
 
@@ -124,28 +135,30 @@ object LayoutValidator {
         node: DOMNode,
         ctx: UiMeasureContext,
         parent: DOMNode?,
-        out: MutableList<LayoutViolation>
+        out: MutableList<LayoutViolation>,
     ) {
         when (node) {
-            is TextNode -> validateLineStack(
-                text = node.text,
-                wrap = node.textWrap,
-                rect = contentRect(node),
-                ctx = ctx,
-                node = node,
-                parent = parent,
-                out = out
-            )
+            is TextNode ->
+                validateLineStack(
+                    text = node.text,
+                    wrap = node.textWrap,
+                    rect = contentRect(node),
+                    ctx = ctx,
+                    node = node,
+                    parent = parent,
+                    out = out,
+                )
 
-            is ButtonNode -> validateLineStack(
-                text = node.text,
-                wrap = node.textWrap,
-                rect = contentRect(node),
-                ctx = ctx,
-                node = node,
-                parent = parent,
-                out = out
-            )
+            is ButtonNode ->
+                validateLineStack(
+                    text = node.text,
+                    wrap = node.textWrap,
+                    rect = contentRect(node),
+                    ctx = ctx,
+                    node = node,
+                    parent = parent,
+                    out = out,
+                )
         }
     }
 
@@ -156,44 +169,49 @@ object LayoutValidator {
         ctx: UiMeasureContext,
         node: DOMNode,
         parent: DOMNode?,
-        out: MutableList<LayoutViolation>
+        out: MutableList<LayoutViolation>,
     ) {
         val maxWidth = if (wrap == TextWrap.Wrap) rect.width.coerceAtLeast(0) else null
         val lineHeight = ctx.fontHeight(node.fontId, node.fontSize).coerceAtLeast(1)
-        val layout = TextLayoutEngine.layout(
-            text = text,
-            maxWidth = maxWidth,
-            wrap = wrap,
-            fontHeight = lineHeight,
-            measureText = { value -> ctx.measureText(value, node.fontId, node.fontSize) }
-        )
+        val layout =
+            TextLayoutEngine.layout(
+                text = text,
+                maxWidth = maxWidth,
+                wrap = wrap,
+                fontHeight = lineHeight,
+                measureText = { value -> ctx.measureText(value, node.fontId, node.fontSize) },
+            )
 
         var previousBottom = 0
         layout.lines.forEachIndexed { index, _ ->
             val top = index * layout.lineHeight
             if (top < previousBottom) {
-                out += LayoutViolation(
-                    code = "TEXT_LINE_COLLISION",
-                    nodeKey = node.key,
-                    parentKey = parent?.key,
-                    message = "Wrapped line boxes overlap.",
-                    nodeBounds = node.bounds,
-                    parentContentBounds = parent?.let { contentRect(it) }
-                )
+                out +=
+                    LayoutViolation(
+                        code = "TEXT_LINE_COLLISION",
+                        nodeKey = node.key,
+                        parentKey = parent?.key,
+                        message = "Wrapped line boxes overlap.",
+                        nodeBounds = node.bounds,
+                        parentContentBounds = parent?.let { contentRect(it) },
+                    )
                 return
             }
             previousBottom = top + layout.lineHeight
         }
 
         if (rect.height < layout.totalHeight) {
-            out += LayoutViolation(
-                code = "TEXT_HEIGHT_UNDERSIZED",
-                nodeKey = node.key,
-                parentKey = parent?.key,
-                message = "Measured content height (${rect.height}) is smaller than line stack (${layout.totalHeight}).",
-                nodeBounds = node.bounds,
-                parentContentBounds = parent?.let { contentRect(it) }
-            )
+            out +=
+                LayoutViolation(
+                    code = "TEXT_HEIGHT_UNDERSIZED",
+                    nodeKey = node.key,
+                    parentKey = parent?.key,
+                    message =
+                        "Measured content height (${rect.height}) is smaller " +
+                            "than line stack (${layout.totalHeight}).",
+                    nodeBounds = node.bounds,
+                    parentContentBounds = parent?.let { contentRect(it) },
+                )
         }
     }
 
@@ -255,4 +273,3 @@ object LayoutValidator {
         return "(${rect.x},${rect.y},${rect.width},${rect.height})"
     }
 }
-

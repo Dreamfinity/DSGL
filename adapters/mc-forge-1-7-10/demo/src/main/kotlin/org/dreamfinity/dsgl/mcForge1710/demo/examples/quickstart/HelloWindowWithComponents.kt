@@ -11,12 +11,13 @@ import org.dreamfinity.dsgl.core.style.FlexDirection
 import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWrapper
 
 class HelloWindowWithComponents : DsglWindow() {
-    override fun render() = ui {
-        centeredFlexWrapper(direction = FlexDirection.Row) {
-            counterCard("Left panel")
-            counterCard("Right panel")
+    override fun render() =
+        ui {
+            centeredFlexWrapper(direction = FlexDirection.Row) {
+                counterCard("Left panel")
+                counterCard("Right panel")
+            }
         }
-    }
 }
 
 private fun UiScope.counterCard(title: String) {

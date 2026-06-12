@@ -4,7 +4,7 @@ internal enum class ColorPickerDragTarget {
     None,
     Field,
     Hue,
-    Alpha
+    Alpha,
 }
 
 internal class ColorPickerTextInputSession {
@@ -48,6 +48,13 @@ internal class ColorPickerInteractionSession {
         hoverY = y
     }
 
+    fun clearHover(): Boolean {
+        if (hoverX == Int.MIN_VALUE && hoverY == Int.MIN_VALUE) return false
+        hoverX = Int.MIN_VALUE
+        hoverY = Int.MIN_VALUE
+        return true
+    }
+
     fun clearDragTarget() {
         dragTarget = ColorPickerDragTarget.None
     }
@@ -58,7 +65,6 @@ internal class ColorPickerInteractionSession {
         clearDragTarget()
         modeDropdownOpen = false
         textInput.clear()
-        hoverX = Int.MIN_VALUE
-        hoverY = Int.MIN_VALUE
+        clearHover()
     }
 }

@@ -41,5 +41,5 @@ data class SelectStyle(
     val openDurationMs: Long = 130L,
     val closeDurationMs: Long = 100L,
     val openStartScale: Float = 0.985f,
-    val openStartOffsetYPx: Float = -4f
+    val openStartOffsetYPx: Float = -4f,
 )

@@ -7,41 +7,49 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SelectMeasurementCacheTests {
-    private val ctx = object : UiMeasureContext {
-        override fun measureText(text: String): Int = text.length * 7
-        override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 7
-        override val fontHeight: Int = 9
-        override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
-        override fun paint(commands: List<RenderCommand>) = Unit
-    }
+    private val ctx =
+        object : UiMeasureContext {
+            override fun measureText(text: String): Int = text.length * 7
+
+            override fun measureText(text: String, fontId: String?, fontSize: Int?): Int = text.length * 7
+
+            override val fontHeight: Int = 9
+
+            override fun fontHeight(fontId: String?, fontSize: Int?): Int = 9
+
+            override fun paint(commands: List<RenderCommand>) = Unit
+        }
 
     @Test
     fun `measurement cache reuses computation when inputs unchanged`() {
         val cache = SelectMeasurementCache()
-        val model = selectModel {
-            option("a", "Alpha")
-            option("b", "Beta")
-        }
+        val model =
+            selectModel {
+                option("a", "Alpha")
+                option("b", "Beta")
+            }
         val style = SelectStyle()
 
-        val first = cache.measure(
-            modelToken = model.token,
-            entries = model.entries,
-            style = style,
-            ctx = ctx,
-            dpiScale = 1f,
-            fontId = null,
-            fontSize = null
-        )
-        val second = cache.measure(
-            modelToken = model.token,
-            entries = model.entries,
-            style = style,
-            ctx = ctx,
-            dpiScale = 1f,
-            fontId = null,
-            fontSize = null
-        )
+        val first =
+            cache.measure(
+                modelToken = model.token,
+                entries = model.entries,
+                style = style,
+                ctx = ctx,
+                dpiScale = 1f,
+                fontId = null,
+                fontSize = null,
+            )
+        val second =
+            cache.measure(
+                modelToken = model.token,
+                entries = model.entries,
+                style = style,
+                ctx = ctx,
+                dpiScale = 1f,
+                fontId = null,
+                fontSize = null,
+            )
 
         assertEquals(1L, cache.computeCount)
         assertEquals(first.panelWidth, second.panelWidth)
@@ -50,15 +58,17 @@ class SelectMeasurementCacheTests {
     @Test
     fun `measurement cache invalidates when style or options change`() {
         val cache = SelectMeasurementCache()
-        val base = selectModel {
-            option("a", "Alpha")
-            option("b", "Beta")
-        }
-        val updated = selectModel {
-            option("a", "Alpha")
-            option("b", "Beta-Updated")
-            option("c", "Charlie")
-        }
+        val base =
+            selectModel {
+                option("a", "Alpha")
+                option("b", "Beta")
+            }
+        val updated =
+            selectModel {
+                option("a", "Alpha")
+                option("b", "Beta-Updated")
+                option("c", "Charlie")
+            }
         val styleA = SelectStyle(rowPaddingX = 6)
         val styleB = SelectStyle(rowPaddingX = 10)
 
@@ -69,7 +79,7 @@ class SelectMeasurementCacheTests {
             ctx = ctx,
             dpiScale = 1f,
             fontId = null,
-            fontSize = null
+            fontSize = null,
         )
         val afterBase = cache.computeCount
         cache.measure(
@@ -79,7 +89,7 @@ class SelectMeasurementCacheTests {
             ctx = ctx,
             dpiScale = 1f,
             fontId = null,
-            fontSize = null
+            fontSize = null,
         )
         val afterStyleChange = cache.computeCount
         cache.measure(
@@ -89,7 +99,7 @@ class SelectMeasurementCacheTests {
             ctx = ctx,
             dpiScale = 1f,
             fontId = null,
-            fontSize = null
+            fontSize = null,
         )
         val afterEntriesChange = cache.computeCount
 
@@ -101,23 +111,25 @@ class SelectMeasurementCacheTests {
     @Test
     fun `measurement includes group indentation and marker column in panel width`() {
         val cache = SelectMeasurementCache()
-        val model = selectModel {
-            group("Citrus") {
-                option("orange", "Orange")
-                option("lemon", "Lemon")
+        val model =
+            selectModel {
+                group("Citrus") {
+                    option("orange", "Orange")
+                    option("lemon", "Lemon")
+                }
             }
-        }
         val style = SelectStyle(groupIndentX = 14, markerColumnWidth = 12, markerGap = 8)
 
-        val measurement = cache.measure(
-            modelToken = model.token,
-            entries = model.entries,
-            style = style,
-            ctx = ctx,
-            dpiScale = 1f,
-            fontId = null,
-            fontSize = null
-        )
+        val measurement =
+            cache.measure(
+                modelToken = model.token,
+                entries = model.entries,
+                style = style,
+                ctx = ctx,
+                dpiScale = 1f,
+                fontId = null,
+                fontSize = null,
+            )
 
         assertTrue(measurement.panelWidth >= style.minPanelWidth)
         assertTrue(measurement.panelWidth > 60)

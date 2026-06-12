@@ -13,7 +13,7 @@ sealed class RenderCommand {
         val y: Int,
         val width: Int,
         val height: Int,
-        val color: Int
+        val color: Int,
     ) : RenderCommand()
 
     /** Saturation/value picker field for color picker UI. */
@@ -22,7 +22,7 @@ sealed class RenderCommand {
         val y: Int,
         val width: Int,
         val height: Int,
-        val hueDeg: Float
+        val hueDeg: Float,
     ) : RenderCommand()
 
     /** Hue gradient bar for color picker UI. */
@@ -30,7 +30,7 @@ sealed class RenderCommand {
         val x: Int,
         val y: Int,
         val width: Int,
-        val height: Int
+        val height: Int,
     ) : RenderCommand()
 
     /** Alpha gradient bar for color picker UI over existing checker background. */
@@ -39,7 +39,7 @@ sealed class RenderCommand {
         val y: Int,
         val width: Int,
         val height: Int,
-        val rgbColor: Int
+        val rgbColor: Int,
     ) : RenderCommand()
 
     /** Procedural checkerboard background rendered efficiently by backend. */
@@ -52,7 +52,7 @@ sealed class RenderCommand {
         val lightColor: Int,
         val darkColor: Int,
         val offsetX: Int = 0,
-        val offsetY: Int = 0
+        val offsetY: Int = 0,
     ) : RenderCommand()
 
     /** Text draw command. */
@@ -70,14 +70,14 @@ sealed class RenderCommand {
         val strikethrough: Boolean = false,
         val obfuscated: Boolean = false,
         val textStyleSpans: List<TextStyleSpan> = emptyList(),
-        val sourceKey: String? = null
+        val sourceKey: String? = null,
     ) : RenderCommand() {
         /**
          * Returns a DrawText command with replaced color while preserving
          * all other fields. This avoids relying on Kotlin synthetic copy$default ABI.
          */
-        fun withColor(newColor: Int): DrawText {
-            return DrawText(
+        fun withColor(newColor: Int): DrawText =
+            DrawText(
                 text = text,
                 x = x,
                 y = y,
@@ -91,9 +91,8 @@ sealed class RenderCommand {
                 strikethrough = strikethrough,
                 obfuscated = obfuscated,
                 textStyleSpans = textStyleSpans,
-                sourceKey = sourceKey
+                sourceKey = sourceKey,
             )
-        }
     }
 
     data class TextStyleSpan(
@@ -104,7 +103,7 @@ sealed class RenderCommand {
         val italic: Boolean,
         val underline: Boolean,
         val strikethrough: Boolean,
-        val obfuscated: Boolean
+        val obfuscated: Boolean,
     )
 
     /** Image draw command. */
@@ -113,7 +112,7 @@ sealed class RenderCommand {
         val x: Int,
         val y: Int,
         val width: Int,
-        val height: Int
+        val height: Int,
     ) : RenderCommand()
 
     /**
@@ -125,7 +124,7 @@ sealed class RenderCommand {
         val sourceY: Int,
         val sourceWidth: Int,
         val sourceHeight: Int,
-        val fallbackColor: Int
+        val fallbackColor: Int,
     ) : RenderCommand()
 
     /** Draws previously captured screen region as a magnified textured quad. */
@@ -133,8 +132,17 @@ sealed class RenderCommand {
         val x: Int,
         val y: Int,
         val width: Int,
-        val height: Int
+        val height: Int,
+        val grid: CapturedGrid? = null,
     ) : RenderCommand()
+
+    /** Optional grid rendered by backend as part of captured-region magnifier pass. */
+    data class CapturedGrid(
+        val columns: Int,
+        val rows: Int,
+        val magnification: Int,
+        val color: Int,
+    )
 
     /** Item stack draw command. */
     data class DrawItemStack(
@@ -144,7 +152,7 @@ sealed class RenderCommand {
         val width: Int,
         val size: Int,
         val rotYDeg: Double = 0.0,
-        val rotXDeg: Double = 0.0
+        val rotXDeg: Double = 0.0,
     ) : RenderCommand()
 
     /** Pushes a clipping rectangle (GUI coordinates, top-left origin). */
@@ -152,7 +160,7 @@ sealed class RenderCommand {
         val x: Int,
         val y: Int,
         val width: Int,
-        val height: Int
+        val height: Int,
     ) : RenderCommand()
 
     /** Pops the current clipping rectangle. */
@@ -166,7 +174,7 @@ sealed class RenderCommand {
         val translateY: Float,
         val scaleX: Float,
         val scaleY: Float,
-        val rotateDeg: Float
+        val rotateDeg: Float,
     ) : RenderCommand()
 
     /** Pops current transform. */
@@ -174,7 +182,7 @@ sealed class RenderCommand {
 
     /** Multiplies current alpha by opacity (0..1). */
     data class PushOpacity(
-        val opacity: Float
+        val opacity: Float,
     ) : RenderCommand()
 
     /** Pops current opacity multiplier. */

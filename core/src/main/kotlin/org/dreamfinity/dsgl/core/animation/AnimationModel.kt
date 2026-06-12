@@ -5,7 +5,7 @@ import org.dreamfinity.dsgl.core.style.UiTransform
 enum class AnimatedStyleProperty {
     Transform,
     Opacity,
-    Color
+    Color,
 }
 
 object StyleAnimProps {
@@ -17,7 +17,7 @@ object StyleAnimProps {
 data class StylePropertyKey<T : Any>(
     val id: String,
     val property: AnimatedStyleProperty,
-    val animatable: Animatable<T>
+    val animatable: Animatable<T>,
 )
 
 interface Animatable<T : Any> {
@@ -25,9 +25,7 @@ interface Animatable<T : Any> {
 }
 
 object FloatAnimatable : Animatable<Float> {
-    override fun interpolate(from: Float, to: Float, t: Float): Float {
-        return from + (to - from) * t
-    }
+    override fun interpolate(from: Float, to: Float, t: Float): Float = from + (to - from) * t
 }
 
 object ColorAnimatable : Animatable<Int> {
@@ -58,7 +56,7 @@ object TransformAnimatable : Animatable<UiTransform> {
             translateY = from.translateY + (to.translateY - from.translateY) * t,
             scaleX = from.scaleX + (to.scaleX - from.scaleX) * t,
             scaleY = from.scaleY + (to.scaleY - from.scaleY) * t,
-            rotateDeg = from.rotateDeg + rotateDelta * t
+            rotateDeg = from.rotateDeg + rotateDelta * t,
         )
     }
 
@@ -81,45 +79,50 @@ data class TransitionPropertySpec(
     val property: AnimatedStyleProperty,
     val durationMs: Int,
     val delayMs: Int = 0,
-    val easing: Easing = Easings.EASE
+    val easing: Easing = Easings.EASE,
 )
 
 data class TransitionSpec(
-    val properties: List<TransitionPropertySpec>
+    val properties: List<TransitionPropertySpec>,
 ) {
     companion object {
         val NONE: TransitionSpec = TransitionSpec(emptyList())
     }
 
-    fun forProperty(property: AnimatedStyleProperty): TransitionPropertySpec? {
-        return properties.lastOrNull { it.property == property }
-    }
+    fun forProperty(property: AnimatedStyleProperty): TransitionPropertySpec? =
+        properties.lastOrNull {
+            it.property == property
+        }
 }
 
 enum class AnimationDirection {
     Normal,
     Reverse,
     Alternate,
-    AlternateReverse
+    AlternateReverse,
 }
 
 enum class AnimationFillMode {
     None,
     Forwards,
     Backwards,
-    Both
+    Both,
 }
 
 enum class AnimationPlayState {
     Running,
-    Paused
+    Paused,
 }
 
 sealed class IterationCount {
-    data class Count(val value: Int) : IterationCount()
+    data class Count(
+        val value: Int,
+    ) : IterationCount()
+
     data object Infinite : IterationCount()
 
     fun isInfinite(): Boolean = this is Infinite
+
     fun finiteValueOrNull(): Int? = (this as? Count)?.value
 }
 
@@ -131,25 +134,29 @@ data class AnimationSpec(
     val iterationCount: IterationCount = IterationCount.Count(1),
     val direction: AnimationDirection = AnimationDirection.Normal,
     val fillMode: AnimationFillMode = AnimationFillMode.None,
-    val playState: AnimationPlayState = AnimationPlayState.Running
+    val playState: AnimationPlayState = AnimationPlayState.Running,
 )
 
 data class KeyframeValue(
     val transform: UiTransform? = null,
     val opacity: Float? = null,
-    val color: Int? = null
+    val color: Int? = null,
 )
 
 data class Keyframe(
     val fraction: Float,
-    val value: KeyframeValue
+    val value: KeyframeValue,
 )
 
 data class KeyframesDefinition(
     val name: String,
-    val frames: List<Keyframe>
+    val frames: List<Keyframe>,
 ) {
     init {
         require(frames.isNotEmpty()) { "Keyframes '$name' must contain at least one frame." }
     }
+
+    val transformFrames: List<Keyframe> = frames.filter { it.value.transform != null }
+    val opacityFrames: List<Keyframe> = frames.filter { it.value.opacity != null }
+    val colorFrames: List<Keyframe> = frames.filter { it.value.color != null }
 }

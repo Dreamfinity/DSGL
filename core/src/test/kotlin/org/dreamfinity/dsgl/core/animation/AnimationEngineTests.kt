@@ -32,15 +32,16 @@ class AnimationEngineTests {
     fun `transition retargeting starts from current interpolated value`() {
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.transitionSpec = TransitionSpec(
-            listOf(
-                TransitionPropertySpec(
-                    property = AnimatedStyleProperty.Opacity,
-                    durationMs = 1000,
-                    easing = Easings.LINEAR
-                )
+        node.transitionSpec =
+            TransitionSpec(
+                listOf(
+                    TransitionPropertySpec(
+                        property = AnimatedStyleProperty.Opacity,
+                        durationMs = 1000,
+                        easing = Easings.LINEAR,
+                    ),
+                ),
             )
-        )
 
         node.applyComputedStyle(style(opacity = 0f))
         node.applyComputedStyle(style(opacity = 1f))
@@ -58,16 +59,17 @@ class AnimationEngineTests {
     fun `transition delay is respected`() {
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.transitionSpec = TransitionSpec(
-            listOf(
-                TransitionPropertySpec(
-                    property = AnimatedStyleProperty.Opacity,
-                    durationMs = 500,
-                    delayMs = 300,
-                    easing = Easings.LINEAR
-                )
+        node.transitionSpec =
+            TransitionSpec(
+                listOf(
+                    TransitionPropertySpec(
+                        property = AnimatedStyleProperty.Opacity,
+                        durationMs = 500,
+                        delayMs = 300,
+                        easing = Easings.LINEAR,
+                    ),
+                ),
             )
-        )
 
         node.applyComputedStyle(style(opacity = 0f))
         node.applyComputedStyle(style(opacity = 1f))
@@ -85,16 +87,17 @@ class AnimationEngineTests {
         }
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.animationSpecs = listOf(
-            AnimationSpec(
-                name = "pulse",
-                durationMs = 1000,
-                delayMs = 200,
-                easing = Easings.LINEAR,
-                direction = AnimationDirection.Reverse,
-                fillMode = AnimationFillMode.Both
+        node.animationSpecs =
+            listOf(
+                AnimationSpec(
+                    name = "pulse",
+                    durationMs = 1000,
+                    delayMs = 200,
+                    easing = Easings.LINEAR,
+                    direction = AnimationDirection.Reverse,
+                    fillMode = AnimationFillMode.Both,
+                ),
             )
-        )
 
         node.applyComputedStyle(style(opacity = 1f))
         StyleAnimationEngine.tickAndApply(root, 0.1, null)
@@ -115,13 +118,14 @@ class AnimationEngineTests {
         }
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.animationSpecs = listOf(
-            AnimationSpec(
-                name = "fadeOnly",
-                durationMs = 1000,
-                easing = Easings.LINEAR
+        node.animationSpecs =
+            listOf(
+                AnimationSpec(
+                    name = "fadeOnly",
+                    durationMs = 1000,
+                    easing = Easings.LINEAR,
+                ),
             )
-        )
         node.applyComputedStyle(style(opacity = 1f, color = 0xFF123456.toInt()))
         StyleAnimationEngine.tickAndApply(root, 0.5, null)
 
@@ -137,16 +141,17 @@ class AnimationEngineTests {
         }
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.animationSpecs = listOf(
-            AnimationSpec(
-                name = "altDir",
-                durationMs = 1000,
-                easing = Easings.LINEAR,
-                iterationCount = IterationCount.Count(2),
-                direction = AnimationDirection.Alternate,
-                fillMode = AnimationFillMode.Forwards
+        node.animationSpecs =
+            listOf(
+                AnimationSpec(
+                    name = "altDir",
+                    durationMs = 1000,
+                    easing = Easings.LINEAR,
+                    iterationCount = IterationCount.Count(2),
+                    direction = AnimationDirection.Alternate,
+                    fillMode = AnimationFillMode.Forwards,
+                ),
             )
-        )
         node.applyComputedStyle(style(opacity = 1f))
         StyleAnimationEngine.tickAndApply(root, 1.25, null)
         assertTrue(node.effectiveOpacity() in 0.70f..0.80f)
@@ -162,15 +167,16 @@ class AnimationEngineTests {
         }
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.animationSpecs = listOf(
-            AnimationSpec(
-                name = "delayBackwards",
-                durationMs = 1000,
-                delayMs = 400,
-                easing = Easings.LINEAR,
-                fillMode = AnimationFillMode.Backwards
+        node.animationSpecs =
+            listOf(
+                AnimationSpec(
+                    name = "delayBackwards",
+                    durationMs = 1000,
+                    delayMs = 400,
+                    easing = Easings.LINEAR,
+                    fillMode = AnimationFillMode.Backwards,
+                ),
             )
-        )
         node.applyComputedStyle(style(opacity = 1f))
         StyleAnimationEngine.tickAndApply(root, 0.2, null)
         assertEquals(0f, node.effectiveOpacity())
@@ -180,20 +186,21 @@ class AnimationEngineTests {
     fun `transition animates transform opacity and color together`() {
         val root = ContainerNode(key = "root")
         val node = TextNode(TextSource.Static("x"), key = "animated").applyParent(root)
-        node.transitionSpec = TransitionSpec(
-            listOf(
-                TransitionPropertySpec(AnimatedStyleProperty.Transform, 1000, easing = Easings.LINEAR),
-                TransitionPropertySpec(AnimatedStyleProperty.Opacity, 1000, easing = Easings.LINEAR),
-                TransitionPropertySpec(AnimatedStyleProperty.Color, 1000, easing = Easings.LINEAR)
+        node.transitionSpec =
+            TransitionSpec(
+                listOf(
+                    TransitionPropertySpec(AnimatedStyleProperty.Transform, 1000, easing = Easings.LINEAR),
+                    TransitionPropertySpec(AnimatedStyleProperty.Opacity, 1000, easing = Easings.LINEAR),
+                    TransitionPropertySpec(AnimatedStyleProperty.Color, 1000, easing = Easings.LINEAR),
+                ),
             )
-        )
         node.applyComputedStyle(style(opacity = 1f, color = 0xFFFFFFFF.toInt(), transform = UiTransform.IDENTITY))
         node.applyComputedStyle(
             style(
                 opacity = 0.5f,
                 color = 0xFF000000.toInt(),
-                transform = UiTransform(translateX = 10f, translateY = 0f, scaleX = 1f, scaleY = 1f, rotateDeg = 0f)
-            )
+                transform = UiTransform(translateX = 10f, translateY = 0f, scaleX = 1f, scaleY = 1f, rotateDeg = 0f),
+            ),
         )
         StyleAnimationEngine.tickAndApply(root, 0.5, null)
 
@@ -205,15 +212,10 @@ class AnimationEngineTests {
         assertTrue(red in 120..136)
     }
 
-    private fun style(
-        transform: UiTransform = UiTransform.IDENTITY,
-        opacity: Float = 1f,
-        color: Int = 0xFFFFFFFF.toInt()
-    ): ComputedStyle {
-        return ComputedStyleDefaults(
+    private fun style(transform: UiTransform = UiTransform.IDENTITY, opacity: Float = 1f, color: Int = 0xFFFFFFFF.toInt()): ComputedStyle =
+        ComputedStyleDefaults(
             foregroundColor = color,
             opacity = opacity,
-            transform = transform
+            transform = transform,
         ).toComputedStyle()
-    }
 }

@@ -16,7 +16,7 @@ data class DndMonitorState(
     val previewY: Double,
     val mode: DragPreviewMode?,
     val collisionCandidates: Int,
-    val sourceExcludedFromHitTest: Boolean
+    val sourceExcludedFromHitTest: Boolean,
 )
 
 interface DndMonitorRegistry {
@@ -25,14 +25,15 @@ interface DndMonitorRegistry {
 
 interface DndHitTester
 
-interface DndOverlayRenderer {
+interface DndPortalRenderer {
     fun appendPlaceholderCommands(out: MutableList<RenderCommand>)
-    fun appendOverlayCommands(
+
+    fun appendPortalCommands(
         root: DOMNode,
         ctx: UiMeasureContext,
         viewportWidth: Int,
         viewportHeight: Int,
-        out: MutableList<RenderCommand>
+        out: MutableList<RenderCommand>,
     )
 }
 
@@ -40,20 +41,30 @@ interface DndClock {
     fun onFrame(root: DOMNode, dtSeconds: Double)
 }
 
-interface DndEngine : DndMonitorRegistry, DndOverlayRenderer, DndClock {
+interface DndEngine :
+    DndMonitorRegistry,
+    DndPortalRenderer,
+    DndClock {
     val isDragging: Boolean
     val isPointerCaptured: Boolean
 
     fun monitor(nodeKey: Any? = null): DndMonitorState
+
     fun activeDrag(): ActiveDrag?
 
     fun setSmoothingFactor(value: Double)
+
     fun getSmoothingFactor(): Double
+
     fun isDraggingNode(nodeKey: Any?): Boolean
 
     fun onMouseDown(root: DOMNode, target: DOMNode?, event: MouseDownEvent)
+
     fun onMouseMove(root: DOMNode, mouseX: Int, mouseY: Int)
+
     fun onMouseUp(root: DOMNode, event: MouseUpEvent): Boolean
+
     fun rebindAfterReconcile(root: DOMNode)
+
     fun cancelActiveDrag()
 }

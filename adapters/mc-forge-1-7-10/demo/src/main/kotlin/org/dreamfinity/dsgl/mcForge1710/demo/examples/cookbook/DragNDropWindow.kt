@@ -18,31 +18,35 @@ import org.dreamfinity.dsgl.mcForge1710.McItemStackRef
 import org.dreamfinity.dsgl.mcForge1710.demo.examples.containers.centeredFlexWrapper
 
 class DragNDropWindow : DsglWindow() {
-    override fun render() = ui {
-        centeredFlexWrapper {
-            dragBucketRecipe()
+    override fun render() =
+        ui {
+            centeredFlexWrapper {
+                dragBucketRecipe()
+            }
         }
-    }
 }
 
-
-private data class Card(val id: String, val label: String)
+private data class Card(
+    val id: String,
+    val label: String,
+)
 
 fun UiScope.dragBucketRecipe() {
     var lane by useState(listOf(Card("apple", "Apple"), Card("bread", "Bread")))
     var done by useState(emptyList<Card>())
 
-    val doneDrop = useDroppable(
-        id = "bucket.done",
-        nodeKey = "bucket.done",
-        accepts = { active -> !active.id.isNullOrBlank() },
-        onDrop = { _, active ->
-            val movedId = active?.id ?: return@useDroppable
-            val moved = lane.firstOrNull { it.id == movedId } ?: return@useDroppable
-            lane = lane.filterNot { it.id == movedId }
-            done = done + moved
-        }
-    )
+    val doneDrop =
+        useDroppable(
+            id = "bucket.done",
+            nodeKey = "bucket.done",
+            accepts = { active -> !active.id.isNullOrBlank() },
+            onDrop = { _, active ->
+                val movedId = active?.id ?: return@useDroppable
+                val moved = lane.firstOrNull { it.id == movedId } ?: return@useDroppable
+                lane = lane.filterNot { it.id == movedId }
+                done = done + moved
+            },
+        )
 
     div({
         key = "recipe.done.bucket"
@@ -52,11 +56,21 @@ fun UiScope.dragBucketRecipe() {
         }
         applyDroppable(doneDrop)
     }) {
-        div({ style = { display = Display.Flex; alignItems = AlignItems.Center } }) {
+        div({
+            style = {
+                display = Display.Flex
+                alignItems = AlignItems.Center
+            }
+        }) {
             text("Done (${done.size})")
         }
         done.forEach { card ->
-            div({ style = { display = Display.Flex; alignItems = AlignItems.Center } }) {
+            div({
+                style = {
+                    display = Display.Flex
+                    alignItems = AlignItems.Center
+                }
+            }) {
                 GameRegistry.findItem("minecraft", card.id)?.let { item ->
                     itemStack(McItemStackRef(ItemStack(item, 1, 0)), { size = 32 })
                 } ?: text("?")
@@ -82,4 +96,3 @@ fun UiScope.dragBucketRecipe() {
         }
     }
 }
-

@@ -27,9 +27,10 @@ class LineHeightStyleContractTests {
     @Test
     fun `line-height reaches computed style from inline declarations`() {
         val node = ContainerNode(key = "line-height-node")
-        node.inlineStyleDeclarations = StyleDeclarations().apply {
-            set(StyleProperty.LINE_HEIGHT, StyleExpression.Literal("22px"))
-        }
+        node.inlineStyleDeclarations =
+            StyleDeclarations().apply {
+                set(StyleProperty.LINE_HEIGHT, StyleExpression.Literal("22px"))
+            }
 
         StyleEngine.clearCache()
         StyleEngine.applyStylesRecursively(node)
@@ -43,9 +44,10 @@ class LineHeightStyleContractTests {
     @Test
     fun `line-height inherits through computed style`() {
         val root = ContainerNode(key = "root")
-        root.inlineStyleDeclarations = StyleDeclarations().apply {
-            set(StyleProperty.LINE_HEIGHT, StyleExpression.Literal("24px"))
-        }
+        root.inlineStyleDeclarations =
+            StyleDeclarations().apply {
+                set(StyleProperty.LINE_HEIGHT, StyleExpression.Literal("24px"))
+            }
         val child = TextNode(TextSource.Static("child"), key = "child").applyParent(root)
 
         StyleEngine.clearCache()

@@ -5,7 +5,13 @@ import org.dreamfinity.dsgl.core.input.ClipboardBridge
 fun interface ScreenColorSampler {
     fun sampleColorAt(x: Int, y: Int): Int?
 
-    fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
+    fun sampleArea(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        outArgb: IntArray,
+    ): Boolean {
         if (width <= 0 || height <= 0) return false
         val required = width * height
         if (outArgb.size < required) return false
@@ -44,9 +50,13 @@ object ScreenColorSamplerBridge {
         return RgbaColor.fromArgbInt(argb).normalized()
     }
 
-    fun sampleArea(x: Int, y: Int, width: Int, height: Int, outArgb: IntArray): Boolean {
-        return sampler?.sampleArea(x, y, width, height, outArgb) == true
-    }
+    fun sampleArea(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        outArgb: IntArray,
+    ): Boolean = sampler?.sampleArea(x, y, width, height, outArgb) == true
 }
 
 object ColorClipboardSupport {
@@ -58,7 +68,7 @@ object ColorClipboardSupport {
         color: RgbaColor,
         mode: ColorFormatMode,
         includeAlpha: Boolean,
-        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA
+        rgbOrder: RgbChannelOrder = RgbChannelOrder.RGBA,
     ) {
         val text = ColorTextCodec.format(color, mode, includeAlpha, rgbOrder)
         ClipboardBridge.writeText(text)

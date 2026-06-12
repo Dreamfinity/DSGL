@@ -8,7 +8,7 @@ data class MouseDragEvent(
     var lastMouseY: Int,
     var dx: Int,
     var dy: Int,
-    var mouseButton: MouseButton
+    var mouseButton: MouseButton,
 ) : MouseEvent(lastMouseX, lastMouseY) {
     override val type: Events
         get() = Events.DRAG

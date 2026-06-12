@@ -6,7 +6,7 @@ data class FontLineMetrics(
     val emSize: Float,
     val lineHeightEm: Float,
     val ascenderEm: Float,
-    val descenderEm: Float
+    val descenderEm: Float,
 )
 
 /**
@@ -39,7 +39,7 @@ interface UiMeasureContext {
         startIndex: Int,
         endIndexExclusive: Int,
         fontId: String?,
-        fontSize: Int?
+        fontSize: Int?,
     ): Int {
         val safeStart = startIndex.coerceIn(0, text.length)
         val safeEnd = endIndexExclusive.coerceIn(safeStart, text.length)

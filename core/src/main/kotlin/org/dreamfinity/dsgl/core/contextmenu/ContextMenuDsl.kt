@@ -7,7 +7,7 @@ fun contextMenu(
     id: String? = null,
     fontId: String? = null,
     fontSize: Int? = null,
-    block: ContextMenuBuilder.() -> Unit
+    block: ContextMenuBuilder.() -> Unit,
 ): ContextMenuModel {
     val builder = ContextMenuBuilder()
     builder.block()
@@ -15,7 +15,7 @@ fun contextMenu(
         id = id,
         entries = builder.buildEntries(),
         fontId = fontId,
-        fontSize = fontSize
+        fontSize = fontSize,
     )
 }
 
@@ -23,56 +23,42 @@ fun contextMenu(
 class ContextMenuBuilder {
     private val entries: MutableList<MenuEntry> = ArrayList()
 
-    fun item(
-        label: String,
-        id: String? = null,
-        block: ContextMenuItemBuilder.() -> Unit = {}
-    ) {
+    fun item(label: String, id: String? = null, block: ContextMenuItemBuilder.() -> Unit = {}) {
         item(labelProvider = { label }, id = id, block = block)
     }
 
-    fun item(
-        labelProvider: () -> String,
-        id: String? = null,
-        block: ContextMenuItemBuilder.() -> Unit = {}
-    ) {
+    fun item(labelProvider: () -> String, id: String? = null, block: ContextMenuItemBuilder.() -> Unit = {}) {
         val builder = ContextMenuItemBuilder()
         builder.block()
-        entries += MenuEntry.Item(
-            id = id,
-            labelProvider = labelProvider,
-            iconProvider = builder.iconProvider,
-            hintProvider = builder.hintProvider,
-            enabledProvider = builder.enabledProvider,
-            checkedProvider = builder.checkedProvider,
-            closeOnAction = builder.closeOnAction,
-            onClick = builder.onClick
-        )
+        entries +=
+            MenuEntry.Item(
+                id = id,
+                labelProvider = labelProvider,
+                iconProvider = builder.iconProvider,
+                hintProvider = builder.hintProvider,
+                enabledProvider = builder.enabledProvider,
+                checkedProvider = builder.checkedProvider,
+                closeOnAction = builder.closeOnAction,
+                onClick = builder.onClick,
+            )
     }
 
-    fun submenu(
-        label: String,
-        id: String? = null,
-        block: ContextMenuSubmenuBuilder.() -> Unit
-    ) {
+    fun submenu(label: String, id: String? = null, block: ContextMenuSubmenuBuilder.() -> Unit) {
         submenu(labelProvider = { label }, id = id, block = block)
     }
 
-    fun submenu(
-        labelProvider: () -> String,
-        id: String? = null,
-        block: ContextMenuSubmenuBuilder.() -> Unit
-    ) {
+    fun submenu(labelProvider: () -> String, id: String? = null, block: ContextMenuSubmenuBuilder.() -> Unit) {
         val builder = ContextMenuSubmenuBuilder()
         builder.block()
-        entries += MenuEntry.Submenu(
-            id = id,
-            labelProvider = labelProvider,
-            iconProvider = builder.iconProvider,
-            hintProvider = builder.hintProvider,
-            enabledProvider = builder.enabledProvider,
-            entries = builder.buildEntries()
-        )
+        entries +=
+            MenuEntry.Submenu(
+                id = id,
+                labelProvider = labelProvider,
+                iconProvider = builder.iconProvider,
+                hintProvider = builder.hintProvider,
+                enabledProvider = builder.enabledProvider,
+                entries = builder.buildEntries(),
+            )
     }
 
     fun separator(id: String? = null) {
@@ -113,56 +99,42 @@ class ContextMenuSubmenuBuilder {
         enabledProvider = predicate
     }
 
-    fun item(
-        label: String,
-        id: String? = null,
-        block: ContextMenuItemBuilder.() -> Unit = {}
-    ) {
+    fun item(label: String, id: String? = null, block: ContextMenuItemBuilder.() -> Unit = {}) {
         item(labelProvider = { label }, id = id, block = block)
     }
 
-    fun item(
-        labelProvider: () -> String,
-        id: String? = null,
-        block: ContextMenuItemBuilder.() -> Unit = {}
-    ) {
+    fun item(labelProvider: () -> String, id: String? = null, block: ContextMenuItemBuilder.() -> Unit = {}) {
         val builder = ContextMenuItemBuilder()
         builder.block()
-        entries += MenuEntry.Item(
-            id = id,
-            labelProvider = labelProvider,
-            iconProvider = builder.iconProvider,
-            hintProvider = builder.hintProvider,
-            enabledProvider = builder.enabledProvider,
-            checkedProvider = builder.checkedProvider,
-            closeOnAction = builder.closeOnAction,
-            onClick = builder.onClick
-        )
+        entries +=
+            MenuEntry.Item(
+                id = id,
+                labelProvider = labelProvider,
+                iconProvider = builder.iconProvider,
+                hintProvider = builder.hintProvider,
+                enabledProvider = builder.enabledProvider,
+                checkedProvider = builder.checkedProvider,
+                closeOnAction = builder.closeOnAction,
+                onClick = builder.onClick,
+            )
     }
 
-    fun submenu(
-        label: String,
-        id: String? = null,
-        block: ContextMenuSubmenuBuilder.() -> Unit
-    ) {
+    fun submenu(label: String, id: String? = null, block: ContextMenuSubmenuBuilder.() -> Unit) {
         submenu(labelProvider = { label }, id = id, block = block)
     }
 
-    fun submenu(
-        labelProvider: () -> String,
-        id: String? = null,
-        block: ContextMenuSubmenuBuilder.() -> Unit
-    ) {
+    fun submenu(labelProvider: () -> String, id: String? = null, block: ContextMenuSubmenuBuilder.() -> Unit) {
         val builder = ContextMenuSubmenuBuilder()
         builder.block()
-        entries += MenuEntry.Submenu(
-            id = id,
-            labelProvider = labelProvider,
-            iconProvider = builder.iconProvider,
-            hintProvider = builder.hintProvider,
-            enabledProvider = builder.enabledProvider,
-            entries = builder.buildEntries()
-        )
+        entries +=
+            MenuEntry.Submenu(
+                id = id,
+                labelProvider = labelProvider,
+                iconProvider = builder.iconProvider,
+                hintProvider = builder.hintProvider,
+                enabledProvider = builder.enabledProvider,
+                entries = builder.buildEntries(),
+            )
     }
 
     fun separator(id: String? = null) {

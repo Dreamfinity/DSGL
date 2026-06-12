@@ -7,11 +7,12 @@ import org.dreamfinity.dsgl.core.dom.layout.Insets
 import org.dreamfinity.dsgl.core.dom.layout.Size
 import org.dreamfinity.dsgl.core.dom.layout.UiMeasureContext
 import org.dreamfinity.dsgl.core.event.*
+import org.dreamfinity.dsgl.core.portal.DomainPortalServices
+import org.dreamfinity.dsgl.core.portal.ScreenDomainId
 import org.dreamfinity.dsgl.core.render.RenderCommand
 import org.dreamfinity.dsgl.core.select.SelectEntry
 import org.dreamfinity.dsgl.core.select.SelectModel
 import org.dreamfinity.dsgl.core.select.SelectOpenRequest
-import org.dreamfinity.dsgl.core.select.SelectRuntime
 
 class SelectNode(
     model: SelectModel,
@@ -19,7 +20,8 @@ class SelectNode(
     value: String? = null,
     defaultValue: String? = null,
     closeOnSelect: Boolean = true,
-    key: Any? = null
+    ownerDomain: ScreenDomainId = ScreenDomainId.Application,
+    key: Any? = null,
 ) : DOMNode(key) {
     override val styleType: String = "select"
     override val focusable: Boolean = true
@@ -56,12 +58,16 @@ class SelectNode(
             markRenderCommandsDirty()
         }
     var closeOnSelect: Boolean = closeOnSelect
+    var ownerDomain: ScreenDomainId = ownerDomain
     var textColor: Int = DsglColors.TEXT
     var placeholderColor: Int = 0xFF8A8A8A.toInt()
     var backgroundColor: Int = 0xFF2E2E33.toInt()
     var disabledTextColor: Int = 0xFF8E8E8E.toInt()
     var minContentWidth: Int = 92
-    var arrowGlyph: String = SelectRuntime.engine.currentStyle().arrowGlyph
+    var arrowGlyph: String =
+        DomainPortalServices.applicationSelectEngine
+            .currentStyle()
+            .arrowGlyph
     var arrowSpacing: Int = 8
 
     private var uncontrolledValue: String? = defaultValue
@@ -75,8 +81,11 @@ class SelectNode(
                 if (event.mouseButton != MouseButton.LEFT) return@addEventListener
                 if (!this@SelectNode.containsGlobalPoint(event.mouseX, event.mouseY)) return@addEventListener
                 FocusManager.requestFocus(this@SelectNode)
-                if (SelectRuntime.host.isOpenFor(ownerToken)) {
-                    SelectRuntime.host.close(ownerToken)
+                if (
+                    DomainPortalServices.isSelectOpenFor(ownerToken) &&
+                    !DomainPortalServices.isSelectClosingFor(ownerToken)
+                ) {
+                    DomainPortalServices.closeSelect(ownerToken)
                 } else {
                     openPopup()
                 }
@@ -85,7 +94,7 @@ class SelectNode(
             this@SelectNode.addEventListener(Events.KEYDOWN) { event: KeyboardKeyDownEvent ->
                 if (this@SelectNode.styleDisabled) return@addEventListener
                 if (!FocusManager.isFocused(this@SelectNode)) return@addEventListener
-                if (SelectRuntime.host.isOpenFor(ownerToken)) return@addEventListener
+                if (DomainPortalServices.isSelectOpenFor(ownerToken)) return@addEventListener
                 when (event.keyCode) {
                     KeyCodes.ENTER, KeyCodes.SPACE -> {
                         openPopup()
@@ -94,32 +103,29 @@ class SelectNode(
 
                     KeyCodes.DOWN -> {
                         openPopup()
-                        SelectRuntime.engine.moveHighlight(ownerToken, 1)
+                        DomainPortalServices.selectEngineFor(ownerDomain).moveHighlight(ownerToken, 1)
                         event.cancelled = true
                     }
 
                     KeyCodes.UP -> {
                         openPopup()
-                        SelectRuntime.engine.moveHighlight(ownerToken, -1)
+                        DomainPortalServices.selectEngineFor(ownerDomain).moveHighlight(ownerToken, -1)
                         event.cancelled = true
                     }
                 }
             }
             this@SelectNode.addEventListener(Events.BLUR) { _: FocusLoseEvent ->
-                if (SelectRuntime.host.isOpenFor(ownerToken)) {
-                    SelectRuntime.host.close(ownerToken)
+                if (DomainPortalServices.isSelectOpenFor(ownerToken)) {
+                    DomainPortalServices.closeSelect(ownerToken)
                 }
             }
         }
     }
 
-    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
-        return measureWithConstraint(ctx, availableOuterWidth)
-    }
+    internal override fun measureForLayout(ctx: UiMeasureContext, availableOuterWidth: Int?): Size =
+        measureWithConstraint(ctx, availableOuterWidth)
 
-    override fun measure(ctx: UiMeasureContext): Size {
-        return measureWithConstraint(ctx, null)
-    }
+    override fun measure(ctx: UiMeasureContext): Size = measureWithConstraint(ctx, null)
 
     private fun measureWithConstraint(ctx: UiMeasureContext, availableOuterWidth: Int?): Size {
         val lineHeight = resolveFontSize(ctx)
@@ -147,17 +153,18 @@ class SelectNode(
     }
 
     override fun buildRenderCommands(ctx: UiMeasureContext, out: MutableList<RenderCommand>) {
-        if (styleDisabled && SelectRuntime.host.isOpenFor(ownerToken)) {
-            SelectRuntime.host.close(ownerToken)
+        if (styleDisabled && DomainPortalServices.isSelectOpenFor(ownerToken)) {
+            DomainPortalServices.closeSelect(ownerToken)
         }
         syncPopup()
         val isFocused = FocusManager.isFocused(this) && !styleDisabled
         val textValue = selectedLabelOrPlaceholder()
-        val drawColor = when {
-            styleDisabled -> disabledTextColor
-            selectedOptionId() == null -> placeholderColor
-            else -> textColor
-        }
+        val drawColor =
+            when {
+                styleDisabled -> disabledTextColor
+                selectedOptionId() == null -> placeholderColor
+                else -> textColor
+            }
         val arrowWidth = if (arrowGlyph.isEmpty()) 0 else measureText(ctx, arrowGlyph)
         val lineHeight = resolveFontSize(ctx)
         out += RenderCommand.DrawRect(bounds.x, bounds.y, bounds.width, bounds.height, backgroundColor)
@@ -174,34 +181,35 @@ class SelectNode(
 
         out += RenderCommand.PushClip(innerX, innerY, textClipWidth, innerHeight.coerceAtLeast(1))
         if (textValue.isNotEmpty()) {
-            out += drawTextCommand(
-                ctx,
-                text = textValue,
-                x = innerX,
-                y = textY,
-                color = drawColor
-            )
+            out +=
+                drawTextCommand(
+                    ctx,
+                    text = textValue,
+                    x = innerX,
+                    y = textY,
+                    color = drawColor,
+                )
         }
         out += RenderCommand.PopClip
 
         if (arrowGlyph.isNotEmpty()) {
             val arrowColor = if (styleDisabled) disabledTextColor else textColor
-            out += drawTextCommand(
-                ctx,
-                text = arrowGlyph,
-                x = arrowX,
-                y = textY,
-                color = arrowColor
-            )
+            out +=
+                drawTextCommand(
+                    ctx,
+                    text = arrowGlyph,
+                    x = arrowX,
+                    y = textY,
+                    color = arrowColor,
+                )
         }
-
     }
 
     override fun volatileRenderCommandsSignature(nowMs: Long): Long {
         var hash = 1L
         hash = 31L * hash + selectedLabelOrPlaceholder().hashCode()
         hash = 31L * hash + (selectedOptionId()?.hashCode() ?: 0)
-        hash = 31L * hash + if (SelectRuntime.host.isOpenFor(ownerToken)) 1L else 0L
+        hash = 31L * hash + if (DomainPortalServices.isSelectOpenFor(ownerToken)) 1L else 0L
         return hash
     }
 
@@ -211,6 +219,7 @@ class SelectNode(
         controlledValue = template.controlledValue
         defaultValue = template.defaultValue
         closeOnSelect = template.closeOnSelect
+        ownerDomain = template.ownerDomain
         textColor = template.textColor
         placeholderColor = template.placeholderColor
         backgroundColor = template.backgroundColor
@@ -240,15 +249,15 @@ class SelectNode(
 
     private fun openPopup() {
         if (!hasEnabledOption()) return
-        SelectRuntime.host.open(openRequest())
+        DomainPortalServices.openSelect(openRequest())
         setOpenState(true)
     }
 
     private fun syncPopup() {
-        val open = SelectRuntime.host.isOpenFor(ownerToken)
+        val open = DomainPortalServices.isSelectOpenFor(ownerToken)
         setOpenState(open)
         if (open) {
-            SelectRuntime.engine.sync(openRequest())
+            DomainPortalServices.selectEngineFor(ownerDomain).sync(openRequest())
         }
     }
 
@@ -265,7 +274,8 @@ class SelectNode(
             onSelect = { selected -> applySelection(selected) },
             onClose = { setOpenState(false) },
             fontId = fontId,
-            fontSize = fontSize
+            fontSize = fontSize,
+            ownerDomain = ownerDomain,
         )
     }
 
@@ -294,7 +304,9 @@ class SelectNode(
                 return option.labelProvider.invoke()
             }
         }
-        return model.placeholderProvider?.invoke().orEmpty()
+        return model.placeholderProvider
+            ?.invoke()
+            .orEmpty()
     }
 
     private fun reconcileSelection() {
@@ -305,17 +317,16 @@ class SelectNode(
         if (controlled) {
             return
         }
-        uncontrolledValue = when {
-            !defaultValue.isNullOrEmpty() && optionExists(defaultValue!!) -> defaultValue
-            else -> firstEnabledOptionId()
-        }
+        uncontrolledValue =
+            when {
+                !defaultValue.isNullOrEmpty() && optionExists(defaultValue!!) -> defaultValue
+                else -> firstEnabledOptionId()
+            }
     }
 
     private fun hasEnabledOption(): Boolean = firstEnabledOptionId() != null
 
-    private fun firstEnabledOptionId(): String? {
-        return firstEnabledOptionId(model.entries)
-    }
+    private fun firstEnabledOptionId(): String? = firstEnabledOptionId(model.entries)
 
     private fun firstEnabledOptionId(entries: List<SelectEntry>): String? {
         entries.forEach { entry ->
@@ -332,13 +343,9 @@ class SelectNode(
         return null
     }
 
-    private fun optionExists(optionId: String): Boolean {
-        return findOption(optionId) != null
-    }
+    private fun optionExists(optionId: String): Boolean = findOption(optionId) != null
 
-    private fun findOption(optionId: String): SelectEntry.Option? {
-        return findOption(model.entries, optionId)
-    }
+    private fun findOption(optionId: String): SelectEntry.Option? = findOption(model.entries, optionId)
 
     private fun findOption(entries: List<SelectEntry>, optionId: String): SelectEntry.Option? {
         entries.forEach { entry ->
