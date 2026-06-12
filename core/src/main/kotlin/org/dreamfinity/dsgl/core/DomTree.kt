@@ -45,8 +45,8 @@ class DomTree(
     private var lastWidth: Int = 0
     private var lastHeight: Int = 0
     private var laidOut: Boolean = false
-    private val paintBuffer: MutableList<RenderCommand> = ArrayList(256)
-    private val stagingPaintBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private var paintBuffer: MutableList<RenderCommand> = ArrayList(256)
+    private var stagingPaintBuffer: MutableList<RenderCommand> = ArrayList(256)
     private val refManager: RefManager = RefManager()
     private var lastViolations: List<LayoutViolation> = emptyList()
     private var strictInvalidLayout: Boolean = false
@@ -91,7 +91,12 @@ class DomTree(
         commandsDirty = true
     }
 
-    /** Builds render commands for the current layout. */
+    /**
+     * Builds render commands for the current layout.
+     *
+     * The returned list is valid until the next [paint] call and must not be retained
+     * across frames; consume or copy it within the same frame.
+     */
     fun paint(ctx: UiMeasureContext, applyStyles: Boolean = true): List<RenderCommand> {
         val paintStartNanos = System.nanoTime()
         try {
@@ -112,13 +117,7 @@ class DomTree(
                         ScrollPerformanceCounters.recordStyleApplyDuration(System.nanoTime() - styleStartNanos)
                     }
                 } else {
-                    StyleEngine.StyleApplyReport(
-                        layoutDirty = false,
-                        visualDirty = false,
-                        visitedNodes = 0,
-                        cacheHits = 0,
-                        recomputedNodes = 0,
-                    )
+                    StyleEngine.StyleApplyReport.CLEAN
                 }
             val canUseGuardedScrollVisualFastPath =
                 laidOut &&
@@ -258,8 +257,10 @@ class DomTree(
             if (debugCommandStackChecks) {
                 validateCommandStacks(stagingPaintBuffer)
             }
-            paintBuffer.clear()
-            paintBuffer.addAll(stagingPaintBuffer)
+            // Swap instead of copy: addAll would clone the full command list every rebuild.
+            val rebuilt = stagingPaintBuffer
+            stagingPaintBuffer = paintBuffer
+            paintBuffer = rebuilt
             commandsDirty = false
             true
         } catch (
@@ -476,14 +477,21 @@ class DomTree(
     }
 
     private fun appendChunkCommands(chunk: RenderCommandChunk, out: MutableList<RenderCommand>) {
-        out.addAll(chunk.prefixCommands)
-        out.addAll(chunk.selfCommands)
-        out.addAll(chunk.childrenPrefixCommands)
-        chunk.children.forEach { child ->
-            appendChunkCommands(child, out)
+        appendCommands(chunk.prefixCommands, out)
+        appendCommands(chunk.selfCommands, out)
+        appendCommands(chunk.childrenPrefixCommands, out)
+        val children = chunk.children
+        for (index in children.indices) {
+            appendChunkCommands(children[index], out)
         }
-        out.addAll(chunk.childrenSuffixCommands)
-        out.addAll(chunk.suffixCommands)
+        appendCommands(chunk.childrenSuffixCommands, out)
+        appendCommands(chunk.suffixCommands, out)
+    }
+
+    private fun appendCommands(source: List<RenderCommand>, out: MutableList<RenderCommand>) {
+        for (index in source.indices) {
+            out.add(source[index])
+        }
     }
 
     fun dispatchClick(event: MouseClickEvent): Boolean {

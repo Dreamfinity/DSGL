@@ -132,6 +132,31 @@ class StyleEngineIncrementalTests {
         assertEquals(0, report.recomputedNodes)
     }
 
+    @Test
+    fun `changed node state invalidates style cache entry`() {
+        installStylesheet(
+            """
+            .marked { color: #AA3344; }
+            """.trimIndent(),
+        )
+
+        val root = ContainerNode(key = "root")
+        val leaf = TextNode(TextSource.Static("leaf"), key = "leaf").applyParent(root)
+        StyleEngine.applyStylesRecursivelyDetailed(root)
+
+        val unchanged = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertEquals(0, unchanged.recomputedNodes, "Unchanged nodes must be served from the style cache.")
+
+        leaf.setClassNames("marked")
+        val afterClassChange = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertTrue(afterClassChange.recomputedNodes >= 1, "Class change must invalidate the cached style.")
+        assertEquals(0xFFAA3344.toInt(), leaf.color)
+
+        leaf.setHoveredState(true)
+        val afterHoverChange = StyleEngine.applyStylesRecursivelyDetailed(root)
+        assertTrue(afterHoverChange.recomputedNodes >= 1, "Pseudo-state change must invalidate the cached style.")
+    }
+
     private fun installStylesheet(contents: String) {
         val dir = Files.createTempDirectory("dsgl-style-incremental-test").toFile()
         dir.resolve("test.dss").writeText(contents)

@@ -155,4 +155,8 @@ data class KeyframesDefinition(
     init {
         require(frames.isNotEmpty()) { "Keyframes '$name' must contain at least one frame." }
     }
+
+    val transformFrames: List<Keyframe> = frames.filter { it.value.transform != null }
+    val opacityFrames: List<Keyframe> = frames.filter { it.value.opacity != null }
+    val colorFrames: List<Keyframe> = frames.filter { it.value.color != null }
 }

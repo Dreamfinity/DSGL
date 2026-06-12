@@ -76,6 +76,7 @@ class Mc1710UiAdapter(
     companion object {
         private val imageCache: MutableMap<String, ResourceLocation> = HashMap()
         private val dynamicTexturesCache: MutableMap<String, DynamicTexture> = HashMap()
+        private val HUE_STOPS: FloatArray = floatArrayOf(0f, 60f, 120f, 180f, 240f, 300f, 360f)
         private val MAGNIFIER_CAPTURE_VERTEX_SHADER: String =
             """
             #version 120
@@ -121,8 +122,12 @@ class Mc1710UiAdapter(
 
     private val itemRenderer: RenderItem = RenderItem()
     private val textRenderer: MsdfTextRenderer = MsdfTextRenderer()
-    private val opacityStack: MutableList<Float> = ArrayList(8)
+
+    // Plain float stack: a MutableList<Float> would box on every push/pop in the paint loop.
+    private var opacityStackValues = FloatArray(16)
+    private var opacityStackSize = 0
     private var opacityMultiplier: Float = 1f
+    private val transformStack = RenderCommandTransformStack()
     private val errorLogTimes: MutableMap<String, Long> = linkedMapOf()
     private val readbackDiagnosticsVerbose: Boolean =
         java.lang.Boolean
@@ -968,9 +973,8 @@ class Mc1710UiAdapter(
     @Suppress("LoopWithTooManyJumpStatements")
     override fun paint(commands: List<RenderCommand>) {
         paintsCount++
-        opacityStack.clear()
+        opacityStackSize = 0
         opacityMultiplier = 1f
-        val transformStack = RenderCommandTransformStack()
         transformStack.reset()
         val viewport = viewport()
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
@@ -1130,13 +1134,12 @@ class Mc1710UiAdapter(
                         }
 
                         is RenderCommand.PushOpacity -> {
-                            opacityStack.add(opacityMultiplier)
+                            pushOpacity(opacityMultiplier)
                             opacityMultiplier = (opacityMultiplier * command.opacity).coerceIn(0f, 1f)
                         }
 
                         is RenderCommand.PopOpacity -> {
-                            opacityMultiplier =
-                                if (opacityStack.isEmpty()) 1f else opacityStack.removeAt(opacityStack.lastIndex)
+                            opacityMultiplier = popOpacityOrDefault()
                         }
                     }
                 }
@@ -1151,10 +1154,24 @@ class Mc1710UiAdapter(
         } finally {
             ScissorContext.clear()
             transformStack.reset()
-            opacityStack.clear()
+            opacityStackSize = 0
             opacityMultiplier = 1f
             GL11.glPopAttrib()
         }
+    }
+
+    private fun pushOpacity(value: Float) {
+        if (opacityStackSize == opacityStackValues.size) {
+            opacityStackValues = opacityStackValues.copyOf(opacityStackValues.size * 2)
+        }
+        opacityStackValues[opacityStackSize] = value
+        opacityStackSize += 1
+    }
+
+    private fun popOpacityOrDefault(): Float {
+        if (opacityStackSize == 0) return 1f
+        opacityStackSize -= 1
+        return opacityStackValues[opacityStackSize]
     }
 
     private fun applyOpacity(color: Int): Int {
@@ -1204,14 +1221,13 @@ class Mc1710UiAdapter(
     ) {
         if (width <= 0 || height <= 0) return
         val segments = 6
-        val hueStops = floatArrayOf(0f, 60f, 120f, 180f, 240f, 300f, 360f)
         var index = 0
         while (index < segments) {
             val startX = x + (width * index) / segments
             val endX = if (index == segments - 1) x + width else x + (width * (index + 1)) / segments
             val segmentWidth = (endX - startX).coerceAtLeast(1)
-            val startColor = applyOpacity(hsvToArgbInt(hueStops[index], 1f, 1f))
-            val endColor = applyOpacity(hsvToArgbInt(hueStops[index + 1], 1f, 1f))
+            val startColor = applyOpacity(hsvToArgbInt(HUE_STOPS[index], 1f, 1f))
+            val endColor = applyOpacity(hsvToArgbInt(HUE_STOPS[index + 1], 1f, 1f))
             drawHorizontalGradientRect(startX, y, segmentWidth, height, startColor, endColor)
             index += 1
         }
@@ -1318,18 +1334,44 @@ class Mc1710UiAdapter(
         val c = v * s
         val x = c * (1f - kotlin.math.abs((h / 60f) % 2f - 1f))
         val m = v - c
-        val (r1, g1, b1) =
-            when {
-                h < 60f -> Triple(c, x, 0f)
-                h < 120f -> Triple(x, c, 0f)
-                h < 180f -> Triple(0f, c, x)
-                h < 240f -> Triple(0f, x, c)
-                h < 300f -> Triple(x, 0f, c)
-                else -> Triple(c, 0f, x)
+        val rFromHue: Float
+        val gFromHue: Float
+        val bFromHue: Float
+        when {
+            h < 60f -> {
+                rFromHue = c
+                gFromHue = x
+                bFromHue = 0f
             }
-        val r = ((r1 + m) * 255f).toInt().coerceIn(0, 255)
-        val g = ((g1 + m) * 255f).toInt().coerceIn(0, 255)
-        val b = ((b1 + m) * 255f).toInt().coerceIn(0, 255)
+            h < 120f -> {
+                rFromHue = x
+                gFromHue = c
+                bFromHue = 0f
+            }
+            h < 180f -> {
+                rFromHue = 0f
+                gFromHue = c
+                bFromHue = x
+            }
+            h < 240f -> {
+                rFromHue = 0f
+                gFromHue = x
+                bFromHue = c
+            }
+            h < 300f -> {
+                rFromHue = x
+                gFromHue = 0f
+                bFromHue = c
+            }
+            else -> {
+                rFromHue = c
+                gFromHue = 0f
+                bFromHue = x
+            }
+        }
+        val r = ((rFromHue + m) * 255f).toInt().coerceIn(0, 255)
+        val g = ((gFromHue + m) * 255f).toInt().coerceIn(0, 255)
+        val b = ((bFromHue + m) * 255f).toInt().coerceIn(0, 255)
         return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
     }
 

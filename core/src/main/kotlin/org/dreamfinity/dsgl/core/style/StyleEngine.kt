@@ -18,7 +18,18 @@ object StyleEngine {
         val visitedNodes: Int,
         val cacheHits: Int,
         val recomputedNodes: Int,
-    )
+    ) {
+        companion object {
+            val CLEAN: StyleApplyReport =
+                StyleApplyReport(
+                    layoutDirty = false,
+                    visualDirty = false,
+                    visitedNodes = 0,
+                    cacheHits = 0,
+                    recomputedNodes = 0,
+                )
+        }
+    }
 
     private data class MutableApplyMetrics(
         var visitedNodes: Int = 0,
@@ -69,18 +80,103 @@ object StyleEngine {
         val sourceOrder: Int,
         val origin: StyleOrigin,
         val sourceKind: StyleSourceKind,
-        val sourceLabel: String,
-    )
+        val sourceRule: StyleRule? = null,
+    ) {
+        fun sourceLabel(): String =
+            when {
+                sourceRule != null ->
+                    buildString {
+                        append(selectorLabel(sourceRule.selector))
+                        append(" @ ")
+                        append(sourceRule.fileName)
+                        if (important) append(" !important")
+                    }
+                origin == StyleOrigin.Inline -> if (important) "inline !important" else "inline"
+                origin == StyleOrigin.Inspector -> if (important) "inspector !important" else "inspector"
+                else -> "unknown"
+            }
+    }
 
-    private data class NodeApplyFlags(
-        val layoutDirty: Boolean,
-        val visualDirty: Boolean,
-    )
+    private const val FLAG_LAYOUT_DIRTY = 1
+    private const val FLAG_VISUAL_DIRTY = FLAG_LAYOUT_DIRTY shl 1
+    private const val FLAG_CACHE_HIT = FLAG_VISUAL_DIRTY shl 1
 
-    private data class NodeApplyResult(
-        val flags: NodeApplyFlags,
-        val cacheHit: Boolean,
-    )
+    private class CacheKeyProbe {
+        var typeName: String = ""
+        var nodeId: String? = null
+        var classesHash: Int = 0
+        var inlineHash: Int = 0
+        var inspectorHash: Int = 0
+        var hovered: Boolean = false
+        var active: Boolean = false
+        var focused: Boolean = false
+        var disabled: Boolean = false
+        var open: Boolean = false
+        var stylesheetVersion: Long = 0L
+        var themeVersion: Long = 0L
+        var defaultsHash: Int = 0
+        var parentInheritedHash: Int = 0
+        var ancestorSelectorHash: Int = 0
+        var siblingSelectorHash: Int = 0
+        var rootFontSizePx: Int = 0
+        var viewportWidthPx: Int = 0
+        var viewportHeightPx: Int = 0
+        var scope: StyleApplicationScope = StyleApplicationScope.Application
+
+        fun matches(key: CacheKey): Boolean = matchesIdentity(key) && matchesPseudoState(key) && matchesContext(key)
+
+        private fun matchesIdentity(key: CacheKey): Boolean =
+            classesHash == key.classesHash &&
+                inlineHash == key.inlineHash &&
+                inspectorHash == key.inspectorHash &&
+                defaultsHash == key.defaultsHash &&
+                typeName == key.typeName &&
+                nodeId == key.nodeId
+
+        private fun matchesPseudoState(key: CacheKey): Boolean =
+            hovered == key.hovered &&
+                active == key.active &&
+                focused == key.focused &&
+                disabled == key.disabled &&
+                open == key.open
+
+        private fun matchesContext(key: CacheKey): Boolean =
+            stylesheetVersion == key.stylesheetVersion &&
+                themeVersion == key.themeVersion &&
+                parentInheritedHash == key.parentInheritedHash &&
+                ancestorSelectorHash == key.ancestorSelectorHash &&
+                siblingSelectorHash == key.siblingSelectorHash &&
+                rootFontSizePx == key.rootFontSizePx &&
+                viewportWidthPx == key.viewportWidthPx &&
+                viewportHeightPx == key.viewportHeightPx &&
+                scope == key.scope
+
+        fun toKey(): CacheKey =
+            CacheKey(
+                typeName = typeName,
+                nodeId = nodeId,
+                classesHash = classesHash,
+                inlineHash = inlineHash,
+                inspectorHash = inspectorHash,
+                hovered = hovered,
+                active = active,
+                focused = focused,
+                disabled = disabled,
+                open = open,
+                stylesheetVersion = stylesheetVersion,
+                themeVersion = themeVersion,
+                defaultsHash = defaultsHash,
+                parentInheritedHash = parentInheritedHash,
+                ancestorSelectorHash = ancestorSelectorHash,
+                siblingSelectorHash = siblingSelectorHash,
+                rootFontSizePx = rootFontSizePx,
+                viewportWidthPx = viewportWidthPx,
+                viewportHeightPx = viewportHeightPx,
+                scope = scope,
+            )
+    }
+
+    private val cacheKeyProbe = CacheKeyProbe()
 
     private enum class StylePassMode {
         Full,
@@ -93,12 +189,15 @@ object StyleEngine {
     private val inspectorOverrideVersions: MutableMap<Any, Int> = linkedMapOf()
     private val anonymousTargetCache: MutableMap<DOMNode, Any> = WeakHashMap()
     private val pseudoDirtyNodes: MutableSet<DOMNode> =
-        Collections.newSetFromMap(WeakHashMap<DOMNode, Boolean>())
+        Collections.newSetFromMap(WeakHashMap())
     private val selectorDirtyNodes: MutableSet<DOMNode> =
-        Collections.newSetFromMap(WeakHashMap<DOMNode, Boolean>())
+        Collections.newSetFromMap(WeakHashMap())
 
     private var themeVersion: Long = 0L
     private var inspectorOverridesVersion: Long = 0L
+    private var cachedResolvedVariables: Map<String, String> = emptyMap()
+    private var cachedResolvedVariablesSnapshotVersion: Long = Long.MIN_VALUE
+    private var cachedResolvedVariablesThemeVersion: Long = Long.MIN_VALUE
     private var pseudoStateVersion: Long = 0L
     private var selectorStateVersion: Long = 0L
     private var pseudoDirtyGlobal: Boolean = false
@@ -291,7 +390,7 @@ object StyleEngine {
                     StylePropertySource(
                         property = property,
                         kind = winner.sourceKind,
-                        source = winner.sourceLabel,
+                        source = winner.sourceLabel(),
                     )
             } else if (StylePropertyRegistry.isInherited(property) && parentComputed != null) {
                 result = inheritProperty(result, parentComputed, property)
@@ -354,8 +453,8 @@ object StyleEngine {
 
         val report =
             StyleApplyReport(
-                layoutDirty = result.layoutDirty,
-                visualDirty = result.visualDirty,
+                layoutDirty = result and FLAG_LAYOUT_DIRTY != 0,
+                visualDirty = result and FLAG_VISUAL_DIRTY != 0,
                 visitedNodes = metrics.visitedNodes,
                 cacheHits = metrics.cacheHits,
                 recomputedNodes = metrics.recomputedNodes,
@@ -423,12 +522,18 @@ object StyleEngine {
         snapshot: StylesheetSnapshot,
         variables: Map<String, String>,
         metrics: MutableApplyMetrics,
-    ): NodeApplyFlags {
+    ): Int {
+        val rawDirty =
+            when {
+                pseudoDirtyNodes.isEmpty() -> selectorDirtyNodes
+                selectorDirtyNodes.isEmpty() -> pseudoDirtyNodes
+                else -> pseudoDirtyNodes + selectorDirtyNodes
+            }
         val dirty =
             expandDirtyNodesForCombinators(
                 root = root,
                 snapshot = snapshot,
-                rawDirty = pseudoDirtyNodes + selectorDirtyNodes,
+                rawDirty = rawDirty,
             ).filter { it.isDescendantOfOrSame(root) }
                 .sortedBy { it.depth() }
         if (dirty.isEmpty()) {
@@ -454,9 +559,9 @@ object StyleEngine {
             }
         }
 
-        var flags = NodeApplyFlags(layoutDirty = false, visualDirty = false)
+        var flags = 0
         effectiveRoots.forEach { subtreeRoot ->
-            val subtreeFlags =
+            flags = flags or
                 applyStylesRecursively(
                     root = subtreeRoot,
                     snapshot = snapshot,
@@ -467,11 +572,6 @@ object StyleEngine {
                     passMode = StylePassMode.Targeted,
                     scope = StyleApplicationScope.Application,
                     allowInspectorOverrides = true,
-                )
-            flags =
-                NodeApplyFlags(
-                    layoutDirty = flags.layoutDirty || subtreeFlags.layoutDirty,
-                    visualDirty = flags.visualDirty || subtreeFlags.visualDirty,
                 )
         }
         return flags
@@ -487,7 +587,7 @@ object StyleEngine {
         passMode: StylePassMode,
         scope: StyleApplicationScope,
         allowInspectorOverrides: Boolean,
-    ): NodeApplyFlags {
+    ): Int {
         val nodeResult =
             applyStyleToNode(
                 node = root,
@@ -499,10 +599,10 @@ object StyleEngine {
                 scope = scope,
                 allowInspectorOverrides = allowInspectorOverrides,
             )
-        var flags = nodeResult.flags
+        var flags = nodeResult and (FLAG_LAYOUT_DIRTY or FLAG_VISUAL_DIRTY)
         val canSkipSubtree =
             passMode == StylePassMode.Targeted &&
-                nodeResult.cacheHit &&
+                (nodeResult and FLAG_CACHE_HIT) != 0 &&
                 !snapshot.index.hasAncestorDependentSelectors
         if (canSkipSubtree) {
             return flags
@@ -514,10 +614,11 @@ object StyleEngine {
             } else {
                 rootFontSizePx
             }
-        root.children.forEach { child ->
-            val childFlags =
+        val children = root.children
+        for (index in children.indices) {
+            flags = flags or
                 applyStylesRecursively(
-                    root = child,
+                    root = children[index],
                     snapshot = snapshot,
                     variables = variables,
                     metrics = metrics,
@@ -526,11 +627,6 @@ object StyleEngine {
                     passMode = passMode,
                     scope = scope,
                     allowInspectorOverrides = allowInspectorOverrides,
-                )
-            flags =
-                NodeApplyFlags(
-                    layoutDirty = flags.layoutDirty || childFlags.layoutDirty,
-                    visualDirty = flags.visualDirty || childFlags.visualDirty,
                 )
         }
         return flags
@@ -545,59 +641,49 @@ object StyleEngine {
         rootFontSizePx: Int,
         scope: StyleApplicationScope,
         allowInspectorOverrides: Boolean,
-    ): NodeApplyResult {
+    ): Int {
         metrics.visitedNodes += 1
         val defaults = node.captureStyleDefaults()
-        val key =
-            CacheKey(
-                typeName = node.styleType,
-                nodeId = selectorNodeId(node),
-                classesHash = node.styleClasses.hashCode(),
-                inlineHash = node.inlineStyleDeclarations.toStableHash(),
-                inspectorHash = if (allowInspectorOverrides) inspectorOverrideHash(node) else 0,
-                hovered = node.styleHovered,
-                active = node.styleActive,
-                focused = node.styleFocused,
-                disabled = node.styleDisabled,
-                open = node.styleOpen,
-                stylesheetVersion = snapshot.version,
-                themeVersion = if (scope == StyleApplicationScope.Application) themeVersion else 0L,
-                defaultsHash = defaults.hashCode(),
-                parentInheritedHash = inheritedHash(parentComputed),
-                ancestorSelectorHash =
-                    if (snapshot.index.hasAncestorDependentSelectors) {
-                        ancestorSelectorHash(
-                            node,
-                        )
-                    } else {
-                        0
-                    },
-                siblingSelectorHash =
-                    if (
-                        snapshot.index.hasAdjacentSiblingCombinators || snapshot.index.hasGeneralSiblingCombinators
-                    ) {
-                        previousSiblingSelectorHash(node)
-                    } else {
-                        0
-                    },
-                rootFontSizePx = rootFontSizePx,
-                viewportWidthPx = viewportWidthPx,
-                viewportHeightPx = viewportHeightPx,
-                scope = scope,
-            )
+        val probe = cacheKeyProbe
+        probe.typeName = node.styleType
+        probe.nodeId = selectorNodeId(node)
+        probe.classesHash = node.styleClasses.hashCode()
+        probe.inlineHash = node.inlineStyleDeclarations.toStableHash()
+        probe.inspectorHash = if (allowInspectorOverrides) inspectorOverrideHash(node) else 0
+        probe.hovered = node.styleHovered
+        probe.active = node.styleActive
+        probe.focused = node.styleFocused
+        probe.disabled = node.styleDisabled
+        probe.open = node.styleOpen
+        probe.stylesheetVersion = snapshot.version
+        probe.themeVersion = if (scope == StyleApplicationScope.Application) themeVersion else 0L
+        probe.defaultsHash = defaults.hashCode()
+        probe.parentInheritedHash = inheritedHash(parentComputed)
+        probe.ancestorSelectorHash =
+            if (snapshot.index.hasAncestorDependentSelectors) {
+                ancestorSelectorHash(node)
+            } else {
+                0
+            }
+        probe.siblingSelectorHash =
+            if (snapshot.index.hasAdjacentSiblingCombinators || snapshot.index.hasGeneralSiblingCombinators) {
+                previousSiblingSelectorHash(node)
+            } else {
+                0
+            }
+        probe.rootFontSizePx = rootFontSizePx
+        probe.viewportWidthPx = viewportWidthPx
+        probe.viewportHeightPx = viewportHeightPx
+        probe.scope = scope
 
         val cached = cache[node]
-        if (cached != null && cached.key == key) {
+        if (cached != null && probe.matches(cached.key)) {
             metrics.cacheHits += 1
             val result = node.applyComputedStyle(cached.style)
-            return NodeApplyResult(
-                flags =
-                    NodeApplyFlags(
-                        layoutDirty = result.layoutDirty,
-                        visualDirty = result.visualDirty,
-                    ),
-                cacheHit = true,
-            )
+            var flags = FLAG_CACHE_HIT
+            if (result.layoutDirty) flags = flags or FLAG_LAYOUT_DIRTY
+            if (result.visualDirty) flags = flags or FLAG_VISUAL_DIRTY
+            return flags
         }
 
         val computed =
@@ -610,17 +696,13 @@ object StyleEngine {
                 rootFontSizePx = rootFontSizePx,
                 allowInspectorOverrides = allowInspectorOverrides,
             )
-        cache[node] = CachedStyle(key = key, style = computed)
+        cache[node] = CachedStyle(key = probe.toKey(), style = computed)
         metrics.recomputedNodes += 1
         val result = node.applyComputedStyle(computed)
-        return NodeApplyResult(
-            flags =
-                NodeApplyFlags(
-                    layoutDirty = result.layoutDirty,
-                    visualDirty = result.visualDirty,
-                ),
-            cacheHit = false,
-        )
+        var flags = 0
+        if (result.layoutDirty) flags = flags or FLAG_LAYOUT_DIRTY
+        if (result.visualDirty) flags = flags or FLAG_VISUAL_DIRTY
+        return flags
     }
 
     private fun computeStyle(
@@ -684,13 +766,7 @@ object StyleEngine {
                         sourceOrder = rule.sourceOrder,
                         origin = StyleOrigin.Stylesheet,
                         sourceKind = StyleSourceKind.Selector,
-                        sourceLabel =
-                            buildString {
-                                append(selectorLabel(rule.selector))
-                                append(" @ ")
-                                append(rule.fileName)
-                                if (important) append(" !important")
-                            },
+                        sourceRule = rule,
                     )
                 if (shouldReplace(winners[property], candidate)) {
                     winners[property] = candidate
@@ -708,7 +784,6 @@ object StyleEngine {
                     sourceOrder = Int.MAX_VALUE - 1,
                     origin = StyleOrigin.Inline,
                     sourceKind = StyleSourceKind.Inline,
-                    sourceLabel = if (important) "inline !important" else "inline",
                 )
             if (shouldReplace(winners[property], candidate)) {
                 winners[property] = candidate
@@ -725,7 +800,6 @@ object StyleEngine {
                     sourceOrder = Int.MAX_VALUE,
                     origin = StyleOrigin.Inspector,
                     sourceKind = StyleSourceKind.InspectorOverride,
-                    sourceLabel = if (important) "inspector !important" else "inspector",
                 )
             if (shouldReplace(winners[property], candidate)) {
                 winners[property] = candidate
@@ -770,31 +844,51 @@ object StyleEngine {
         if (scope != StyleApplicationScope.Application) {
             return emptyMap()
         }
-        val variables = linkedMapOf<String, String>()
-        variables.putAll(snapshot.rootVariables)
-        variables.putAll(themeVariables)
-        return variables
+        if (snapshot.version != cachedResolvedVariablesSnapshotVersion ||
+            themeVersion != cachedResolvedVariablesThemeVersion
+        ) {
+            val variables = linkedMapOf<String, String>()
+            variables.putAll(snapshot.rootVariables)
+            variables.putAll(themeVariables)
+            cachedResolvedVariables = variables
+            cachedResolvedVariablesSnapshotVersion = snapshot.version
+            cachedResolvedVariablesThemeVersion = themeVersion
+        }
+        return cachedResolvedVariables
     }
 
-    private fun matchingCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> =
-        gatherCandidates(node, index)
-            .filter { selectorMatches(node, it.selector) }
-            .sortedBy { it.sourceOrder }
+    private val sourceOrderComparator: Comparator<StyleRule> = compareBy { it.sourceOrder }
 
-    private fun gatherCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
-        val out = linkedSetOf<StyleRule>()
-        out.addAll(index.universalIndex)
+    private fun matchingCandidates(node: DOMNode, index: RuleIndex): List<StyleRule> {
+        val out = ArrayList<StyleRule>()
+        val seen = HashSet<StyleRule>()
+        addMatchingCandidates(index.universalIndex, node, seen, out)
         selectorNodeId(node)?.let { id ->
-            index.idIndex[id]?.let { out.addAll(it) }
+            index.idIndex[id]?.let { addMatchingCandidates(it, node, seen, out) }
         }
-        index.typeIndex[node.styleType]?.let { out.addAll(it) }
+        index.typeIndex[node.styleType]?.let { addMatchingCandidates(it, node, seen, out) }
         if (node.parent == null) {
-            index.typeIndex[ROOT_SELECTOR_INTERNAL]?.let { out.addAll(it) }
+            index.typeIndex[ROOT_SELECTOR_INTERNAL]?.let { addMatchingCandidates(it, node, seen, out) }
         }
         node.styleClasses.forEach { className ->
-            index.classIndex[className]?.let { out.addAll(it) }
+            index.classIndex[className]?.let { addMatchingCandidates(it, node, seen, out) }
         }
-        return out.toList()
+        out.sortWith(sourceOrderComparator)
+        return out
+    }
+
+    private fun addMatchingCandidates(
+        rules: List<StyleRule>,
+        node: DOMNode,
+        seen: MutableSet<StyleRule>,
+        out: MutableList<StyleRule>,
+    ) {
+        for (index in rules.indices) {
+            val rule = rules[index]
+            if (seen.add(rule) && selectorMatches(node, rule.selector)) {
+                out += rule
+            }
+        }
     }
 
     private fun selectorMatches(node: DOMNode, selector: StyleSelector): Boolean {

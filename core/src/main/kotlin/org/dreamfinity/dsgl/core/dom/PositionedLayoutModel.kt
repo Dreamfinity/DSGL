@@ -132,18 +132,21 @@ internal object PositionedLayoutModel {
         return matchesChildContextTrigger(node)
     }
 
-    private fun localContextParticipants(owner: DOMNode): List<StackingParticipant> =
-        owner.children
-            .withIndex()
-            .filter { indexed -> indexed.value.position != PositionMode.Fixed }
-            .map { indexed ->
-                val child = indexed.value
-                val createsChildContextHint = createsChildContextForLocalParticipation(child)
+    private fun localContextParticipants(owner: DOMNode): List<StackingParticipant> {
+        val children = owner.children
+        val participants = ArrayList<StackingParticipant>(children.size)
+        for ((index, element) in children.withIndex()) {
+            val child = element
+            if (child.position == PositionMode.Fixed) {
+                continue
+            }
+            val createsChildContextHint = createsChildContextForLocalParticipation(child)
+            participants +=
                 StackingParticipant(
                     node = child,
                     logicalParent = owner,
-                    sourceDomOrder = indexed.index,
-                    priority = orderingPriority(child, indexed.index),
+                    sourceDomOrder = index,
+                    priority = orderingPriority(child, index),
                     kind =
                         if (createsChildContextHint) {
                             StackingParticipantKind.ChildContext
@@ -153,7 +156,9 @@ internal object PositionedLayoutModel {
                     createsChildContextHint = createsChildContextHint,
                     rootContextPromotionTarget = null,
                 )
-            }
+        }
+        return participants
+    }
 
     private fun rootContextParticipants(root: DOMNode, contextId: RootStackingContextId): List<StackingParticipant> {
         val globalDomOrder = buildGlobalDomOrderMap(root)
@@ -241,29 +246,55 @@ internal object PositionedLayoutModel {
             else -> OffsetPrecedenceResolution(null, null)
         }
 
+    private val paintOrderComparator: Comparator<StackingParticipant> =
+        compareBy(
+            { it.priority.positionedBucket },
+            { it.priority.zIndex },
+            { it.priority.domOrder },
+        )
+
     fun orderedParticipantsForPaint(owner: DOMNode): List<StackingParticipant> {
         val participants = stackingContextScaffold(owner).participants
         if (participants.size <= 1) {
             return participants
         }
-        val hasPositioned = participants.any { isPositioned(it.node) }
+        var hasPositioned = false
+        for (index in participants.indices) {
+            if (isPositioned(participants[index].node)) {
+                hasPositioned = true
+                break
+            }
+        }
         if (!hasPositioned) {
-            return participants.sortedBy { it.priority.domOrder }
+            // Participants are built in DOM order; without positioned nodes the sort is a no-op.
+            return participants
         }
 
-        return participants.sortedWith(
-            compareBy(
-                { it.priority.positionedBucket },
-                { it.priority.zIndex },
-                { it.priority.domOrder },
-            ),
-        )
+        return participants.sortedWith(paintOrderComparator)
     }
 
     fun orderedParticipantsForHitTesting(owner: DOMNode): List<StackingParticipant> =
         orderedParticipantsForPaint(owner).asReversed()
 
-    fun orderedChildrenForPaint(parent: DOMNode): List<DOMNode> = orderedParticipantsForPaint(parent).map { it.node }
+    fun orderedChildrenForPaint(parent: DOMNode): List<DOMNode> {
+        // Fast path for the per-frame chunk traversal: non-root owners with no positioned
+        // children paint in plain DOM order, and Fixed children (the only ones filtered out
+        // of local participation) are positioned by definition. Callers iterate read-only.
+        if (parent.parent != null && !hasPositionedChild(parent)) {
+            return parent.children
+        }
+        return orderedParticipantsForPaint(parent).map { it.node }
+    }
+
+    private fun hasPositionedChild(parent: DOMNode): Boolean {
+        val children = parent.children
+        for (index in children.indices) {
+            if (isPositioned(children[index])) {
+                return true
+            }
+        }
+        return false
+    }
 
     fun orderedChildrenForHitTesting(parent: DOMNode): List<DOMNode> =
         orderedParticipantsForHitTesting(parent).map {

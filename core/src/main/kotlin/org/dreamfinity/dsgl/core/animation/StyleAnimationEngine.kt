@@ -24,14 +24,20 @@ object StyleAnimationEngine {
         val easing: Easing,
         val animatable: Animatable<T>,
     ) {
-        fun valueAt(nowSec: Double): Pair<T, Boolean> {
-            if (durationSec <= 0.0) return to to true
+        fun valueAt(nowSec: Double): T {
+            if (durationSec <= 0.0) return to
             val local = nowSec - startSec
-            if (local <= delaySec) return from to false
+            if (local <= delaySec) return from
             val t = ((local - delaySec) / durationSec).toFloat().coerceIn(0f, 1f)
             val eased = easing.map(t)
-            val value = animatable.interpolate(from, to, eased)
-            return value to (t >= 1f)
+            return animatable.interpolate(from, to, eased)
+        }
+
+        fun isFinishedAt(nowSec: Double): Boolean {
+            if (durationSec <= 0.0) return true
+            val local = nowSec - startSec
+            if (local <= delaySec) return false
+            return ((local - delaySec) / durationSec).toFloat() >= 1f
         }
     }
 
@@ -324,9 +330,9 @@ object StyleAnimationEngine {
 
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> transitionValue(state: NodeAnimationState, property: AnimatedStyleProperty): T? {
-        val transition = state.transitions[property] as TransitionState<T>? ?: return null
-        val (value, finished) = transition.valueAt(nowSec)
-        if (finished) {
+        val transition = state.transitions[property] as? TransitionState<T>? ?: return null
+        val value = transition.valueAt(nowSec)
+        if (transition.isFinishedAt(nowSec)) {
             state.transitions.remove(property)
         }
         return value
@@ -404,94 +410,65 @@ object StyleAnimationEngine {
             color = sampleColor(definition, progress, easing),
         )
 
-    private fun sampleTransform(definition: KeyframesDefinition, progress: Float, easing: Easing): UiTransform? {
-        val frames = definition.frames.filter { it.value.transform != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) {
-            return frames
-                .first()
-                .value.transform
-        }
-        if (progress >= frames.last().fraction) {
-            return frames
-                .last()
-                .value.transform
-        }
-        val pair =
-            surrounding(frames, progress) ?: return frames
-                .last()
-                .value.transform
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return TransformAnimatable.interpolate(
-            pair.first.value.transform!!,
-            pair.second.value.transform!!,
-            eased,
+    private fun sampleTransform(definition: KeyframesDefinition, progress: Float, easing: Easing): UiTransform? =
+        sampleProperty(
+            frames = definition.transformFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.transform },
+            interpolate = { from, to, t -> TransformAnimatable.interpolate(from, to, t) },
         )
-    }
 
-    private fun sampleOpacity(definition: KeyframesDefinition, progress: Float, easing: Easing): Float? {
-        val frames = definition.frames.filter { it.value.opacity != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) {
-            return frames
-                .first()
-                .value.opacity
-        }
-        if (progress >= frames.last().fraction) {
-            return frames
-                .last()
-                .value.opacity
-        }
-        val pair =
-            surrounding(frames, progress) ?: return frames
-                .last()
-                .value.opacity
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return FloatAnimatable
-            .interpolate(
-                pair.first.value.opacity!!,
-                pair.second.value.opacity!!,
-                eased,
-            ).coerceIn(0f, 1f)
-    }
-
-    private fun sampleColor(definition: KeyframesDefinition, progress: Float, easing: Easing): Int? {
-        val frames = definition.frames.filter { it.value.color != null }
-        if (frames.isEmpty()) return null
-        if (progress <= frames.first().fraction) {
-            return frames
-                .first()
-                .value.color
-        }
-        if (progress >= frames.last().fraction) {
-            return frames
-                .last()
-                .value.color
-        }
-        val pair =
-            surrounding(frames, progress) ?: return frames
-                .last()
-                .value.color
-        val t = normalizedProgress(pair.first.fraction, pair.second.fraction, progress)
-        val eased = easing.map(t)
-        return ColorAnimatable.interpolate(
-            pair.first.value.color!!,
-            pair.second.value.color!!,
-            eased,
+    private fun sampleOpacity(definition: KeyframesDefinition, progress: Float, easing: Easing): Float? =
+        sampleProperty(
+            frames = definition.opacityFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.opacity },
+            interpolate = { from, to, t -> FloatAnimatable.interpolate(from, to, t).coerceIn(0f, 1f) },
         )
+
+    private fun sampleColor(definition: KeyframesDefinition, progress: Float, easing: Easing): Int? =
+        sampleProperty(
+            frames = definition.colorFrames,
+            progress = progress,
+            easing = easing,
+            valueOf = { it.color },
+            interpolate = { from, to, t -> ColorAnimatable.interpolate(from, to, t) },
+        )
+
+    private inline fun <T : Any> sampleProperty(
+        frames: List<Keyframe>,
+        progress: Float,
+        easing: Easing,
+        valueOf: (KeyframeValue) -> T?,
+        interpolate: (T, T, Float) -> T,
+    ): T? {
+        if (frames.isEmpty()) return null
+        if (progress <= frames.first().fraction) {
+            return valueOf(frames.first().value)
+        }
+        if (progress >= frames.last().fraction) {
+            return valueOf(frames.last().value)
+        }
+        val leftIndex = surroundingLeftIndex(frames, progress)
+        if (leftIndex < 0) {
+            return valueOf(frames.last().value)
+        }
+        val left = frames[leftIndex]
+        val right = frames[leftIndex + 1]
+        val t = normalizedProgress(left.fraction, right.fraction, progress)
+        val eased = easing.map(t)
+        return interpolate(valueOf(left.value)!!, valueOf(right.value)!!, eased)
     }
 
-    private fun surrounding(frames: List<Keyframe>, progress: Float): Pair<Keyframe, Keyframe>? {
+    private fun surroundingLeftIndex(frames: List<Keyframe>, progress: Float): Int {
         for (index in 0 until frames.lastIndex) {
-            val left = frames[index]
-            val right = frames[index + 1]
-            if (progress >= left.fraction && progress <= right.fraction) {
-                return left to right
+            if (progress >= frames[index].fraction && progress <= frames[index + 1].fraction) {
+                return index
             }
         }
-        return null
+        return -1
     }
 
     private fun normalizedProgress(left: Float, right: Float, value: Float): Float {
